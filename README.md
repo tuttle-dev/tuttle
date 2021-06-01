@@ -2,14 +2,12 @@
 
 tuttle - painless finance planning for freelancers
 
-> Harry Tuttle:
-> 
+> HARRY TUTTLE:
 > Bloody paperwork. Huh!
 > 
-> Sam Lowry:
-> 
+> SAM LOWRY:
 > I suppose one has to expect a certain amount.
 >
-> Harry Tuttle:
+> HARRY TUTTLE:
 > 
 > Why? I came into this game for the action, the excitement. Go anywhere, travel light, get in, get out, wherever there's trouble, a man alone. 
