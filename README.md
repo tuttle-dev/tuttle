@@ -3,9 +3,11 @@
 tuttle - painless business planning for freelancers
 
 > HARRY TUTTLE:
+> 
 > Bloody paperwork. Huh!
 > 
 > SAM LOWRY:
+> 
 > I suppose one has to expect a certain amount.
 >
 > HARRY TUTTLE:
