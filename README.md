@@ -1,6 +1,4 @@
-# tuttle
-
-**painless business planning for freelancers**
+# tuttle - painless business planning for freelancers
 
 > HARRY TUTTLE: Bloody paperwork. Huh!
 > 
