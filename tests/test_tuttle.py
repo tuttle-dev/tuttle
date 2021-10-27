@@ -4,8 +4,7 @@
 
 import pytest
 
-import tuttle
-
+from tuttle.model import Account, User
 
 @pytest.fixture
 def response():
@@ -23,9 +22,12 @@ def test_content(response):
     # assert 'GitHub' in BeautifulSoup(response.content).title.string
 
 
-def test_pandas():
-    import pandas
-
-    data = pandas.DataFrame()
-
+def test_account_creation():
+    account = Account(
+        name="Giro",
+        number="DE39500105173911499952",
+        owner=User(
+            name="Harry Tuttle"
+        )
+    )
 
