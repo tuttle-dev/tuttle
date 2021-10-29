@@ -26,3 +26,7 @@ The application provides analysis and forecasting functions on income, expenses,
 We develop the solution as a GUI application based on web technologies. Sensitive financial data is processed locally on the end device without central data collection. For data analysis, we rely on open source tools from the Python ecosystem. 
 
 
+## Acknowledgements
+
+This project is funded by the [Prototype Fund](https://prototypefund.de).
+
