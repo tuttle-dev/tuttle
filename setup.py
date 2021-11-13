@@ -28,7 +28,7 @@ setup(
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
     ],
-    description="PLess paperwork, more excitement.",
+    description="Less paperwork, more excitement.",
     install_requires=requirements,
     license="GNU General Public License v3",
     long_description=readme + '\n\n' + history,
@@ -38,7 +38,7 @@ setup(
     packages=find_packages(include=['tuttle', 'tuttle.*']),
     test_suite='tests',
     tests_require=test_requirements,
-    url='https://github.com/clstaudt/tuttle',
+    url='https://github.com/tuttle-dev/tuttle',
     version='0.1.0',
     zip_safe=False,
 )
