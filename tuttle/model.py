@@ -14,23 +14,27 @@ from delorean import Delorean as Time
 from datetime import timedelta as Timespan
 
 
-class PersistentObject(SQLModel):
+class PersistentObject(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
 
 
-class User(PersistentObject):
+class User(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
     name: str
 
 
-class Account(PersistentObject):
+class Account(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
     name: str
-    number: str
-    owner: User
+    iban: str  # TODO: add type / validator
+    bic: str  # TODO: add type / validator
+    # owner: User
 
 
-class Contact(PersistentObject):
+class Contact(SQLModel, table=True):
     """An entry in the address book."""
 
+    id: Optional[int] = Field(default=None, primary_key=True)
     name: str
     e_mail: Optional[EmailStr]
 
@@ -47,30 +51,38 @@ class Rate(SQLModel):
     timespan: Timespan
 
 
-class Contract(PersistentObject):
+class Contract(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
     client: Client = Relationship(back_populates="contracts")
     # rate: Optional[Rate]
     projects: List["Project"] = Relationship(back_populates="contract")
+    invoices: List["Invoice"] = Relationship(back_populates="contract")
 
 
-class Project(PersistentObject):
+class Project(SQLModel, table=True):
     """A project is a group of contract work for a client."""
 
+    id: Optional[int] = Field(default=None, primary_key=True)
     name: str
     contract: Contract = Relationship(back_populates="projects")
+    timesheets: List["Timesheet"] = Relationship(back_populates="project")
 
 
-class Timesheet(SQLModel):
-    pass
+class Timesheet(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    project: Project = Relationship(back_populates="timesheets")
 
 
-class Invoice(PersistentObject):
-    contract: Contract
-    timesheet: Timesheet
+class Invoice(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    contract: Contract = Relationship(back_populates="invoices")
+    payment: Optional["Payment"] = Relationship(back_populates="invoice")
+    # timesheet: Timesheet =
 
 
-class Payment(SQLModel):
-    invoice: Invoice
+class Payment(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    invoice: Invoice = Relationship(back_populates="payment")
 
 
 if __name__ == "__main__":
