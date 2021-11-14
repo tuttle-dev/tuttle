@@ -4,7 +4,8 @@
 
 import pytest
 
-from tuttle.model import Account, User
+from tuttle.model import BankAccount, User
+
 
 @pytest.fixture
 def response():
@@ -20,14 +21,3 @@ def test_content(response):
     """Sample pytest test function with the pytest fixture as an argument."""
     # from bs4 import BeautifulSoup
     # assert 'GitHub' in BeautifulSoup(response.content).title.string
-
-
-def test_account_creation():
-    account = Account(
-        name="Giro",
-        number="DE39500105173911499952",
-        owner=User(
-            name="Harry Tuttle"
-        )
-    )
-

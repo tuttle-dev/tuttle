@@ -15,5 +15,5 @@ class Context:
         sqlmodel.SQLModel.metadata.create_all(self.db_engine)
 
 
-context = Context()
-print(context.db_engine)
+def get_context() -> Context:
+    return Context()

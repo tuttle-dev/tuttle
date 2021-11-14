@@ -23,11 +23,13 @@ class User(SQLModel, table=True):
     name: str
 
 
-class Account(SQLModel, table=True):
+class BankAccount(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
     iban: str  # TODO: add type / validator
     bic: str  # TODO: add type / validator
+    blz: str  # TODO: add type / validator
+    username: str  # online banking user name
     # owner: User
 
 
