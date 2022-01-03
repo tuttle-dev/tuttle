@@ -14,10 +14,6 @@ from delorean import Delorean as Time
 from datetime import timedelta as Timespan
 
 
-class PersistentObject(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
-
-
 class User(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
@@ -53,8 +49,18 @@ class Rate(SQLModel):
     timespan: Timespan
 
 
-class Contract(SQLModel, table=True):
+class BillingCycle(SQLModel, table=True):
+    """Billing cycle associated with a contract."""
     id: Optional[int] = Field(default=None, primary_key=True)
+    contracts: List["Contract"] = Relationship(back_populates="billing_cycle")
+    # TODO: billing time
+    # TODO: billing period
+    
+
+class Contract(SQLModel, table=True):
+    """A contract defines the business conditions of a project"""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    billing_cycle: BillingCycle = Relationship(back_populates="contracts")
     client: Client = Relationship(back_populates="contracts")
     # rate: Optional[Rate]
     projects: List["Project"] = Relationship(back_populates="contract")
@@ -77,6 +83,7 @@ class Timesheet(SQLModel, table=True):
 
 class Invoice(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
+    timesheet: Timesheet = Relationship(back_populates="invoice")
     contract: Contract = Relationship(back_populates="invoices")
     payment: Optional["Payment"] = Relationship(back_populates="invoice")
     # timesheet: Timesheet =
