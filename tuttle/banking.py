@@ -9,10 +9,7 @@ from model import BankAccount
 
 
 class Banking:
-    def __init__(
-        self,
-        account: BankAccount,
-    ):
+    def __init__(self, account: BankAccount):
         self.account = account
         self.product_id = None  # TODO: register product ID before deployment
 
