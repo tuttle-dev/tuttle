@@ -26,6 +26,14 @@ The application provides analysis and forecasting functions on income, expenses,
 We develop the solution as a GUI application based on web technologies. Sensitive financial data is processed locally on the end device without central data collection. For data analysis, we rely on open source tools from the Python ecosystem.
 
 
+## Contributing
+
+TBA
+
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
+
+
 ## Acknowledgements
 
 This project is funded by the [Prototype Fund](https://prototypefund.de).

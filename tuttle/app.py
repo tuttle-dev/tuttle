@@ -12,7 +12,9 @@ from model import Timesheet, Project, Invoice
 class App:
     """The main application class"""
 
-    def __init__(self,):
+    def __init__(
+        self,
+    ):
         self.home = Path.home() / ".tuttle"
         if not os.path.exists(self.home):
             os.mkdir(self.home)

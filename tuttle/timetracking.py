@@ -5,7 +5,10 @@ from tuttle.model import Timesheet
 
 
 def generate_timesheet(
-    cal: Calendar, period: str, client: str, comment: str
+    cal: Calendar,
+    period: str,
+    client: str,
+    comment: str,
 ) -> pandas.DataFrame:
     # convert cal to data
     cal_data = cal.to_data()
@@ -37,7 +40,10 @@ def generate_timesheet(
     return timesheeet
 
 
-def export_timesheet(timesheet: Timesheet, path: str):
+def export_timesheet(
+    timesheet: Timesheet,
+    path: str,
+):
     table = timesheet.table.reset_index()
     table["date"] = table["date"].dt.strftime("%Y/%m/%d")
     table.loc["Total", :] = ("Total", timesheet["hours"].sum(), "")
