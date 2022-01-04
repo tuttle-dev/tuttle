@@ -98,5 +98,14 @@ class CloudCalendar(Calendar):
                 }
             )
         )
+        # TODO: handle timezones
+        event_data = (
+            event_data
+            .assign(
+                **{
+                    "duration": event_data["duration"].apply(lambda m: datetime.timedelta(minutes=m))
+                }
+            )
+        )
 
         return event_data
