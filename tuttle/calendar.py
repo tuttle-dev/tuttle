@@ -8,6 +8,12 @@ import datetime
 
 from pathlib import Path
 
+def parse_pyicloud_datetime(dt_list):
+    """Parse the dates returned by pyicloud."""
+    _, year, month, day, hour, minute, _ = dt_list
+    return datetime.datetime(year, month, day, hour, minute)
+
+
 class Calendar:
     """Abstract base class for calendars."""
     def __init__(
@@ -44,8 +50,8 @@ class FileCalendar(Calendar):
             columns=["name", "begin", "end"],
         )
         event_data["duration"] = event_data["end"] - event_data["begin"]
-        event_data["time"] = event_data["begin"]
-        event_data = event_data.set_index("time")
+        #event_data["time"] = event_data["begin"]
+        #event_data = event_data.set_index("time")
         return event_data
 
 
@@ -83,4 +89,14 @@ class CloudCalendar(Calendar):
             event_data_raw
             .query("pGuid == @guid")
         )
+        event_data = (
+            event_data
+            .assign(
+                **{
+                    "begin": event_data["startDate"].apply(parse_pyicloud_datetime),
+                    "end": event_data["endDate"].apply(parse_pyicloud_datetime)
+                }
+            )
+        )
+
         return event_data
