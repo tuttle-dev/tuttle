@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from tuttle.calendar import Calendar
+from tuttle.tcalendar import Calendar
 
 def test_calendar_object():
     """Test that the calendar object can be instantiated."""

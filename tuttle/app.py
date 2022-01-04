@@ -4,6 +4,8 @@ import os
 
 import sqlmodel
 
+import model
+
 from model import (
     Timesheet, 
     Project, 
