@@ -42,11 +42,11 @@ class FileCalendar(Calendar):
                 )
                 for event in self.ical.events
             ],
-            columns=["name", "begin", "end"],
+            columns=["title", "begin", "end"],
         )
         event_data["duration"] = event_data["end"] - event_data["begin"]
         # event_data["time"] = event_data["begin"]
-        # event_data = event_data.set_index("time")
+        event_data = event_data.set_index("begin")
         return event_data
 
 
@@ -89,5 +89,6 @@ class CloudCalendar(Calendar):
                 )
             }
         )
+        event_data = event_data.set_index("begin")
 
         return event_data

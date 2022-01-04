@@ -1,7 +1,7 @@
 import pandas
 
-from calendar import Calendar
-from model import Timesheet
+from tuttle.calendar import Calendar
+from tuttle.model import Timesheet
 
 
 def generate_timesheet(
@@ -12,7 +12,7 @@ def generate_timesheet(
 
     timesheeet = (
         cal_data.loc[period]
-        .query(f"name == '{client}'")
+        .query(f"title == '{client}'")
         .filter(["duration"])
         .sort_index()
     )
