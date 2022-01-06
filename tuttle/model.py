@@ -7,6 +7,7 @@ from sqlmodel import SQLModel
 from pydantic import EmailStr
 from decimal import Decimal
 
+import pandas
 
 from money.money import Money
 from money.currency import Currency
@@ -21,12 +22,18 @@ class User(SQLModel, table=True):
     email: EmailStr
 
 
+class Bank(SQLModel, table=True):
+    """A bank."""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    BLZ: str  # TODO: add type / validator
+
+
 class BankAccount(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
     IBAN: str  # TODO: add type / validator
     BIC: str  # TODO: add type / validator
-    BLZ: str  # TODO: add type / validator
     username: str  # online banking user name
     # owner: User
 
@@ -81,6 +88,9 @@ class Project(SQLModel, table=True):
 
 class Timesheet(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
+    # period: str
+    # client: str
+    # comment: str
     # project: Project = Relationship(back_populates="timesheets")
 
 
