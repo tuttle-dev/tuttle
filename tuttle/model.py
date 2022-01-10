@@ -16,7 +16,6 @@ import pandas
 # from money.money import Money
 # from money.currency import Currency
 
-from delorean import Delorean as Time
 from datetime import timedelta as Timespan
 
 from sqlmodel.main import RelationshipInfo
@@ -35,15 +34,17 @@ class Address(SQLModel, table=True):
     country: str
 
 
-class Freelancer(SQLModel, table=True):
+class User(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    # name: str
-    # business_name: Optional[str]
-    # email: EmailStr
+    name: str
+    subtitle: str
+    business_name: Optional[str]
+    email: EmailStr
     # TODO: address
     # address_id: Optional[int] = Field(default=None, foreign_key="address.id")
     # address: Optional[Address] = Relationship()
-    # VAT_number: str
+    VAT_number: str
+    # business_account_id: Optional[int] = Field(default=None, foreign_key="bankaccount.id")
     # business_account: Optional["BankAccount"]
 
 
@@ -118,13 +119,13 @@ class Contract(SQLModel, table=True):
     date: datetime.datetime
     # Contract n:1 Client
     client_id: Optional[int] = Field(default=None, foreign_key="client.id")
-    client: Client = Relationship(back_populates="contracts")
+    # client: Client = Relationship(back_populates="contracts")
     rate: Rate
 
     # billing_cycle: BillingCycle = Relationship(back_populates="contracts")
     # rate: Optional[Rate]
-    # projects: List["Project"] = Relationship(back_populates="contract")
-    # invoices: List["Invoice"] = Relationship(back_populates="contract")
+    projects: List["Project"] = Relationship(back_populates="contract")
+    invoices: List["Invoice"] = Relationship(back_populates="contract")
 
 
 class Project(SQLModel, table=True):
@@ -135,6 +136,7 @@ class Project(SQLModel, table=True):
     start_date: datetime.datetime
     end_date: datetime.datetime
     # Project m:n Contract
+    contract_id: Optional[int] = Field(default=None, foreign_key="contract.id")
     contract: Contract = Relationship(back_populates="projects")
     # Project 1:n Timesheet
     timesheets: List["Timesheet"] = Relationship(back_populates="project")
@@ -147,6 +149,7 @@ class Timesheet(SQLModel, table=True):
     # Timesheet n:1 Project
     project_id: Optional[int] = Field(default=None, foreign_key="project.id")
     project: Project = Relationship(back_populates="timesheets")
+    invoice: "Invoice" = Relationship(back_populates="timesheet")
 
     # period: str
     # client: str
@@ -181,6 +184,7 @@ class InvoiceItem(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     #
     invoice_id: Optional[int] = Field(default=None, foreign_key="invoice.id")
+    invoice: Invoice = Relationship(back_populates="items")
     amount: int
     text: str
     unit: str
