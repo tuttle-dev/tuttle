@@ -32,7 +32,7 @@ def test_model_creation():
     tables = cursor.fetchall()
     conn.close()
 
-    try:
-        os.remove(db_path)
-    except OSError:
-        pass
+    # try:
+    #     os.remove(db_path)
+    # except OSError:
+    #     pass
