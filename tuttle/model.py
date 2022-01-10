@@ -31,19 +31,20 @@ class Address(SQLModel, table=True):
     street: str
     number: str
     city: str
+    zip_code: str
     country: str
+    users: List["User"] = Relationship(back_populates="address")
 
 
 class User(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
     subtitle: str
+    e_mail: EmailStr
+    address_id: Optional[int] = Field(default=None, foreign_key="address.id")
+    address: Optional[Address] = Relationship(back_populates="users")
+    VAT_number: Optional[str]
     business_name: Optional[str]
-    email: EmailStr
-    # TODO: address
-    # address_id: Optional[int] = Field(default=None, foreign_key="address.id")
-    # address: Optional[Address] = Relationship()
-    VAT_number: str
     # business_account_id: Optional[int] = Field(default=None, foreign_key="bankaccount.id")
     # business_account: Optional["BankAccount"]
 
@@ -101,6 +102,7 @@ class Rate(SQLModel, table=True):
     cycle: "Rate.Cycle" = Field(
         sa_column=sqlalchemy.Column(sqlalchemy.Enum("Rate.Cycle"))
     )
+    contracts: List["Contract"] = Relationship(back_populates="rate")
 
 
 # class BillingCycle(SQLModel, table=True):
@@ -120,7 +122,8 @@ class Contract(SQLModel, table=True):
     # Contract n:1 Client
     client_id: Optional[int] = Field(default=None, foreign_key="client.id")
     # client: Client = Relationship(back_populates="contracts")
-    rate: Rate
+    rate_id: Optional[int] = Field(default=None, foreign_key="rate.id")
+    rate: Rate = Relationship(back_populates="contracts")
 
     # billing_cycle: BillingCycle = Relationship(back_populates="contracts")
     # rate: Optional[Rate]
@@ -218,16 +221,3 @@ class IncomeTax(Tax):
     """Income tax."""
 
     pass
-
-
-if __name__ == "__main__":
-
-    central_services = Client(
-        name="Central Services", e_mail="info@centralservices.com"
-    )
-
-    my_contract = Contract(client=central_services)
-
-    my_project = Project(name="Ducts", contract=my_contract)
-
-    print(central_services.contracts)
