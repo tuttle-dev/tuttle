@@ -4,4 +4,15 @@ __author__ = """Christian Staudt"""
 __email__ = "mail@clstaudt.me"
 __version__ = "0.1.0"
 
-from . import model, app
+from . import (
+    app,
+    banking,
+    calendar,
+    cloud,
+    context,
+    invoice,
+    model,
+    tax,
+    timetracking,
+    ui,
+)

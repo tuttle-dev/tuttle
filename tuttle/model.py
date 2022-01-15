@@ -10,8 +10,6 @@ from sqlmodel import SQLModel
 from pydantic import EmailStr
 from decimal import Decimal
 
-import pandas
-
 # TODO: support currencies
 # from money.money import Money
 # from money.currency import Currency

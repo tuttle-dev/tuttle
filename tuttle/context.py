@@ -2,7 +2,7 @@ from pathlib import Path
 import os
 import sqlmodel
 
-import model
+from . import model
 
 
 class Context:
