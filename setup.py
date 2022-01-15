@@ -19,11 +19,11 @@ requirements = [
     "pydantic[email]",
     "fints",
     "ics",
-    "ipywidgets",
 ]
 
 dev_requirements = [
     "jupyterlab",
+    "ipywidgets",
 ]
 
 test_requirements = [

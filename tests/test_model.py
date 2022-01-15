@@ -9,7 +9,6 @@ import sqlite3
 import os
 
 from tuttle import model
-from tuttle import ui
 
 
 def test_model_creation():
@@ -38,10 +37,3 @@ def test_model_creation():
             os.remove(db_path)
         except OSError:
             pass
-
-
-def test_model_form():
-    """Test ipywidgets form from sqlmodel generation."""
-    from tuttle.model import Address
-
-    ui.model_form(Address)
