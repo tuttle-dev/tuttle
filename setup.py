@@ -10,26 +10,42 @@ with open("README.md") as readme_file:
 with open("HISTORY.rst") as history_file:
     history = history_file.read()
 
-requirements = []
+requirements = [
+    "pandas",
+    "altair",
+    "sqlmodel",
+    "pyicloud",
+    "loguru",
+    "pydantic[email]",
+    "fints",
+    "ics",
+    "ipywidgets",
+]
 
-test_requirements = ["pytest>=3"]
+dev_requirements = [
+    "jupyterlab",
+]
+
+test_requirements = [
+    "pytest>=3",
+]
+
 
 setup(
     author="Christian Staudt",
     author_email="mail@clstaudt.me",
-    python_requires=">=3.6",
+    python_requires=">=3.8",
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",
         "Intended Audience :: Developers",
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
         "Natural Language :: English",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
-        "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
     ],
-    description="Less paperwork, more excitement.",
-    install_requires=requirements,
+    description="Painless business planning for freelancers.",
+    install_requires=requirements + test_requirements,
     license="GNU General Public License v3",
     long_description=readme + "\n\n" + history,
     include_package_data=True,
@@ -39,6 +55,6 @@ setup(
     test_suite="tests",
     tests_require=test_requirements,
     url="https://github.com/tuttle-dev/tuttle",
-    version="0.1.0",
+    version="0.0.1",
     zip_safe=False,
 )

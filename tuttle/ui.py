@@ -1,7 +1,6 @@
 from pathlib import Path
 from typing import Type
 import collections
-import beepy
 
 import ipywidgets as widgets
 import sqlmodel
@@ -49,7 +48,6 @@ def model_form(
                 for prop_name in form_elements.keys()
             )
         )
-        beepy.beep()
         return instance
 
     create_button.on_click(factory_function)
