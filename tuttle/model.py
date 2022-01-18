@@ -231,3 +231,13 @@ class IncomeTax(Tax):
     """Income tax."""
 
     pass
+
+
+class TimelineItem(SQLModel, table=True):
+    """An item that appears in the freelancer's timeline."""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    time: datetime.datetime = Field(
+        sa_column=sqlalchemy.Column(sqlalchemy.DateTime(timezone=True), nullable=False)
+    )
+    content: str
