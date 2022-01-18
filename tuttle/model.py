@@ -16,10 +16,26 @@ from decimal import Decimal
 
 from datetime import timedelta as Timespan
 
-from sqlmodel.main import RelationshipInfo
-
 
 # TODO: created & modified time stamps
+
+
+class Entity(SQLModel):
+    """Abstract base class?"""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    time_created: datetime.datetime = Field(
+        sa_column=sqlalchemy.Column(
+            sqlalchemy.DateTime(timezone=True),
+            nullable=False,
+        )
+    )
+    time_modified: datetime.datetime = Field(
+        sa_column=sqlalchemy.Column(
+            sqlalchemy.DateTime(timezone=True),
+            nullable=False,
+        )
+    )
 
 
 class Address(SQLModel, table=True):
@@ -171,38 +187,65 @@ class Timesheet(SQLModel, table=True):
 
 class Invoice(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
+    number: str
+    # date and time
+    date: datetime.date
+    due_date: datetime.date
+    sent_date: datetime.date
     # Invoice 1:n Timesheet
     timesheet_id: Optional[int] = Field(default=None, foreign_key="timesheet.id")
     timesheet: Timesheet = Relationship(back_populates="invoice")
     # Invoice n:1 Contract
     contract_id: Optional[int] = Field(default=None, foreign_key="contract.id")
     contract: Contract = Relationship(back_populates="invoices")
-    date: datetime.date
-    due_date: datetime.date
-    sent_date: datetime.date
+    # status
     sent: bool
     paid: bool
     cancelled: bool
     # payment: Optional["Payment"] = Relationship(back_populates="invoice")
-
     # invoice items
     items: List["InvoiceItem"] = Relationship(back_populates="invoice")
 
     #
-    total: Decimal
-    VAT_total: Decimal
+    @property
+    def sum(self) -> Decimal:
+        """Sum over all invoice items."""
+        return sum(item.sum for item in self.items)
+
+    @property
+    def VAT_total(self) -> Decimal:
+        """Sum of VAT over all invoice items."""
+        return sum(item.VAT for item in self.items)
+
+    @property
+    def total(self) -> Decimal:
+        """Total invoiced amount."""
+        return self.sum + self.VAT_total
 
 
 class InvoiceItem(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
+    # date and time
+    date: datetime.date
     #
+    amount: int
+    unit: str
+    unit_price: Decimal
+    description: str
+    VAT_rate: Decimal
+    # invoice
     invoice_id: Optional[int] = Field(default=None, foreign_key="invoice.id")
     invoice: Invoice = Relationship(back_populates="items")
-    amount: int
-    text: str
-    unit: str
-    unit_price: int  # TODO: Money
-    VAT_rate: float
+
+    @property
+    def sum(self) -> Decimal:
+        """."""
+        return self.amount * self.unit_price
+
+    @property
+    def VAT(self) -> Decimal:
+        """VAT for the invoice item."""
+        return self.sum * self.VAT_rate
 
 
 # class Payment(SQLModel, table=True):
@@ -238,6 +281,9 @@ class TimelineItem(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     time: datetime.datetime = Field(
-        sa_column=sqlalchemy.Column(sqlalchemy.DateTime(timezone=True), nullable=False)
+        sa_column=sqlalchemy.Column(
+            sqlalchemy.DateTime(timezone=True),
+            nullable=False,
+        )
     )
     content: str
