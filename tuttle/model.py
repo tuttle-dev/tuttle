@@ -45,6 +45,18 @@ class User(SQLModel, table=True):
     business_name: Optional[str]
     # business_account_id: Optional[int] = Field(default=None, foreign_key="bankaccount.id")
     # business_account: Optional["BankAccount"]
+    icloud_account_id: Optional[int] = Field(
+        default=None, foreign_key="icloudaccount.id"
+    )
+    icloud_account: Optional["ICloudAccount"] = Relationship(
+        back_populates="tuttle_users"
+    )
+
+
+class ICloudAccount(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_name: str
+    tuttle_users: List[User] = Relationship(back_populates="icloud_account")
 
 
 class Bank(SQLModel, table=True):
