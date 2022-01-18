@@ -89,6 +89,6 @@ class CloudCalendar(Calendar):
                 )
             }
         )
-        event_data = event_data.set_index("begin")
+        # event_data = event_data.set_index("begin")
 
         return event_data

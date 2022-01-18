@@ -13,4 +13,5 @@ from . import (
     model,
     tax,
     timetracking,
+    dataviz,
 )

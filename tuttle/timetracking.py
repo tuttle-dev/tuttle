@@ -1,8 +1,11 @@
 from dataclasses import dataclass
+from datetime import timedelta
 
 import pandas
 
-from tuttle.calendar import Calendar
+from pandera.typing import DataFrame
+
+from .calendar import Calendar, CloudCalendar, FileCalendar
 
 
 @dataclass
@@ -66,3 +69,27 @@ def export_timesheet(
     table["date"] = table["date"].dt.strftime("%Y/%m/%d")
     table.loc["Total", :] = ("Total", table["hours"].sum(), "")
     table.to_excel(path, index=False)
+
+
+def calendar_to_timetracking_table(cal: Calendar) -> DataFrame:
+    """Convert the raw calendar to time tracking data table."""
+    if issubclass(cal, CloudCalendar):
+        cal_data = cal.to_data()
+        timetracking_table = cal_data.filter(
+            ["begin", "end", "title", "duration"]
+        ).rename(columns={"title": "project"})
+        return timetracking_table
+    elif issubclass(cal, FileCalendar):
+        raise NotImplementedError()
+    else:
+        raise NotImplementedError()
+
+
+def total_time_tracked(by: str) -> DataFrame:
+    """Calculate the total time spent, grouped by project, client..."""
+    if by == "project":
+        raise NotImplementedError()
+    elif by == "client":
+        raise NotImplementedError()
+    else:
+        raise ValueError()
