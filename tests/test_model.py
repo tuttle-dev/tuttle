@@ -7,6 +7,7 @@ from loguru import logger
 from sqlmodel import create_engine, SQLModel, Session
 import sqlite3
 import os
+import datetime
 
 from tuttle import model
 
@@ -53,3 +54,13 @@ def test_user():
     user.icloud_account = icloud_account
 
     assert icloud_account.user.name == "Archibald Tuttle"
+
+
+def test_project():
+    project = model.Project(
+        title="Heating Repair",
+        tag="#heating",
+        start_date=datetime.date.today(),
+        end_date=datetime.date.today() + datetime.timedelta(days=80),
+    )
+    assert project.tag == "#heating"

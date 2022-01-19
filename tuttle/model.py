@@ -1,8 +1,10 @@
 """Object model."""
 
-from typing import Optional, List
 import datetime
 import enum
+
+from typing import Optional, List
+from pydantic import constr
 
 import sqlalchemy
 from sqlmodel import Field, Relationship
@@ -165,7 +167,8 @@ class Project(SQLModel, table=True):
     """A project is a group of contract work for a client."""
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    name: str
+    title: str
+    tag: constr(regex=r"#\S+")
     start_date: datetime.datetime
     end_date: datetime.datetime
     # Project m:n Contract
