@@ -37,3 +37,19 @@ def test_model_creation():
             os.remove(db_path)
         except OSError:
             pass
+
+
+def test_user():
+    user = model.User(
+        name="Archibald Tuttle",
+        subtitle="Shoe Repair Operative",
+        e_mail="archibald.tuttle@centralservices.com",
+    )
+
+    icloud_account = model.ICloudAccount(
+        user_name=user.e_mail,
+    )
+
+    user.icloud_account = icloud_account
+
+    assert icloud_account.user.name == "Archibald Tuttle"

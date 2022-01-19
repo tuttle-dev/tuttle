@@ -20,6 +20,13 @@ from datetime import timedelta as Timespan
 # TODO: created & modified time stamps
 
 
+def OneToOneRelationship(back_populates):
+    return Relationship(
+        back_populates=back_populates,
+        sa_relationship_kwargs={"uselist": False},
+    )
+
+
 class Entity(SQLModel):
     """Abstract base class?"""
 
@@ -58,21 +65,18 @@ class User(SQLModel, table=True):
     address_id: Optional[int] = Field(default=None, foreign_key="address.id")
     address: Optional[Address] = Relationship(back_populates="users")
     VAT_number: Optional[str]
-    business_name: Optional[str]
     # business_account_id: Optional[int] = Field(default=None, foreign_key="bankaccount.id")
     # business_account: Optional["BankAccount"]
     icloud_account_id: Optional[int] = Field(
         default=None, foreign_key="icloudaccount.id"
     )
-    icloud_account: Optional["ICloudAccount"] = Relationship(
-        back_populates="tuttle_users"
-    )
+    icloud_account: Optional["ICloudAccount"] = Relationship(back_populates="user")
 
 
 class ICloudAccount(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     user_name: str
-    tuttle_users: List[User] = Relationship(back_populates="icloud_account")
+    user: User = OneToOneRelationship(back_populates="icloud_account")
 
 
 class Bank(SQLModel, table=True):
