@@ -3,13 +3,26 @@
 """Tests for the database model."""
 
 from pathlib import Path
+from tracemalloc import stop
 from loguru import logger
-from sqlmodel import create_engine, SQLModel, Session
+from sqlmodel import create_engine, SQLModel, Session, select
 import sqlite3
 import os
 import datetime
 
 from tuttle import model
+
+
+def store_and_retrieve(model_object):
+    # in-memory sqlite db
+    db_engine = create_engine("sqlite:///")
+    SQLModel.metadata.create_all(db_engine)
+    with Session(db_engine) as session:
+        session.add(model_object)
+        session.commit()
+    with Session(db_engine) as session:
+        retrieved = session.exec((select(type(model_object)))).first()
+    return True
 
 
 def test_model_creation():
@@ -63,4 +76,4 @@ def test_project():
         start_date=datetime.date.today(),
         end_date=datetime.date.today() + datetime.timedelta(days=80),
     )
-    assert project.tag == "#heating"
+    assert store_and_retrieve(project)
