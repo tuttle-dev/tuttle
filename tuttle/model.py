@@ -1,7 +1,6 @@
 """Object model."""
 
 import datetime
-import enum
 import hashlib
 import uuid
 
@@ -18,8 +17,7 @@ from decimal import Decimal
 # from money.money import Money
 # from money.currency import Currency
 
-from datetime import timedelta as Timespan
-
+from .time import Cycle, TimeUnit
 
 # TODO: created & modified time stamps
 
@@ -122,30 +120,19 @@ class Client(SQLModel, table=True):
     # Client 1:1 invoicing Contact
     invoicing_contact_id: int = Field(default=None, foreign_key="contact.id")
     invoicing_contact: Contact = Relationship(back_populates="invoicing_contact_of")
-    # contracts: List["Contract"] = Relationship(back_populates="client")
+    contracts: List["Contract"] = Relationship(back_populates="client")
     # non-invoice related contact person?
 
 
-class Rate(SQLModel, table=True):
-    class Cycle(enum.Enum):
-        HOURLY = 0
-        DAILY = 1
-
-    id: Optional[int] = Field(default=None, primary_key=True)
-    amount: Decimal
-    # currency: Currency  # TODO:
-    cycle: "Rate.Cycle" = Field(
-        sa_column=sqlalchemy.Column(sqlalchemy.Enum("Rate.Cycle"))
-    )
-    contracts: List["Contract"] = Relationship(back_populates="rate")
-
-
-# class BillingCycle(SQLModel, table=True):
-#     """Billing cycle associated with a contract."""
+# class Rate(SQLModel, table=True):
+#     """Contractual rate."""
 #     id: Optional[int] = Field(default=None, primary_key=True)
-#     contracts: List["Contract"] = Relationship(back_populates="billing_cycle")
-#     # TODO: billing time
-#     # TODO: billing period
+#     amount: Decimal
+#     unit: TimeUnit = Field(
+#         sa_column=sqlalchemy.Column(sqlalchemy.Enum(TimeUnit))
+#     )
+#     # currency: Currency  # TODO:
+#     contracts: List["Contract"] = Relationship(back_populates="rate")
 
 
 class Contract(SQLModel, table=True):
@@ -153,15 +140,15 @@ class Contract(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     title: str
-    date: datetime.datetime
+    date: datetime.date
     # Contract n:1 Client
     client_id: Optional[int] = Field(default=None, foreign_key="client.id")
-    # client: Client = Relationship(back_populates="contracts")
-    rate_id: Optional[int] = Field(default=None, foreign_key="rate.id")
-    rate: Rate = Relationship(back_populates="contracts")
-
-    # billing_cycle: BillingCycle = Relationship(back_populates="contracts")
-    # rate: Optional[Rate]
+    client: Client = Relationship(back_populates="contracts")
+    rate: Decimal
+    currency: str  # TODO: currency representation
+    unit: TimeUnit = Field(sa_column=sqlalchemy.Column(sqlalchemy.Enum(TimeUnit)))
+    volume: int
+    billing_cycle: Cycle = Field(sa_column=sqlalchemy.Column(sqlalchemy.Enum(Cycle)))
     projects: List["Project"] = Relationship(back_populates="contract")
     invoices: List["Invoice"] = Relationship(back_populates="contract")
 

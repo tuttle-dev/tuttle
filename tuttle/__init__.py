@@ -14,4 +14,5 @@ from . import (
     tax,
     timetracking,
     dataviz,
+    time,
 )
