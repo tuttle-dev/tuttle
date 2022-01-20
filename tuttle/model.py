@@ -178,8 +178,12 @@ class Project(SQLModel, table=True):
     """A project is a group of contract work for a client."""
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    title: str
-    tag: constr(regex=r"#\S+")
+    title: str = Field(
+        description="A short, unique description", sa_column_kwargs={"unique": True}
+    )
+    tag: constr(regex=r"#\S+") = Field(
+        description="A unique #tag", sa_column_kwargs={"unique": True}
+    )
     start_date: datetime.date
     end_date: datetime.date
     # Project m:n Contract
@@ -275,29 +279,6 @@ class InvoiceItem(SQLModel, table=True):
 # class Payment(SQLModel, table=True):
 #     id: Optional[int] = Field(default=None, primary_key=True)
 #     # invoice: Invoice = Relationship(back_populates="payment")
-
-
-class Cycle:
-    pass
-
-    # TODO: monthly, quarterly, yearly...
-
-
-class Tax:
-    country: str
-    cycle: Cycle
-
-
-class ValueAddedTax(Tax):
-    """Value added tax."""
-
-    pass
-
-
-class IncomeTax(Tax):
-    """Income tax."""
-
-    pass
 
 
 class TimelineItem(SQLModel, table=True):
