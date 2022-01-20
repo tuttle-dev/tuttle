@@ -2,6 +2,8 @@
 
 import datetime
 import enum
+import hashlib
+import uuid
 
 from typing import Optional, List
 from pydantic import constr
@@ -194,7 +196,7 @@ class Timesheet(SQLModel, table=True):
 
 class Invoice(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    number: str
+    number: Optional[str]
     # date and time
     date: datetime.date
     due_date: datetime.date
@@ -228,6 +230,12 @@ class Invoice(SQLModel, table=True):
     def total(self) -> Decimal:
         """Total invoiced amount."""
         return self.sum + self.VAT_total
+
+    def generate_number(self):
+        """Generate an invoice number"""
+        date_prefix = self.date.strftime("%Y-%m-%d")
+        hash_suffix = hashlib.shake_256(str(uuid.uuid4()).encode("utf-8")).hexdigest(2)
+        self.number = f"{date_prefix}-{hash_suffix}"
 
 
 class InvoiceItem(SQLModel, table=True):
