@@ -10,7 +10,7 @@ import sqlite3
 import os
 import datetime
 
-from tuttle import model
+from tuttle import model, time
 
 
 def store_and_retrieve(model_object):
@@ -77,3 +77,34 @@ def test_project():
         end_date=datetime.date.today() + datetime.timedelta(days=80),
     )
     assert store_and_retrieve(project)
+
+
+def test_contract():
+
+    the_client = model.Client(
+        name="Central Services",
+        invoicing_contact=model.Contact(
+            name="Central Services",
+            address=model.Address(
+                street="Down the Road",
+                number="55",
+                city="Somewhere",
+                postal_code="99999",
+                country="Brazil",
+            ),
+            e_mail="mail@centralservices.com",
+        ),
+    )
+
+    the_contract = model.Contract(
+        title="CS Q1 2022",
+        client=the_client,
+        start_date=datetime.date(2022, 1, 1),
+        end_date=datetime.date(2022, 3, 31),
+        signature_date=datetime.date(2021, 10, 31),
+        rate=100,
+        currency="EUR",
+        billing_cycle=time.Cycle.monthly,
+        volume=3 * 8 * 8,
+    )
+    assert store_and_retrieve(the_contract)

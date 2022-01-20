@@ -11,6 +11,7 @@ import sqlalchemy
 from sqlmodel import Field, Relationship
 from sqlmodel import SQLModel
 from pydantic import EmailStr
+import decimal
 from decimal import Decimal
 
 # TODO: support currencies
@@ -20,6 +21,9 @@ from decimal import Decimal
 from .time import Cycle, TimeUnit
 
 # TODO: created & modified time stamps
+
+# set decimal precision for currency
+decimal.getcontext().prec = 2
 
 
 def OneToOneRelationship(back_populates):
@@ -139,15 +143,32 @@ class Contract(SQLModel, table=True):
     """A contract defines the business conditions of a project"""
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    title: str
-    date: datetime.date
+    title: str = Field(description="Short description of the contract.")
+    client: Client = Relationship(
+        back_populates="contracts",
+    )
+    signature_date: datetime.date = Field(
+        description="Date on which the contract was signed",
+    )
+    start_date: datetime.date = Field(
+        description="Date from which the contract is valid",
+    )
+    end_date: Optional[datetime.date] = Field(
+        description="Date until which the contract is valid",
+    )
     # Contract n:1 Client
-    client_id: Optional[int] = Field(default=None, foreign_key="client.id")
-    client: Client = Relationship(back_populates="contracts")
-    rate: Decimal
+    client_id: Optional[int] = Field(
+        default=None,
+        foreign_key="client.id",
+    )
+    rate: Decimal = Field(
+        description="Rate of remuneration",
+    )
     currency: str  # TODO: currency representation
     unit: TimeUnit = Field(sa_column=sqlalchemy.Column(sqlalchemy.Enum(TimeUnit)))
-    volume: int
+    volume: int = Field(
+        description="Number of units agreed on",
+    )
     billing_cycle: Cycle = Field(sa_column=sqlalchemy.Column(sqlalchemy.Enum(Cycle)))
     projects: List["Project"] = Relationship(back_populates="contract")
     invoices: List["Invoice"] = Relationship(back_populates="contract")
