@@ -56,9 +56,10 @@ class Address(SQLModel, table=True):
     street: str
     number: str
     city: str
-    zip_code: str
+    postal_code: str
     country: str
     users: List["User"] = Relationship(back_populates="address")
+    contacts: List["Contact"] = Relationship(back_populates="address")
 
 
 class User(SQLModel, table=True):
@@ -105,6 +106,8 @@ class Contact(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
     e_mail: Optional[EmailStr]
+    address_id: Optional[int] = Field(default=None, foreign_key="address.id")
+    address: Optional[Address] = Relationship(back_populates="contacts")
     invoicing_contact_of: List["Client"] = Relationship(
         back_populates="invoicing_contact"
     )
@@ -117,10 +120,8 @@ class Client(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
     # Client 1:1 invoicing Contact
-    invoicing_contact_id: Optional[int] = Field(default=None, foreign_key="contact.id")
-    invoicing_contact: Optional[Contact] = Relationship(
-        back_populates="invoicing_contact_of"
-    )
+    invoicing_contact_id: int = Field(default=None, foreign_key="contact.id")
+    invoicing_contact: Contact = Relationship(back_populates="invoicing_contact_of")
     # contracts: List["Contract"] = Relationship(back_populates="client")
     # non-invoice related contact person?
 
