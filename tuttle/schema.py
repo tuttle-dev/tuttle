@@ -4,10 +4,11 @@ from pandera import SchemaModel, DataFrameSchema, Field, Column, DateTime, Timed
 
 time_tracking = DataFrameSchema(
     columns={
-        "begin": Column(DateTime),
-        "end": Column(DateTime),
-        "title": Column(str),
+        "begin": Column(DateTime, nullable=True),
+        "end": Column(DateTime, nullable=True),
+        "title": Column(str, nullable=True),
         "tag": Column(str),
+        "description": Column(str, nullable=True),
         "duration": Column(Timedelta),
     }
 )

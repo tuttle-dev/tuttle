@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 import datetime
 from tabnanny import check
+from time import time
 
 import pandas
 from pandera import check_io
@@ -75,8 +76,11 @@ def export_timesheet(
     table.to_excel(path, index=False)
 
 
+# IMPORT
+
+
 @check_io(out=schema.time_tracking)
-def calendar_to_timetracking_table(cal: Calendar) -> DataFrame:
+def import_from_calendar(cal: Calendar) -> DataFrame:
     """Convert the raw calendar to time tracking data table."""
     if issubclass(type(cal), CloudCalendar):
         cal_data = cal.to_data()
@@ -92,6 +96,49 @@ def calendar_to_timetracking_table(cal: Calendar) -> DataFrame:
         raise NotImplementedError()
 
 
+@check_io(
+    out=schema.time_tracking,
+)
+def import_from_csv(
+    path,
+    tag_col: str,
+    duration_col: str,
+    title_col: str = None,
+    begin_col: str = None,
+    end_col: str = None,
+    description_col: str = None,
+) -> DataFrame:
+    """Import time tracking data from a .csv file."""
+    raw_data = pandas.read_csv(
+        path,
+        engine="python",
+    )
+    timetracking_data = raw_data.rename(
+        columns={
+            title_col: "title",
+            tag_col: "tag",
+            duration_col: "duration",
+            description_col: "description",
+            begin_col: "begin",
+            end_col: "end",
+        }
+    )
+    timetracking_data["duration"] = pandas.to_timedelta(timetracking_data["duration"])
+
+    if title_col is None:
+        timetracking_data["title"] = ""
+    if begin_col is None:
+        timetracking_data["begin"] = pandas.NaT
+    if end_col is None:
+        timetracking_data["end"] = pandas.NaT
+    if description_col is None:
+        timetracking_data["description"] = ""
+    return timetracking_data
+
+
+# ANALYSIS
+
+
 def total_time_tracked(by: str) -> DataFrame:
     """Calculate the total time spent, grouped by project, client..."""
     if by == "project":
@@ -102,7 +149,9 @@ def total_time_tracked(by: str) -> DataFrame:
         raise ValueError()
 
 
-@check_io(time_tracking_data=schema.time_tracking)
+@check_io(
+    time_tracking_data=schema.time_tracking,
+)
 def progress(
     project: Project,
     time_tracking_data: DataFrame,
