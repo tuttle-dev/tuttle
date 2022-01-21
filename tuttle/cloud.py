@@ -3,7 +3,7 @@
 import getpass
 import pyicloud
 
-from .model import ICloudAccount
+from .model import ICloudAccount, GoogleAccount
 
 
 def login_iCloud(account: ICloudAccount):
@@ -17,3 +17,9 @@ def login_iCloud(account: ICloudAccount):
         result = iCloud.validate_2fa_code(getpass.getpass(prompt="verification code: "))
     assert iCloud.is_trusted_session
     return iCloud
+
+
+def login_google(account: GoogleAccount):
+    """Log into Google API."""
+    # TODO:
+    raise NotImplementedError("TODO")

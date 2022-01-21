@@ -1,12 +1,14 @@
 """Calendar integration."""
 
+from pathlib import Path
+
 import ics
 import pyicloud
 import getpass
 import pandas
 import datetime
 
-from pathlib import Path
+from pandera.typing import DataFrame
 
 
 def parse_pyicloud_datetime(dt_list):
@@ -21,6 +23,16 @@ class Calendar:
     def __init__(self, name: str):
         self.name = name
 
+    def to_data(self) -> DataFrame:
+        """Convert events to dataframe."""
+        raise NotImplementedError("Abstract base class")
+
+
+class CloudCalendar(Calendar):
+    """Abstract base class for calendars in the cloud."""
+
+    pass
+
 
 class FileCalendar(Calendar):
     """An .ics file based calendar."""
@@ -31,7 +43,7 @@ class FileCalendar(Calendar):
         with open(self.path, "r") as cal_file:
             self.ical = ics.Calendar(cal_file.read())
 
-    def to_data(self) -> pandas.DataFrame:
+    def to_data(self) -> DataFrame:
         """Convert ics.Calendar to pandas.DataFrame"""
         event_data = pandas.DataFrame(
             [
@@ -50,8 +62,14 @@ class FileCalendar(Calendar):
         return event_data
 
 
-class CloudCalendar(Calendar):
-    def __init__(self, icloud: pyicloud.PyiCloudService, name: str):
+class ICloudCalendar(CloudCalendar):
+    """iCloud calendar."""
+
+    def __init__(
+        self,
+        icloud: pyicloud.PyiCloudService,
+        name: str,
+    ):
         super().__init__(name)
         self.icloud = icloud
         calendars = icloud.calendar.calendars()
@@ -66,7 +84,7 @@ class CloudCalendar(Calendar):
         except KeyError:
             raise ValueError(f"iCloud calendar {self.name} not found")
 
-    def to_data(self) -> pandas.DataFrame:
+    def to_data(self) -> DataFrame:
         """Convert icloud calendar events to pandas.DataFrame"""
 
         all_events = self.icloud.calendar.events(
@@ -92,3 +110,10 @@ class CloudCalendar(Calendar):
         # event_data = event_data.set_index("begin")
 
         return event_data
+
+
+class GoogleCalendar(CloudCalendar):
+    """Google calendar"""
+
+    def to_data(self) -> DataFrame:
+        raise NotImplementedError("TODO")

@@ -56,16 +56,29 @@ class User(SQLModel, table=True):
     VAT_number: Optional[str]
     # business_account_id: Optional[int] = Field(default=None, foreign_key="bankaccount.id")
     # business_account: Optional["BankAccount"]
+    # User 1:1* ICloudAccount
     icloud_account_id: Optional[int] = Field(
         default=None, foreign_key="icloudaccount.id"
     )
     icloud_account: Optional["ICloudAccount"] = Relationship(back_populates="user")
+    # User 1:1* Google Account
+    # TODO: Google account
+    # google_account_id: Optional[int] = Field(
+    #     default=None, foreign_key="googleaccount.id"
+    # )
+    # google_account: Optional["GoogleAccount"] = Relationship(back_populates="user")
 
 
 class ICloudAccount(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     user_name: str
     user: User = OneToOneRelationship(back_populates="icloud_account")
+
+
+class GoogleAccount(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_name: str
+    # user: User = OneToOneRelationship(back_populates="google_account")
 
 
 class Bank(SQLModel, table=True):
