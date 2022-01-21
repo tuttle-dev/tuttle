@@ -9,6 +9,9 @@ import pandas
 import datetime
 
 from pandera.typing import DataFrame
+from pandera import check_io
+
+from . import schema
 
 
 def parse_pyicloud_datetime(dt_list):
@@ -23,6 +26,7 @@ class Calendar:
     def __init__(self, name: str):
         self.name = name
 
+    @check_io(out=schema.time_tracking)
     def to_data(self) -> DataFrame:
         """Convert events to dataframe."""
         raise NotImplementedError("Abstract base class")
@@ -49,6 +53,7 @@ class FileCalendar(Calendar):
             [
                 (
                     event.name,
+                    # TODO: handle time zones
                     pandas.to_datetime(event.begin.datetime).tz_convert("CET"),
                     pandas.to_datetime(event.end.datetime).tz_convert("CET"),
                 )
@@ -116,7 +121,7 @@ class ICloudCalendar(CloudCalendar):
                 )
             }
         )
-        # event_data = event_data.set_index("begin")
+        timetracking_data = timetracking_data.set_index("begin")
         return timetracking_data
 
 

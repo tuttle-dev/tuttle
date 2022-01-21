@@ -4,15 +4,23 @@ import datetime
 import hashlib
 import uuid
 
-from typing import Optional, List
-from pydantic import constr
+from typing import (
+    Optional,
+    List,
+    Dict,
+)
+from pydantic import constr, BaseModel
 
 import sqlalchemy
-from sqlmodel import Field, Relationship
-from sqlmodel import SQLModel
+from sqlmodel import (
+    SQLModel,
+    Field,
+    Relationship,
+)
 from pydantic import EmailStr
 import decimal
 from decimal import Decimal
+import pandas
 
 # TODO: support currencies
 # from money.money import Money
@@ -156,6 +164,7 @@ class Contract(SQLModel, table=True):
     billing_cycle: Cycle = Field(sa_column=sqlalchemy.Column(sqlalchemy.Enum(Cycle)))
     projects: List["Project"] = Relationship(back_populates="contract")
     invoices: List["Invoice"] = Relationship(back_populates="contract")
+    # TODO: model contractual promises like "at least 2 days per week"
 
 
 class Project(SQLModel, table=True):
@@ -174,19 +183,31 @@ class Project(SQLModel, table=True):
     contract_id: Optional[int] = Field(default=None, foreign_key="contract.id")
     contract: Contract = Relationship(back_populates="projects")
     # Project 1:n Timesheet
-    timesheets: List["Timesheet"] = Relationship(back_populates="project")
+    # timesheets: List["Timesheet"] = Relationship(back_populates="project")
 
 
-class Timesheet(SQLModel, table=True):
+# FIXME: turn into SQLModel
+class Timesheet(BaseModel):
     id: Optional[int] = Field(default=None, primary_key=True)
+    table: pandas.DataFrame
+    # TODO: store dataframe as dict
+    # table: Dict = Field(default={}, sa_column=sqlalchemy.Column(sqlalchemy.JSON))
     # Timesheet n:1 Project
     project_id: Optional[int] = Field(default=None, foreign_key="project.id")
     project: Project = Relationship(back_populates="timesheets")
-    invoice: "Invoice" = Relationship(back_populates="timesheet")
-
+    # invoice: "Invoice" = Relationship(back_populates="timesheet")
     # period: str
-    # client: str
     # comment: str
+
+    class Config:
+        arbitrary_types_allowed = True
+
+    @property
+    def total(self) -> datetime.timedelta:
+        """Sum of time in timesheet [h]"""
+        total_hours = self.table["hours"].sum()
+        total_time = datetime.timedelta(hours=int(total_hours))
+        return total_time
 
 
 class Invoice(SQLModel, table=True):
@@ -197,8 +218,8 @@ class Invoice(SQLModel, table=True):
     due_date: datetime.date
     sent_date: datetime.date
     # Invoice 1:n Timesheet
-    timesheet_id: Optional[int] = Field(default=None, foreign_key="timesheet.id")
-    timesheet: Timesheet = Relationship(back_populates="invoice")
+    # timesheet_id: Optional[int] = Field(default=None, foreign_key="timesheet.id")
+    # timesheet: Timesheet = Relationship(back_populates="invoice")
     # Invoice n:1 Contract
     contract_id: Optional[int] = Field(default=None, foreign_key="contract.id")
     contract: Contract = Relationship(back_populates="invoices")

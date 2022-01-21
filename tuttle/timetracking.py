@@ -10,35 +10,25 @@ from pandera.typing import DataFrame
 
 from . import schema
 from .calendar import Calendar, ICloudCalendar, FileCalendar
-from .model import Project
-
-
-@dataclass
-class Timesheet:
-    """dataframe-based timesheet"""
-
-    table: pandas.DataFrame
-    period: str
-    client: str
-    comment: str = None
-
-    def total(self):
-        total_hours = self.table["hours"].sum()
-        return total_hours
+from .model import (
+    Project,
+    Timesheet,
+)
 
 
 def generate_timesheet(
-    cal: Calendar,
+    source,
     period: str,
-    client: str,
+    tag: str,
     comment: str,
 ) -> Timesheet:
     # convert cal to data
-    cal_data = cal.to_data()
-
+    if issubclass(type(source), Calendar):
+        cal = source
+        timetracking_data = cal.to_data()
     ts_table = (
-        cal_data.loc[period]
-        .query(f"title == '{client}'")
+        timetracking_data.loc[period]
+        .query(f"tag == '{tag}'")
         .filter(["duration"])
         .sort_index()
     )
@@ -60,7 +50,12 @@ def generate_timesheet(
     ts_table["date"] = pandas.to_datetime(ts_table["date"])
     ts_table = ts_table.set_index("date")
 
-    ts = Timesheet(period=period, client=client, comment=comment, table=ts_table)
+    ts = Timesheet(
+        period=period,
+        tag=tag,
+        comment=comment,
+        table=ts_table,
+    )
 
     return ts
 
@@ -128,6 +123,8 @@ def import_from_csv(
         timetracking_data["end"] = pandas.NaT
     if description_col is None:
         timetracking_data["description"] = ""
+
+    timetracking_data = timetracking_data.set_index("begin")
     return timetracking_data
 
 
