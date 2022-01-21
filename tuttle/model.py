@@ -33,24 +33,6 @@ def OneToOneRelationship(back_populates):
     )
 
 
-class Entity(SQLModel):
-    """Abstract base class?"""
-
-    id: Optional[int] = Field(default=None, primary_key=True)
-    time_created: datetime.datetime = Field(
-        sa_column=sqlalchemy.Column(
-            sqlalchemy.DateTime(timezone=True),
-            nullable=False,
-        )
-    )
-    time_modified: datetime.datetime = Field(
-        sa_column=sqlalchemy.Column(
-            sqlalchemy.DateTime(timezone=True),
-            nullable=False,
-        )
-    )
-
-
 class Address(SQLModel, table=True):
     """Postal address."""
 
@@ -128,17 +110,6 @@ class Client(SQLModel, table=True):
     # non-invoice related contact person?
 
 
-# class Rate(SQLModel, table=True):
-#     """Contractual rate."""
-#     id: Optional[int] = Field(default=None, primary_key=True)
-#     amount: Decimal
-#     unit: TimeUnit = Field(
-#         sa_column=sqlalchemy.Column(sqlalchemy.Enum(TimeUnit))
-#     )
-#     # currency: Currency  # TODO:
-#     contracts: List["Contract"] = Relationship(back_populates="rate")
-
-
 class Contract(SQLModel, table=True):
     """A contract defines the business conditions of a project"""
 
@@ -191,8 +162,6 @@ class Project(SQLModel, table=True):
     contract: Contract = Relationship(back_populates="projects")
     # Project 1:n Timesheet
     timesheets: List["Timesheet"] = Relationship(back_populates="project")
-    # volume
-    volume: Optional[int]  # TODO: project volume
 
 
 class Timesheet(SQLModel, table=True):

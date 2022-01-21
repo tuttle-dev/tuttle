@@ -1,11 +1,15 @@
 from dataclasses import dataclass
-from datetime import timedelta
+import datetime
+from tabnanny import check
 
 import pandas
-
+from pandera import check_io
 from pandera.typing import DataFrame
 
+
+from . import schema
 from .calendar import Calendar, CloudCalendar, FileCalendar
+from .model import Project
 
 
 @dataclass
@@ -71,13 +75,16 @@ def export_timesheet(
     table.to_excel(path, index=False)
 
 
+@check_io(out=schema.time_tracking)
 def calendar_to_timetracking_table(cal: Calendar) -> DataFrame:
     """Convert the raw calendar to time tracking data table."""
-    if issubclass(cal, CloudCalendar):
+    if issubclass(type(cal), CloudCalendar):
         cal_data = cal.to_data()
         timetracking_table = cal_data.filter(
             ["begin", "end", "title", "duration"]
-        ).rename(columns={"title": "project"})
+        ).rename(columns={"title": "title"})
+        # TODO: extract tag
+        timetracking_table["tag"] = timetracking_table["title"]
         return timetracking_table
     elif issubclass(cal, FileCalendar):
         raise NotImplementedError()
@@ -93,3 +100,20 @@ def total_time_tracked(by: str) -> DataFrame:
         raise NotImplementedError()
     else:
         raise ValueError()
+
+
+@check_io(time_tracking_data=schema.time_tracking)
+def progress(
+    project: Project,
+    time_tracking_data: DataFrame,
+):
+    tag = project.tag
+    total_time = (
+        time_tracking_data.filter(["tag", "duration"])
+        .query(f"tag == @tag")
+        .groupby("tag")
+        .sum()
+    )
+    # TODO: work with project.unit
+    budget = project.contract.volume * datetime.timedelta(hours=1)
+    return total_time.loc[tag]["duration"] / budget
