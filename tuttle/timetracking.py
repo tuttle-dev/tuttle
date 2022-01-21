@@ -9,7 +9,7 @@ from pandera.typing import DataFrame
 
 
 from . import schema
-from .calendar import Calendar, CloudCalendar, FileCalendar
+from .calendar import Calendar, ICloudCalendar, FileCalendar
 from .model import Project
 
 
@@ -82,14 +82,9 @@ def export_timesheet(
 @check_io(out=schema.time_tracking)
 def import_from_calendar(cal: Calendar) -> DataFrame:
     """Convert the raw calendar to time tracking data table."""
-    if issubclass(type(cal), CloudCalendar):
-        cal_data = cal.to_data()
-        timetracking_table = cal_data.filter(
-            ["begin", "end", "title", "duration"]
-        ).rename(columns={"title": "title"})
-        # TODO: extract tag
-        timetracking_table["tag"] = timetracking_table["title"]
-        return timetracking_table
+    if issubclass(type(cal), ICloudCalendar):
+        timetracking_data = cal.to_data()
+        return timetracking_data
     elif issubclass(cal, FileCalendar):
         raise NotImplementedError()
     else:

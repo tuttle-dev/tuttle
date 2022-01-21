@@ -84,23 +84,32 @@ class ICloudCalendar(CloudCalendar):
         except KeyError:
             raise ValueError(f"iCloud calendar {self.name} not found")
 
-    def to_data(self) -> DataFrame:
-        """Convert icloud calendar events to pandas.DataFrame"""
-
+    def get_raw_data(self) -> DataFrame:
+        """Convert iCloud calendar events to DataFrame"""
         all_events = self.icloud.calendar.events(
             from_dt=datetime.datetime(1, 1, 1), to_dt=datetime.date.today()
         )
         event_data_raw = pandas.DataFrame(all_events)
+        return event_data_raw
+
+    def to_data(self) -> DataFrame:
+        """Convert iCloud calendar events to time tracking data format."""
+
+        event_data_raw = self.get_raw_data()
         guid = self.guid
         event_data = event_data_raw.query("pGuid == @guid")
-        event_data = event_data.assign(
+        timetracking_data = pandas.DataFrame().assign(
             **{
                 "begin": event_data["startDate"].apply(parse_pyicloud_datetime),
                 "end": event_data["endDate"].apply(parse_pyicloud_datetime),
+                "title": event_data["title"],
+                # TODO: extract tag
+                "tag": event_data["title"],
+                "description": event_data["description"],
             }
         )
         # TODO: handle timezones
-        event_data = event_data.assign(
+        timetracking_data = timetracking_data.assign(
             **{
                 "duration": event_data["duration"].apply(
                     lambda m: datetime.timedelta(minutes=m)
@@ -108,8 +117,7 @@ class ICloudCalendar(CloudCalendar):
             }
         )
         # event_data = event_data.set_index("begin")
-
-        return event_data
+        return timetracking_data
 
 
 class GoogleCalendar(CloudCalendar):
