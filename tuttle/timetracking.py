@@ -18,9 +18,9 @@ from .model import (
 
 def generate_timesheet(
     source,
+    project: Project,
     period: str,
-    tag: str,
-    comment: str,
+    comment: str = None,
 ) -> Timesheet:
     # convert cal to data
     if issubclass(type(source), Calendar):
@@ -28,7 +28,7 @@ def generate_timesheet(
         timetracking_data = cal.to_data()
     ts_table = (
         timetracking_data.loc[period]
-        .query(f"tag == '{tag}'")
+        .query(f"tag == '{project.tag}'")
         .filter(["duration"])
         .sort_index()
     )
@@ -52,7 +52,7 @@ def generate_timesheet(
 
     ts = Timesheet(
         period=period,
-        tag=tag,
+        project=project,
         comment=comment,
         table=ts_table,
     )

@@ -30,9 +30,6 @@ from .time import Cycle, TimeUnit
 
 # TODO: created & modified time stamps
 
-# set decimal precision for currency
-decimal.getcontext().prec = 2
-
 
 def OneToOneRelationship(back_populates):
     return Relationship(
@@ -163,7 +160,7 @@ class Contract(SQLModel, table=True):
     )
     billing_cycle: Cycle = Field(sa_column=sqlalchemy.Column(sqlalchemy.Enum(Cycle)))
     projects: List["Project"] = Relationship(back_populates="contract")
-    invoices: List["Invoice"] = Relationship(back_populates="contract")
+    # invoices: List["Invoice"] = Relationship(back_populates="contract")
     # TODO: model contractual promises like "at least 2 days per week"
 
 
@@ -174,6 +171,7 @@ class Project(SQLModel, table=True):
     title: str = Field(
         description="A short, unique description", sa_column_kwargs={"unique": True}
     )
+    # tag: str
     tag: constr(regex=r"#\S+") = Field(
         description="A unique #tag", sa_column_kwargs={"unique": True}
     )
@@ -183,11 +181,10 @@ class Project(SQLModel, table=True):
     contract_id: Optional[int] = Field(default=None, foreign_key="contract.id")
     contract: Contract = Relationship(back_populates="projects")
     # Project 1:n Timesheet
-    # timesheets: List["Timesheet"] = Relationship(back_populates="project")
+    timesheets: List["Timesheet"] = Relationship(back_populates="project")
 
 
-# FIXME: turn into SQLModel
-class Timesheet(BaseModel):
+class Timesheet(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     table: pandas.DataFrame
     # TODO: store dataframe as dict
@@ -197,14 +194,14 @@ class Timesheet(BaseModel):
     project: Project = Relationship(back_populates="timesheets")
     # invoice: "Invoice" = Relationship(back_populates="timesheet")
     # period: str
-    # comment: str
+    comment: Optional[str]
 
     class Config:
         arbitrary_types_allowed = True
 
     @property
     def total(self) -> datetime.timedelta:
-        """Sum of time in timesheet [h]"""
+        """Sum of time in timesheet."""
         total_hours = self.table["hours"].sum()
         total_time = datetime.timedelta(hours=int(total_hours))
         return total_time
@@ -213,20 +210,21 @@ class Timesheet(BaseModel):
 class Invoice(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     number: Optional[str]
+    currency: str
     # date and time
     date: datetime.date
     due_date: datetime.date
     sent_date: datetime.date
-    # Invoice 1:n Timesheet
+    # Invoice 1:n Timesheet ?
     # timesheet_id: Optional[int] = Field(default=None, foreign_key="timesheet.id")
     # timesheet: Timesheet = Relationship(back_populates="invoice")
-    # Invoice n:1 Contract
-    contract_id: Optional[int] = Field(default=None, foreign_key="contract.id")
-    contract: Contract = Relationship(back_populates="invoices")
+    # Invoice n:1 Contract ?
+    # contract_id: Optional[int] = Field(default=None, foreign_key="contract.id")
+    # contract: Contract = Relationship(back_populates="invoices")
     # status
-    sent: bool
-    paid: bool
-    cancelled: bool
+    sent: Optional[bool]
+    paid: Optional[bool]
+    cancelled: Optional[bool]
     # payment: Optional["Payment"] = Relationship(back_populates="invoice")
     # invoice items
     items: List["InvoiceItem"] = Relationship(back_populates="invoice")
@@ -235,7 +233,7 @@ class Invoice(SQLModel, table=True):
     @property
     def sum(self) -> Decimal:
         """Sum over all invoice items."""
-        return sum(item.sum for item in self.items)
+        return sum([item.sum for item in self.items])
 
     @property
     def VAT_total(self) -> Decimal:
