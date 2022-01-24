@@ -54,9 +54,9 @@
         <th>{{ item.description }}</th>
         <th>{{ item.quantity }}</th>
         <th>{{ item.unit }}</th>
-        <th>{{ item.unit_price }}</th>
+        <th>{{ item.unit_price }} €</th>
         <th>{{ item.VAT_rate }}</th>
-        <th>{{ item.subtotal }}</th>
+        <th>{{ item.subtotal }} €</th>
       </tr>
       {% endfor %}
     </tbody>
@@ -72,9 +72,9 @@
     </thead>
     <tbody>
       <tr>
-        <td>May 10, 2018</td>
+        <td>{{ invoice.due_date }}</td>
         <td>132 456 789 012</td>
-        <td>€ {{ total }}</td>
+        <td>{{ invoice.total }} €</td>
       </tr>
     </tbody>
   </table>

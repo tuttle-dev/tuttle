@@ -4,8 +4,9 @@ from typing import List
 import datetime
 
 import pandas
+import jinja2
 
-from .model import InvoiceItem, Invoice, Contract
+from .model import InvoiceItem, Invoice, Contract, User
 from .timetracking import Timesheet
 
 
@@ -35,3 +36,16 @@ def generate_invoice(
 
 def format_currency():
     raise NotImplementedError()
+
+
+def render_invoice(
+    user: User,
+    invoice: Invoice,
+):
+    template_env = jinja2.Environment(
+        loader=jinja2.FileSystemLoader("../../tuttle/templates/invoice")
+    )
+    invoice_template = template_env.get_template("invoice.html")
+
+    html = invoice_template.render(user=user, invoice=invoice)
+    return html
