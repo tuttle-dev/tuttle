@@ -10,58 +10,55 @@
 </head>
 
 <body>
-  <h1>Invoice No. {{ invoice_number }}</h1>
+  <h1>Invoice No. {{ invoice.number }}</h1>
 
   <aside>
+    <p>
     <address id="from">
-      WeasyPrint
-      26 rue Emile Decorps
-      69100 Villeurbanne
-      France
+      {{ user.name }}<br>
+      {{ user.address.html }}
     </address>
+    </p>
 
+    <p>
     <address id="to">
-      Our awesome developers
-      From all around the world
-      Earth
+      {{ invoice.contract.client.invoicing_contact.name}}<br>
+      {{ invoice.contract.client.invoicing_contact.address.html }}
     </address>
+    </p>
   </aside>
 
   <dl id="informations">
     <dt>Invoice number</dt>
-    <dd>12345</dd>
+    <dd>{{ invoice.number }}</dd>
     <dt>Date</dt>
-    <dd>March 31, 2018</dd>
+    <dd>{{ invoice.date }}</dd>
   </dl>
 
   <table>
     <thead>
       <tr>
+        <th>Date</th>
         <th>Description</th>
-        <th>Price</th>
         <th>Quantity</th>
+        <th>Unit</th>
+        <th>Unit Price</th>
+        <th>VAT Rate</th>
         <th>Subtotal</th>
       </tr>
     </thead>
     <tbody>
+      {% for item in invoice.items %}
       <tr>
-        <td>Website design</td>
-        <td>€34.20</td>
-        <td>100</td>
-        <td>€3,420.00</td>
+        <th>{{ item.date }}</th>
+        <th>{{ item.description }}</th>
+        <th>{{ item.quantity }}</th>
+        <th>{{ item.unit }}</th>
+        <th>{{ item.unit_price }}</th>
+        <th>{{ item.VAT_rate }}</th>
+        <th>{{ item.subtotal }}</th>
       </tr>
-      <tr>
-        <td>Website development</td>
-        <td>€45.50</td>
-        <td>100</td>
-        <td>€4,550.00</td>
-      </tr>
-      <tr>
-        <td>Website integration</td>
-        <td>€25.75</td>
-        <td>100</td>
-        <td>€2,575.00</td>
-      </tr>
+      {% endfor %}
     </tbody>
   </table>
 

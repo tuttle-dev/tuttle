@@ -17,14 +17,14 @@ def generate_invoice(
         date=datetime.date.today(),
         due_date=datetime.date.today(),
         sent_date=datetime.date.today(),
-        currency=contract.currency,
+        contract=contract,
     )
     for timesheet in timesheets:
         total_hours = timesheet.total / pandas.Timedelta("1h")
         item = InvoiceItem(
             invoice=invoice,
             date=timesheet.table.index.max(),
-            amount=total_hours,
+            quantity=total_hours,
             unit="hour",
             unit_price=timesheet.project.contract.rate,
             VAT_rate=0.19,

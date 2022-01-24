@@ -1,15 +1,16 @@
 """Object model."""
 
-import datetime
-import hashlib
-import uuid
-
 from typing import (
     Optional,
     List,
     Dict,
 )
 from pydantic import constr, BaseModel
+
+import datetime
+import hashlib
+import uuid
+import textwrap
 
 import sqlalchemy
 from sqlmodel import (
@@ -42,6 +43,7 @@ class Address(SQLModel, table=True):
     """Postal address."""
 
     id: Optional[int] = Field(default=None, primary_key=True)
+    # name: str
     street: str
     number: str
     city: str
@@ -49,6 +51,28 @@ class Address(SQLModel, table=True):
     country: str
     users: List["User"] = Relationship(back_populates="address")
     contacts: List["Contact"] = Relationship(back_populates="address")
+
+    @property
+    def printed(self):
+        """Print address in common format."""
+        return textwrap.dedent(
+            f"""
+        {self.street} {self.number}
+        {self.postal_code} {self.city}
+        {self.country}
+        """
+        )
+
+    @property
+    def html(self):
+        """Print address in common format."""
+        return textwrap.dedent(
+            f"""
+        {self.street} {self.number}<br>
+        {self.postal_code} {self.city}<br>
+        {self.country}
+        """
+        )
 
 
 class User(SQLModel, table=True):
@@ -160,7 +184,7 @@ class Contract(SQLModel, table=True):
     )
     billing_cycle: Cycle = Field(sa_column=sqlalchemy.Column(sqlalchemy.Enum(Cycle)))
     projects: List["Project"] = Relationship(back_populates="contract")
-    # invoices: List["Invoice"] = Relationship(back_populates="contract")
+    invoices: List["Invoice"] = Relationship(back_populates="contract")
     # TODO: model contractual promises like "at least 2 days per week"
 
 
@@ -210,7 +234,6 @@ class Timesheet(SQLModel, table=True):
 class Invoice(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     number: Optional[str]
-    currency: str
     # date and time
     date: datetime.date
     due_date: datetime.date
@@ -219,8 +242,8 @@ class Invoice(SQLModel, table=True):
     # timesheet_id: Optional[int] = Field(default=None, foreign_key="timesheet.id")
     # timesheet: Timesheet = Relationship(back_populates="invoice")
     # Invoice n:1 Contract ?
-    # contract_id: Optional[int] = Field(default=None, foreign_key="contract.id")
-    # contract: Contract = Relationship(back_populates="invoices")
+    contract_id: Optional[int] = Field(default=None, foreign_key="contract.id")
+    contract: Contract = Relationship(back_populates="invoices")
     # status
     sent: Optional[bool]
     paid: Optional[bool]
@@ -233,7 +256,7 @@ class Invoice(SQLModel, table=True):
     @property
     def sum(self) -> Decimal:
         """Sum over all invoice items."""
-        return sum([item.sum for item in self.items])
+        return sum([item.subtotal for item in self.items])
 
     @property
     def VAT_total(self) -> Decimal:
@@ -257,7 +280,7 @@ class InvoiceItem(SQLModel, table=True):
     # date and time
     date: datetime.date
     #
-    amount: int
+    quantity: int
     unit: str
     unit_price: Decimal
     description: str
@@ -267,14 +290,14 @@ class InvoiceItem(SQLModel, table=True):
     invoice: Invoice = Relationship(back_populates="items")
 
     @property
-    def sum(self) -> Decimal:
+    def subtotal(self) -> Decimal:
         """."""
-        return self.amount * self.unit_price
+        return self.quantity * self.unit_price
 
     @property
     def VAT(self) -> Decimal:
         """VAT for the invoice item."""
-        return self.sum * self.VAT_rate
+        return self.subtotal * self.VAT_rate
 
 
 # class Payment(SQLModel, table=True):

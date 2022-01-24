@@ -19,7 +19,7 @@ def test_invoice():
     item_1 = InvoiceItem(
         invoice=the_invoice,
         date=datetime.date.today(),
-        amount=10,
+        quantity=10,
         unit="hours",
         unit_price=50,
         description="work work",
@@ -29,7 +29,7 @@ def test_invoice():
     item_2 = InvoiceItem(
         invoice=the_invoice,
         date=datetime.date.today(),
-        amount=10,
+        quantity=10,
         unit="hours",
         unit_price=100,
         description="work work",
