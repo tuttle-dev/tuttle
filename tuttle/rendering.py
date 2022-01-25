@@ -18,6 +18,7 @@ def render_invoice(
     user: User,
     invoice: Invoice,
     out_dir: str = None,
+    style: str = "Milligram",
 ) -> str:
     """Render an Invoice using an HTML template.
 
@@ -32,7 +33,7 @@ def render_invoice(
     template_path = get_template_path(template_name)
     template_env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_path))
     invoice_template = template_env.get_template(f"{template_name}.html")
-    html = invoice_template.render(user=user, invoice=invoice)
+    html = invoice_template.render(user=user, invoice=invoice, style=style)
     # output
     if out_dir is None:
         return html
