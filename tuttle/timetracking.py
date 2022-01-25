@@ -11,6 +11,7 @@ from pandera.typing import DataFrame
 from . import schema
 from .calendar import Calendar, ICloudCalendar, FileCalendar
 from .model import (
+    TimeTrackingItem,
     User,
     Project,
     Timesheet,
@@ -28,28 +29,8 @@ def generate_timesheet(
         cal = source
         timetracking_data = cal.to_data()
     ts_table = (
-        timetracking_data.loc[period]
-        .query(f"tag == '{project.tag}'")
-        .filter(["duration"])
-        .sort_index()
+        timetracking_data.loc[period].query(f"tag == '{project.tag}'").sort_index()
     )
-
-    ts_table = ts_table.groupby(by=ts_table.index.date).sum()
-    ts_table["hours"] = (
-        ts_table["duration"]
-        .dt.components["hours"]
-        .add((ts_table["duration"].dt.components["days"] * 24))
-    )
-    ts_table = (
-        ts_table.assign(**{"comment": comment})
-        # .reset_index()
-        .filter(["hours", "comment"])  #
-        .reset_index()
-        .rename(columns={"index": "date"})
-    )
-
-    ts_table["date"] = pandas.to_datetime(ts_table["date"])
-    ts_table = ts_table.set_index("date")
 
     if comment is None:
         comment = project.title
@@ -57,8 +38,9 @@ def generate_timesheet(
         period=period,
         project=project,
         comment=comment,
-        table=ts_table,
     )
+    for record in ts_table.reset_index().to_dict("records"):
+        ts.items.append(TimeTrackingItem(**record, timesheet=ts))
 
     return ts
 

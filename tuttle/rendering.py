@@ -54,6 +54,7 @@ def render_timesheet(
     user: User,
     timesheet: Timesheet,
     out_dir: str = None,
+    style: str = "Milligram",
 ) -> str:
     """Render a Timeseheet using an HTML template.
 

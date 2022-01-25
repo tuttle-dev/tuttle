@@ -27,7 +27,7 @@ def generate_invoice(
         total_hours = timesheet.total / pandas.Timedelta("1h")
         item = InvoiceItem(
             invoice=invoice,
-            date=timesheet.table.index.max(),
+            date=timesheet.table["end"].max(),
             quantity=total_hours,
             unit="hour",
             unit_price=timesheet.project.contract.rate,

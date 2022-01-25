@@ -1,10 +1,6 @@
 """Object model."""
 
-from typing import (
-    Optional,
-    List,
-    Dict,
-)
+from typing import Optional, List, Dict, Type
 from pydantic import constr, BaseModel
 
 import datetime
@@ -22,6 +18,7 @@ from pydantic import EmailStr
 import decimal
 from decimal import Decimal
 import pandas
+import fastapi
 
 # TODO: support currencies
 # from money.money import Money
@@ -30,6 +27,18 @@ import pandas
 from .time import Cycle, TimeUnit
 
 # TODO: created & modified time stamps
+
+
+def to_dataframe(items: List[Type[BaseModel]]) -> pandas.DataFrame:
+    """Convert list of pydantic model items to DataFrame.
+
+    Args:
+        items (List[Type[BaseModel]]): [description]
+
+    Returns:
+        pandas.DataFrame: [description]
+    """
+    return pandas.DataFrame.from_records([item.dict() for item in items])
 
 
 def OneToOneRelationship(back_populates):
@@ -210,10 +219,24 @@ class Project(SQLModel, table=True):
     timesheets: List["Timesheet"] = Relationship(back_populates="project")
 
 
+class TimeTrackingItem(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    # TimeTrackingItem n : 1 TimeSheet
+    timesheet_id: Optional[int] = Field(default=None, foreign_key="timesheet.id")
+    timesheet: Optional["Timesheet"] = Relationship(back_populates="items")
+    #
+    begin: datetime.datetime
+    end: datetime.datetime
+    duration: datetime.timedelta
+    title: str
+    tag: str
+    description: Optional[str]
+
+
 class Timesheet(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     title: str
-    table: pandas.DataFrame
+    # table: pandas.DataFrame
     # TODO: store dataframe as dict
     # table: Dict = Field(default={}, sa_column=sqlalchemy.Column(sqlalchemy.JSON))
     # Timesheet n:1 Project
@@ -222,16 +245,21 @@ class Timesheet(SQLModel, table=True):
     # invoice: "Invoice" = Relationship(back_populates="timesheet")
     # period: str
     comment: Optional[str]
+    items: List[TimeTrackingItem] = Relationship(back_populates="timesheet")
 
-    class Config:
-        arbitrary_types_allowed = True
+    # class Config:
+    #     arbitrary_types_allowed = True
 
     @property
     def total(self) -> datetime.timedelta:
         """Sum of time in timesheet."""
-        total_hours = self.table["hours"].sum()
-        total_time = datetime.timedelta(hours=int(total_hours))
+        total_time = self.table["duration"].sum()
         return total_time
+
+    @property
+    def table(self) -> pandas.DataFrame:
+        """items as DataFrame"""
+        return to_dataframe(self.items)
 
 
 class Invoice(SQLModel, table=True):
