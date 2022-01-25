@@ -11,6 +11,7 @@ from pandera.typing import DataFrame
 from . import schema
 from .calendar import Calendar, ICloudCalendar, FileCalendar
 from .model import (
+    User,
     Project,
     Timesheet,
 )
@@ -50,6 +51,8 @@ def generate_timesheet(
     ts_table["date"] = pandas.to_datetime(ts_table["date"])
     ts_table = ts_table.set_index("date")
 
+    if comment is None:
+        comment = project.title
     ts = Timesheet(
         period=period,
         project=project,

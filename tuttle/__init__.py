@@ -15,4 +15,5 @@ from . import (
     timetracking,
     dataviz,
     time,
+    rendering,
 )
