@@ -42,46 +42,26 @@
   <table>
     <thead>
       <tr>
-        <th>Date</th>
+        <th>Begin</th>
+        <th>End</th>
+        <th>Duration</th>
         <th>Description</th>
-        <th>Quantity</th>
-        <th>Unit</th>
-        <th>Unit Price</th>
-        <th>VAT Rate</th>
-        <th>Subtotal</th>
+
       </tr>
     </thead>
     <tbody>
-      {% for item in invoice.items %}
+      {% for item in timesheet.items %}
       <tr>
-        <th>{{ item.date }}</th>
+        <th>{{ item.begin }}</th>
+        <th>{{ item.end }}</th>
+        <th>{{ item.duration }}</th>
         <th>{{ item.description }}</th>
-        <th>{{ item.quantity }}</th>
-        <th>{{ item.unit }}</th>
-        <th>{{ item.unit_price }} €</th>
-        <th>{{ item.VAT_rate }}</th>
-        <th>{{ item.subtotal }} €</th>
       </tr>
       {% endfor %}
     </tbody>
   </table>
 
-  <table id="total">
-    <thead>
-      <tr>
-        <th>Due by</th>
-        <th>Account number</th>
-        <th>Total due</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>{{ invoice.due_date }}</td>
-        <td>132 456 789 012</td>
-        <td>{{ invoice.total }} €</td>
-      </tr>
-    </tbody>
-  </table>
+
 </body>
 <footer>
   <table>

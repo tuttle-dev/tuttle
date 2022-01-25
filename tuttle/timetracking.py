@@ -23,6 +23,7 @@ def generate_timesheet(
     project: Project,
     period: str,
     comment: str = None,
+    group_by: str = None,
 ) -> Timesheet:
     # convert cal to data
     if issubclass(type(source), Calendar):
@@ -35,6 +36,7 @@ def generate_timesheet(
     if comment is None:
         comment = project.title
     ts = Timesheet(
+        title=f"{project.title} {period}",
         period=period,
         project=project,
         comment=comment,
