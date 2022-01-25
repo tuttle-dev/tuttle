@@ -33,6 +33,8 @@ def generate_timesheet(
         timetracking_data.loc[period].query(f"tag == '{project.tag}'").sort_index()
     )
 
+    # TODO: grouping
+
     if comment is None:
         comment = project.title
     ts = Timesheet(
@@ -42,7 +44,7 @@ def generate_timesheet(
         comment=comment,
     )
     for record in ts_table.reset_index().to_dict("records"):
-        ts.items.append(TimeTrackingItem(**record, timesheet=ts))
+        ts.items.append(TimeTrackingItem(**record))
 
     return ts
 

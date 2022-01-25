@@ -3,6 +3,7 @@
 from pathlib import Path
 
 import jinja2
+from babel.numbers import format_currency
 
 from .model import User, Invoice, Timesheet, Project
 
@@ -29,11 +30,23 @@ def render_invoice(
     Returns:
         str: [description]
     """
+
+    def as_currency(number):
+        return format_currency(
+            number, currency=invoice.contract.currency, locale="en_US"
+        )
+
     template_name = "invoice"
     template_path = get_template_path(template_name)
     template_env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_path))
+
+    template_env.filters["as_currency"] = as_currency
     invoice_template = template_env.get_template(f"{template_name}.html")
-    html = invoice_template.render(user=user, invoice=invoice, style=style)
+    html = invoice_template.render(
+        user=user,
+        invoice=invoice,
+        style=style,
+    )
     # output
     if out_dir is None:
         return html

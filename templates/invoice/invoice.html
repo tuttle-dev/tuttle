@@ -63,9 +63,9 @@
         <th>{{ item.description }}</th>
         <th>{{ item.quantity }}</th>
         <th>{{ item.unit }}</th>
-        <th>{{ item.unit_price }} €</th>
+        <th>{{ item.unit_price | as_currency}} €</th>
         <th>{{ item.VAT_rate }}</th>
-        <th>{{ item.subtotal }} €</th>
+        <th>{{ item.subtotal | as_currency }}</th>
       </tr>
       {% endfor %}
     </tbody>
@@ -83,7 +83,7 @@
       <tr>
         <td>{{ invoice.due_date }}</td>
         <td>132 456 789 012</td>
-        <td>{{ invoice.total }} €</td>
+        <td>{{ invoice.total | as_currency }}</td>
       </tr>
     </tbody>
   </table>
