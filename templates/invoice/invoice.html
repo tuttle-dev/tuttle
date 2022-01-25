@@ -4,7 +4,23 @@
     <meta name="description" content="Invoice demo sample">
     <meta name="pdfkit-page-size" content="Legal"/>
     <meta name="pdfkit-orientation" content="Portrait"/>
-    <link href="invoice.css" media="print" rel="stylesheet">
+    <!-- <link href="invoice.css" rel="stylesheet"> -->
+    <!-- <link href="invoice.css" media="print" rel="stylesheet"> -->
+
+    <!-- Mini CSS: https://minicss.org/docs -->
+    <!-- <link rel="stylesheet" href="https://cdn.rawgit.com/Chalarangelo/mini.css/v3.0.1/dist/mini-default.min.css"> -->
+
+    <!-- Milligram  CSS : https://milligram.io -->
+    <!-- Google Fonts -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300italic,700,700italic">
+
+    <!-- CSS Reset -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.css">
+
+    <!-- Milligram CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/milligram/1.4.1/milligram.css">
+
+
 
     <title>Invoice</title>
 </head>
@@ -79,4 +95,24 @@
     </tbody>
   </table>
 </body>
+<footer>
+  <table>
+    <tbody>
+      <tr>
+        <td>
+          {{ user.name }}<br>
+          {{ user.subtitle }}<br>
+          {{ user.website }}
+        </td>
+        <td>
+          {{ user.e_mail }}<br>
+          {{ user.phone_number }}
+        </td>
+        <td>
+          {{ user.VAT_number }}
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</footer>
 </html>

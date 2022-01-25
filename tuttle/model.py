@@ -79,7 +79,9 @@ class User(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
     subtitle: str
+    website: str
     e_mail: EmailStr
+    phone_number: str
     address_id: Optional[int] = Field(default=None, foreign_key="address.id")
     address: Optional[Address] = Relationship(back_populates="users")
     VAT_number: Optional[str]
