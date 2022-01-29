@@ -17,6 +17,7 @@ requirements = [
     "pyicloud",
     "loguru",
     "pydantic[email]",
+    "pydentic",
     "fints",
     "ics",
 ]
