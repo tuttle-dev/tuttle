@@ -32,6 +32,7 @@ def generate_invoice(
             unit="hour",
             unit_price=timesheet.project.contract.rate,
             VAT_rate=0.19,
+            description=timesheet.title,
         )
     invoice.generate_number()
     return invoice
