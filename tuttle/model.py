@@ -193,6 +193,10 @@ class Contract(SQLModel, table=True):
     volume: int = Field(
         description="Number of units agreed on",
     )
+    term_of_payment: Optional[int] = Field(
+        description="How many days after receipt of invoice this invoice is due.",
+        default=31,
+    )
     billing_cycle: Cycle = Field(sa_column=sqlalchemy.Column(sqlalchemy.Enum(Cycle)))
     projects: List["Project"] = Relationship(back_populates="contract")
     invoices: List["Invoice"] = Relationship(back_populates="contract")
@@ -267,8 +271,8 @@ class Invoice(SQLModel, table=True):
     number: Optional[str]
     # date and time
     date: datetime.date
-    due_date: datetime.date
-    sent_date: datetime.date
+    # due_date: datetime.date
+    # sent_date: datetime.date
     # Invoice 1:n Timesheet ?
     # timesheet_id: Optional[int] = Field(default=None, foreign_key="timesheet.id")
     # timesheet: Timesheet = Relationship(back_populates="invoice")
@@ -299,11 +303,18 @@ class Invoice(SQLModel, table=True):
         """Total invoiced amount."""
         return self.sum + self.VAT_total
 
-    def generate_number(self):
+    def generate_number(self, pattern=None):
         """Generate an invoice number"""
         date_prefix = self.date.strftime("%Y-%m-%d")
-        hash_suffix = hashlib.shake_256(str(uuid.uuid4()).encode("utf-8")).hexdigest(2)
-        self.number = f"{date_prefix}-{hash_suffix}"
+        # suffix = hashlib.shake_256(str(uuid.uuid4()).encode("utf-8")).hexdigest(2)
+        # TODO: auto-increment suffix for invoices generated on the same day
+        suffix = "01"
+        self.number = f"{date_prefix}-{suffix}"
+
+    @property
+    def due_date(self):
+        """Date until which payment is due."""
+        return self.date + datetime.timedelta(days=self.contract.term_of_payment)
 
 
 class InvoiceItem(SQLModel, table=True):
