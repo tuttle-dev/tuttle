@@ -88,7 +88,7 @@ def render_timesheet(
     template_path = get_template_path(template_name)
     template_env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_path))
     timesheet_template = template_env.get_template(f"{template_name}.html")
-    html = timesheet_template.render(user=user, timesheet=timesheet)
+    html = timesheet_template.render(user=user, timesheet=timesheet, style=style)
     # output
     if out_dir is None:
         return html

@@ -212,10 +212,8 @@ class Project(SQLModel, table=True):
     title: str = Field(
         description="A short, unique description", sa_column_kwargs={"unique": True}
     )
-    # tag: str
-    tag: constr(regex=r"#\S+") = Field(
-        description="A unique #tag", sa_column_kwargs={"unique": True}
-    )
+    # TODO: tag: constr(regex=r"#\S+")
+    tag: str = Field(description="A unique tag", sa_column_kwargs={"unique": True})
     start_date: datetime.date
     end_date: datetime.date
     # Project m:n Contract

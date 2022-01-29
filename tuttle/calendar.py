@@ -47,6 +47,10 @@ class FileCalendar(Calendar):
         with open(self.path, "r") as cal_file:
             self.ical = ics.Calendar(cal_file.read())
 
+    def to_raw_data(self) -> DataFrame:
+        """."""
+
+    @check_io(out=schema.time_tracking)
     def to_data(self) -> DataFrame:
         """Convert ics.Calendar to pandas.DataFrame"""
         event_data = pandas.DataFrame(
@@ -97,6 +101,7 @@ class ICloudCalendar(CloudCalendar):
         event_data_raw = pandas.DataFrame(all_events)
         return event_data_raw
 
+    @check_io(out=schema.time_tracking)
     def to_data(self) -> DataFrame:
         """Convert iCloud calendar events to time tracking data format."""
 

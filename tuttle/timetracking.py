@@ -26,12 +26,19 @@ def generate_timesheet(
     group_by: str = None,
 ) -> Timesheet:
     # convert cal to data
+    timetracking_data = None
     if issubclass(type(source), Calendar):
         cal = source
         timetracking_data = cal.to_data()
+    elif isinstance(source, pandas.DataFrame):
+        timetracking_data = source
+        schema.time_tracking.validate(timetracking_data)
+    else:
+        raise ValueError(f"unknown source: {source}")
     ts_table = (
         timetracking_data.loc[period].query(f"tag == '{project.tag}'").sort_index()
     )
+    assert not ts_table.empty
 
     # TODO: grouping
 
@@ -81,16 +88,17 @@ def import_from_calendar(cal: Calendar) -> DataFrame:
 def import_from_csv(
     path,
     tag_col: str,
+    begin_col: str,
+    end_col: str,
     duration_col: str,
     title_col: str = None,
-    begin_col: str = None,
-    end_col: str = None,
     description_col: str = None,
 ) -> DataFrame:
     """Import time tracking data from a .csv file."""
     raw_data = pandas.read_csv(
         path,
         engine="python",
+        parse_dates=[begin_col, end_col],
     )
     timetracking_data = raw_data.rename(
         columns={
