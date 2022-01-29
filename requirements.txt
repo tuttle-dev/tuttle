@@ -18,3 +18,4 @@ sqlmodel
 pyicloud
 fints
 ics
+pydentic

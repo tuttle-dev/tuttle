@@ -63,9 +63,9 @@
         <th>{{ item.description }}</th>
         <th>{{ item.quantity }}</th>
         <th>{{ item.unit }}</th>
-        <th>{{ item.unit_price | as_currency}} €</th>
-        <th>{{ item.VAT_rate }}</th>
-        <th>{{ item.subtotal | as_currency }}</th>
+        <th>{{ item.unit_price | as_currency}} €</th>
+        <th>{{ item.VAT_rate | as_percentage }}</th>
+        <th>{{ item.subtotal | as_currency }}</th>
       </tr>
       {% endfor %}
     </tbody>
@@ -82,7 +82,7 @@
     <tbody>
       <tr>
         <td>{{ invoice.due_date }}</td>
-        <td>132 456 789 012</td>
+        <td>{{ user.bank_account.IBAN }}</td>
         <td>{{ invoice.total | as_currency }}</td>
       </tr>
     </tbody>
@@ -102,7 +102,8 @@
           {{ user.phone_number }}
         </td>
         <td>
-          {{ user.VAT_number }}
+          VAT Number: {{ user.VAT_number }}<br>
+          IBAN: {{ user.bank_account.IBAN }}
         </td>
       </tr>
     </tbody>

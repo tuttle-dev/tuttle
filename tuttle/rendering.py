@@ -36,11 +36,16 @@ def render_invoice(
             number, currency=invoice.contract.currency, locale="en_US"
         )
 
+    def as_percentage(number):
+        return f"{number * 100} %"
+
     template_name = "invoice"
     template_path = get_template_path(template_name)
     template_env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_path))
 
     template_env.filters["as_currency"] = as_currency
+    template_env.filters["as_percentage"] = as_percentage
+
     invoice_template = template_env.get_template(f"{template_name}.html")
     html = invoice_template.render(
         user=user,

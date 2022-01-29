@@ -2,6 +2,7 @@
 
 from typing import Optional, List, Dict, Type
 from pydantic import constr, BaseModel
+from pydentic.strings import Iban, Bic
 
 import datetime
 import hashlib
@@ -94,8 +95,6 @@ class User(SQLModel, table=True):
     address_id: Optional[int] = Field(default=None, foreign_key="address.id")
     address: Optional[Address] = Relationship(back_populates="users")
     VAT_number: Optional[str]
-    # business_account_id: Optional[int] = Field(default=None, foreign_key="bankaccount.id")
-    # business_account: Optional["BankAccount"]
     # User 1:1* ICloudAccount
     icloud_account_id: Optional[int] = Field(
         default=None, foreign_key="icloudaccount.id"
@@ -107,6 +106,9 @@ class User(SQLModel, table=True):
     #     default=None, foreign_key="googleaccount.id"
     # )
     # google_account: Optional["GoogleAccount"] = Relationship(back_populates="user")
+    # User 1:1 business BankAccount
+    bank_account_id: Optional[int] = Field(default=None, foreign_key="bankaccount.id")
+    bank_account: Optional["BankAccount"] = Relationship(back_populates="user")
 
 
 class ICloudAccount(SQLModel, table=True):
@@ -131,10 +133,10 @@ class Bank(SQLModel, table=True):
 class BankAccount(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
-    IBAN: str  # TODO: add type / validator
-    BIC: str  # TODO: add type / validator
+    IBAN: Iban
+    BIC: Bic
     username: str  # online banking user name
-    # owner: User
+    user: User = Relationship(back_populates="bank_account")
 
 
 class Contact(SQLModel, table=True):
