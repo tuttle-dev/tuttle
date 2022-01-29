@@ -19,7 +19,6 @@ from pydantic import EmailStr
 import decimal
 from decimal import Decimal
 import pandas
-import fastapi
 
 # TODO: support currencies
 # from money.money import Money

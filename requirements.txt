@@ -19,3 +19,4 @@ pyicloud
 fints
 ics
 pydentic
+babel

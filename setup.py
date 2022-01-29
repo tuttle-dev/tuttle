@@ -12,6 +12,7 @@ with open("HISTORY.rst") as history_file:
 
 requirements = [
     "pandas",
+    "pandera",
     "altair",
     "sqlmodel",
     "pyicloud",
@@ -20,6 +21,7 @@ requirements = [
     "pydentic",
     "fints",
     "ics",
+    "babel",
 ]
 
 dev_requirements = [
