@@ -19,33 +19,37 @@
 </head>
 
 <body>
-  <div class="container" style="width: 80%;margin-left: 10%;">
+  <div class="container" style="width: 80%;margin-left: 1%;">
 
   <h1>Invoice No. {{ invoice.number }}</h1>
 
-  <aside>
+
+  <div>
     <p>
     <address id="from">
       {{ user.name }}<br>
       {{ user.address.html }}
     </address>
     </p>
+  </div>
 
+  <div>
     <p>
     <address id="to">
       {{ invoice.contract.client.invoicing_contact.name}}<br>
       {{ invoice.contract.client.invoicing_contact.address.html }}
     </address>
     </p>
-  </aside>
+  </div>
 
-  <dl id="informations">
-    <dt>Invoice number</dt>
-    <dd>{{ invoice.number }}</dd>
-    <dt>Date</dt>
-    <dd>{{ invoice.date }}</dd>
-  </dl>
+  <div>
+  <p>
+    <b>Invoice number: {{ invoice.number }}</b><br>
+    <b>Date: {{ invoice.date }}</b> <br>
+  </p>
+</div>
 
+  <div>
   <table>
     <thead>
       <tr>
@@ -56,18 +60,20 @@
         <th>Unit Price</th>
         <th>VAT Rate</th>
         <th>Subtotal</th>
+        <th>VAT</th>
       </tr>
     </thead>
     <tbody>
       {% for item in invoice.items %}
       <tr>
-        <th>{{ item.date }}</th>
-        <th>{{ item.description }}</th>
-        <th>{{ item.quantity }}</th>
-        <th>{{ item.unit }}</th>
-        <th>{{ item.unit_price | as_currency}} €</th>
-        <th>{{ item.VAT_rate | as_percentage }}</th>
-        <th>{{ item.subtotal | as_currency }}</th>
+        <td>{{ item.date }}</td>
+        <td>{{ item.description }}</td>
+        <td>{{ item.quantity }}</td>
+        <td>{{ item.unit }}</td>
+        <td>{{ item.unit_price | as_currency}} €</td>
+        <td>{{ item.VAT_rate | as_percentage }}</td>
+        <td>{{ item.subtotal | as_currency }}</td>
+        <td>{{ item.VAT | as_currency }}</td>
       </tr>
       {% endfor %}
     </tbody>
@@ -83,18 +89,23 @@
     </thead>
     <tbody>
       <tr>
-        <td>{{ invoice.due_date }}</td>
+        <td>{{ invoice.due_date }}</td>
         <td>{{ user.bank_account.IBAN }}</td>
         <td>{{ invoice.total | as_currency }}</td>
       </tr>
     </tbody>
   </table>
 </div>
+
+</div>
 </body>
 
 <footer>
+  <div class="container" style="width: 80%;margin-left: 1%;">
   <table>
+
     <tbody>
+      <tr></tr>
       <tr>
         <td>
           {{ user.name }}<br>
@@ -112,5 +123,6 @@
       </tr>
     </tbody>
   </table>
+</div>
 </footer>
 </html>

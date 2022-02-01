@@ -7,7 +7,7 @@ import shutil
 
 
 import pandas
-import jinja2
+import datetime
 
 from .model import InvoiceItem, Invoice, Contract, User
 from .timetracking import Timesheet
@@ -16,22 +16,21 @@ from .timetracking import Timesheet
 def generate_invoice(
     timesheets: List[Timesheet],
     contract: Contract,
+    date: datetime.date = datetime.date.today(),
 ) -> Invoice:
     invoice = Invoice(
-        date=datetime.date.today(),
-        due_date=datetime.date.today(),
-        sent_date=datetime.date.today(),
+        date=date,
         contract=contract,
     )
     for timesheet in timesheets:
         total_hours = timesheet.total / pandas.Timedelta("1h")
         item = InvoiceItem(
             invoice=invoice,
-            date=timesheet.table["end"].max(),
+            date=date,
             quantity=total_hours,
             unit="hour",
             unit_price=timesheet.project.contract.rate,
-            VAT_rate=0.19,
+            VAT_rate=0.19,  # TODO: adjustable VAT rate
             description=timesheet.title,
         )
     invoice.generate_number()
