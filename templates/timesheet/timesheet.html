@@ -22,19 +22,14 @@
   <h1>Timesheet {{ timesheet.title }}</h1>
 
   <aside>
-    <p>
-      {{ user.name }}<br>
-      {{ user.subtitle }}
-    </p>
-
-    <p>
-      {{ timesheet.project.title}}<br>
+      Client: {{ timesheet.project.client.name }}<br>
+      Project: {{ timesheet.project.title}}<br>
+      Period: {{ timesheet.period }}<br>
+      Comment: {{ timesheet.comment }}
     </p>
   </aside>
 
   <dl id="informations">
-    <dt>Timesheet</dt>
-    <dd>{{ timesheet.title }}</dd>
     <dt>Date</dt>
     <dd>{{ timesheet.date }}</dd>
   </dl>
@@ -52,12 +47,21 @@
     <tbody>
       {% for item in timesheet.items %}
       <tr>
-        <th>{{ item.begin }}</th>
-        <th>{{ item.end }}</th>
-        <th>{{ item.duration }}</th>
-        <th>{{ item.description }}</th>
+        <td>{{ item.begin }}</td>
+        <td>{{ item.end }}</td>
+        <td>{{ item.duration }}</td>
+        <td>{{ item.description }}</td>
       </tr>
       {% endfor %}
+    </tbody>
+  </table>
+
+  <table>
+    <tbody>
+      <tr>
+        <th><b>Total</b></th>
+        <td>{{ timesheet.total | as_hours }} hours</td>
+      </tr>
     </tbody>
   </table>
 
@@ -77,7 +81,6 @@
           {{ user.phone_number }}
         </td>
         <td>
-          {{ user.VAT_number }}
         </td>
       </tr>
     </tbody>

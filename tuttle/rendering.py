@@ -4,6 +4,7 @@ from pathlib import Path
 
 import jinja2
 from babel.numbers import format_currency
+import pandas
 
 from .model import User, Invoice, Timesheet, Project
 
@@ -87,6 +88,9 @@ def render_timesheet(
     template_name = "timesheet"
     template_path = get_template_path(template_name)
     template_env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_path))
+    # filters
+    template_env.filters["as_hours"] = lambda td: td / pandas.Timedelta("1 hour")
+
     timesheet_template = template_env.get_template(f"{template_name}.html")
     html = timesheet_template.render(user=user, timesheet=timesheet, style=style)
     # output

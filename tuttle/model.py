@@ -221,6 +221,10 @@ class Project(SQLModel, table=True):
     # Project 1:n Timesheet
     timesheets: List["Timesheet"] = Relationship(back_populates="project")
 
+    @property
+    def client(self):
+        return self.contract.client
+
 
 class TimeTrackingItem(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -239,6 +243,8 @@ class TimeTrackingItem(SQLModel, table=True):
 class Timesheet(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     title: str
+    date: datetime.date
+    period: str
     # table: pandas.DataFrame
     # TODO: store dataframe as dict
     # table: Dict = Field(default={}, sa_column=sqlalchemy.Column(sqlalchemy.JSON))

@@ -22,8 +22,11 @@ def generate_timesheet(
     source,
     project: Project,
     period: str,
-    comment: str = None,
+    date: datetime.date = datetime.date.today(),
+    comment: str = "",
     group_by: str = None,
+    item_description: str = None,
+    as_dataframe: bool = False,
 ) -> Timesheet:
     # convert cal to data
     timetracking_data = None
@@ -38,17 +41,21 @@ def generate_timesheet(
     ts_table = (
         timetracking_data.loc[period].query(f"tag == '{project.tag}'").sort_index()
     )
+    if item_description:
+        # TODO: extract item description from calendar
+        ts_table["description"] = item_description
     assert not ts_table.empty
+    if as_dataframe:
+        return ts_table
 
     # TODO: grouping
 
-    if comment is None:
-        comment = project.title
     ts = Timesheet(
-        title=f"{project.title} {period}",
+        title=f"{project.title} - {period}",
         period=period,
         project=project,
         comment=comment,
+        date=date,
     )
     for record in ts_table.reset_index().to_dict("records"):
         ts.items.append(TimeTrackingItem(**record))
