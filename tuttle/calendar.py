@@ -96,7 +96,7 @@ class ICloudCalendar(CloudCalendar):
     def get_raw_data(self) -> DataFrame:
         """Convert iCloud calendar events to DataFrame"""
         all_events = self.icloud.calendar.events(
-            from_dt=datetime.datetime(1, 1, 1), to_dt=datetime.date.today()
+            from_dt=datetime.datetime(1, 1, 1), to_dt=datetime.datetime(2100, 1, 1)
         )
         event_data_raw = pandas.DataFrame(all_events)
         return event_data_raw

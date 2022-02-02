@@ -162,3 +162,16 @@ def progress(
     # TODO: work with project.unit
     budget = project.contract.volume * datetime.timedelta(hours=1)
     return total_time.loc[tag]["duration"] / budget
+
+
+def eval_time_allocation(
+    source,
+):
+    if issubclass(type(source), Calendar):
+        cal = source
+        timetracking_data = cal.to_data()
+    elif isinstance(source, pandas.DataFrame):
+        timetracking_data = source
+        schema.time_tracking.validate(timetracking_data)
+
+    return timetracking_data
