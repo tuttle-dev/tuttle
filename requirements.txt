@@ -15,7 +15,7 @@ pandas
 pandera
 altair
 sqlmodel
-pyicloud
+pyicloud==0.10.2
 fints
 ics
 pydentic
