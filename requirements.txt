@@ -20,3 +20,4 @@ fints
 ics
 pydentic
 babel
+email-validator

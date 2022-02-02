@@ -13,3 +13,14 @@ def test_timetracking_import_csv():
         description_col="Description",
     )
     assert not data.empty
+
+
+def test_calendar_to_data(demo_calendar_timetracking):
+    raise NotImplementedError()
+
+
+def test_generate_timesheet(
+    demo_user,
+    demo_projects,
+):
+    raise NotImplementedError()

@@ -2,6 +2,8 @@
 
 import datetime
 
+import tuttle
+
 from tuttle.model import Invoice, InvoiceItem
 
 
@@ -39,3 +41,11 @@ def test_invoice():
     assert the_invoice.sum == 1500
     assert the_invoice.VAT_total == 300
     assert the_invoice.total == 1800
+
+
+def test_generate_invoice(
+    demo_user,
+    demo_clients,
+    demo_projects,
+):
+    raise NotImplementedError()
