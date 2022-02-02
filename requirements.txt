@@ -21,3 +21,4 @@ ics
 pydentic
 babel
 email-validator
+loguru
