@@ -108,6 +108,8 @@ class User(SQLModel, table=True):
     # User 1:1 business BankAccount
     bank_account_id: Optional[int] = Field(default=None, foreign_key="bankaccount.id")
     bank_account: Optional["BankAccount"] = Relationship(back_populates="user")
+    # TODO: path to logo image
+    logo: str
 
 
 class ICloudAccount(SQLModel, table=True):

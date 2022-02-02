@@ -3,13 +3,17 @@
 
 <head>
   <meta charset="utf-8">
-  <title>Invoice Template</title>
+  <title>Invoice No. {{ invoice.number }}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
+  {% if style == "Anvil" %}
   <link rel="stylesheet" href="./web/modern-normalize.css">
   <link rel="stylesheet" href="./web/web-base.css">
   <link rel="stylesheet" href="./invoice.css">
-  <script type="text/javascript" src="./web/scripts.js"></script>
+  <!-- <script type="text/javascript" src="./web/scripts.js"></script> -->
+  {% else %}
+  <!-- pure HTML -->
+  {% endif %}
 </head>
 <body>
 
@@ -22,41 +26,44 @@
     <span class="pages"></span>
   </div>
 
+  {% if user.logo %}
   <div class="logo-container">
     <img
       style="height: 18px"
       src="https://app.useanvil.com/img/email-logo-black.png"
     >
   </div>
+  {% endif %}
+
 
   <table class="invoice-info-container">
     <tr>
       <td rowspan="2" class="client-name">
-        Client Name
+        {{ invoice.contract.client.invoicing_contact.name}}
       </td>
       <td>
-        Anvil Co
-      </td>
-    </tr>
-    <tr>
-      <td>
-        123 Main Street
+        {{ user.name }}
       </td>
     </tr>
     <tr>
       <td>
-        Invoice Date: <strong>May 24th, 2024</strong>
-      </td>
-      <td>
-        San Francisco CA, 94103
+        {{ user.address.street }} {{ user.address.number }}
       </td>
     </tr>
     <tr>
       <td>
-        Invoice No: <strong>12345</strong>
+        Invoice Date: <strong>{{ invoice.date }}</strong>
       </td>
       <td>
-        hello@useanvil.com
+        {{ user.address.postal_code }} {{ user.address.city}}
+      </td>
+    </tr>
+    <tr>
+      <td>
+        Invoice Number: <strong>{{ invoice.number }}</strong>
+      </td>
+      <td>
+        {{ user.e_mail}}
       </td>
     </tr>
   </table>
@@ -65,31 +72,27 @@
   <table class="line-items-container">
     <thead>
       <tr>
-        <th class="heading-quantity">Qty</th>
+        <th class="heading-description">Date</th>
         <th class="heading-description">Description</th>
-        <th class="heading-price">Price</th>
+        <th class="heading-quantity">Qty</th>
+        <th class="heading-quantity">Unit</th>
+        <th class="heading-price">Unit Price</th>
+        <th class="heading-price">VAT%</th>
         <th class="heading-subtotal">Subtotal</th>
       </tr>
     </thead>
     <tbody>
+      {% for item in invoice.items %}
       <tr>
-        <td>2</td>
-        <td>Blue large widgets</td>
-        <td class="right">$15.00</td>
-        <td class="bold">$30.00</td>
+        <td>{{ item.date }}</td>
+        <td>{{ item.description }}</td>
+        <td class="right">{{ item.quantity }}</td>
+        <td class="right">{{ item.unit }}</td>
+        <td class="right">{{ item.unit_price | as_currency}} €</td>
+        <td class="right">{{ item.VAT_rate | as_percentage }}</td>
+        <td class="right">{{ item.subtotal | as_currency }}</td>
       </tr>
-      <tr>
-        <td>4</td>
-        <td>Green medium widgets</td>
-        <td class="right">$10.00</td>
-        <td class="bold">$40.00</td>
-      </tr>
-      <tr>
-        <td>5</td>
-        <td>Red small widgets with logo</td>
-        <td class="right">$7.00</td>
-        <td class="bold">$35.00</td>
-      </tr>
+      {% endfor %}
     </tbody>
   </table>
 
@@ -99,6 +102,7 @@
       <tr>
         <th>Payment Info</th>
         <th>Due By</th>
+        <th>Total VAT</th>
         <th>Total Due</th>
       </tr>
     </thead>
@@ -106,26 +110,23 @@
       <tr>
         <td class="payment-info">
           <div>
-            Account No: <strong>123567744</strong>
-          </div>
-          <div>
-            Routing No: <strong>120000547</strong>
+            Account No: <strong>{{ user.bank_account.IBAN }}</strong>
           </div>
         </td>
-        <td class="large">May 30th, 2024</td>
-        <td class="large total">$105.00</td>
+        <td class="bold">{{ invoice.due_date }}</td>
+        <td>{{ invoice.VAT_total | as_currency }}</td>
+        <td class="bold">{{ invoice.total | as_currency }}</td>
       </tr>
     </tbody>
   </table>
 
   <div class="footer">
     <div class="footer-info">
-      <span>hello@useanvil.com</span> |
-      <span>555 444 6666</span> |
-      <span>useanvil.com</span>
+      <span>{{ user.e_mail}}</span> |
+      <span>{{ user.phone_number }}</span> |
+      <span>{{ user.website }}</span>
     </div>
     <div class="footer-thanks">
-      <img src="https://github.com/anvilco/html-pdf-invoice-template/raw/main/img/heart.png" alt="heart">
       <span>Thank you!</span>
     </div>
   </div>
@@ -133,9 +134,6 @@
 
 </div>
 
-<!-- <script type="text/javascript">
-  load(document.querySelector('.web-container'), './invoice.html');
-</script> -->
 
 </body>
 </html>
