@@ -16,11 +16,20 @@ def test_timetracking_import_csv():
 
 
 def test_calendar_to_data(demo_calendar_timetracking):
-    raise NotImplementedError()
+    time_tracking_data = demo_calendar_timetracking.to_data()
+    assert not time_tracking_data.empty
 
 
 def test_generate_timesheet(
-    demo_user,
     demo_projects,
+    demo_calendar_timetracking,
 ):
-    raise NotImplementedError()
+    for period in ["January 2022", "February 2022"]:
+        for project in demo_projects:
+            timesheet = timetracking.generate_timesheet(
+                source=demo_calendar_timetracking,
+                project=project,
+                period=period,
+                item_description=project.title,
+            )
+            assert (timesheet.empty) or (timesheet.total >= pandas.Timedelta("0 hours"))

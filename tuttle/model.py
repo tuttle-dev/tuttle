@@ -272,6 +272,10 @@ class Timesheet(SQLModel, table=True):
         """items as DataFrame"""
         return to_dataframe(self.items)
 
+    @property
+    def empty(self) -> bool:
+        return len(self.items) == 0
+
 
 class Invoice(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)

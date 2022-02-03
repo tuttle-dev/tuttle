@@ -44,7 +44,7 @@ def generate_timesheet(
     if item_description:
         # TODO: extract item description from calendar
         ts_table["description"] = item_description
-    assert not ts_table.empty
+    # assert not ts_table.empty
     if as_dataframe:
         return ts_table
 

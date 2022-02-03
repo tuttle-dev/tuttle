@@ -11,10 +11,11 @@ from pandera import (
 
 
 time_tracking = DataFrameSchema(
-    index=Index(DateTime, name="begin", allow_duplicates=True),
+    # TODO: fix datetime type
+    # index=Index(DateTime, name="begin", allow_duplicates=True),
     columns={
-        # "begin": Column(DateTime, nullable=True),
-        "end": Column(DateTime, nullable=True),
+        # "begin": Column(Timestamp, nullable=True),
+        # "end": Column(DateTime, nullable=True),
         "title": Column(String, nullable=True),
         "tag": Column(String),
         "description": Column(String, nullable=True),

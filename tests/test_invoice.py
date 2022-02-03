@@ -2,8 +2,7 @@
 
 import datetime
 
-import tuttle
-
+from tuttle import invoicing, timetracking
 from tuttle.model import Invoice, InvoiceItem
 
 
@@ -44,8 +43,23 @@ def test_invoice():
 
 
 def test_generate_invoice(
-    demo_user,
-    demo_clients,
     demo_projects,
+    demo_calendar_timetracking,
 ):
-    raise NotImplementedError()
+    for project in demo_projects:
+        timesheets = []
+        for period in ["January 2022", "February 2022"]:
+            timesheet = timetracking.generate_timesheet(
+                source=demo_calendar_timetracking,
+                project=project,
+                period=period,
+                item_description=project.title,
+            )
+            if not timesheet.empty:
+                timesheets.append(timesheet)
+        invoice = invoicing.generate_invoice(
+            timesheets=timesheets,
+            contract=project.contract,
+            date=datetime.date.today(),
+        )
+        assert invoice.total > 0

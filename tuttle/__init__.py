@@ -9,7 +9,7 @@ from . import (
     calendar,
     cloud,
     context,
-    invoice,
+    invoicing,
     model,
     tax,
     timetracking,

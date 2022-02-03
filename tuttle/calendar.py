@@ -57,15 +57,20 @@ class FileCalendar(Calendar):
             [
                 (
                     event.name,
-                    # TODO: handle time zones
+                    event.description,
                     pandas.to_datetime(event.begin.datetime).tz_convert("CET"),
                     pandas.to_datetime(event.end.datetime).tz_convert("CET"),
+                    # TODO: handle time zones
+                    # pandas.to_datetime(event.begin.datetime).tz_convert("CET"),
+                    # pandas.to_datetime(event.end.datetime).tz_convert("CET"),
                 )
                 for event in self.ical.events
             ],
-            columns=["title", "begin", "end"],
+            columns=["title", "description", "begin", "end"],
         )
         event_data["duration"] = event_data["end"] - event_data["begin"]
+        # TODO: extract tag
+        event_data["tag"] = event_data["title"]
         # event_data["time"] = event_data["begin"]
         event_data = event_data.set_index("begin")
         return event_data

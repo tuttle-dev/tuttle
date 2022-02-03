@@ -2,9 +2,10 @@
 
 import pytest
 from pathlib import Path
+import datetime
 
 import tuttle
-from tuttle.model import Project, Client, Address, Contact, User, BankAccount
+from tuttle.model import Project, Client, Address, Contact, User, BankAccount, Contract
 
 
 @pytest.fixture
@@ -30,12 +31,6 @@ def demo_user():
         ),
     )
     return user
-
-
-@pytest.fixture
-def demo_projects():
-    projects = []
-    return projects
 
 
 @pytest.fixture
@@ -76,6 +71,56 @@ def demo_clients():
     ]
 
     return clients
+
+
+@pytest.fixture
+def demo_contracts(demo_clients):
+    heating_engineering_contract = Contract(
+        title="Heating Engineering Contract",
+        client=demo_clients[0],
+        rate=100.00,
+        currency="EUR",
+        unit=tuttle.time.TimeUnit.hour,
+        term_of_payment=14,
+        billing_cycle=tuttle.time.Cycle.monthly,
+    )
+
+    heating_repair_contract = Contract(
+        title="Heating Repair Contract",
+        client=demo_clients[1],
+        rate=50.00,
+        currency="EUR",
+        unit=tuttle.time.TimeUnit.hour,
+        term_of_payment=14,
+        billing_cycle=tuttle.time.Cycle.monthly,
+    )
+
+    contracts = [
+        heating_engineering_contract,
+        heating_repair_contract,
+    ]
+    return contracts
+
+
+@pytest.fixture
+def demo_projects(demo_contracts):
+    heating_engineering = Project(
+        title="Heating Engineering",
+        tag="#HeatingEngineering",
+        contract=demo_contracts[0],
+        start_date=datetime.date(2022, 1, 1),
+        end_date=datetime.date(2022, 3, 31),
+    )
+
+    heating_repair = Project(
+        title="Heating Repair",
+        tag="#HeatingRepair",
+        contract=demo_contracts[1],
+        start_date=datetime.date(2022, 1, 1),
+        end_date=datetime.date(2022, 3, 31),
+    )
+    projects = [heating_engineering, heating_repair]
+    return projects
 
 
 @pytest.fixture
