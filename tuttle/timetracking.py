@@ -2,6 +2,7 @@ from dataclasses import dataclass
 import datetime
 from tabnanny import check
 from time import time
+from typing import Tuple, Union
 
 import pandas
 from pandera import check_io
