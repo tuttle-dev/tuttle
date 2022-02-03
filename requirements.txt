@@ -17,7 +17,6 @@ sqlmodel
 pyicloud==0.10.2
 fints
 ics
-pydentic
 babel
 email-validator
 loguru
