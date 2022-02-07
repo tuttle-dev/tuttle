@@ -2,7 +2,6 @@
 
 from typing import Optional, List, Dict, Type
 from pydantic import constr, BaseModel
-from pydentic.strings import Iban, Bic
 
 import datetime
 import hashlib
@@ -134,8 +133,8 @@ class Bank(SQLModel, table=True):
 class BankAccount(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
-    IBAN: Iban
-    BIC: Bic
+    IBAN: str
+    BIC: str
     username: str  # online banking user name
     user: User = Relationship(back_populates="bank_account")
 

@@ -7,9 +7,7 @@ tox==3.14.0
 coverage==4.5.4
 Sphinx==1.8.5
 twine==1.14.0
-
-pytest==6.2.4
-
+pytest
 pandas
 pandera
 altair
@@ -17,7 +15,6 @@ sqlmodel
 pyicloud==0.10.2
 fints
 ics
-pydentic
 babel
 email-validator
 loguru

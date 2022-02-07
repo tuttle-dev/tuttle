@@ -26,9 +26,26 @@ The application provides analysis and forecasting functions on income, expenses,
 We develop the solution as a GUI application based on web technologies. Sensitive financial data is processed locally on the end device without central data collection. For data analysis, we rely on open source tools from the Python ecosystem.
 
 
+## Setup
+
+1. Clone or download the current version from the `main` branch.
+
+2. Install the Python module in development mode:
+
+```shell
+$ python setup.py develop
+```
+
+3. To verify, run the unit tests:
+
+```shell
+$ pytest
+```
+
+
 ## Contributing
 
-TBA
+Your contributions are welcome. Please follow the [guide (CONTRIBUTING.md)](https://github.com/tuttle-dev/tuttle/blob/main/CONTRIBUTING.md).
 
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
