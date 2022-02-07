@@ -16,4 +16,5 @@ from . import (
     dataviz,
     time,
     rendering,
+    view,
 )
