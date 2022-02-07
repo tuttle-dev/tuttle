@@ -10,27 +10,16 @@ with open("README.md") as readme_file:
 with open("HISTORY.rst") as history_file:
     history = history_file.read()
 
-requirements = [
-    "pandas",
-    "pandera",
-    "altair",
-    "sqlmodel",
-    "pyicloud",
-    "loguru",
-    "pydantic[email]",
-    "fints",
-    "ics",
-    "babel",
-]
+with open("requirements.txt") as requirements_file:
+    requirements = requirements_file.readlines()
+
 
 dev_requirements = [
     "jupyterlab",
     "ipywidgets",
 ]
 
-test_requirements = [
-    "pytest>=3",
-]
+test_requirements = []
 
 
 setup(
