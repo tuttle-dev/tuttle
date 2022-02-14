@@ -108,7 +108,7 @@ class User(SQLModel, table=True):
     bank_account_id: Optional[int] = Field(default=None, foreign_key="bankaccount.id")
     bank_account: Optional["BankAccount"] = Relationship(back_populates="user")
     # TODO: path to logo image
-    logo: str
+    logo: Optional[str]
 
 
 class ICloudAccount(SQLModel, table=True):
@@ -135,7 +135,7 @@ class BankAccount(SQLModel, table=True):
     name: str
     IBAN: str
     BIC: str
-    username: str  # online banking user name
+    # username: str  # online banking user name
     user: User = Relationship(back_populates="bank_account")
 
 
@@ -192,7 +192,7 @@ class Contract(SQLModel, table=True):
     )
     currency: str  # TODO: currency representation
     unit: TimeUnit = Field(sa_column=sqlalchemy.Column(sqlalchemy.Enum(TimeUnit)))
-    volume: int = Field(
+    volume: Optional[int] = Field(
         description="Number of units agreed on",
     )
     term_of_payment: Optional[int] = Field(
