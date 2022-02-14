@@ -20,9 +20,13 @@ class App:
         self.db_path = self.home / "tuttle.db"
         self.db_engine = sqlmodel.create_engine(f"sqlite:///{self.db_path}", echo=True)
         sqlmodel.SQLModel.metadata.create_all(self.db_engine)
+        self.db_session = self.get_session()
 
     def get_session(self):
-        return sqlmodel.Session(self.db_engine)
+        return sqlmodel.Session(
+            self.db_engine,
+            expire_on_commit=False,
+        )
 
     def clear_database(self):
         """
@@ -31,11 +35,6 @@ class App:
         self.db_path.unlink()
         self.db_engine = sqlmodel.create_engine(f"sqlite:///{self.db_path}", echo=True)
         sqlmodel.SQLModel.metadata.create_all(self.db_engine)
-
-    def get_user(self):
-        with self.get_session() as session:
-            user = session.exec(sqlmodel.select(model.User)).one()
-        return user
 
     def store_all(self, entities):
         """Store a collection of entities in the database."""
@@ -53,11 +52,19 @@ class App:
 
     @property
     def contracts(self):
-        with self.get_session() as session:
-            contracts = session.exec(
-                sqlmodel.select(model.Contract),
-            ).all()
-            return contracts
+        contracts = self.db_session.exec(
+            sqlmodel.select(model.Contract),
+        ).all()
+        return contracts
 
+    @property
+    def projects(self):
+        contracts = self.db_session.exec(
+            sqlmodel.select(model.Project),
+        ).all()
+        return contracts
 
-the_app = App()
+    @property
+    def user(self):
+        user = self.db_session.exec(sqlmodel.select(model.User)).one()
+        return user

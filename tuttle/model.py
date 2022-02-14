@@ -204,6 +204,10 @@ class Contract(SQLModel, table=True):
     invoices: List["Invoice"] = Relationship(back_populates="contract")
     # TODO: model contractual promises like "at least 2 days per week"
 
+    @property
+    def volume_as_time(self):
+        return self.volume * self.unit.to_timedelta()
+
 
 class Project(SQLModel, table=True):
     """A project is a group of contract work for a client."""
