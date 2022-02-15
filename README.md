@@ -26,17 +26,29 @@ The application provides analysis and forecasting functions on income, expenses,
 We develop the solution as a GUI application based on web technologies. Sensitive financial data is processed locally on the end device without central data collection. For data analysis, we rely on open source tools from the Python ecosystem.
 
 
+## What is the product vision?
+
+Desktop apps are great - let's have more of them. We are consciously developing a desktop app with local data storage, not a web app, since your business data is none of our business.
+
+For this purpose, the Tuttle project is split across several repositories:
+
+- This repository contains the core library, written in Python.
+- The desktop application frontend, based on Electron.js, is being developed in [tuttle-dev/tuttle-app-electron](https://github.com/tuttle-dev/tuttle-app-electron)
+
+
 ## Setup
 
 1. Clone or download the current version from the `main` branch.
 
-2. Install the Python module in development mode:
+2. We recommend installation into a new [virtual environment](https://calmcode.io/virtualenv/intro.html).
+
+3. Install the Python module in development mode:
 
 ```shell
 $ python setup.py develop
 ```
 
-3. To verify, run the unit tests:
+4. To verify, run the unit tests:
 
 ```shell
 $ pytest
