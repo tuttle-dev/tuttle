@@ -33,7 +33,7 @@ Desktop apps are great - let's have more of them. We are consciously developing 
 For this purpose, the Tuttle project is split across several repositories:
 
 - This repository contains the core library, written in Python.
-- The desktop application frontend, based on Electron.js, is being developed in [tuttle-dev/tuttle-app-electron](https://github.com/tuttle-dev/tuttle-app-electron)
+- The desktop application frontend, based on Electron.js, is being developed in [tuttle-dev/tuttle-app](https://github.com/tuttle-dev/tuttle-app)
 
 
 ## Setup
