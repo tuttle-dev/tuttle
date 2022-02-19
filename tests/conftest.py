@@ -16,7 +16,7 @@ def demo_user():
         website="https://tuttle-dev.github.io/tuttle/",
         e_mail="mail@tuttle.com",
         phone_number="+55555555555",
-        VAT_number="DZ-015",
+        VAT_number="27B-6",
         address=Address(
             name="Harry Tuttle",
             street="Main Street",
@@ -81,6 +81,7 @@ def demo_contracts(demo_clients):
         rate=100.00,
         currency="EUR",
         unit=tuttle.time.TimeUnit.hour,
+        units_per_workday=8,
         term_of_payment=14,
         billing_cycle=tuttle.time.Cycle.monthly,
     )
@@ -91,6 +92,7 @@ def demo_contracts(demo_clients):
         rate=50.00,
         currency="EUR",
         unit=tuttle.time.TimeUnit.hour,
+        units_per_workday=8,
         term_of_payment=14,
         billing_cycle=tuttle.time.Cycle.monthly,
     )

@@ -201,12 +201,17 @@ class Contract(SQLModel, table=True):
         description="Rate of remuneration",
     )
     currency: str  # TODO: currency representation
-    unit: TimeUnit = Field(sa_column=sqlalchemy.Column(sqlalchemy.Enum(TimeUnit)))
-    volume: Optional[int] = Field(
-        description="Number of units agreed on",
+    unit: TimeUnit = Field(
+        description="Unit of time tracked. The rate applies to this unit.",
+        sa_column=sqlalchemy.Column(sqlalchemy.Enum(TimeUnit)),
+        default=TimeUnit.hour,
     )
     units_per_workday: int = Field(
-        description="How many units of time (e.g. hours) constitute a whole work day?"
+        description="How many units of time (e.g. hours) constitute a whole work day?",
+        default=8,
+    )
+    volume: Optional[int] = Field(
+        description="Number of units agreed on",
     )
     term_of_payment: Optional[int] = Field(
         description="How many days after receipt of invoice this invoice is due.",
