@@ -36,6 +36,12 @@ class App:
         self.db_engine = sqlmodel.create_engine(f"sqlite:///{self.db_path}", echo=True)
         sqlmodel.SQLModel.metadata.create_all(self.db_engine)
 
+    def store(self, entity):
+        """Store an entity in the database."""
+        with self.get_session() as session:
+            session.add(entity)
+            session.commit()
+
     def store_all(self, entities):
         """Store a collection of entities in the database."""
         with self.get_session() as session:
@@ -68,3 +74,10 @@ class App:
     def user(self):
         user = self.db_session.exec(sqlmodel.select(model.User)).one()
         return user
+
+    def get_project(self, title: str):
+        """Get a project by its title."""
+        project = self.db_session.exec(
+            (sqlmodel.select(model.Project).where(model.Project.title == title))
+        ).one()
+        return project

@@ -103,8 +103,10 @@ def test_contract():
         end_date=datetime.date(2022, 3, 31),
         signature_date=datetime.date(2021, 10, 31),
         rate=100,
+        unit=time.TimeUnit.hour,
         currency="EUR",
         billing_cycle=time.Cycle.monthly,
         volume=3 * 8 * 8,
+        units_per_workday=8,
     )
     assert store_and_retrieve(the_contract)

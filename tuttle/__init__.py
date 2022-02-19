@@ -18,3 +18,8 @@ from . import (
     rendering,
     view,
 )
+
+
+import pandas
+
+pandas.set_option("display.max_columns", 100)

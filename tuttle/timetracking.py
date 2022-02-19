@@ -42,6 +42,10 @@ def generate_timesheet(
     ts_table = (
         timetracking_data.loc[period].query(f"tag == '{project.tag}'").sort_index()
     )
+    # convert all-day entries
+    ts_table.loc[ts_table["all_day"], "duration"] = (
+        project.contract.unit.to_timedelta() * project.contract.units_per_workday
+    )
     if item_description:
         # TODO: extract item description from calendar
         ts_table["description"] = item_description

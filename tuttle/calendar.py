@@ -48,7 +48,13 @@ class FileCalendar(Calendar):
             self.ical = ics.Calendar(cal_file.read())
 
     def to_raw_data(self) -> DataFrame:
-        """."""
+        """Convert .ics calendar events to DataFrame"""
+        events = [event for event in self.ical.events]
+        event_data_raw = pandas.DataFrame(
+            [tuple(event.__dict__.values()) for event in events],
+            columns=list(events[0].__dict__.keys()),
+        )
+        return event_data_raw
 
     @check_io(out=schema.time_tracking)
     def to_data(self) -> DataFrame:
@@ -60,13 +66,14 @@ class FileCalendar(Calendar):
                     event.description,
                     pandas.to_datetime(event.begin.datetime).tz_convert("CET"),
                     pandas.to_datetime(event.end.datetime).tz_convert("CET"),
+                    event.all_day,
                     # TODO: handle time zones
                     # pandas.to_datetime(event.begin.datetime).tz_convert("CET"),
                     # pandas.to_datetime(event.end.datetime).tz_convert("CET"),
                 )
                 for event in self.ical.events
             ],
-            columns=["title", "description", "begin", "end"],
+            columns=["title", "description", "begin", "end", "all_day"],
         )
         event_data["duration"] = event_data["end"] - event_data["begin"]
         # TODO: extract tag
@@ -98,7 +105,7 @@ class ICloudCalendar(CloudCalendar):
         except KeyError:
             raise ValueError(f"iCloud calendar {self.name} not found")
 
-    def get_raw_data(self) -> DataFrame:
+    def to_raw_data(self) -> DataFrame:
         """Convert iCloud calendar events to DataFrame"""
         all_events = self.icloud.calendar.events(
             from_dt=datetime.datetime(1, 1, 1), to_dt=datetime.datetime(2100, 1, 1)
@@ -110,7 +117,7 @@ class ICloudCalendar(CloudCalendar):
     def to_data(self) -> DataFrame:
         """Convert iCloud calendar events to time tracking data format."""
 
-        event_data_raw = self.get_raw_data()
+        event_data_raw = self.to_raw_data()
         guid = self.guid
         event_data = event_data_raw.query("pGuid == @guid")
         timetracking_data = pandas.DataFrame().assign(

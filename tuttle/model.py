@@ -28,6 +28,16 @@ from .time import Cycle, TimeUnit
 # TODO: created & modified time stamps
 
 
+def help(model_class):
+    return pandas.DataFrame(
+        (
+            (field_name, field.field_info.description)
+            for field_name, field in Contract.__fields__.items()
+        ),
+        columns=["field name", "field description"],
+    )
+
+
 def to_dataframe(items: List[Type[BaseModel]]) -> pandas.DataFrame:
     """Convert list of pydantic model items to DataFrame.
 
@@ -194,6 +204,9 @@ class Contract(SQLModel, table=True):
     unit: TimeUnit = Field(sa_column=sqlalchemy.Column(sqlalchemy.Enum(TimeUnit)))
     volume: Optional[int] = Field(
         description="Number of units agreed on",
+    )
+    units_per_workday: int = Field(
+        description="How many units of time (e.g. hours) constitute a whole work day?"
     )
     term_of_payment: Optional[int] = Field(
         description="How many days after receipt of invoice this invoice is due.",
