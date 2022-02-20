@@ -1,5 +1,4 @@
 pip
-bump2version
 wheel
 watchdog
 flake8
@@ -8,7 +7,7 @@ Sphinx
 #twine
 pytest
 pandas
-pandera[mypy]
+pandera
 altair
 sqlmodel
 pyicloud
