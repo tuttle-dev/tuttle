@@ -173,6 +173,8 @@ class Client(SQLModel, table=True):
     invoicing_contact: Contact = Relationship(back_populates="invoicing_contact_of")
     contracts: List["Contract"] = Relationship(back_populates="client")
     # non-invoice related contact person?
+    # Client 1:n Project
+    projects: List["Project"] = Relationship(back_populates="client")
 
 
 class Contract(SQLModel, table=True):
@@ -238,15 +240,14 @@ class Project(SQLModel, table=True):
     tag: str = Field(description="A unique tag", sa_column_kwargs={"unique": True})
     start_date: datetime.date
     end_date: datetime.date
+    # Project n:1 Client
+    client_id: Optional[int] = Field(default=None, foreign_key="client.id")
+    client: Client = Relationship(back_populates="projects")
     # Project m:n Contract
     contract_id: Optional[int] = Field(default=None, foreign_key="contract.id")
     contract: Contract = Relationship(back_populates="projects")
     # Project 1:n Timesheet
     timesheets: List["Timesheet"] = Relationship(back_populates="project")
-
-    @property
-    def client(self):
-        return self.contract.client
 
 
 class TimeTrackingItem(SQLModel, table=True):

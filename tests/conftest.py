@@ -105,10 +105,11 @@ def demo_contracts(demo_clients):
 
 
 @pytest.fixture
-def demo_projects(demo_contracts):
+def demo_projects(demo_contracts, demo_clients):
     heating_engineering = Project(
         title="Heating Engineering",
         tag="#HeatingEngineering",
+        client=demo_clients[0],
         contract=demo_contracts[0],
         start_date=datetime.date(2022, 1, 1),
         end_date=datetime.date(2022, 3, 31),
@@ -117,6 +118,7 @@ def demo_projects(demo_contracts):
     heating_repair = Project(
         title="Heating Repair",
         tag="#HeatingRepair",
+        client=demo_clients[1],
         contract=demo_contracts[1],
         start_date=datetime.date(2022, 1, 1),
         end_date=datetime.date(2022, 3, 31),
