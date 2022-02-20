@@ -2,3 +2,4 @@ jupyterlab
 ipywidgets
 bump2version
 black
+nbdime
