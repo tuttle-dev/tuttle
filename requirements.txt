@@ -11,7 +11,7 @@ pandera
 altair
 sqlmodel
 pyicloud
-fints
+git+git://github.com/raphaelm/python-fints.git@846c25f5f6ae578cde5151fc30b5f7a3601a95ac#egg=fints
 ics
 babel
 email-validator
