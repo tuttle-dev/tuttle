@@ -39,7 +39,8 @@
   <table class="invoice-info-container">
     <tr>
       <td rowspan="2" class="client-name">
-        {{ invoice.contract.client.invoicing_contact.name}}
+        {{ invoice.contract.client.invoicing_contact.name}}<br>
+        {{ invoice.contract.client.invoicing_contact.address.html }}
       </td>
       <td>
         {{ user.name }}
