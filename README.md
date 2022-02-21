@@ -66,3 +66,5 @@ Your contributions are welcome. Please follow the [guide (CONTRIBUTING.md)](http
 ## Acknowledgements
 
 This project is funded by the [Prototype Fund](https://prototypefund.de).
+
+![](https://nextcloud.com/media/PrototypeFund-P-Logo.png)
