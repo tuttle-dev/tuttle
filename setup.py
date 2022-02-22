@@ -13,14 +13,8 @@ with open("HISTORY.md") as history_file:
 with open("requirements.txt") as requirements_file:
     requirements = requirements_file.readlines()
 
-
-dev_requirements = [
-    "jupyterlab",
-    "ipywidgets",
-]
-
-test_requirements = []
-
+with open("requirements_dev.txt") as dev_requirements_file:
+    dev_requirements = dev_requirements_file.readlines()
 
 setup(
     author="Christian Staudt",
@@ -36,7 +30,7 @@ setup(
         "Programming Language :: Python :: 3.9",
     ],
     description="Painless business planning for freelancers.",
-    install_requires=requirements + test_requirements,
+    install_requires=requirements + dev_requirements,
     license="GNU General Public License v3",
     long_description=readme + "\n\n" + history,
     include_package_data=True,
@@ -44,7 +38,6 @@ setup(
     name="tuttle",
     packages=find_packages(include=["tuttle", "tuttle.*"]),
     test_suite="tests",
-    tests_require=test_requirements,
     url="https://github.com/tuttle-dev/tuttle",
     version="0.0.4",
     zip_safe=False,

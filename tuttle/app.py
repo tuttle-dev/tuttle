@@ -10,7 +10,7 @@ from . import model
 class App:
     """The main application class"""
 
-    def __init__(self, debug_mode=False):
+    def __init__(self, debug_mode=False, verbose=False):
         if debug_mode:
             self.home = Path("./test_home")
         else:
@@ -18,7 +18,10 @@ class App:
         if not os.path.exists(self.home):
             os.mkdir(self.home)
         self.db_path = self.home / "tuttle.db"
-        self.db_engine = sqlmodel.create_engine(f"sqlite:///{self.db_path}", echo=True)
+        self.db_engine = sqlmodel.create_engine(
+            f"sqlite:///{self.db_path}",
+            echo=verbose,
+        )
         sqlmodel.SQLModel.metadata.create_all(self.db_engine)
         self.db_session = self.get_session()
 

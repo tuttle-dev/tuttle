@@ -6,7 +6,7 @@
   <title>Invoice No. {{ invoice.number }}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  {% if style == "Anvil" %}
+  {% if style == "anvil" %}
   <link rel="stylesheet" href="./web/modern-normalize.css">
   <link rel="stylesheet" href="./web/web-base.css">
   <link rel="stylesheet" href="./invoice.css">
@@ -20,9 +20,7 @@
 <div class="web-container">
 
   <div class="page-container">
-    Page
     <span class="page"></span>
-    of
     <span class="pages"></span>
   </div>
 
@@ -39,31 +37,33 @@
   <table class="invoice-info-container">
     <tr>
       <td rowspan="2" class="client-name">
-        {{ invoice.contract.client.invoicing_contact.name}}
+        {{ invoice.contract.client.invoicing_contact.name}}<br>
+        {{ invoice.contract.client.invoicing_contact.address.html }}
       </td>
       <td>
-        {{ user.name }}
-      </td>
-    </tr>
-    <tr>
-      <td>
-        {{ user.address.street }} {{ user.address.number }}
+        {{ user.name }}<br>
+        {{ user.address.html }}
       </td>
     </tr>
     <tr>
       <td>
-        Invoice Date: <strong>{{ invoice.date }}</strong>
-      </td>
-      <td>
-        {{ user.address.postal_code }} {{ user.address.city}}
+
       </td>
     </tr>
     <tr>
       <td>
+
+      </td>
+      <td>
+
+      </td>
+    </tr>
+    <tr>
+      <td>
+        Invoice Date: <strong>{{ invoice.date }}</strong><br>
         Invoice Number: <strong>{{ invoice.number }}</strong>
       </td>
       <td>
-        {{ user.e_mail}}
       </td>
     </tr>
   </table>

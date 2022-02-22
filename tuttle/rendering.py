@@ -1,6 +1,7 @@
 """Document rendering."""
 
 from pathlib import Path
+import shutil
 
 import jinja2
 from babel.numbers import format_currency
@@ -21,7 +22,7 @@ def render_invoice(
     user: User,
     invoice: Invoice,
     out_dir: str = None,
-    style: str = "Milligram",
+    style: str = None,
 ) -> str:
     """Render an Invoice using an HTML template.
 
@@ -41,7 +42,7 @@ def render_invoice(
     def as_percentage(number):
         return f"{number * 100} %"
 
-    template_name = "invoice-anvil"
+    template_name = f"invoice-anvil"
     template_path = get_template_path(template_name)
     template_env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_path))
 
@@ -65,9 +66,25 @@ def render_invoice(
         invoice_path = invoice_dir / Path(f"{prefix}.html")
         with open(invoice_path, "w") as invoice_file:
             invoice_file.write(html)
-        # copy stylsheet
-        # stylesheet_path = template_path / f"{template_name}.css"
-        # shutil.copy(stylesheet_path, invoice_dir)
+        # copy stylsheets
+        if style:
+            stylesheets = []
+            stylesheet_folders = []
+            if style == "anvil":
+                stylesheets = ["invoice.css"]
+                stylesheet_folders = [
+                    "web",
+                ]
+            for stylesheet_path in stylesheets:
+                stylesheet_path = template_path / stylesheet_path
+                shutil.copy(stylesheet_path, invoice_dir)
+            for stylesheet_folder_path in stylesheet_folders:
+                full_stylesheet_folder_path = template_path / stylesheet_folder_path
+                shutil.copytree(
+                    full_stylesheet_folder_path,
+                    invoice_dir / stylesheet_folder_path,
+                    dirs_exist_ok=True,
+                )
 
 
 def render_timesheet(

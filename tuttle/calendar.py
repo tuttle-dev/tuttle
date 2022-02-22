@@ -1,6 +1,7 @@
 """Calendar integration."""
 
 from pathlib import Path
+import io
 
 import ics
 import pyicloud
@@ -41,11 +42,25 @@ class CloudCalendar(Calendar):
 class FileCalendar(Calendar):
     """An .ics file based calendar."""
 
-    def __init__(self, path, name: str):
+    def __init__(
+        self,
+        name: str,
+        path: str = None,
+        content: bytes = None,
+    ):
         super().__init__(name)
-        self.path = path
-        with open(self.path, "r") as cal_file:
-            self.ical = ics.Calendar(cal_file.read())
+        if path is not None:
+            self.path = path
+            with open(self.path, "r") as cal_file:
+                self.ical = ics.Calendar(cal_file.read())
+        elif content is not None:
+            self.content = content
+            with io.TextIOWrapper(io.BytesIO(content), encoding="utf-8") as cal_file:
+                self.ical = ics.Calendar(cal_file.read())
+        else:
+            raise ValueError(
+                "Either a path to or the content of an .ics file must be passed."
+            )
 
     def to_raw_data(self) -> DataFrame:
         """Convert .ics calendar events to DataFrame"""
