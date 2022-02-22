@@ -1,8 +1,10 @@
 from dataclasses import dataclass
 import datetime
+from multiprocessing.sharedctypes import Value
 from tabnanny import check
 from time import time
 from typing import Tuple, Union
+import enum
 
 import pandas
 from pandera import check_io
@@ -94,24 +96,64 @@ def import_from_calendar(cal: Calendar) -> DataFrame:
         raise NotImplementedError()
 
 
+class TimetrackingSpreadsheetPreset:
+    class Toggl:
+        tag_col = "Project"
+        begin_col = ["Start date", "Start time"]
+        end_col = ["End date", "End time"]
+        duration_col = "Duration"
+        title_col = "Task"
+        description_col = "Description"
+
+
 @check_io(
     out=schema.time_tracking,
 )
-def import_from_csv(
+def import_from_spreadsheet(
     path,
-    tag_col: str,
-    begin_col: str,
-    end_col: str,
-    duration_col: str,
+    preset: str = None,
+    tag_col: str = None,
+    begin_col: str = None,
+    end_col: str = None,
+    duration_col: str = None,
     title_col: str = None,
     description_col: str = None,
 ) -> DataFrame:
     """Import time tracking data from a .csv file."""
+    if preset:
+        tag_col = preset.tag_col
+        begin_col = preset.begin_col
+        end_col = preset.end_col
+        duration_col = preset.duration_col
+        title_col = preset.title_col
+        description_col = preset.description_col
+
+    assert tag_col is not None
+    assert begin_col is not None
+    assert end_col is not None
+    assert duration_col is not None
+
     raw_data = pandas.read_csv(
         path,
         engine="python",
-        parse_dates=[begin_col, end_col],
+        dtype={
+            title_col: str,
+        },
     )
+
+    # combine date and time if separate
+    if isinstance(begin_col, list):
+        begin_date_col, begin_time_col = begin_col
+        raw_data["begin"] = raw_data[begin_date_col] + " " + raw_data[begin_time_col]
+        begin_col = "begin"
+    if isinstance(end_col, list):
+        end_date_col, end_time_col = end_col
+        raw_data["end"] = raw_data[end_date_col] + " " + raw_data[end_time_col]
+        end_col = "end"
+
+    raw_data[begin_col] = pandas.to_datetime(raw_data[begin_col])
+    raw_data[end_col] = pandas.to_datetime(raw_data[end_col])
+
     timetracking_data = raw_data.rename(
         columns={
             title_col: "title",
@@ -126,6 +168,8 @@ def import_from_csv(
 
     if title_col is None:
         timetracking_data["title"] = ""
+    else:
+        timetracking_data["title"] = timetracking_data["title"].fillna("")
     if begin_col is None:
         timetracking_data["begin"] = pandas.NaT
     if end_col is None:

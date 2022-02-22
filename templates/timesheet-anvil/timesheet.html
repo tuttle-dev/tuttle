@@ -3,13 +3,13 @@
 
 <head>
   <meta charset="utf-8">
-  <title>Invoice No. {{ invoice.number }}</title>
+  <title>Timehseet {{ timesheet.title }}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   {% if style == "anvil" %}
   <link rel="stylesheet" href="./web/modern-normalize.css">
   <link rel="stylesheet" href="./web/web-base.css">
-  <link rel="stylesheet" href="./invoice.css">
+  <link rel="stylesheet" href="./timesheet.css">
   <!-- <script type="text/javascript" src="./web/scripts.js"></script> -->
   {% else %}
   <!-- pure HTML -->
@@ -37,8 +37,8 @@
   <table class="invoice-info-container">
     <tr>
       <td rowspan="2" class="client-name">
-        {{ invoice.contract.client.invoicing_contact.name}}<br>
-        {{ invoice.contract.client.invoicing_contact.address.html }}
+        {{ timesheet.project.client.invoicing_contact.name}}<br>
+        {{ timesheet.project.client.invoicing_contact.address.html }}
       </td>
       <td>
         {{ user.name }}<br>
@@ -60,8 +60,7 @@
     </tr>
     <tr>
       <td>
-        Invoice Date: <strong>{{ invoice.date }}</strong><br>
-        Invoice Number: <strong>{{ invoice.number }}</strong>
+        Timesheet: <strong>{{ timesheet.title }}</strong>
       </td>
       <td>
       </td>
@@ -72,53 +71,35 @@
   <table class="line-items-container">
     <thead>
       <tr>
-        <th class="heading-description">Date</th>
-        <th class="heading-description">Description</th>
-        <th class="heading-quantity">Qty</th>
-        <th class="heading-quantity">Unit</th>
-        <th class="heading-price">Unit Price</th>
-        <th class="heading-price">VAT%</th>
-        <th class="heading-subtotal">Subtotal</th>
+        <th>Begin</th>
+        <th>End</th>
+        <th>Duration</th>
+        <th>Description</th>
+
       </tr>
     </thead>
     <tbody>
-      {% for item in invoice.items %}
+      {% for item in timesheet.items %}
       <tr>
-        <td>{{ item.date }}</td>
+        <td>{{ item.begin }}</td>
+        <td>{{ item.end }}</td>
+        <td>{{ item.duration }}</td>
         <td>{{ item.description }}</td>
-        <td class="right">{{ item.quantity }}</td>
-        <td class="right">{{ item.unit }}</td>
-        <td class="right">{{ item.unit_price | as_currency}} €</td>
-        <td class="right">{{ item.VAT_rate | as_percentage }}</td>
-        <td class="right">{{ item.subtotal | as_currency }}</td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
 
-
   <table class="line-items-container has-bottom-border">
-    <thead>
-      <tr>
-        <th>Payment Info</th>
-        <th>Due By</th>
-        <th>Total VAT</th>
-        <th>Total Due</th>
-      </tr>
-    </thead>
     <tbody>
       <tr>
-        <td class="payment-info">
-          <div>
-            Account No: <strong>{{ user.bank_account.IBAN }}</strong>
-          </div>
-        </td>
-        <td class="bold">{{ invoice.due_date }}</td>
-        <td>{{ invoice.VAT_total | as_currency }}</td>
-        <td class="bold">{{ invoice.total | as_currency }}</td>
+        <th><b>Total</b></th>
+        <td>{{ timesheet.total | as_hours }} hours</td>
       </tr>
     </tbody>
   </table>
+
+
 
   <div class="footer">
     <div class="footer-info">
@@ -126,11 +107,7 @@
       <span>{{ user.phone_number }}</span> |
       <span>{{ user.website }}</span>
     </div>
-    <div class="footer-thanks">
-      <span>Thank you!</span>
-    </div>
   </div>
-
 
 </div>
 
