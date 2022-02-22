@@ -91,7 +91,7 @@ def render_timesheet(
     user: User,
     timesheet: Timesheet,
     out_dir: str = None,
-    style: str = "Milligram",
+    style: str = "anvil",
 ) -> str:
     """Render a Timeseheet using an HTML template.
 
@@ -103,13 +103,13 @@ def render_timesheet(
     Returns:
         str: [description]
     """
-    template_name = "timesheet"
+    template_name = "timesheet-anvil"
     template_path = get_template_path(template_name)
     template_env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_path))
     # filters
     template_env.filters["as_hours"] = lambda td: td / pandas.Timedelta("1 hour")
 
-    timesheet_template = template_env.get_template(f"{template_name}.html")
+    timesheet_template = template_env.get_template("timesheet.html")
     html = timesheet_template.render(user=user, timesheet=timesheet, style=style)
     # output
     if out_dir is None:
@@ -122,6 +122,25 @@ def render_timesheet(
         timesheet_path = timesheet_dir / Path(f"{prefix}.html")
         with open(timesheet_path, "w") as timesheet_file:
             timesheet_file.write(html)
+        # copy stylsheets
+        if style:
+            stylesheets = []
+            stylesheet_folders = []
+            if style == "anvil":
+                stylesheets = ["timesheet.css"]
+                stylesheet_folders = [
+                    "web",
+                ]
+            for stylesheet_path in stylesheets:
+                stylesheet_path = template_path / stylesheet_path
+                shutil.copy(stylesheet_path, timesheet_dir)
+            for stylesheet_folder_path in stylesheet_folders:
+                full_stylesheet_folder_path = template_path / stylesheet_folder_path
+                shutil.copytree(
+                    full_stylesheet_folder_path,
+                    timesheet_dir / stylesheet_folder_path,
+                    dirs_exist_ok=True,
+                )
 
 
 def render_timeline(

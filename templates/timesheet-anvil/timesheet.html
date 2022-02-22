@@ -1,0 +1,116 @@
+<!doctype html>
+<html class="no-js" lang="">
+
+<head>
+  <meta charset="utf-8">
+  <title>Timehseet {{ timesheet.title }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  {% if style == "anvil" %}
+  <link rel="stylesheet" href="./web/modern-normalize.css">
+  <link rel="stylesheet" href="./web/web-base.css">
+  <link rel="stylesheet" href="./timesheet.css">
+  <!-- <script type="text/javascript" src="./web/scripts.js"></script> -->
+  {% else %}
+  <!-- pure HTML -->
+  {% endif %}
+</head>
+<body>
+
+<div class="web-container">
+
+  <div class="page-container">
+    <span class="page"></span>
+    <span class="pages"></span>
+  </div>
+
+  {% if user.logo %}
+  <div class="logo-container">
+    <img
+      style="height: 18px"
+      src="https://app.useanvil.com/img/email-logo-black.png"
+    >
+  </div>
+  {% endif %}
+
+
+  <table class="invoice-info-container">
+    <tr>
+      <td rowspan="2" class="client-name">
+        {{ timesheet.project.client.invoicing_contact.name}}<br>
+        {{ timesheet.project.client.invoicing_contact.address.html }}
+      </td>
+      <td>
+        {{ user.name }}<br>
+        {{ user.address.html }}
+      </td>
+    </tr>
+    <tr>
+      <td>
+
+      </td>
+    </tr>
+    <tr>
+      <td>
+
+      </td>
+      <td>
+
+      </td>
+    </tr>
+    <tr>
+      <td>
+        Timesheet: <strong>{{ timesheet.title }}</strong>
+      </td>
+      <td>
+      </td>
+    </tr>
+  </table>
+
+
+  <table class="line-items-container">
+    <thead>
+      <tr>
+        <th>Begin</th>
+        <th>End</th>
+        <th>Duration</th>
+        <th>Description</th>
+
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in timesheet.items %}
+      <tr>
+        <td>{{ item.begin }}</td>
+        <td>{{ item.end }}</td>
+        <td>{{ item.duration }}</td>
+        <td>{{ item.description }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <table class="line-items-container has-bottom-border">
+    <tbody>
+      <tr>
+        <th><b>Total</b></th>
+        <td>{{ timesheet.total | as_hours }} hours</td>
+      </tr>
+    </tbody>
+  </table>
+
+
+
+  <div class="footer">
+    <div class="footer-info">
+      <span>{{ user.e_mail}}</span> |
+      <span>{{ user.phone_number }}</span> |
+      <span>{{ user.website }}</span>
+    </div>
+  </div>
+
+</div>
+
+
+</body>
+</html>
