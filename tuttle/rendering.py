@@ -42,7 +42,7 @@ def convert_html_to_pdf(
 def render_invoice(
     user: User,
     invoice: Invoice,
-    format: str = "html",
+    document_format: str = "html",
     out_dir: str = None,
     style: str = None,
 ) -> str:
@@ -108,7 +108,7 @@ def render_invoice(
                     invoice_dir / stylesheet_folder_path,
                     dirs_exist_ok=True,
                 )
-        if format == "pdf":
+        if document_format == "pdf":
             css_paths = [
                 path for path in glob.glob(f"{invoice_dir}/**/*.css", recursive=True)
             ]
@@ -122,6 +122,7 @@ def render_invoice(
 def render_timesheet(
     user: User,
     timesheet: Timesheet,
+    document_format: str = "html",
     out_dir: str = None,
     style: str = "anvil",
 ) -> str:
@@ -173,6 +174,15 @@ def render_timesheet(
                     timesheet_dir / stylesheet_folder_path,
                     dirs_exist_ok=True,
                 )
+        if document_format == "pdf":
+            css_paths = [
+                path for path in glob.glob(f"{timesheet_dir}/**/*.css", recursive=True)
+            ]
+            convert_html_to_pdf(
+                in_path=str(timesheet_path),
+                css_paths=css_paths,
+                out_path=timesheet_dir / Path(f"{prefix}.pdf"),
+            )
 
 
 def render_timeline(
