@@ -16,3 +16,4 @@ ics
 babel
 email-validator
 loguru
+pdfkit

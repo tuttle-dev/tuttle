@@ -2,10 +2,12 @@
 
 from pathlib import Path
 import shutil
+import glob
 
 import jinja2
 from babel.numbers import format_currency
 import pandas
+import pdfkit
 
 from .model import User, Invoice, Timesheet, Project
 from .view import Timeline
@@ -16,6 +18,25 @@ def get_template_path(template_name) -> str:
     module_path = Path(__file__).parent.resolve()
     template_path = module_path / Path(f"../templates/{template_name}")
     return template_path
+
+
+def convert_html_to_pdf(
+    in_path,
+    out_path,
+    css_paths=[],
+):
+    """_summary_
+
+    Args:
+        source_dir (_type_): _description_
+        dest_dir (_type_): _description_
+    """
+    try:
+        pdfkit.from_file(input=in_path, output_path=out_path, css=css_paths)
+    except OSError:
+        # Exit with code 1 due to network error: ProtocolUnknownError
+        # ignore this error since a correct output is produced anyway
+        pass
 
 
 def render_invoice(
@@ -87,6 +108,15 @@ def render_invoice(
                     invoice_dir / stylesheet_folder_path,
                     dirs_exist_ok=True,
                 )
+        if format == "pdf":
+            css_paths = [
+                path for path in glob.glob(f"{invoice_dir}/**/*.css", recursive=True)
+            ]
+            convert_html_to_pdf(
+                in_path=str(invoice_path),
+                css_paths=css_paths,
+                out_path=invoice_dir / Path(f"{prefix}.pdf"),
+            )
 
 
 def render_timesheet(
