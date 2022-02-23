@@ -4,6 +4,7 @@ from typing import List
 import datetime
 from pathlib import Path
 import shutil
+from venv import create
 
 
 import pandas
@@ -11,6 +12,7 @@ import datetime
 
 from .model import InvoiceItem, Invoice, Contract, User
 from .timetracking import Timesheet
+from .mail import create_email, send_email
 
 
 def generate_invoice(
@@ -37,5 +39,14 @@ def generate_invoice(
     return invoice
 
 
-def format_currency():
-    raise NotImplementedError()
+def send_invoice(
+    user: User,
+    invoice: Invoice,
+):
+    message = create_email(
+        email_from=user.email,
+        email_to=invoice.client,
+        subject=invoice.number,
+        body=None,  #
+        attachments=None,  # TODO: inovice as PDF
+    )

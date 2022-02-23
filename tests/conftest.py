@@ -14,7 +14,7 @@ def demo_user():
         name="Harry Tuttle",
         subtitle="Heating Engineer",
         website="https://tuttle-dev.github.io/tuttle/",
-        e_mail="mail@tuttle.com",
+        email="mail@tuttle.com",
         phone_number="+55555555555",
         VAT_number="27B-6",
         address=Address(
@@ -39,7 +39,7 @@ def demo_clients():
         name="Central Services",
         invoicing_contact=Contact(
             name="Central Services",
-            e_mail="info@centralservices.com",
+            email="info@centralservices.com",
             address=Address(
                 street="Main Street",
                 number="42",
@@ -54,7 +54,7 @@ def demo_clients():
         name="Sam Lowry",
         invoicing_contact=Contact(
             name="Sam Lowry",
-            e_mail="info@centralservices.com",
+            email="info@centralservices.com",
             address=Address(
                 street="Main Street",
                 number="9999",

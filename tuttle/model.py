@@ -1,5 +1,6 @@
 """Object model."""
 
+import email
 from typing import Optional, List, Dict, Type
 from pydantic import constr, BaseModel
 
@@ -98,7 +99,7 @@ class User(SQLModel, table=True):
     name: str
     subtitle: str
     website: str
-    e_mail: EmailStr
+    email: EmailStr
     phone_number: str
     address_id: Optional[int] = Field(default=None, foreign_key="address.id")
     address: Optional[Address] = Relationship(back_populates="users")
@@ -154,7 +155,7 @@ class Contact(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
-    e_mail: Optional[EmailStr]
+    email: Optional[EmailStr]
     address_id: Optional[int] = Field(default=None, foreign_key="address.id")
     address: Optional[Address] = Relationship(back_populates="contacts")
     invoicing_contact_of: List["Client"] = Relationship(
@@ -347,6 +348,10 @@ class Invoice(SQLModel, table=True):
     def due_date(self):
         """Date until which payment is due."""
         return self.date + datetime.timedelta(days=self.contract.term_of_payment)
+
+    @property
+    def client(self):
+        return self.contract.client
 
 
 class InvoiceItem(SQLModel, table=True):

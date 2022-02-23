@@ -57,11 +57,11 @@ def test_user():
     user = model.User(
         name="Archibald Tuttle",
         subtitle="Shoe Repair Operative",
-        e_mail="archibald.tuttle@centralservices.com",
+        email="archibald.tuttle@centralservices.com",
     )
 
     icloud_account = model.ICloudAccount(
-        user_name=user.e_mail,
+        user_name=user.email,
     )
 
     user.icloud_account = icloud_account
@@ -92,7 +92,7 @@ def test_contract():
                 postal_code="99999",
                 country="Brazil",
             ),
-            e_mail="mail@centralservices.com",
+            email="mail@centralservices.com",
         ),
     )
 
