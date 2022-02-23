@@ -21,6 +21,7 @@ def get_template_path(template_name) -> str:
 def render_invoice(
     user: User,
     invoice: Invoice,
+    format: str = "html",
     out_dir: str = None,
     style: str = None,
 ) -> str:
@@ -55,6 +56,7 @@ def render_invoice(
         invoice=invoice,
         style=style,
     )
+    # TODO: output as PDF
     # output
     if out_dir is None:
         return html

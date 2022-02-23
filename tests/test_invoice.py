@@ -63,3 +63,11 @@ def test_generate_invoice(
             date=datetime.date.today(),
         )
         assert invoice.total > 0
+
+
+def test_render_invoice_to_html():
+    pass
+
+
+def test_render_invoice_to_pdf():
+    pass
