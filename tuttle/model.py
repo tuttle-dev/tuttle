@@ -361,7 +361,10 @@ class Invoice(SQLModel, table=True):
 class InvoiceItem(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     # date and time
-    date: datetime.date
+    start_date: datetime.date = Field(description="Start date of the invoice item.")
+    end_date: Optional[datetime.date] = Field(
+        description="End date of the invoice item."
+    )
     #
     quantity: int
     unit: str

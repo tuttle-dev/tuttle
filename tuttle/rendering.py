@@ -83,7 +83,7 @@ def render_invoice(
         return html
     else:
         # write invoice html
-        prefix = f"Invoice-{invoice.number}"
+        prefix = f"{invoice.number}-{invoice.client.name.lower()}"
         invoice_dir = Path(out_dir) / Path(prefix)
         invoice_dir.mkdir(parents=True, exist_ok=True)
         invoice_path = invoice_dir / Path(f"{prefix}.html")

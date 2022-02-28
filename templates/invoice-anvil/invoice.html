@@ -41,8 +41,15 @@
         {{ invoice.contract.client.invoicing_contact.address.html }}
       </td>
       <td>
-        {{ user.name }}<br>
+        <big>{{ user.name }}</big><br>
+        {{ user.subtitle }}<br>
+        <br>
         {{ user.address.html }}
+        <br>
+        <br>
+        <span>{{ user.email}}</span><br>
+        <span>{{ user.phone_number }}</span><br>
+        <span>{{ user.website }}</span>
       </td>
     </tr>
     <tr>
@@ -60,8 +67,9 @@
     </tr>
     <tr>
       <td>
-        Invoice Date: <strong>{{ invoice.date }}</strong><br>
-        Invoice Number: <strong>{{ invoice.number }}</strong>
+        <br>
+       <big>Invoice Date: <strong>{{ invoice.date }}</strong></big> <br>
+       <big>Invoice Number: <strong>{{ invoice.number }}<big></big></strong>
       </td>
       <td>
       </td>
@@ -84,7 +92,7 @@
     <tbody>
       {% for item in invoice.items %}
       <tr>
-        <td>{{ item.date }}</td>
+        <td>{{ item.start_date }} -  {{ item.end_date }}</td>
         <td>{{ item.description }}</td>
         <td class="right">{{ item.quantity }}</td>
         <td class="right">{{ item.unit }}</td>
@@ -110,7 +118,7 @@
       <tr>
         <td class="payment-info">
           <div>
-            Account No: <strong>{{ user.bank_account.IBAN }}</strong>
+            IBAN: <strong>{{ user.bank_account.IBAN }}</strong><br>
           </div>
         </td>
         <td class="bold">{{ invoice.due_date }}</td>
@@ -120,14 +128,22 @@
     </tbody>
   </table>
 
+  <div>
+    <p>
+      <br>
+    <span>Thank you for your business</span>
+   </p>
+    <br>
+    <br>
+    <hr align="left" width="25%">
+    {{ user.name }}
+  </div>
+
   <div class="footer">
     <div class="footer-info">
-      <span>{{ user.e_mail}}</span> |
-      <span>{{ user.phone_number }}</span> |
-      <span>{{ user.website }}</span>
-    </div>
-    <div class="footer-thanks">
-      <span>Thank you!</span>
+      <span>IBAN: {{ user.bank_account.IBAN }} </span> |
+      <span>BIC: {{ user.bank_account.BIC  }}</span> |
+      <span>VAT No: {{ user.VAT_number }}</span>
     </div>
   </div>
 
