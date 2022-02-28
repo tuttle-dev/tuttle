@@ -143,6 +143,7 @@ class ICloudCalendar(CloudCalendar):
                 # TODO: extract tag
                 "tag": event_data["title"],
                 "description": event_data["description"],
+                "all_day": event_data["allDay"],
             }
         )
         # TODO: handle timezones

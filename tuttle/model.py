@@ -202,6 +202,10 @@ class Contract(SQLModel, table=True):
         description="Rate of remuneration",
     )
     currency: str  # TODO: currency representation
+    VAT_rate: Decimal = Field(
+        description="VAT rate applied to the contractual rate.",
+        default=0.19,  # TODO: configure by country?
+    )
     unit: TimeUnit = Field(
         description="Unit of time tracked. The rate applies to this unit.",
         sa_column=sqlalchemy.Column(sqlalchemy.Enum(TimeUnit)),

@@ -10,18 +10,24 @@ from . import model
 class App:
     """The main application class"""
 
-    def __init__(self, debug_mode=False, verbose=False):
+    def __init__(self, debug_mode=False, verbose=False, in_memory=False):
         if debug_mode:
             self.home = Path("./test_home")
         else:
             self.home = Path.home() / ".tuttle"
         if not os.path.exists(self.home):
             os.mkdir(self.home)
-        self.db_path = self.home / "tuttle.db"
-        self.db_engine = sqlmodel.create_engine(
-            f"sqlite:///{self.db_path}",
-            echo=verbose,
-        )
+        if in_memory:
+            self.db_engine = sqlmodel.create_engine(
+                f"sqlite:///",
+                echo=verbose,
+            )
+        else:
+            self.db_path = self.home / "tuttle.db"
+            self.db_engine = sqlmodel.create_engine(
+                f"sqlite:///{self.db_path}",
+                echo=verbose,
+            )
         sqlmodel.SQLModel.metadata.create_all(self.db_engine)
         self.db_session = self.get_session()
 
@@ -78,9 +84,21 @@ class App:
         user = self.db_session.exec(sqlmodel.select(model.User)).one()
         return user
 
-    def get_project(self, title: str):
-        """Get a project by its title."""
-        project = self.db_session.exec(
-            (sqlmodel.select(model.Project).where(model.Project.title == title))
-        ).one()
-        return project
+    def get_project(
+        self,
+        title: str = None,
+        tag: str = None,
+    ):
+        """Get a project by title or tag."""
+        if title:
+            project = self.db_session.exec(
+                (sqlmodel.select(model.Project).where(model.Project.title == title))
+            ).one()
+            return project
+        elif tag:
+            project = self.db_session.exec(
+                (sqlmodel.select(model.Project).where(model.Project.tag == tag))
+            ).one()
+            return project
+        else:
+            raise ValueError("either project title or tag required")
