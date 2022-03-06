@@ -67,4 +67,4 @@ Your contributions are welcome. Please follow the [guide (CONTRIBUTING.md)](http
 
 This project is funded by the [Prototype Fund](https://prototypefund.de).
 
-![](https://nextcloud.com/media/PrototypeFund-P-Logo.png)
+![](https://images.app.goo.gl/NBYyLqUAK54ZeTEi7) ![](https://prototypefund.de/wp-content/uploads/2016/07/logo-okfn.svg)
