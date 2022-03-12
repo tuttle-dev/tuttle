@@ -1,6 +1,7 @@
 """Main application."""
 from pathlib import Path
 import os
+import sys
 
 import sqlmodel
 
@@ -28,6 +29,14 @@ class App:
                 f"sqlite:///{self.db_path}",
                 echo=verbose,
             )
+        # configure logging
+        if verbose:
+            # TODO:
+            pass
+        else:
+            # TODO:
+            pass
+        # setup DB
         sqlmodel.SQLModel.metadata.create_all(self.db_engine)
         self.db_session = self.get_session()
 
