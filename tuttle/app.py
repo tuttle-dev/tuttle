@@ -2,6 +2,7 @@
 from pathlib import Path
 import os
 import sys
+import datetime
 
 import pandas
 import sqlmodel
@@ -40,6 +41,9 @@ class App:
         # setup DB
         sqlmodel.SQLModel.metadata.create_all(self.db_engine)
         self.db_session = self.get_session()
+        # setup visual theme
+        # TODO: by user settings
+        dataviz.enable_theme("tuttle_dark")
 
     def get_session(self):
         return sqlmodel.Session(
@@ -114,9 +118,7 @@ class App:
             raise ValueError("either project title or tag required")
 
     def eval_time_planning(
-        self,
-        planning_source,
-        by="project",
+        self, planning_source, by="project", from_date: datetime.date = None
     ):
         def duration_to_revenue(
             row,
