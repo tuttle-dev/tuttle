@@ -22,3 +22,5 @@ time_tracking = DataFrameSchema(
         "duration": Column(Timedelta),
     },
 )
+
+time_planning = time_tracking  # REVIEW: identical?

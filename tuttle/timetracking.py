@@ -213,14 +213,21 @@ def progress(
     return total_time.loc[tag]["duration"] / budget
 
 
-def eval_time_allocation(
+@check_io(
+    out=schema.time_planning,
+)
+def get_time_planning_data(
     source,
-):
+    from_date: datetime.date = None,
+) -> DataFrame:
+    """Get time planning data from a source."""
+    if from_date is None:
+        from_date = datetime.date.today()
     if issubclass(type(source), Calendar):
         cal = source
-        timetracking_data = cal.to_data()
+        planning_data = cal.to_data()
     elif isinstance(source, pandas.DataFrame):
-        timetracking_data = source
-        schema.time_tracking.validate(timetracking_data)
-
-    return timetracking_data
+        planning_data = source
+        schema.time_tracking.validate(planning_data)
+    planning_data = planning_data[str(from_date) :]
+    return planning_data

@@ -3,19 +3,20 @@ from pathlib import Path
 import os
 import sys
 
+import pandas
 import sqlmodel
 
-from . import model
+from . import model, timetracking, dataviz
 
 
 class App:
     """The main application class"""
 
-    def __init__(self, debug_mode=False, verbose=False, in_memory=False):
-        if debug_mode:
-            self.home = Path("./test_home")
-        else:
+    def __init__(self, home_dir=None, verbose=False, in_memory=False):
+        if home_dir is None:
             self.home = Path.home() / ".tuttle"
+        else:
+            self.home = Path(home_dir)
         if not os.path.exists(self.home):
             os.mkdir(self.home)
         if in_memory:
@@ -111,3 +112,52 @@ class App:
             return project
         else:
             raise ValueError("either project title or tag required")
+
+    def eval_time_planning(
+        self,
+        planning_source,
+        by="project",
+    ):
+        def duration_to_revenue(
+            row,
+        ):
+            if isinstance(row.name, tuple):
+                tag = row.name[0]
+            else:
+                tag = row.name
+            project = self.get_project(tag=tag)
+            units = row["duration"] / project.contract.unit.to_timedelta()
+            rate = project.contract.rate
+            revenue = units * float(rate)
+            return {
+                "units": units,
+                "revenue": revenue,
+                "currency": project.contract.currency,
+            }
+
+        planning_data = timetracking.get_time_planning_data(
+            planning_source,
+        )
+        if by == "project":
+            grouped_planning_data = (
+                planning_data.filter(["tag", "duration"]).groupby("tag").sum()
+            )
+        elif by == ("month", "project"):
+            grouped_planning_data = (
+                planning_data.filter(["tag", "duration"])
+                .groupby(["tag", pandas.Grouper(freq="1M")])
+                .sum()
+            )
+        else:
+            raise ValueError(f"unrecognized grouping parameter: {by}")
+        # postprocess planning data
+        expanded_data = grouped_planning_data.join(
+            grouped_planning_data.apply(
+                duration_to_revenue, axis=1, result_type="expand"
+            )
+        )
+        plot = dataviz.plot_eval_time_planning(
+            expanded_data,
+            by=by,
+        )
+        return plot
