@@ -36,6 +36,11 @@ For this purpose, the Tuttle project is split across several repositories:
 - The desktop application frontend, based on Electron.js, is being developed in [tuttle-dev/tuttle-app](https://github.com/tuttle-dev/tuttle-app)
 
 
+## Prototype Test
+
+A demo of the core functionality is available as a series of Jupyter notebooks at [`notebooks/walkthrough/`](https://github.com/tuttle-dev/tuttle/tree/main/notebooks/walkthrough). If you have basic Python programming skills you will be able to test this. We appreciate your feedback.
+
+
 ## Setup
 
 1. Clone or download the current version from the `main` branch.
@@ -67,4 +72,4 @@ Your contributions are welcome. Please follow the [guide (CONTRIBUTING.md)](http
 
 This project is funded by the [Prototype Fund](https://prototypefund.de).
 
-![](https://vframe.io/about/funding/prototype-fund/assets/index.jpg) 
+![](https://vframe.io/about/funding/prototype-fund/assets/index.jpg)
