@@ -30,7 +30,7 @@ def test_generate_timesheet(
             timesheet = timetracking.generate_timesheet(
                 source=demo_calendar_timetracking,
                 project=project,
-                period=period,
+                period_start=period,
                 item_description=project.title,
             )
             assert (timesheet.empty) or (timesheet.total >= pandas.Timedelta("0 hours"))

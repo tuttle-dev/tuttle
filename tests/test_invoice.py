@@ -52,7 +52,7 @@ def test_generate_invoice(
             timesheet = timetracking.generate_timesheet(
                 source=demo_calendar_timetracking,
                 project=project,
-                period=period,
+                period_start=period,
                 item_description=project.title,
             )
             if not timesheet.empty:
