@@ -62,7 +62,7 @@ def render_invoice(
         )
 
     def as_percentage(number):
-        return f"{number * 100} %"
+        return f"{number * 100:.1f} %"
 
     template_name = f"invoice-anvil"
     template_path = get_template_path(template_name)
@@ -83,7 +83,8 @@ def render_invoice(
         return html
     else:
         # write invoice html
-        prefix = f"{invoice.number}-{invoice.client.name.lower()}"
+        client_suffix = invoice.client.name.lower().split()[0]
+        prefix = f"{invoice.number}-{client_suffix}"
         invoice_dir = Path(out_dir) / Path(prefix)
         invoice_dir.mkdir(parents=True, exist_ok=True)
         invoice_path = invoice_dir / Path(f"{prefix}.html")

@@ -67,6 +67,14 @@ def generate_timesheet(
         return ts_table
 
     # TODO: grouping
+    if group_by is None:
+        pass
+    elif group_by == "day":
+        raise NotImplementedError("TODO")
+    elif group_by == "week":
+        raise NotImplementedError("TODO")
+    else:
+        raise ValueError(f"unknown group_by argument: {group_by}")
 
     ts = Timesheet(
         title=f"{project.title} - {period_str}",

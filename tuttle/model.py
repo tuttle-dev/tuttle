@@ -340,12 +340,14 @@ class Invoice(SQLModel, table=True):
         """Total invoiced amount."""
         return self.sum + self.VAT_total
 
-    def generate_number(self, pattern=None):
+    def generate_number(self, pattern=None, counter=None):
         """Generate an invoice number"""
         date_prefix = self.date.strftime("%Y-%m-%d")
         # suffix = hashlib.shake_256(str(uuid.uuid4()).encode("utf-8")).hexdigest(2)
         # TODO: auto-increment suffix for invoices generated on the same day
-        suffix = "01"
+        if counter is None:
+            counter = 1
+        suffix = f"{counter:02}"
         self.number = f"{date_prefix}-{suffix}"
 
     @property
