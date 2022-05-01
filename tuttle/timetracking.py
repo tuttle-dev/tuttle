@@ -70,7 +70,15 @@ def generate_timesheet(
     if group_by is None:
         pass
     elif group_by == "day":
-        raise NotImplementedError("TODO")
+        ts_table = ts_table.reset_index()
+        ts_table = ts_table.groupby(by=ts_table["begin"].dt.date).agg(
+            {
+                "title": "first",
+                "tag": "first",
+                "description": "first",
+                "duration": "sum",
+            }
+        )
     elif group_by == "week":
         raise NotImplementedError("TODO")
     else:

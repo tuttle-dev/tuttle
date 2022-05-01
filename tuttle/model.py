@@ -261,7 +261,7 @@ class TimeTrackingItem(SQLModel, table=True):
     timesheet: Optional["Timesheet"] = Relationship(back_populates="items")
     #
     begin: datetime.datetime
-    end: datetime.datetime
+    end: Optional[datetime.datetime]
     duration: datetime.timedelta
     title: str
     tag: str
