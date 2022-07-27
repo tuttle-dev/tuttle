@@ -24,13 +24,20 @@ from .model import (
 def generate_timesheet(
     source,
     project: Project,
-    period: str,
+    period_start: str,
+    period_end: str = None,
     date: datetime.date = datetime.date.today(),
     comment: str = "",
     group_by: str = None,
     item_description: str = None,
     as_dataframe: bool = False,
 ) -> Timesheet:
+    if period_end:
+        period = (period_start, period_end)
+        period_str = f"{period_start} - {period_end}"
+    else:
+        period = period_start
+        period_str = f"{period_start}"
     # convert cal to data
     timetracking_data = None
     if issubclass(type(source), Calendar):
@@ -41,9 +48,13 @@ def generate_timesheet(
         schema.time_tracking.validate(timetracking_data)
     else:
         raise ValueError(f"unknown source: {source}")
-    ts_table = (
-        timetracking_data.loc[period].query(f"tag == '{project.tag}'").sort_index()
-    )
+    tag_query = f"tag == '{project.tag}'"
+    if period_end:
+        ts_table = (
+            timetracking_data.loc[period_start:period_end].query(tag_query).sort_index()
+        )
+    else:
+        ts_table = timetracking_data.loc[period_start].query(tag_query).sort_index()
     # convert all-day entries
     ts_table.loc[ts_table["all_day"], "duration"] = (
         project.contract.unit.to_timedelta() * project.contract.units_per_workday
@@ -56,9 +67,25 @@ def generate_timesheet(
         return ts_table
 
     # TODO: grouping
+    if group_by is None:
+        pass
+    elif group_by == "day":
+        ts_table = ts_table.reset_index()
+        ts_table = ts_table.groupby(by=ts_table["begin"].dt.date).agg(
+            {
+                "title": "first",
+                "tag": "first",
+                "description": "first",
+                "duration": "sum",
+            }
+        )
+    elif group_by == "week":
+        raise NotImplementedError("TODO")
+    else:
+        raise ValueError(f"unknown group_by argument: {group_by}")
 
     ts = Timesheet(
-        title=f"{project.title} - {period}",
+        title=f"{project.title} - {period_str}",
         period=period,
         project=project,
         comment=comment,

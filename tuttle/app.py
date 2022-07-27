@@ -7,7 +7,9 @@ import datetime
 import pandas
 import sqlmodel
 
-from . import model, timetracking, dataviz
+from loguru import logger
+
+from . import model, timetracking, dataviz, rendering, invoicing, calendar, cloud
 
 
 class App:
@@ -163,3 +165,54 @@ class App:
             by=by,
         )
         return plot
+
+    def billing(
+        self,
+        project_tags,
+        out_dir,
+        period_start,
+        period_end=None,
+        timetracking_method="calendar",
+    ):
+        """Generate time sheets and invoices for a given period"""
+        # TODO: read method from user settings
+        if timetracking_method == "calendar":
+            timetracking_calendar = calendar.ICloudCalendar(
+                icloud=cloud.login_iCloud(user_name=self.user.icloud_account.user_name),
+                # TODO: read from user settings
+                name="TimeTracking",
+            )
+        else:
+            raise ValueError(f"unsupported time tracking method: {timetracking_method}")
+
+        for i, tag in enumerate(project_tags):
+            project = self.get_project(tag=tag)
+            logger.info(f"generating timesheet for {project.title}")
+            timesheet = timetracking.generate_timesheet(
+                source=timetracking_calendar,
+                project=project,
+                period_start=period_start,
+                period_end=period_end,
+                item_description=project.title,
+            )
+            rendering.render_timesheet(
+                user=self.user,
+                timesheet=timesheet,
+                style="anvil",
+                document_format="pdf",
+                out_dir=out_dir,
+            )
+            logger.info(f"generating invoice for {project.title}")
+            invoice = invoicing.generate_invoice(
+                timesheets=[timesheet],
+                contract=project.contract,
+                date=datetime.date.today(),
+                counter=(i + 1),
+            )
+            rendering.render_invoice(
+                user=self.user,
+                invoice=invoice,
+                style="anvil",
+                document_format="pdf",
+                out_dir=out_dir,
+            )
