@@ -56,8 +56,8 @@ def test_model_creation():
 def test_user():
     user = model.User(
         name="Archibald Tuttle",
-        subtitle="Shoe Repair Operative",
-        email="archibald.tuttle@centralservices.com",
+        subtitle="Heating Engineer",
+        email="harry@tuttle.com",
     )
 
     icloud_account = model.ICloudAccount(

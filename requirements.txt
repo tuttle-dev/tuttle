@@ -2,6 +2,7 @@ pytest
 pandas
 pandera
 altair
+pydantic[email]
 sqlmodel
 pyicloud
 fints
@@ -9,4 +10,3 @@ ics
 babel
 loguru
 pdfkit
-beepy
