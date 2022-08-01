@@ -37,6 +37,6 @@ setup(
     packages=find_packages(include=["tuttle", "tuttle.*"]),
     test_suite="tests",
     url="https://github.com/tuttle-dev/tuttle",
-    version="0.0.7",
+    version="0.0.8",
     zip_safe=False,
 )
