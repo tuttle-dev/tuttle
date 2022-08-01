@@ -7,9 +7,6 @@ from setuptools import setup, find_packages
 with open("README.md") as readme_file:
     readme = readme_file.read()
 
-with open("HISTORY.md") as history_file:
-    history = history_file.read()
-
 with open("requirements.txt") as requirements_file:
     requirements = requirements_file.readlines()
 
@@ -33,7 +30,7 @@ setup(
     description="Painless business planning for freelancers.",
     install_requires=requirements + dev_requirements,
     license="GNU General Public License v3",
-    long_description=readme + "\n\n" + history,
+    long_description=readme + "\n\n",
     include_package_data=True,
     keywords="tuttle",
     name="tuttle",
