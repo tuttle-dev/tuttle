@@ -1,7 +1,7 @@
 """Top-level package for tuttle."""
 
 __author__ = """Christian Staudt"""
-__version__ = "0.0.4"
+__version__ = "0.0.5"
 
 from . import (
     app,
