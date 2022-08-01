@@ -28,7 +28,7 @@ setup(
         "Programming Language :: Python :: 3.10",
     ],
     description="Painless business planning for freelancers.",
-    install_requires=requirements + dev_requirements,
+    install_requires=requirements,
     license="GNU General Public License v3",
     long_description=readme + "\n\n",
     include_package_data=True,
