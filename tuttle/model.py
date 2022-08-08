@@ -15,7 +15,8 @@ from sqlmodel import (
     Field,
     Relationship,
 )
-from pydantic import EmailStr
+
+# from pydantic import str
 import decimal
 from decimal import Decimal
 import pandas
@@ -99,7 +100,7 @@ class User(SQLModel, table=True):
     name: str
     subtitle: str
     website: str
-    email: EmailStr
+    email: str
     phone_number: str
     address_id: Optional[int] = Field(default=None, foreign_key="address.id")
     address: Optional[Address] = Relationship(back_populates="users")
@@ -155,7 +156,7 @@ class Contact(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
-    email: Optional[EmailStr]
+    email: Optional[str]
     address_id: Optional[int] = Field(default=None, foreign_key="address.id")
     address: Optional[Address] = Relationship(back_populates="contacts")
     invoicing_contact_of: List["Client"] = Relationship(

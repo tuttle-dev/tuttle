@@ -1,7 +1,7 @@
 pytest
 pandas
 altair
-pydantic[email]
+pydantic
 sqlalchemy == 1.4.35
 sqlmodel
 pyicloud
