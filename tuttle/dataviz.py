@@ -2,7 +2,8 @@
 
 import altair
 
-from pandera.typing import DataFrame
+# from pandera.typing import DataFrame
+from pandas import DataFrame
 
 from .dev import deprecated
 

@@ -1,6 +1,5 @@
 pytest
 pandas
-pandera
 altair
 pydantic[email]
 sqlalchemy == 1.4.35
