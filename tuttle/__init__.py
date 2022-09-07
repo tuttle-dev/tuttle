@@ -4,11 +4,11 @@ __author__ = """Christian Staudt"""
 __version__ = "0.0.11"
 
 from . import (
-    app,
     banking,
     calendar,
     cloud,
     context,
+    controller,
     invoicing,
     model,
     tax,

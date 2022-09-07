@@ -3,4 +3,4 @@
 import tuttle
 
 if __name__ == "__main__":
-    app = tuttle.app.App(debug_mode=True)
+    controller = tuttle.controller.Controller(debug_mode=True)
