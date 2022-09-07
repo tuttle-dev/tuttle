@@ -1,5 +1,6 @@
 import flet
 from flet import (
+    View,
     Column,
     FloatingActionButton,
     Icon,
@@ -13,6 +14,7 @@ from flet import (
     FilledTonalButton,
     ElevatedButton,
     IconButton,
+    Switch,
 )
 
 import tuttle
@@ -21,6 +23,32 @@ import tuttle
 def main(page: Page):
 
     application = tuttle.app.App(home_dir=".demo_home")
+
+    # NAVIGATION
+
+    def route_change(route):
+        page.views.clear()
+        page.views.append(
+            View(
+                "/",
+                [],
+            )
+        )
+        if page.route == "/dashboard":
+            page.views.append(
+                View(
+                    "/dashboard",
+                    [Text("Dashboard")],
+                )
+            )
+        elif page.route == "/projects":
+            page.views.append(
+                View(
+                    "/projects",
+                    [Text("Projects")],
+                )
+            )
+        page.update()
 
     rail = NavigationRail(
         selected_index=0,
@@ -70,22 +98,29 @@ def main(page: Page):
             [
                 rail,
                 VerticalDivider(width=1),
-                Column(
-                    [
-                        Text("Body!"),
-                        FilledTonalButton("Enabled button"),
-                        FilledTonalButton("Disabled button", disabled=True),
-                        ElevatedButton("Enabled button"),
-                        ElevatedButton("Disabled button", disabled=True),
-                        FloatingActionButton(icon=icons.CREATE, text="Action Button"),
-                        IconButton(
-                            icon=icons.CREATE,
-                            tooltip="Create",
-                        ),
-                    ],
-                    alignment="start",
-                    expand=True,
-                ),
+                # Column(
+                #     [
+                #         Text("Buttons"),
+                #         FilledTonalButton("Enabled button"),
+                #         FilledTonalButton("Disabled button", disabled=True),
+                #         ElevatedButton("Enabled button"),
+                #         ElevatedButton("Disabled button", disabled=True),
+                #         FloatingActionButton(icon=icons.CREATE, text="Action Button"),
+                #         IconButton(
+                #             icon=icons.CREATE,
+                #             tooltip="Create",
+                #         ),
+                #     ],
+                #     alignment="start",
+                #     expand=True,
+                # ),
+                # Column(
+                #     [
+                #         Text("Switches"),
+                #         Switch(label="Unchecked switch", value=False),
+                #         Switch(label="Checked switch", value=True),
+                #     ],
+                # )
             ],
             expand=True,
         )
