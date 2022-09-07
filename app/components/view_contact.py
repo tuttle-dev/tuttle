@@ -21,7 +21,7 @@ from tuttle.model import (
 
 
 class ContactView(UserControl):
-    """Main class of the application GUI."""
+    """View of the Contact model class."""
 
     def __init__(
         self,
