@@ -28,7 +28,7 @@ def store_and_retrieve(model_object):
 def test_model_creation():
     """Test whether the entire data model can be materialized as DB tables."""
     try:
-        test_home = Path("tests/data/tmp")
+        test_home = Path("tuttle_tests/data/tmp")
         db_path = test_home / "tuttle_test.db"
         db_url = f"sqlite:///{db_path}"
         db_engine = create_engine(db_url, echo=True)

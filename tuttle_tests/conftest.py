@@ -127,7 +127,7 @@ def demo_projects(demo_contracts):
 
 @pytest.fixture
 def demo_calendar_timetracking():
-    timetracking_calendar_path = Path("tests/data/TuttleDemo-TimeTracking.ics")
+    timetracking_calendar_path = Path("tuttle_tests/data/TuttleDemo-TimeTracking.ics")
     cal = tuttle.calendar.FileCalendar(
         path=timetracking_calendar_path, name="TimeTracking"
     )
