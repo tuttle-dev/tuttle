@@ -106,8 +106,6 @@ def main(page: Page):
         verbose=True,
     )
 
-    print(con.db_engine)
-
     con.store(demo_contact)
     con.store(another_demo_contact)
 

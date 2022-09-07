@@ -14,7 +14,7 @@ from . import model, timetracking, dataviz, rendering, invoicing, calendar, clou
 
 
 class Controller:
-    """The main application class"""
+    """The application controller."""
 
     def __init__(self, home_dir=None, verbose=False, in_memory=False):
         if home_dir is None:
@@ -80,7 +80,6 @@ class Controller:
     def delete(self, entity):
         """Delete an entity from the database."""
         with self.get_session() as session:
-
             session.delete(entity)
             session.commit()
 
