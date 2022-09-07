@@ -14,21 +14,53 @@ from flet import (
 )
 from flet import icons
 
+from tuttle.controller import Controller
 from tuttle.model import (
     Contact,
     Address,
 )
 
+from tuttle_tests.demo_objects import demo_contact, another_demo_contact
 
-class ContactView(UserControl):
+
+class App(UserControl):
+    def __init__(
+        self,
+        con: Controller,
+    ):
+        super().__init__()
+        self.con = con
+
+
+class AppView(UserControl):
+    def __init__(
+        self,
+        app: App,
+    ):
+        super().__init__()
+        self.app = app
+
+
+class ContactView(AppView):
     """View of the Contact model class."""
 
     def __init__(
         self,
         contact: Contact,
+        app: App,
     ):
-        super().__init__()
+        super().__init__(app)
         self.contact = contact
+
+    def get_address(self):
+        if self.contact.address:
+            return self.contact.address.printed
+        else:
+            return ""
+
+    def delete_contact(self, event):
+        """Delete the contact."""
+        self.app.con.delete(self.contact)
 
     def build(self):
         """Obligatory build method."""
@@ -42,7 +74,7 @@ class ContactView(UserControl):
                             subtitle=Column(
                                 [
                                     Text(self.contact.email),
-                                    Text(self.contact.address.printed),
+                                    Text(self.get_address()),
                                 ]
                             ),
                         ),
@@ -53,6 +85,7 @@ class ContactView(UserControl):
                                 ),
                                 IconButton(
                                     icon=icons.DELETE,
+                                    on_click=self.delete_contact,
                                 ),
                             ],
                             alignment="end",
@@ -68,22 +101,22 @@ class ContactView(UserControl):
 
 def main(page: Page):
 
-    demo_contact = Contact(
-        name="Sam Lowry",
-        email="info@centralservices.com",
-        address=Address(
-            street="Main Street",
-            number="9999",
-            postal_code="55555",
-            city="Sao Paolo",
-            country="Brazil",
-        ),
+    con = Controller(
+        in_memory=True,
+        verbose=True,
     )
 
-    page.add(
-        ContactView(demo_contact),
-        ContactView(demo_contact),
+    print(con.db_engine)
+
+    con.store(demo_contact)
+    con.store(another_demo_contact)
+
+    app = App(
+        con,
     )
+
+    for contact in con.contacts:
+        page.add(ContactView(contact, app))
 
     page.update()
 

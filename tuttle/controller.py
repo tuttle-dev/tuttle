@@ -6,6 +6,7 @@ import datetime
 
 import pandas
 import sqlmodel
+from sqlmodel import pool
 
 from loguru import logger
 
@@ -26,6 +27,8 @@ class Controller:
             self.db_engine = sqlmodel.create_engine(
                 f"sqlite:///",
                 echo=verbose,
+                connect_args={"check_same_thread": False},
+                poolclass=pool.StaticPool,
             )
         else:
             self.db_path = self.home / "tuttle.db"
@@ -41,17 +44,24 @@ class Controller:
             # TODO:
             pass
         # setup DB
-        sqlmodel.SQLModel.metadata.create_all(self.db_engine)
-        self.db_session = self.get_session()
+        self.create_model()
+        self.db_session = self.create_session()
         # setup visual theme
         # TODO: by user settings
         dataviz.enable_theme("tuttle_dark")
 
-    def get_session(self):
+    def create_model(self):
+        logger.info("creating database model")
+        sqlmodel.SQLModel.metadata.create_all(self.db_engine, checkfirst=True)
+
+    def create_session(self):
         return sqlmodel.Session(
             self.db_engine,
             expire_on_commit=False,
         )
+
+    def get_session(self):
+        return self.db_session
 
     def clear_database(self):
         """
@@ -59,12 +69,19 @@ class Controller:
         """
         self.db_path.unlink()
         self.db_engine = sqlmodel.create_engine(f"sqlite:///{self.db_path}", echo=True)
-        sqlmodel.SQLModel.metadata.create_all(self.db_engine)
+        self.create_model()
 
     def store(self, entity):
         """Store an entity in the database."""
         with self.get_session() as session:
             session.add(entity)
+            session.commit()
+
+    def delete(self, entity):
+        """Delete an entity from the database."""
+        with self.get_session() as session:
+
+            session.delete(entity)
             session.commit()
 
     def store_all(self, entities):
@@ -80,6 +97,13 @@ class Controller:
                 sqlmodel.select(entity_type),
             ).all()
             return entities
+
+    @property
+    def contacts(self):
+        contacts = self.db_session.exec(
+            sqlmodel.select(model.Contact),
+        ).all()
+        return contacts
 
     @property
     def contracts(self):
