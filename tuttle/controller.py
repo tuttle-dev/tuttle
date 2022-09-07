@@ -12,7 +12,7 @@ from loguru import logger
 from . import model, timetracking, dataviz, rendering, invoicing, calendar, cloud
 
 
-class App:
+class Controller:
     """The main application class"""
 
     def __init__(self, home_dir=None, verbose=False, in_memory=False):
