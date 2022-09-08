@@ -12,20 +12,29 @@ from flet import (
     NavigationRailDestination,
     VerticalDivider,
     Icon,
+    ListTile,
+    ListView,
+    Card,
+    Container,
 )
 from flet import icons, colors
 
 from tuttle.controller import Controller
 from tuttle.model import (
     Contact,
+    Contract,
 )
 
 from views import (
     ContactView,
 )
 
+from tuttle_tests import demo
 
-class ContactsView(UserControl):
+from loguru import logger
+
+
+class ContactsPage(UserControl):
     def __init__(
         self,
         app: "App",
@@ -33,11 +42,20 @@ class ContactsView(UserControl):
         super().__init__()
         self.app = app
 
+    def update(self):
+        super().update()
+
     def build(self):
 
         contacts = self.app.con.query(Contact)
 
-        return Text(f"contacts: {' '.join(contacts)}")
+        self.main_view = Column()
+
+        for contact in contacts:
+            print(contact.name)
+            self.main_view.controls.append(Text(contact.name))
+
+        return self.main_view
 
 
 class App(UserControl):
@@ -54,8 +72,30 @@ class App(UserControl):
 
     def build(self):
 
-        self.contacts_view = ContactsView(self)
+        # contacts page
+        self.contacts_page = Column()
 
+        contacts = self.con.query(Contact)
+        logger.debug(f"{len(contacts)} contacts found")
+        for contact in contacts:
+            self.contacts_page.controls.append(
+                Card(
+                    Text(contact.name),
+                ),
+            )
+
+        # contracts page
+        self.contracts_page = Column()
+        contracts = self.con.query(Contract)
+        logger.debug(f"{len(contracts)} contracts found")
+        for contract in contracts:
+            self.contracts_page.controls.append(
+                Card(
+                    Text(contract.title),
+                ),
+            )
+
+        # main view
         self.main_view = Column(
             [
                 Text("Main application window"),
@@ -73,7 +113,9 @@ class App(UserControl):
         print(event.control.selected_index)
         self.main_view.controls.clear()
         if event.control.selected_index == 3:
-            self.main_view.controls.append(self.contacts_view)
+            self.main_view.controls.append(self.contacts_page)
+        elif event.control.selected_index == 5:
+            self.main_view.controls.append(self.contracts_page)
         else:
             self.main_view.controls.append(
                 Text(f"selected destination {event.control.selected_index}")
@@ -90,6 +132,9 @@ def main(page: Page):
         in_memory=True,
         verbose=False,
     )
+
+    # add demo content
+    demo.add_demo_content(con)
 
     app = App(
         con,
@@ -147,7 +192,6 @@ def main(page: Page):
         Row(
             [
                 nav,
-                # VerticalDivider(width=1),
                 app,
             ],
             expand=True,
