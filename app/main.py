@@ -15,19 +15,44 @@ from flet import (
 )
 from flet import icons
 
+from tuttle.controller import Controller
+
+from views import (
+    ContactView,
+)
+
 
 class App(UserControl):
-    """Main class of the application GUI."""
+    """Main application window."""
 
     def __init__(
         self,
+        con: Controller,
     ):
         super().__init__()
+        self.con = con
 
     def build(self):
+        return Row(
+            [
+                NavigationRail(
+                    destinations=[
+                        NavigationRailDestination(
+                            icon=icons.AREA_CHART_OUTLINED,
+                            selected_icon=icons.AREA_CHART,
+                            label="Dashboard",
+                        )
+                    ],
+                    extended=True,
+                ),
+                VerticalDivider(width=1),
+            ]
+        )
+
+    def build_(self):
         """Obligatory build method."""
 
-        self.navigation = NavigationRail(
+        self.nav_rail = NavigationRail(
             selected_index=0,
             label_type="all",
             extended=True,
@@ -49,7 +74,7 @@ class App(UserControl):
 
         return Row(
             [
-                self.navigation,
+                self.nav_rail,
                 VerticalDivider(width=1),
             ],
             expand=True,
@@ -58,32 +83,35 @@ class App(UserControl):
 
 def main(page: Page):
 
-    navigation = NavigationRail(
-        selected_index=0,
-        label_type="all",
-        extended=True,
-        min_width=100,
-        min_extended_width=400,
-        # leading=FloatingActionButton(icon=icons.CREATE, text="Add"),
-        group_alignment=-0.9,
-        destinations=[
-            NavigationRailDestination(
-                icon=icons.AREA_CHART_OUTLINED,
-                selected_icon=icons.AREA_CHART,
-                label="Dashboard",
-            ),
-        ],
-        on_change=lambda e: print("Selected destination:", e.control.selected_index),
+    con = Controller(
+        in_memory=True,
+        verbose=True,
     )
 
+    app = App(
+        con,
+    )
+
+    # navigation = NavigationRail(
+    #     selected_index=0,
+    #     label_type="all",
+    #     extended=True,
+    #     min_width=100,
+    #     min_extended_width=400,
+    #     # leading=FloatingActionButton(icon=icons.CREATE, text="Add"),
+    #     group_alignment=-0.9,
+    #     destinations=[
+    #         NavigationRailDestination(
+    #             icon=icons.AREA_CHART_OUTLINED,
+    #             selected_icon=icons.AREA_CHART,
+    #             label="Dashboard",
+    #         ),
+    #     ],
+    #     on_change=lambda e: print("Selected destination:", e.control.selected_index),
+    # )
+
     page.add(
-        Row(
-            [
-                navigation,
-                VerticalDivider(width=0),
-            ],
-            expand=True,
-        )
+        app,
     )
 
     page.update()
