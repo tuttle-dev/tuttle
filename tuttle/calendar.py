@@ -9,11 +9,11 @@ import getpass
 import pandas
 import datetime
 
-# from pandera.typing import DataFrame
-# from pandera import check_io
+from pandera.typing import DataFrame
+from pandera import check_io
 from pandas import DataFrame
 
-# from . import schema
+from . import schema
 
 
 def parse_pyicloud_datetime(dt_list):
@@ -28,7 +28,7 @@ class Calendar:
     def __init__(self, name: str):
         self.name = name
 
-    # @check_io(out=schema.time_tracking)
+    @check_io(out=schema.time_tracking)
     def to_data(self) -> DataFrame:
         """Convert events to dataframe."""
         raise NotImplementedError("Abstract base class")
@@ -72,7 +72,7 @@ class FileCalendar(Calendar):
         )
         return event_data_raw
 
-    # @check_io(out=schema.time_tracking)
+    @check_io(out=schema.time_tracking)
     def to_data(self) -> DataFrame:
         """Convert ics.Calendar to pandas.DataFrame"""
         event_data = pandas.DataFrame(
@@ -129,7 +129,7 @@ class ICloudCalendar(CloudCalendar):
         event_data_raw = pandas.DataFrame(all_events)
         return event_data_raw
 
-    # @check_io(out=schema.time_tracking)
+    @check_io(out=schema.time_tracking)
     def to_data(self) -> DataFrame:
         """Convert iCloud calendar events to time tracking data format."""
 

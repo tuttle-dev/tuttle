@@ -10,3 +10,4 @@ ics
 babel
 loguru
 pdfkit
+pandera
