@@ -8,12 +8,12 @@ import enum
 
 import pandas
 
-# from pandera import check_io
-# from pandera.typing import DataFrame
+from pandera import check_io
+from pandera.typing import DataFrame
 from pandas import DataFrame
 
 
-# from . import schema
+from . import schema
 from .calendar import Calendar, ICloudCalendar, FileCalendar
 from .model import (
     TimeTrackingItem,
@@ -113,7 +113,7 @@ def export_timesheet(
 # IMPORT
 
 
-# @check_io(out=schema.time_tracking)
+@check_io(out=schema.time_tracking)
 def import_from_calendar(cal: Calendar) -> DataFrame:
     """Convert the raw calendar to time tracking data table."""
     if issubclass(type(cal), ICloudCalendar):
@@ -135,9 +135,9 @@ class TimetrackingSpreadsheetPreset:
         description_col = "Description"
 
 
-# @check_io(
-#     out=schema.time_tracking,
-# )
+@check_io(
+    out=schema.time_tracking,
+)
 def import_from_spreadsheet(
     path,
     preset: str = None,
@@ -223,9 +223,9 @@ def total_time_tracked(by: str) -> DataFrame:
         raise ValueError()
 
 
-# @check_io(
-#     time_tracking_data=schema.time_tracking,
-# )
+@check_io(
+    time_tracking_data=schema.time_tracking,
+)
 def progress(
     project: Project,
     time_tracking_data: DataFrame,
@@ -242,9 +242,9 @@ def progress(
     return total_time.loc[tag]["duration"] / budget
 
 
-# @check_io(
-#     out=schema.time_planning,
-# )
+@check_io(
+    out=schema.time_planning,
+)
 def get_time_planning_data(
     source,
     from_date: datetime.date = None,
@@ -257,6 +257,6 @@ def get_time_planning_data(
         planning_data = cal.to_data()
     elif isinstance(source, pandas.DataFrame):
         planning_data = source
-        # schema.time_tracking.validate(planning_data)
+        schema.time_tracking.validate(planning_data)
     planning_data = planning_data[str(from_date) :]
     return planning_data

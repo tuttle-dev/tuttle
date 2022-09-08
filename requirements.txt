@@ -11,3 +11,4 @@ babel
 loguru
 pdfkit
 flet
+pandera
