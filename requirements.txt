@@ -5,7 +5,6 @@ pydantic
 sqlalchemy == 1.4.35
 sqlmodel
 pyicloud
-fints
 ics
 babel
 loguru
