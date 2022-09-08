@@ -16,10 +16,28 @@ from flet import (
 from flet import icons, colors
 
 from tuttle.controller import Controller
+from tuttle.model import (
+    Contact,
+)
 
 from views import (
     ContactView,
 )
+
+
+class ContactsView(UserControl):
+    def __init__(
+        self,
+        app: "App",
+    ):
+        super().__init__()
+        self.app = app
+
+    def build(self):
+
+        contacts = self.app.con.query(Contact)
+
+        return Text(f"contacts: {' '.join(contacts)}")
 
 
 class App(UserControl):
@@ -28,78 +46,64 @@ class App(UserControl):
     def __init__(
         self,
         con: Controller,
+        page: Page,
     ):
         super().__init__()
         self.con = con
+        self.page = page
 
     def build(self):
-        return Row(
+
+        self.contacts_view = ContactsView(self)
+
+        self.main_view = Column(
             [
-                NavigationRail(
-                    destinations=[
-                        NavigationRailDestination(
-                            icon=icons.AREA_CHART_OUTLINED,
-                            selected_icon=icons.AREA_CHART,
-                            label="Dashboard",
-                        )
-                    ],
-                    extended=True,
-                ),
-                VerticalDivider(width=1),
-            ]
-        )
-
-    def build_(self):
-        """Obligatory build method."""
-
-        self.nav_rail = NavigationRail(
-            selected_index=0,
-            label_type="all",
-            extended=True,
-            min_width=100,
-            min_extended_width=400,
-            # leading=FloatingActionButton(icon=icons.CREATE, text="Add"),
-            group_alignment=-0.9,
-            destinations=[
-                NavigationRailDestination(
-                    icon=icons.AREA_CHART_OUTLINED,
-                    selected_icon=icons.AREA_CHART,
-                    label="Dashboard",
-                ),
+                Text("Main application window"),
             ],
-            on_change=lambda e: print(
-                "Selected destination:", e.control.selected_index
-            ),
-        )
-
-        return Row(
-            [
-                self.nav_rail,
-                VerticalDivider(width=1),
-            ],
+            alignment="start",
             expand=True,
         )
+        return self.main_view
+
+    def attach_navigation(self, nav: NavigationRail):
+        # FIXME: workaround
+        self.nav = nav
+
+    def on_navigation_change(self, event):
+        print(event.control.selected_index)
+        self.main_view.controls.clear()
+        if event.control.selected_index == 3:
+            self.main_view.controls.append(self.contacts_view)
+        else:
+            self.main_view.controls.append(
+                Text(f"selected destination {event.control.selected_index}")
+            )
+        self.update()
+
+    def update(self):
+        super().update()
 
 
 def main(page: Page):
 
     con = Controller(
         in_memory=True,
-        verbose=True,
+        verbose=False,
     )
 
     app = App(
         con,
+        page,
     )
 
-    rail = NavigationRail(
+    nav = NavigationRail(
         selected_index=0,
         label_type="all",
         extended=True,
         min_width=100,
         min_extended_width=250,
         group_alignment=-0.9,
-        bgcolor=colors.BLUE_GREY_900,
+        # bgcolor=colors.BLUE_GREY_900,
         destinations=[
             NavigationRailDestination(
                 icon=icons.SPEED,
@@ -134,15 +138,17 @@ def main(page: Page):
                 label_content=Text("Settings"),
             ),
         ],
-        on_change=lambda e: print("Selected destination:", e.control.selected_index),
+        on_change=app.on_navigation_change,
     )
+
+    app.attach_navigation(nav)
 
     page.add(
         Row(
             [
-                rail,
+                nav,
                 # VerticalDivider(width=1),
-                Column([Text("Body!")], alignment="start", expand=True),
+                app,
             ],
             expand=True,
         )

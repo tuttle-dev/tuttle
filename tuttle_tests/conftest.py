@@ -43,6 +43,7 @@ def demo_user():
         bank_account=BankAccount(
             name="Giro",
             IBAN="BZ99830994950003161565",
+            BIC="BANKINFO101",
         ),
     )
     return user

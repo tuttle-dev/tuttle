@@ -3,10 +3,11 @@ from pathlib import Path
 import os
 import sys
 import datetime
+from typing import Type
 
 import pandas
 import sqlmodel
-from sqlmodel import pool
+from sqlmodel import pool, SQLModel
 
 from loguru import logger
 
@@ -103,6 +104,12 @@ class Controller:
             sqlmodel.select(model.Contact),
         ).all()
         return contacts
+
+    def query(self, entity_type: Type[SQLModel]):
+        entities = self.db_session.exec(
+            sqlmodel.select(entity_type),
+        ).all()
+        return entities
 
     @property
     def contracts(self):

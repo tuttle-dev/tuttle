@@ -20,7 +20,7 @@ from tuttle.model import (
     Address,
 )
 
-from tuttle_tests.demo_objects import demo_contact, another_demo_contact
+from tuttle_tests.demo import demo_contact, contact_two
 
 
 class App(UserControl):
@@ -107,7 +107,7 @@ def main(page: Page):
     )
 
     con.store(demo_contact)
-    con.store(another_demo_contact)
+    con.store(contact_two)
 
     app = App(
         con,
