@@ -195,7 +195,7 @@ def make_project_view(project: Project):
                         title=Text(project.title),
                         subtitle=Text(project.tag),
                         trailing=PopupMenuButton(
-                            icon=icons.WARNING,
+                            icon=icons.MORE_VERT,
                             items=[
                                 PopupMenuItem(
                                     icon=icons.EDIT,

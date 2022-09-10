@@ -1,129 +1,185 @@
+from loguru import logger
+
 import flet
 from flet import (
-    UserControl,
     Page,
-    View,
-    Text,
-    Column,
     Row,
-    KeyboardEvent,
-    SnackBar,
-    NavigationRail,
-    NavigationRailDestination,
-    VerticalDivider,
-    Icon,
-    ListTile,
-    ListView,
-    Card,
+    Column,
     Container,
+    Text,
+    Card,
+    NavigationRailDestination,
+    UserControl,
+    ElevatedButton,
+    TextButton,
+    Icon,
 )
 from flet import icons, colors
+
+from layout import DesktopAppLayout
+
+import views
+from views import (
+    ContactView,
+    ContactView2,
+)
 
 from tuttle.controller import Controller
 from tuttle.model import (
     Contact,
     Contract,
-)
-
-from views import (
-    ContactView,
+    Project,
+    Client,
 )
 
 from tuttle_tests import demo
 
-from loguru import logger
 
-
-class ContactsPage(UserControl):
+class App:
     def __init__(
         self,
-        app: "App",
+        controller: Controller,
+        page: Page,
+    ):
+        self.con = controller
+        self.page = page
+
+
+class AppPage(UserControl):
+    def __init__(
+        self,
+        app: App,
     ):
         super().__init__()
         self.app = app
 
+    def build(self):
+        self.main_column = Column(
+            scroll="auto",
+        )
+        # self.view = Row([self.main_column])
+
+        return self.main_column
+
+    def update_content(self):
+        pass
+
+
+class DemoPage(AppPage):
+    def __init__(
+        self,
+        app: App,
+    ):
+        super().__init__(app)
+
     def update(self):
         super().update()
 
+    def add_demo_data(self, event):
+        """Install the demo data on button click."""
+        demo.add_demo_data(self.app.con)
+        self.main_column.controls.clear()
+        self.main_column.controls.append(
+            Text("Demo data installed ☑️"),
+        )
+        self.update()
+
     def build(self):
+        self.main_column = Column(
+            [
+                ElevatedButton(
+                    "Install demo data",
+                    icon=icons.TOYS,
+                    on_click=self.add_demo_data,
+                ),
+            ],
+        )
+        return self.main_column
+
+
+class ContactsPage(AppPage):
+    def __init__(
+        self,
+        app: App,
+    ):
+        super().__init__(app)
+
+    def update(self):
+        super().update()
+
+    def update_content(self):
+        super().update_content()
+        self.main_column.controls.clear()
 
         contacts = self.app.con.query(Contact)
 
-        self.main_view = Column()
-
         for contact in contacts:
-            print(contact.name)
-            self.main_view.controls.append(Text(contact.name))
-
-        return self.main_view
-
-
-class App(UserControl):
-    """Main application window."""
-
-    def __init__(
-        self,
-        con: Controller,
-        page: Page,
-    ):
-        super().__init__()
-        self.con = con
-        self.page = page
-
-    def build(self):
-
-        # contacts page
-        self.contacts_page = Column()
-
-        contacts = self.con.query(Contact)
-        logger.debug(f"{len(contacts)} contacts found")
-        for contact in contacts:
-            self.contacts_page.controls.append(
-                Card(
-                    Text(contact.name),
-                ),
-            )
-
-        # contracts page
-        self.contracts_page = Column()
-        contracts = self.con.query(Contract)
-        logger.debug(f"{len(contracts)} contracts found")
-        for contract in contracts:
-            self.contracts_page.controls.append(
-                Card(
-                    Text(contract.title),
-                ),
-            )
-
-        # main view
-        self.main_view = Column(
-            [
-                Text("Main application window"),
-            ],
-            alignment="start",
-            expand=True,
-        )
-        return self.main_view
-
-    def attach_navigation(self, nav: NavigationRail):
-        # FIXME: workaround
-        self.nav = nav
-
-    def on_navigation_change(self, event):
-        print(event.control.selected_index)
-        self.main_view.controls.clear()
-        if event.control.selected_index == 3:
-            self.main_view.controls.append(self.contacts_page)
-        elif event.control.selected_index == 5:
-            self.main_view.controls.append(self.contracts_page)
-        else:
-            self.main_view.controls.append(
-                Text(f"selected destination {event.control.selected_index}")
+            self.main_column.controls.append(
+                views.make_contact_view(contact),
             )
         self.update()
 
+
+class ContractsPage(AppPage):
+    def __init__(
+        self,
+        app: App,
+    ):
+        super().__init__(app)
+
     def update(self):
         super().update()
+
+    def update_content(self):
+        super().update_content()
+        self.main_column.controls.clear()
+
+        contracts = self.app.con.query(Contract)
+
+        for contract in contracts:
+            self.main_column.controls.append(
+                # TODO: replace with view class
+                views.make_contract_view(contract)
+            )
+        self.update()
+
+
+class ProjectsPage(AppPage):
+    def __init__(
+        self,
+        app: App,
+    ):
+        super().__init__(app)
+
+    def update(self):
+        super().update()
+
+    def update_content(self):
+        super().update_content()
+        self.main_column.controls.clear()
+
+        projects = self.app.con.query(Project)
+
+        for project in projects:
+            self.main_column.controls.append(
+                # TODO: replace with view class
+                views.make_project_view(project)
+            )
+        self.update()
+
+
+class InvoicingPage(AppPage):
+    def __init__(
+        self,
+        app: App,
+    ):
+        super().__init__(app)
+
+    def update(self):
+        super().update()
+
+    def update_content(self):
+        super().update_content()
 
 
 def main(page: Page):
@@ -133,74 +189,92 @@ def main(page: Page):
         verbose=False,
     )
 
-    # add demo content
-    demo.add_demo_data(con)
-
     app = App(
-        con,
-        page,
+        controller=con,
+        page=page,
     )
 
-    nav = NavigationRail(
-        selected_index=0,
-        label_type="all",
-        extended=True,
-        min_width=100,
-        min_extended_width=250,
-        group_alignment=-0.9,
-        # bgcolor=colors.BLUE_GREY_900,
-        destinations=[
+    pages = [
+        (
             NavigationRailDestination(
-                icon=icons.SPEED,
+                icon=icons.TOYS_OUTLINED,
+                selected_icon=icons.TOYS,
+                label="Demo",
+            ),
+            DemoPage(app),
+        ),
+        (
+            NavigationRailDestination(
+                icon=icons.SPEED_OUTLINED,
+                selected_icon=icons.SPEED,
                 label="Dashboard",
             ),
+            AppPage(app),
+        ),
+        (
             NavigationRailDestination(
                 icon=icons.WORK,
                 label="Projects",
             ),
+            ProjectsPage(app),
+        ),
+        (
             NavigationRailDestination(
                 icon=icons.DATE_RANGE,
-                label="Time Tracking",
+                label="Time",
             ),
+            AppPage(app),
+        ),
+        (
             NavigationRailDestination(
                 icon=icons.CONTACT_MAIL,
                 label="Contacts",
             ),
+            ContactsPage(app),
+        ),
+        (
             NavigationRailDestination(
                 icon=icons.HANDSHAKE,
                 label="Clients",
             ),
+            AppPage(app),
+        ),
+        (
             NavigationRailDestination(
                 icon=icons.HISTORY_EDU,
                 label="Contracts",
             ),
+            ContractsPage(app),
+        ),
+        (
             NavigationRailDestination(
                 icon=icons.OUTGOING_MAIL,
-                label="Invoices",
+                label="Invocing",
             ),
+            InvoicingPage(app),
+        ),
+        (
             NavigationRailDestination(
                 icon=icons.SETTINGS,
                 label_content=Text("Settings"),
             ),
-        ],
-        on_change=app.on_navigation_change,
-    )
+            AppPage(app),
+        ),
+    ]
 
-    app.attach_navigation(nav)
+    layout = DesktopAppLayout(
+        page=page,
+        pages=pages,
+        title="Tuttle",
+        window_size=(1280, 720),
+    )
 
     page.add(
-        Row(
-            [
-                nav,
-                app,
-            ],
-            expand=True,
-        )
+        layout,
     )
 
-    page.update()
 
-
-flet.app(
-    target=main,
-)
+if __name__ == "__main__":
+    flet.app(
+        target=main,
+    )
