@@ -13,6 +13,8 @@ from flet import (
     ElevatedButton,
     TextButton,
     Icon,
+    Dropdown,
+    dropdown,
 )
 from flet import icons, colors
 
@@ -180,6 +182,26 @@ class InvoicingPage(AppPage):
 
     def update_content(self):
         super().update_content()
+
+        self.main_column.controls.clear()
+
+        projects = self.app.con.query(Project)
+
+        project_select = Dropdown(
+            label="Project",
+            hint_text="Select the project",
+            options=[dropdown.Option(project.title) for project in projects],
+            autofocus=True,
+        )
+
+        self.main_column.controls.append(
+            Row(
+                [
+                    project_select,
+                ]
+            )
+        )
+        self.update()
 
 
 def main(page: Page):
