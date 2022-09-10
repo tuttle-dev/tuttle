@@ -18,7 +18,7 @@ from flet import (
 from flet import colors, icons
 
 
-class MenuLayout(Row):
+class DesktopAppLayout(Row):
     """A desktop app layout with a menu on the left."""
 
     def __init__(
@@ -81,6 +81,9 @@ class MenuLayout(Row):
     def _change_displayed_page(self):
         page_number = self.navigation_rail.selected_index
         for i, content_page in enumerate(self.content_area.controls):
+            # update selected page
+            if i == page_number:
+                content_page.update_content()
             content_page.visible = page_number == i
 
     def build_navigation_rail(self):
@@ -150,7 +153,7 @@ def create_page(title: str, body: str):
     )
 
 
-def main(page: Page, title="Basic Responsive Menu"):
+def main(page: Page):
 
     pages = [
         (
@@ -200,7 +203,7 @@ def main(page: Page, title="Basic Responsive Menu"):
         ),
     ]
 
-    menu_layout = MenuLayout(
+    menu_layout = DesktopAppLayout(
         page=page,
         pages=pages,
         title="Basic Desktop App Layout",

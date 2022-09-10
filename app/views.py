@@ -13,6 +13,7 @@ from flet import icons
 
 from tuttle.model import (
     Contact,
+    Contract,
 )
 
 
@@ -81,3 +82,101 @@ class ContactView(AppView):
             )
         )
         return self.view
+
+
+class ContactView2(Card):
+    def __init__(
+        self,
+        contact: Contact,
+        app: "App",
+    ):
+        super().__init__()
+        self.contact = contact
+        self.app = app
+
+        self.content = Container(
+            content=Column(
+                [
+                    ListTile(
+                        leading=Icon(icons.CONTACT_MAIL),
+                        title=Text(self.contact.name),
+                        subtitle=Column(
+                            [
+                                Text(self.contact.email),
+                                Text(self.get_address()),
+                            ]
+                        ),
+                    ),
+                    Row(
+                        [
+                            IconButton(
+                                icon=icons.EDIT,
+                            ),
+                            IconButton(
+                                icon=icons.DELETE,
+                                # on_click=self.delete_contact,
+                            ),
+                        ],
+                        alignment="end",
+                    ),
+                ]
+            ),
+            # width=400,
+            padding=10,
+        )
+
+        # self.app.page.add(self)
+
+    def get_address(self):
+        if self.contact.address:
+            return self.contact.address.printed
+        else:
+            return ""
+
+
+def make_contact_view(contact: Contact):
+    return Card(
+        content=Container(
+            content=Column(
+                [
+                    ListTile(
+                        leading=Icon(icons.CONTACT_MAIL),
+                        title=Text(contact.name),
+                        subtitle=Column(
+                            [
+                                Text(contact.email),
+                                Text(contact.print_address()),
+                            ]
+                        ),
+                    ),
+                    # Row(
+                    #     [
+                    #         IconButton(
+                    #             icon=icons.EDIT,
+                    #         ),
+                    #         IconButton(
+                    #             icon=icons.DELETE,
+                    #         ),
+                    #     ],
+                    #     alignment="end",
+                    # ),
+                ]
+            ),
+            # width=400,
+            padding=10,
+        )
+    )
+
+
+def make_contract_view(contract: Contract):
+    return Card(
+        content=Container(
+            content=Row(
+                [
+                    Icon(icons.HISTORY_EDU),
+                    Text(contract.title),
+                ],
+            ),
+            padding=12,
+        )
+    )

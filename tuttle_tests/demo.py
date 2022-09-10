@@ -150,7 +150,7 @@ project_two = Project(
 )
 
 
-def add_demo_content(
+def add_demo_data(
     con: controller.Controller,
 ):
     con.store(user)
@@ -170,4 +170,4 @@ if __name__ == "__main__":
     con = controller.Controller(
         in_memory=True,
     )
-    add_demo_content(con)
+    add_demo_data(con)

@@ -134,7 +134,7 @@ def main(page: Page):
     )
 
     # add demo content
-    demo.add_demo_content(con)
+    demo.add_demo_data(con)
 
     app = App(
         con,

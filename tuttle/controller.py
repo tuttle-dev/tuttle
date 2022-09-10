@@ -106,9 +106,14 @@ class Controller:
         return contacts
 
     def query(self, entity_type: Type[SQLModel]):
+        logger.debug(f"querying {entity_type}")
         entities = self.db_session.exec(
             sqlmodel.select(entity_type),
         ).all()
+        if len(entities) == 0:
+            logger.warning("No instances of {entity_type} found")
+        else:
+            logger.info(f"Found {len(entities)} instances of {entity_type}")
         return entities
 
     @property
