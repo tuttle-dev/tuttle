@@ -8,12 +8,15 @@ from flet import (
     Icon,
     IconButton,
     Text,
+    PopupMenuButton,
+    PopupMenuItem,
 )
 from flet import icons
 
 from tuttle.model import (
     Contact,
     Contract,
+    Project,
 )
 
 
@@ -178,5 +181,44 @@ def make_contract_view(contract: Contract):
                 ],
             ),
             padding=12,
+        )
+    )
+
+
+def make_project_view(project: Project):
+    return Card(
+        content=Container(
+            content=Column(
+                [
+                    ListTile(
+                        leading=Icon(icons.WORK),
+                        title=Text(project.title),
+                        subtitle=Text(project.tag),
+                        trailing=PopupMenuButton(
+                            icon=icons.WARNING,
+                            items=[
+                                PopupMenuItem(
+                                    icon=icons.EDIT,
+                                    text="Edit",
+                                ),
+                                PopupMenuItem(
+                                    icon=icons.DELETE,
+                                    text="Delete",
+                                ),
+                            ],
+                        ),
+                    ),
+                    Column(
+                        [
+                            Text(f"Client: {project.client.name}"),
+                            Text(f"Contract: {project.contract.title}"),
+                            Text(f"Start: {project.start_date}"),
+                            Text(f"End: {project.end_date}"),
+                        ]
+                    ),
+                ]
+            ),
+            # width=400,
+            padding=10,
         )
     )

@@ -208,7 +208,7 @@ def main(page: Page):
                 icon=icons.WORK,
                 label="Projects",
             ),
-            AppPage(app),
+            ProjectsPage(app),
         ),
         (
             NavigationRailDestination(
