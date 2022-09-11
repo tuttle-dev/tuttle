@@ -1,4 +1,5 @@
 from loguru import logger
+from textwrap import dedent
 
 import flet
 from flet import (
@@ -14,17 +15,14 @@ from flet import (
     TextButton,
     Icon,
     Dropdown,
-    dropdown,
+    Markdown,
 )
-from flet import icons, colors
+from flet import icons, colors, dropdown
 
 from layout import DesktopAppLayout
 
 import views
-from views import (
-    ContactView,
-    ContactView2,
-)
+import widgets
 
 from tuttle.controller import Controller
 from tuttle.model import (
@@ -171,6 +169,8 @@ class ProjectsPage(AppPage):
 
 
 class InvoicingPage(AppPage):
+    """A page for the invoicing workflow."""
+
     def __init__(
         self,
         app: App,
@@ -194,13 +194,75 @@ class InvoicingPage(AppPage):
             autofocus=True,
         )
 
-        self.main_column.controls.append(
+        date_from_select = widgets.DateSelector()
+        date_to_select = widgets.DateSelector()
+
+        self.main_column.controls = [
             Row(
                 [
+                    Text("Invoicing Workflow Demo", style="headlineMedium"),
+                ]
+            ),
+            Row(
+                [
+                    views.make_card(
+                        [
+                            Text(
+                                dedent(
+                                    """
+                            1. select a time tracking data source
+                            """
+                                )
+                            )
+                        ]
+                    )
+                ]
+            ),
+            Row(
+                [
+                    views.make_card(
+                        [
+                            Text(
+                                dedent(
+                                    """
+                            2. select a project and date range
+                            """
+                                )
+                            )
+                        ]
+                    )
+                ]
+            ),
+            Row(
+                [
+                    Icon(icons.WORK),
                     project_select,
                 ]
-            )
-        )
+            ),
+            Row(
+                [
+                    # Icon(icons.DATE_RANGE),
+                    date_from_select,
+                    Icon(icons.ARROW_FORWARD),
+                    date_to_select,
+                    TextButton(
+                        "Select",
+                        on_click=lambda event: logger.info(
+                            f"Selected date range: {date_from_select.get_date()} -> {date_to_select.get_date()}"
+                        ),
+                    ),
+                ]
+            ),
+            Row(
+                [
+                    ElevatedButton(
+                        "Generate invoice",
+                        icon=icons.EDIT_NOTE,
+                        # on_click=self.add_demo_data,
+                    ),
+                ]
+            ),
+        ]
         self.update()
 
 

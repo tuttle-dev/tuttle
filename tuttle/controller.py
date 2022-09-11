@@ -111,7 +111,7 @@ class Controller:
             sqlmodel.select(entity_type),
         ).all()
         if len(entities) == 0:
-            logger.warning("No instances of {entity_type} found")
+            logger.warning(f"No instances of {entity_type} found")
         else:
             logger.info(f"Found {len(entities)} instances of {entity_type}")
         return entities

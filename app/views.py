@@ -1,3 +1,6 @@
+from typing import Optional, List, Tuple
+import datetime
+
 from flet import (
     UserControl,
     Card,
@@ -220,5 +223,16 @@ def make_project_view(project: Project):
             ),
             # width=400,
             padding=10,
+        )
+    )
+
+
+def make_card(content):
+    """Make a card with the given content."""
+    return Card(
+        Container(
+            Row(content),
+            padding=10,
+            expand=True,
         )
     )
