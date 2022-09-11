@@ -156,6 +156,7 @@ class Contact(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
+    company: Optional[str]
     email: Optional[str]
     address_id: Optional[int] = Field(default=None, foreign_key="address.id")
     address: Optional[Address] = Relationship(back_populates="contacts")
@@ -163,6 +164,20 @@ class Contact(SQLModel, table=True):
         back_populates="invoicing_contact"
     )
     # post address
+
+    def print_address(self):
+        """Print address in common format."""
+        if self.address is None:
+            return ""
+        return textwrap.dedent(
+            f"""
+        {self.name}
+        {self.company}
+        {self.address.street} {self.address.number}
+        {self.address.postal_code} {self.address.city}
+        {self.address.country}
+        """
+        )
 
 
 class Client(SQLModel, table=True):

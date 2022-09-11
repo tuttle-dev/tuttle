@@ -9,6 +9,21 @@ from tuttle.model import Project, Client, Address, Contact, User, BankAccount, C
 
 
 @pytest.fixture
+def demo_contact():
+    return Contact(
+        name="Sam Lowry",
+        email="info@centralservices.com",
+        address=Address(
+            street="Main Street",
+            number="9999",
+            postal_code="55555",
+            city="Sao Paolo",
+            country="Brazil",
+        ),
+    )
+
+
+@pytest.fixture
 def demo_user():
     user = User(
         name="Harry Tuttle",
@@ -28,6 +43,7 @@ def demo_user():
         bank_account=BankAccount(
             name="Giro",
             IBAN="BZ99830994950003161565",
+            BIC="BANKINFO101",
         ),
     )
     return user
