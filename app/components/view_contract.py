@@ -53,23 +53,3 @@ class ContractView(UserControl):
                 padding=10,
             )
         )
-
-
-def main(page: Page):
-
-    page.add(
-        Row(
-            [
-                navigation,
-                VerticalDivider(width=0),
-            ],
-            expand=True,
-        )
-    )
-
-    page.update()
-
-
-flet.app(
-    target=main,
-)

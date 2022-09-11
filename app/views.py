@@ -23,7 +23,7 @@ from tuttle.model import (
 class AppView(UserControl):
     def __init__(
         self,
-        app: "App",
+        app,
     ):
         super().__init__()
         self.app = app
@@ -35,7 +35,7 @@ class ContactView(AppView):
     def __init__(
         self,
         contact: Contact,
-        app: "App",
+        app,
     ):
         super().__init__(app)
         self.contact = contact
@@ -91,7 +91,7 @@ class ContactView2(Card):
     def __init__(
         self,
         contact: Contact,
-        app: "App",
+        app,
     ):
         super().__init__()
         self.contact = contact
