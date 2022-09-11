@@ -227,6 +227,11 @@ class Controller:
                 path=calendar_file_path,
                 name=calendar_file_path.stem,
             )
+            if timetracking_calendar.to_data().empty:
+                raise ValueError(
+                    f"empty calendar loaded from file {calendar_file_path}"
+                )
+            logger.info(f"calendar data: \\ {timetracking_calendar.to_data()}")
         else:
             raise ValueError(f"unsupported time tracking method: {timetracking_method}")
 

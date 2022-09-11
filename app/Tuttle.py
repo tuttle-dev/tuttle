@@ -1,3 +1,4 @@
+import datetime
 from loguru import logger
 from textwrap import dedent
 from pathlib import Path
@@ -17,6 +18,8 @@ from flet import (
     Icon,
     Dropdown,
     Markdown,
+    FilePicker,
+    FilePickerResultEvent,
 )
 from flet import icons, colors, dropdown
 
@@ -178,15 +181,43 @@ class InvoicingPage(AppPage):
         app: App,
     ):
         super().__init__(app)
+        self.calendar_file_path = None
 
     def update(self):
         super().update()
+
+    def on_click_generate_invoices(self, event):
+        """Generate invoices for the selected project and date range."""
+        logger.info("Generate invoices clicked")
+        if not self.calendar_file_path:
+            logger.error("No calendar file selected!")
+            return
+        self.app.con.billing(
+            project_tags=[self.project_select.value],
+            period_start=str(self.date_from_select.get_date()),
+            period_end=str(self.date_to_select.get_date()),
+            timetracking_method="file_calendar",
+            calendar_file_path=self.calendar_file_path,
+        )
+
+    def on_pick_calendar_file(self, event: FilePickerResultEvent):
+        """Handle the result of the calendar file picker."""
+        if event.files:
+            logger.info(f"Calendar file picked: {event.files[0].path}")
+            self.calendar_file_path = Path(event.files[0].path)
+        else:
+            logger.info("Cancelled!")
 
     def update_content(self):
         super().update_content()
 
         self.main_column.controls.clear()
 
+        self.calendar_file_picker = FilePicker(on_result=self.on_pick_calendar_file)
+
+        self.app.page.overlay.append(self.calendar_file_picker)
+
+        # select project
         projects = self.app.con.query(Project)
 
         self.project_select = Dropdown(
@@ -196,8 +227,8 @@ class InvoicingPage(AppPage):
             autofocus=True,
         )
 
-        self.date_from_select = widgets.DateSelector()
-        self.date_to_select = widgets.DateSelector()
+        self.date_from_select = widgets.DateSelector(preset=datetime.date(2022, 1, 1))
+        self.date_to_select = widgets.DateSelector(preset=datetime.date(2022, 12, 31))
 
         self.main_column.controls = [
             Row(
@@ -218,6 +249,17 @@ class InvoicingPage(AppPage):
                             )
                         ]
                     )
+                ]
+            ),
+            Row(
+                [
+                    ElevatedButton(
+                        "Pick Calendar File",
+                        icon=icons.UPLOAD_FILE,
+                        on_click=lambda _: self.calendar_file_picker.pick_files(
+                            allow_multiple=False
+                        ),
+                    ),
                 ]
             ),
             Row(
@@ -260,23 +302,12 @@ class InvoicingPage(AppPage):
                     ElevatedButton(
                         "Generate invoice",
                         icon=icons.EDIT_NOTE,
-                        on_click=self.generate_invoices_clicked,
+                        on_click=self.on_click_generate_invoices,
                     ),
                 ]
             ),
         ]
         self.update()
-
-    def generate_invoices_clicked(self, event):
-        """Generate invoices for the selected project and date range."""
-        logger.info("Generate invoices clicked")
-        self.app.con.billing(
-            project_tags=[self.project_select.value],
-            period_start=self.date_from_select.get_date(),
-            period_end=self.date_to_select.get_date(),
-            timetracking_method="file_calendar",
-            calendar_file_path=None,
-        )
 
 
 def main(page: Page):
@@ -349,7 +380,7 @@ def main(page: Page):
         (
             NavigationRailDestination(
                 icon=icons.OUTGOING_MAIL,
-                label="Invocing",
+                label="Invoicing",
             ),
             InvoicingPage(app),
         ),

@@ -288,7 +288,7 @@ class Timesheet(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     title: str
     date: datetime.date
-    period: str
+    # period: str
     # table: pandas.DataFrame
     # TODO: store dataframe as dict
     # table: Dict = Field(default={}, sa_column=sqlalchemy.Column(sqlalchemy.JSON))
