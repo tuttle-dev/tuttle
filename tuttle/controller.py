@@ -12,16 +12,20 @@ from sqlmodel import pool, SQLModel
 from loguru import logger
 
 from . import model, timetracking, dataviz, rendering, invoicing, calendar, cloud
+from .preferences import Preferences
 
 
 class Controller:
     """The application controller."""
 
-    def __init__(self, home_dir=None, verbose=False, in_memory=False):
-        if home_dir is None:
+    def __init__(self, preferences: Preferences, verbose=False, in_memory=False):
+        self.preferences = preferences
+        # set home directory
+        if preferences.home_dir is None:
             self.home = Path.home() / ".tuttle"
         else:
-            self.home = Path(home_dir)
+            self.home = self.preferences.home_dir
+        # make directories
         if not os.path.exists(self.home):
             os.mkdir(self.home)
         if in_memory:
@@ -204,18 +208,24 @@ class Controller:
     def billing(
         self,
         project_tags,
-        out_dir,
         period_start,
         period_end=None,
-        timetracking_method="calendar",
+        timetracking_method="cloud_calendar",
+        calendar_file_path=None,
     ):
         """Generate time sheets and invoices for a given period"""
+        out_dir = self.home / self.preferences.invoice_dir
         # TODO: read method from user settings
-        if timetracking_method == "calendar":
+        if timetracking_method == "cloud_calendar":
             timetracking_calendar = calendar.ICloudCalendar(
                 icloud=cloud.login_iCloud(user_name=self.user.icloud_account.user_name),
                 # TODO: read from user settings
                 name="TimeTracking",
+            )
+        elif timetracking_method == "file_calendar":
+            timetracking_calendar = calendar.FileCalendar(
+                path=calendar_file_path,
+                name=calendar_file_path.stem,
             )
         else:
             raise ValueError(f"unsupported time tracking method: {timetracking_method}")

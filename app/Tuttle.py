@@ -1,5 +1,6 @@
 from loguru import logger
 from textwrap import dedent
+from pathlib import Path
 
 import flet
 from flet import (
@@ -25,6 +26,7 @@ import views
 import widgets
 
 from tuttle.controller import Controller
+from tuttle.preferences import Preferences
 from tuttle.model import (
     Contact,
     Contract,
@@ -187,15 +189,15 @@ class InvoicingPage(AppPage):
 
         projects = self.app.con.query(Project)
 
-        project_select = Dropdown(
+        self.project_select = Dropdown(
             label="Project",
             hint_text="Select the project",
-            options=[dropdown.Option(project.title) for project in projects],
+            options=[dropdown.Option(project.tag) for project in projects],
             autofocus=True,
         )
 
-        date_from_select = widgets.DateSelector()
-        date_to_select = widgets.DateSelector()
+        self.date_from_select = widgets.DateSelector()
+        self.date_to_select = widgets.DateSelector()
 
         self.main_column.controls = [
             Row(
@@ -236,19 +238,19 @@ class InvoicingPage(AppPage):
             Row(
                 [
                     Icon(icons.WORK),
-                    project_select,
+                    self.project_select,
                 ]
             ),
             Row(
                 [
                     # Icon(icons.DATE_RANGE),
-                    date_from_select,
+                    self.date_from_select,
                     Icon(icons.ARROW_FORWARD),
-                    date_to_select,
+                    self.date_to_select,
                     TextButton(
                         "Select",
                         on_click=lambda event: logger.info(
-                            f"Selected date range: {date_from_select.get_date()} -> {date_to_select.get_date()}"
+                            f"Selected date range: {self.date_from_select.get_date()} -> {self.date_to_select.get_date()}"
                         ),
                     ),
                 ]
@@ -258,12 +260,23 @@ class InvoicingPage(AppPage):
                     ElevatedButton(
                         "Generate invoice",
                         icon=icons.EDIT_NOTE,
-                        # on_click=self.add_demo_data,
+                        on_click=self.generate_invoices_clicked,
                     ),
                 ]
             ),
         ]
         self.update()
+
+    def generate_invoices_clicked(self, event):
+        """Generate invoices for the selected project and date range."""
+        logger.info("Generate invoices clicked")
+        self.app.con.billing(
+            project_tags=[self.project_select.value],
+            period_start=self.date_from_select.get_date(),
+            period_end=self.date_to_select.get_date(),
+            timetracking_method="file_calendar",
+            calendar_file_path=None,
+        )
 
 
 def main(page: Page):
@@ -271,6 +284,9 @@ def main(page: Page):
     con = Controller(
         in_memory=True,
         verbose=False,
+        preferences=Preferences(
+            invoice_dir=Path("Invoices"),
+        ),
     )
 
     app = App(
