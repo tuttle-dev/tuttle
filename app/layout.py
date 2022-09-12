@@ -1,4 +1,5 @@
 from copy import deepcopy
+import webbrowser
 
 import flet
 from flet import (
@@ -14,6 +15,8 @@ from flet import (
     Text,
     Card,
     Divider,
+    PopupMenuButton,
+    PopupMenuItem,
 )
 from flet import colors, icons
 
@@ -128,8 +131,24 @@ class DesktopAppLayout(Row):
         appbar.actions = [
             Row(
                 [
-                    IconButton(
+                    PopupMenuButton(
                         icon=icons.HELP,
+                        items=[
+                            PopupMenuItem(
+                                icon=icons.CONTACT_SUPPORT,
+                                text="Ask a question",
+                                on_click=lambda _: webbrowser.open(
+                                    "https://github.com/tuttle-dev/tuttle/discussions"
+                                ),
+                            ),
+                            PopupMenuItem(
+                                icon=icons.BUG_REPORT,
+                                text="Report a bug",
+                                on_click=lambda _: webbrowser.open(
+                                    "https://github.com/tuttle-dev/tuttle/issues"
+                                ),
+                            ),
+                        ],
                     )
                 ]
             )
