@@ -18,6 +18,7 @@ from flet import icons
 
 from tuttle.model import (
     Contact,
+    Client,
     Contract,
     Project,
 )
@@ -276,6 +277,38 @@ def make_project_view(project: Project):
                             Text(f"End: {project.end_date}"),
                         ]
                     ),
+                ]
+            ),
+            # width=400,
+            padding=10,
+        )
+    )
+
+
+def make_client_view(client: Client):
+    return Card(
+        content=Container(
+            content=Column(
+                [
+                    ListTile(
+                        leading=Icon(icons.HANDSHAKE),
+                        title=Text(client.name),
+                        # subtitle=Text(client.company),
+                        trailing=PopupMenuButton(
+                            icon=icons.MORE_VERT,
+                            items=[
+                                PopupMenuItem(
+                                    icon=icons.EDIT,
+                                    text="Edit",
+                                ),
+                                PopupMenuItem(
+                                    icon=icons.DELETE,
+                                    text="Delete",
+                                ),
+                            ],
+                        ),
+                    ),
+                    Column([]),
                 ]
             ),
             # width=400,

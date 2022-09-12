@@ -151,6 +151,29 @@ class ContractsPage(AppPage):
         self.update()
 
 
+class ClientsPage(AppPage):
+    def __init__(
+        self,
+        app: App,
+    ):
+        super().__init__(app)
+
+    def update(self):
+        super().update()
+
+    def update_content(self):
+        super().update_content()
+        self.main_column.controls.clear()
+
+        clients = self.app.con.query(Client)
+
+        for client in clients:
+            self.main_column.controls.append(
+                views.make_client_view(client),
+            )
+        self.update()
+
+
 class ProjectsPage(AppPage):
     def __init__(
         self,
@@ -381,7 +404,7 @@ def main(page: Page):
                 icon=icons.HANDSHAKE,
                 label="Clients",
             ),
-            AppPage(app),
+            ClientsPage(app),
         ),
         (
             NavigationRailDestination(
