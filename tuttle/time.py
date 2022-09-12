@@ -3,18 +3,21 @@ import datetime
 
 
 class Cycle(enum.Enum):
-    hourly = 0
-    daily = 1
-    weekly = 2
-    monthly = 3
-    quarterly = 4
-    yearly = 5
+    hourly = "hourly"
+    daily = "daily"
+    weekly = "weekly"
+    monthly = "monthly"
+    quarterly = "quarterly"
+    yearly = "yearly"
+
+    def __str__(self):
+        return str(self.value)
 
 
 class TimeUnit(enum.Enum):
-    minute = 0
-    hour = 1
-    day = 2
+    minute = "minute"
+    hour = "hour"
+    day = "day"
 
     def to_timedelta(self):
         if self == TimeUnit.minute:
@@ -23,3 +26,6 @@ class TimeUnit(enum.Enum):
             return datetime.timedelta(hours=1)
         elif self == TimeUnit.day:
             return datetime.timedelta(days=1)
+
+    def __str__(self):
+        return str(self.value)

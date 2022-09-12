@@ -116,6 +116,7 @@ contract_one = Contract(
     billing_cycle=time.Cycle.monthly,
     signature_date=datetime.date(2022, 2, 1),
     start_date=datetime.date(2022, 2, 1),
+    end_date=datetime.date(2022, 12, 31),
 )
 
 contract_two = Contract(
@@ -129,6 +130,7 @@ contract_two = Contract(
     billing_cycle=time.Cycle.monthly,
     signature_date=datetime.date(2022, 1, 1),
     start_date=datetime.date(2022, 1, 1),
+    end_date=datetime.date(2022, 12, 31),
 )
 
 # PROJECTS

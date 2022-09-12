@@ -2,7 +2,7 @@
 
 import email
 from typing import Optional, List, Dict, Type
-from pydantic import constr, BaseModel
+from pydantic import constr, BaseModel, condecimal
 
 import datetime
 import hashlib
@@ -214,7 +214,7 @@ class Contract(SQLModel, table=True):
         default=None,
         foreign_key="client.id",
     )
-    rate: Decimal = Field(
+    rate: condecimal(decimal_places=2) = Field(
         description="Rate of remuneration",
     )
     currency: str  # TODO: currency representation

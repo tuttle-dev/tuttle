@@ -23,6 +23,10 @@ from tuttle.model import (
 )
 
 
+ICON_SIZE_BIG = 36
+ICON_SIZE_SMALL = 24
+
+
 class AppView(UserControl):
     def __init__(
         self,
@@ -177,10 +181,63 @@ def make_contact_view(contact: Contact):
 def make_contract_view(contract: Contract):
     return Card(
         content=Container(
-            content=Row(
+            content=Column(
                 [
-                    Icon(icons.HISTORY_EDU),
-                    Text(contract.title),
+                    ListTile(
+                        leading=Icon(icons.HISTORY_EDU, size=ICON_SIZE_BIG),
+                        title=Text(contract.title),
+                        subtitle=Text(contract.client.name),
+                        trailing=PopupMenuButton(
+                            icon=icons.MORE_VERT,
+                            items=[
+                                PopupMenuItem(
+                                    icon=icons.EDIT,
+                                    text="Edit",
+                                ),
+                                PopupMenuItem(
+                                    icon=icons.DELETE,
+                                    text="Delete",
+                                ),
+                            ],
+                        ),
+                    ),
+                    Column(
+                        [
+                            # date range
+                            Row(
+                                [
+                                    Icon(icons.DATE_RANGE),
+                                    Text(
+                                        f"{contract.start_date} - {contract.end_date}"
+                                    ),
+                                ]
+                            ),
+                            Row(
+                                [
+                                    Icon(icons.MONEY),
+                                    Text(
+                                        f"{contract.rate} {contract.currency} / {contract.unit}"
+                                    ),
+                                ]
+                            ),
+                            Row(
+                                [
+                                    Icon(icons.PERCENT),
+                                    Text(
+                                        f"VAT rate: {(contract.VAT_rate) * 100:.0f} %"
+                                    ),
+                                ]
+                            ),
+                            Row(
+                                [
+                                    Icon(icons.OUTGOING_MAIL),
+                                    Text(
+                                        f"billing cycle: {str(contract.billing_cycle)} \t term of payment: {contract.term_of_payment} days"
+                                    ),
+                                ]
+                            ),
+                        ]
+                    ),
                 ],
             ),
             padding=12,
