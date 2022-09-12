@@ -38,8 +38,13 @@ For this purpose, the Tuttle project is split across several repositories:
 
 ## Prototype Test
 
+### Demo Notebooks
+
 A demo of the core functionality is available as a series of Jupyter notebooks at [`notebooks/walkthrough/`](https://github.com/tuttle-dev/tuttle/tree/main/notebooks/walkthrough). If you have basic Python programming skills you will be able to test this. We appreciate your feedback.
 
+### Demo App
+
+A desktop app is under development. Currently, the app includes some demo functionality.
 
 ## Setup
 
@@ -58,6 +63,21 @@ $ python setup.py develop
 ```shell
 $ pytest
 ```
+
+5. Start the demo app with
+
+```shell
+$ python app/Tuttle.py
+```
+
+and/or
+
+6. Open and run the demo notebooks with Jupyter Lab.
+
+```shell
+$ jupyter lab
+```
+
 
 
 ## Contributing

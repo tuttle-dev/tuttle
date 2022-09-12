@@ -52,7 +52,6 @@ def generate_timesheet(
         raise ValueError(f"unknown source: {source}")
     tag_query = f"tag == '{project.tag}'"
     if period_end:
-        print(f"timetracking_data.index: {timetracking_data.index}")
         ts_table = (
             timetracking_data.loc[period_start:period_end].query(tag_query).sort_index()
         )

@@ -266,3 +266,4 @@ class Controller:
                 document_format="pdf",
                 out_dir=out_dir,
             )
+            logger.info(f"✅ created invoice for {project.title}")
