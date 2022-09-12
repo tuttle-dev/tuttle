@@ -1,7 +1,9 @@
+import os
 import datetime
 from loguru import logger
 from textwrap import dedent
 from pathlib import Path
+import webbrowser
 
 import flet
 from flet import (
@@ -208,6 +210,12 @@ class InvoicingPage(AppPage):
         else:
             logger.info("Cancelled!")
 
+    def on_click_open_invoice_folder(self, event):
+        invoice_dir = self.app.con.home / self.app.con.preferences.invoice_dir
+        logger.info(f"trying to open {invoice_dir}")
+        # os.system(f"open {invoice_dir}")
+        webbrowser.open(f"file:///{invoice_dir}")
+
     def update_content(self):
         super().update_content()
 
@@ -303,6 +311,11 @@ class InvoicingPage(AppPage):
                         "Generate invoice",
                         icon=icons.EDIT_NOTE,
                         on_click=self.on_click_generate_invoices,
+                    ),
+                    ElevatedButton(
+                        "Open invoice folder",
+                        icon=icons.FOLDER_OPEN,
+                        on_click=self.on_click_open_invoice_folder,
                     ),
                 ]
             ),
