@@ -243,6 +243,9 @@ class InvoicingPage(AppPage):
 
     def on_click_generate_invoices(self, event):
         """Generate invoices for the selected project and date range."""
+        self.app.snackbar_message(
+            f"generating invoice and timesheet for {self.project_select.value}"
+        )
         logger.info("Generate invoices clicked")
         if not self.calendar_file_path:
             logger.error("No calendar file selected!")
