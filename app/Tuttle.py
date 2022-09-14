@@ -112,7 +112,7 @@ class DemoPage(AppPage):
                                         """
                                         Welcome to the Tuttle demo.
 
-                                        1. Getting started: Press the button below to install some demo data and start exploring some of the functions of the app:
+                                        1. Getting started: Press the button below to install some demo data and start exploring some of the functions of the app.
                                         """
                                     )
                                 )
@@ -152,7 +152,7 @@ class ContactsPage(AppPage):
 
         for contact in contacts:
             self.main_column.controls.append(
-                views.make_contact_view(contact),
+                views.make_contact_view(contact, self),
             )
         self.update()
 
@@ -176,7 +176,7 @@ class ContractsPage(AppPage):
         for contract in contracts:
             self.main_column.controls.append(
                 # TODO: replace with view class
-                views.make_contract_view(contract)
+                views.make_contract_view(contract, self)
             )
         self.update()
 
@@ -199,7 +199,7 @@ class ClientsPage(AppPage):
 
         for client in clients:
             self.main_column.controls.append(
-                views.make_client_view(client),
+                views.make_client_view(client, self),
             )
         self.update()
 

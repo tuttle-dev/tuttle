@@ -149,7 +149,10 @@ class ContactView2(Card):
             return ""
 
 
-def make_contact_view(contact: Contact):
+def make_contact_view(
+    contact: Contact,
+    app_page,
+):
     return Card(
         content=Container(
             content=Column(
@@ -183,7 +186,10 @@ def make_contact_view(contact: Contact):
     )
 
 
-def make_contract_view(contract: Contract):
+def make_contract_view(
+    contract: Contract,
+    app_page,
+):
     return Card(
         content=Container(
             content=Column(
@@ -198,6 +204,9 @@ def make_contract_view(contract: Contract):
                                 PopupMenuItem(
                                     icon=icons.EDIT,
                                     text="Edit",
+                                    on_click=lambda _: app_page.app.snackbar_message(
+                                        "Sorry, editing data is not yet implemented"
+                                    ),
                                 ),
                                 PopupMenuItem(
                                     icon=icons.DELETE,
@@ -300,6 +309,9 @@ def make_project_view(
                                 PopupMenuItem(
                                     icon=icons.EDIT,
                                     text="Edit",
+                                    on_click=lambda _: app_page.app.snackbar_message(
+                                        "Sorry, editing data is not yet implemented"
+                                    ),
                                 ),
                                 PopupMenuItem(
                                     icon=icons.DELETE,
@@ -325,7 +337,10 @@ def make_project_view(
     )
 
 
-def make_client_view(client: Client):
+def make_client_view(
+    client: Client,
+    app_page,
+):
     return Card(
         content=Container(
             content=Column(
@@ -340,6 +355,9 @@ def make_client_view(client: Client):
                                 PopupMenuItem(
                                     icon=icons.EDIT,
                                     text="Edit",
+                                    on_click=lambda _: app_page.app.snackbar_message(
+                                        "Sorry, editing data is not yet implemented"
+                                    ),
                                 ),
                                 PopupMenuItem(
                                     icon=icons.DELETE,
