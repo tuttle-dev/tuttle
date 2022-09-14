@@ -102,10 +102,32 @@ class DemoPage(AppPage):
     def build(self):
         self.main_column = Column(
             [
-                ElevatedButton(
-                    "Install demo data",
-                    icon=icons.TOYS,
-                    on_click=self.add_demo_data,
+                Text("Demo", style="titleMedium"),
+                Row(
+                    [
+                        views.make_card(
+                            [
+                                Text(
+                                    dedent(
+                                        """
+                                        Welcome to the Tuttle demo.
+
+                                        1. Getting started: Press the button below to install some demo data and start exploring some of the functions of the app:
+                                        """
+                                    )
+                                )
+                            ]
+                        )
+                    ]
+                ),
+                Row(
+                    [
+                        ElevatedButton(
+                            "Install demo data",
+                            icon=icons.TOYS,
+                            on_click=self.add_demo_data,
+                        ),
+                    ]
                 ),
             ],
         )
@@ -232,12 +254,16 @@ class InvoicingPage(AppPage):
             timetracking_method="file_calendar",
             calendar_file_path=self.calendar_file_path,
         )
+        self.app.snackbar_message(
+            f"created invoice and timesheet for {self.project_select.value} - open the invoice folder to see the result"
+        )
 
     def on_pick_calendar_file(self, event: FilePickerResultEvent):
         """Handle the result of the calendar file picker."""
         if event.files:
             logger.info(f"Calendar file picked: {event.files[0].path}")
             self.calendar_file_path = Path(event.files[0].path)
+            self.app.snackbar_message(f"Calendar file picked: {event.files[0].path}")
         else:
             logger.info("Cancelled!")
 
@@ -246,6 +272,15 @@ class InvoicingPage(AppPage):
         logger.info(f"trying to open {invoice_dir}")
         # os.system(f"open {invoice_dir}")
         webbrowser.open(f"file:///{invoice_dir}")
+
+    def on_click_load_demo_calendar(self, event):
+        """Load the demo calendar file."""
+        self.calendar_file_path = Path(__file__).parent.parent / Path(
+            "tuttle_tests/data/TuttleDemo-TimeTracking.ics"
+        )
+        self.app.snackbar_message(
+            f"Loaded demo calendar file: {self.calendar_file_path}"
+        )
 
     def update_content(self):
         super().update_content()
@@ -282,8 +317,8 @@ class InvoicingPage(AppPage):
                             Text(
                                 dedent(
                                     """
-                            1. select a time tracking data source
-                            """
+                                    1. load the demo timetracking data, or select a time tracking calendar file
+                                    """
                                 )
                             )
                         ]
@@ -292,6 +327,11 @@ class InvoicingPage(AppPage):
             ),
             Row(
                 [
+                    ElevatedButton(
+                        "Load demo calendar",
+                        icon=icons.DATE_RANGE,
+                        on_click=self.on_click_load_demo_calendar,
+                    ),
                     ElevatedButton(
                         "Pick Calendar File",
                         icon=icons.UPLOAD_FILE,
