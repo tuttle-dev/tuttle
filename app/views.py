@@ -252,7 +252,7 @@ def make_contract_view(contract: Contract):
 
 def make_project_view(
     project: Project,
-    app_page: "AppPage",
+    app_page,
 ):
     def on_confirm_delete_project(event):
         app_page.app.con.delete(project)
