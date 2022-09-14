@@ -2,12 +2,12 @@ pytest
 pandas
 altair
 pydantic
-sqlalchemy == 1.4.35
 sqlmodel
-pyicloud
 ics
 babel
 loguru
-pdfkit
-flet
 pandera
+
+flet
+pyicloud
+pdfkit
