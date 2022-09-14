@@ -87,6 +87,7 @@ class Controller:
         with self.get_session() as session:
             session.delete(entity)
             session.commit()
+        logger.info(f"deleted {entity}")
 
     def store_all(self, entities):
         """Store a collection of entities in the database."""

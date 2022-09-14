@@ -22,6 +22,7 @@ from flet import (
     Markdown,
     FilePicker,
     FilePickerResultEvent,
+    SnackBar,
 )
 from flet import icons, colors, dropdown
 
@@ -50,6 +51,13 @@ class App:
     ):
         self.con = controller
         self.page = page
+
+    def snackbar_message(self, message):
+        self.page.snack_bar = SnackBar(
+            content=Text(message),
+        )
+        self.page.snack_bar.open = True
+        self.page.update()
 
 
 class AppPage(UserControl):
@@ -193,7 +201,7 @@ class ProjectsPage(AppPage):
         for project in projects:
             self.main_column.controls.append(
                 # TODO: replace with view class
-                views.make_project_view(project)
+                views.make_project_view(project, self)
             )
         self.update()
 

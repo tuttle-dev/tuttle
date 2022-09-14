@@ -1,6 +1,8 @@
 from typing import Optional, List, Tuple
 import datetime
 
+from loguru import logger
+
 from flet import (
     UserControl,
     Card,
@@ -13,6 +15,8 @@ from flet import (
     Text,
     PopupMenuButton,
     PopupMenuItem,
+    AlertDialog,
+    TextButton,
 )
 from flet import icons
 
@@ -246,7 +250,42 @@ def make_contract_view(contract: Contract):
     )
 
 
-def make_project_view(project: Project):
+def make_project_view(
+    project: Project,
+    app_page: "AppPage",
+):
+    def on_confirm_delete_project(event):
+        app_page.app.con.delete(project)
+        app_page.app.page.dialog.open = False
+        app_page.app.page.update()
+        app_page.update_content()
+        app_page.app.snackbar_message(f"Project {project.title} deleted")
+
+    def on_cancel_delete_project(event):
+        app_page.app.page.dialog.open = False
+        app_page.app.page.update()
+        app_page.update_content()
+
+    def on_click_delete_project(event):
+        delete_project_dialog = AlertDialog(
+            modal=True,
+            title=Text("Please confirm"),
+            content=Text(f"Do you really want to delete the project {project.title}?"),
+            actions=[
+                TextButton("Delete", on_click=on_confirm_delete_project),
+                TextButton("Cancel", on_click=on_cancel_delete_project),
+            ],
+            actions_alignment="end",
+            on_dismiss=lambda e: print("Modal dialog dismissed!"),
+        )
+
+        app_page.app.page.dialog = delete_project_dialog
+        delete_project_dialog.open = True
+        app_page.app.page.update()
+
+        # app_page.app.con.delete(project)
+        # app_page.update_content()
+
     return Card(
         content=Container(
             content=Column(
@@ -265,6 +304,7 @@ def make_project_view(project: Project):
                                 PopupMenuItem(
                                     icon=icons.DELETE,
                                     text="Delete",
+                                    on_click=on_click_delete_project,
                                 ),
                             ],
                         ),
