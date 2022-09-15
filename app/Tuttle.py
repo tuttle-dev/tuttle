@@ -248,18 +248,25 @@ class InvoicingPage(AppPage):
         )
         logger.info("Generate invoices clicked")
         if not self.calendar_file_path:
+            self.app.snackbar_message(f"Please select a calendar file")
             logger.error("No calendar file selected!")
             return
-        self.app.con.billing(
-            project_tags=[self.project_select.value],
-            period_start=str(self.date_from_select.get_date()),
-            period_end=str(self.date_to_select.get_date()),
-            timetracking_method="file_calendar",
-            calendar_file_path=self.calendar_file_path,
-        )
-        self.app.snackbar_message(
-            f"created invoice and timesheet for {self.project_select.value} - open the invoice folder to see the result"
-        )
+        try:
+            self.app.con.billing(
+                project_tags=[self.project_select.value],
+                period_start=str(self.date_from_select.get_date()),
+                period_end=str(self.date_to_select.get_date()),
+                timetracking_method="file_calendar",
+                calendar_file_path=self.calendar_file_path,
+            )
+            self.app.snackbar_message(
+                f"created invoice and timesheet for {self.project_select.value} - open the invoice folder to see the result"
+            )
+        except Exception as ex:
+            self.app.snackbar_message(
+                f"failed to create invoice and timesheet for {self.project_select.value}: {ex}"
+            )
+            raise ex
 
     def on_pick_calendar_file(self, event: FilePickerResultEvent):
         """Handle the result of the calendar file picker."""
