@@ -30,11 +30,6 @@ We develop the solution as a GUI application based on web technologies. Sensitiv
 
 Desktop apps are great - let's have more of them. We are consciously developing a desktop app with local data storage, not a web app, since your business data is none of our business.
 
-For this purpose, the Tuttle project is split across several repositories:
-
-- This repository contains the core library, written in Python.
-- The desktop application frontend, based on Electron.js, is being developed in [tuttle-dev/tuttle-app](https://github.com/tuttle-dev/tuttle-app)
-
 
 ## Prototype Test
 
