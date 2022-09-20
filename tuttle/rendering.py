@@ -33,9 +33,10 @@ def convert_html_to_pdf(
         source_dir (_type_): _description_
         dest_dir (_type_): _description_
     """
+    logger.info(f"converting html to pdf: {in_path} -> {out_path}")
     try:
         pdfkit.from_file(input=in_path, output_path=out_path, css=css_paths)
-    except OSError:
+    except OSError as ex:
         # Exit with code 1 due to network error: ProtocolUnknownError
         # ignore this error since a correct output is produced anyway
         pass
