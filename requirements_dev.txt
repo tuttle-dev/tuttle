@@ -5,3 +5,4 @@ black
 nbdime
 pre-commit
 pyinstaller
+typer

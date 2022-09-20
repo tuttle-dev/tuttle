@@ -213,6 +213,7 @@ class Controller:
         period_end=None,
         timetracking_method="cloud_calendar",
         calendar_file_path=None,
+        calendar_file_content=None,
     ):
         """Generate time sheets and invoices for a given period"""
         out_dir = self.home / self.preferences.invoice_dir
@@ -224,10 +225,20 @@ class Controller:
                 name="TimeTracking",
             )
         elif timetracking_method == "file_calendar":
-            timetracking_calendar = calendar.FileCalendar(
-                path=calendar_file_path,
-                name=calendar_file_path.stem,
-            )
+            if calendar_file_path:
+                timetracking_calendar = calendar.FileCalendar(
+                    path=calendar_file_path,
+                    name=calendar_file_path.stem,
+                )
+            elif calendar_file_content:
+                timetracking_calendar = calendar.FileCalendar(
+                    content=calendar_file_content,
+                    name="TimeTracking",
+                )
+            else:
+                raise ValueError(
+                    "either calendar_file_path or calendar_file_content required"
+                )
             if timetracking_calendar.to_data().empty:
                 raise ValueError(
                     f"empty calendar loaded from file {calendar_file_path}"
@@ -246,13 +257,18 @@ class Controller:
                 period_end=period_end,
                 item_description=project.title,
             )
-            rendering.render_timesheet(
-                user=self.user,
-                timesheet=timesheet,
-                style="anvil",
-                document_format="pdf",
-                out_dir=out_dir,
-            )
+            logger.info(f"✅ timesheet generated for {project.title}")
+            try:
+                rendering.render_timesheet(
+                    user=self.user,
+                    timesheet=timesheet,
+                    style="anvil",
+                    document_format="pdf",
+                    out_dir=out_dir,
+                )
+            except Exception as ex:
+                logger.error(f"❌ Error rendering timesheet for {project.title}: {ex}")
+                logger.exception(ex)
             logger.info(f"generating invoice for {project.title}")
             invoice = invoicing.generate_invoice(
                 timesheets=[timesheet],
@@ -260,11 +276,16 @@ class Controller:
                 date=datetime.date.today(),
                 counter=(i + 1),
             )
-            rendering.render_invoice(
-                user=self.user,
-                invoice=invoice,
-                style="anvil",
-                document_format="pdf",
-                out_dir=out_dir,
-            )
             logger.info(f"✅ created invoice for {project.title}")
+            try:
+                rendering.render_invoice(
+                    user=self.user,
+                    invoice=invoice,
+                    style="anvil",
+                    document_format="pdf",
+                    out_dir=out_dir,
+                )
+                logger.info(f"✅ rendered invoice for {project.title}")
+            except Exception as ex:
+                logger.error(f"❌ Error rendering invoice for {project.title}: {ex}")
+                logger.exception(ex)

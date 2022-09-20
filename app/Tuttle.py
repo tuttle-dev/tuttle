@@ -4,6 +4,7 @@ from loguru import logger
 from textwrap import dedent
 from pathlib import Path
 import webbrowser
+import pkgutil
 
 import flet
 from flet import (
@@ -90,13 +91,60 @@ class DemoPage(AppPage):
     def update(self):
         super().update()
 
-    def add_demo_data(self, event):
+    def on_click_load_demo_data(self, event):
         """Install the demo data on button click."""
         demo.add_demo_data(self.app.con)
         self.main_column.controls.clear()
         self.main_column.controls.append(
             Text("Demo data installed ☑️"),
         )
+
+        logger.info("Demo data installed")
+        self.app.snackbar_message("Demo data installed")
+        self.update()
+
+        self.main_column.controls.append(
+            views.make_card(
+                [
+                    Text(
+                        dedent(
+                            """
+                            2. Navigate the menu on the left to explore the demo data.
+                            """
+                        )
+                    )
+                ]
+            )
+        )
+
+        self.main_column.controls.append(
+            views.make_card(
+                [
+                    Text(
+                        dedent(
+                            """
+                            3. Navigate to the "Invoicing" page to generate some invoices.
+                            """
+                        )
+                    )
+                ]
+            )
+        )
+
+        self.main_column.controls.append(
+            views.make_card(
+                [
+                    Text(
+                        dedent(
+                            """
+                            4. Please use the help menu on the top right to tell us about issues or suggestions.
+                            """
+                        )
+                    )
+                ]
+            )
+        )
+
         self.update()
 
     def build(self):
@@ -125,7 +173,7 @@ class DemoPage(AppPage):
                         ElevatedButton(
                             "Install demo data",
                             icon=icons.TOYS,
-                            on_click=self.add_demo_data,
+                            on_click=self.on_click_load_demo_data,
                         ),
                     ]
                 ),
@@ -247,18 +295,27 @@ class InvoicingPage(AppPage):
             f"generating invoice and timesheet for {self.project_select.value}"
         )
         logger.info("Generate invoices clicked")
-        if not self.calendar_file_path:
+        if (self.calendar_file_path is None) and (self.calendar_data is None):
             self.app.snackbar_message(f"Please select a calendar file")
             logger.error("No calendar file selected!")
             return
         try:
-            self.app.con.billing(
-                project_tags=[self.project_select.value],
-                period_start=str(self.date_from_select.get_date()),
-                period_end=str(self.date_to_select.get_date()),
-                timetracking_method="file_calendar",
-                calendar_file_path=self.calendar_file_path,
-            )
+            if self.calendar_file_path:
+                self.app.con.billing(
+                    project_tags=[self.project_select.value],
+                    period_start=str(self.date_from_select.get_date()),
+                    period_end=str(self.date_to_select.get_date()),
+                    timetracking_method="file_calendar",
+                    calendar_file_path=self.calendar_file_path,
+                )
+            elif self.calendar_data:
+                self.app.con.billing(
+                    project_tags=[self.project_select.value],
+                    period_start=str(self.date_from_select.get_date()),
+                    period_end=str(self.date_to_select.get_date()),
+                    timetracking_method="file_calendar",
+                    calendar_file_content=self.calendar_data,
+                )
             self.app.snackbar_message(
                 f"created invoice and timesheet for {self.project_select.value} - open the invoice folder to see the result"
             )
@@ -285,12 +342,12 @@ class InvoicingPage(AppPage):
 
     def on_click_load_demo_calendar(self, event):
         """Load the demo calendar file."""
-        self.calendar_file_path = Path(__file__).parent.parent / Path(
-            "tuttle_tests/data/TuttleDemo-TimeTracking.ics"
+        self.calendar_data = pkgutil.get_data(
+            "tuttle_tests", "data/TuttleDemo-TimeTracking.ics"
         )
-        self.app.snackbar_message(
-            f"Loaded demo calendar file: {self.calendar_file_path}"
-        )
+        assert len(self.calendar_data) > 0
+        logger.info(f"Loaded demo calendar file")
+        self.app.snackbar_message(f"Loaded demo calendar file")
 
     def update_content(self):
         super().update_content()

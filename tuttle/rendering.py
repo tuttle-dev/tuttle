@@ -8,6 +8,7 @@ import jinja2
 from babel.numbers import format_currency
 import pandas
 import pdfkit
+from loguru import logger
 
 from .model import User, Invoice, Timesheet, Project
 from .view import Timeline
@@ -15,8 +16,9 @@ from .view import Timeline
 
 def get_template_path(template_name) -> str:
     """Get the path to an HTML template by name"""
-    module_path = Path(__file__).parent.resolve()
-    template_path = module_path / Path(f"../templates/{template_name}")
+    app_dir = Path(__file__).parent.parent.resolve()
+    template_path = app_dir / Path(f"templates/{template_name}")
+    logger.info(f"Template path: {template_path}")
     return template_path
 
 
