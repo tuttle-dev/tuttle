@@ -13,7 +13,10 @@ added_files = [
     ("templates", "./templates"),
 ]
 
-added_data_options = [f"--add-data={src}:{dst}" for src, dst in added_files]
+if sys.platform.startswith("win"):
+    added_data_options = [f"--add-data={src};{dst}" for src, dst in added_files]
+else:
+    added_data_options = [f"--add-data={src}:{dst}" for src, dst in added_files]
 
 
 def build_macos(
@@ -75,9 +78,6 @@ def build_windows(
         pyinstaller_options += ["--onefile"]
     else:
         pyinstaller_options += ["--onedir"]
-
-    # on Windows the separator is a semicolon
-    added_data_options = [option.replace(":", ";") for option in added_data_options]
 
     options = pyinstaller_options + added_data_options
 
