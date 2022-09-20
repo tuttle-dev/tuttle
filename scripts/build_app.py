@@ -76,6 +76,9 @@ def build_windows(
     else:
         pyinstaller_options += ["--onedir"]
 
+    # on Windows the separator is a semicolon
+    added_data_options = [option.replace(":", ";") for option in added_data_options]
+
     options = pyinstaller_options + added_data_options
 
     logger.info(f"calling pyinstaller with options: {' '.join(options)}")
