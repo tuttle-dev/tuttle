@@ -15,11 +15,10 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - name: 'Get Previous tag'
-      id: previoustag
-      uses: "WyriHaximus/github-action-get-previous-tag@v1"
-      with:
-        fallback: 0.0.0 # Optional fallback tag to use when no tag can be foun
+    - name: Get tag
+      id: get-tag
+      run: |
+        echo "::set-output name=tag::${GITHUB_REF#refs/tags/}"
     - uses: actions/setup-python@v2
       with:
         python-version: 3.10.7
@@ -30,5 +29,5 @@ jobs:
     #- run: ./dist/your-code/your-code
     - uses: actions/upload-artifact@v3
       with:
-        name: Tuttle-${{ steps.previoustag.outputs.tag }}-${{ matrix.os }}
+        name: Tuttle-${{ steps.get-tag.output }}-${{ matrix.os }}
         path: dist/
