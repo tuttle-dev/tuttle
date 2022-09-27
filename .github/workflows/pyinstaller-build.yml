@@ -26,5 +26,5 @@ jobs:
     #- run: ./dist/your-code/your-code
     - uses: actions/upload-artifact@v3
       with:
-        name: Tuttle_${{ matrix.os }}
-        path: dist/*
+        name: Tuttle-${{ matrix.os }}
+        path: dist/
