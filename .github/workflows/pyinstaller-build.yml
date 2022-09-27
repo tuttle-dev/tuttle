@@ -15,11 +15,6 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - run: git fetch --tags
-    - name: Get tag
-      id: get-tag
-      run: |
-        echo "::set-output name=tag::$(git describe --tags --abbrev=0)"
     - uses: actions/setup-python@v2
       with:
         python-version: 3.10.7
@@ -30,5 +25,5 @@ jobs:
     #- run: ./dist/your-code/your-code
     - uses: actions/upload-artifact@v3
       with:
-        name: Tuttle-${{ steps.get-tag.outputs.tag }}-${{ matrix.os }}
+        name: Tuttle-${{ github.sha }}-${{ matrix.os }}
         path: dist/
