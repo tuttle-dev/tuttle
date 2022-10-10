@@ -1,5 +1,6 @@
 from typing import Optional, List, Tuple
 import datetime
+import random
 
 from loguru import logger
 
@@ -17,6 +18,7 @@ from flet import (
     PopupMenuItem,
     AlertDialog,
     TextButton,
+    ProgressBar,
 )
 from flet import icons
 
@@ -25,6 +27,7 @@ from tuttle.model import (
     Client,
     Contract,
     Project,
+    Invoice,
 )
 
 
@@ -215,6 +218,10 @@ def make_contract_view(
                             ],
                         ),
                     ),
+                    ProgressBar(
+                        color="blue",
+                        value=random.random(),  # TODO: set project progress bar
+                    ),
                     Column(
                         [
                             # date range
@@ -321,6 +328,10 @@ def make_project_view(
                             ],
                         ),
                     ),
+                    ProgressBar(
+                        color="blue",
+                        value=random.random(),  # TODO: set project progress bar
+                    ),
                     Column(
                         [
                             Text(f"Client: {project.client.name}"),
@@ -357,6 +368,51 @@ def make_client_view(
                                     text="Edit",
                                     on_click=lambda _: app_page.app.snackbar_message(
                                         "Sorry, editing data is not yet implemented"
+                                    ),
+                                ),
+                                PopupMenuItem(
+                                    icon=icons.DELETE,
+                                    text="Delete",
+                                ),
+                            ],
+                        ),
+                    ),
+                    Column([]),
+                ]
+            ),
+            # width=400,
+            padding=10,
+        )
+    )
+
+
+def make_invoice_view(
+    invoice: Invoice,
+    app_page,
+):
+    return Card(
+        content=Container(
+            content=Column(
+                [
+                    ListTile(
+                        leading=Icon(icons.OUTGOING_MAIL),
+                        title=Text(invoice.number),
+                        # subtitle=Text(client.company),
+                        trailing=PopupMenuButton(
+                            icon=icons.MORE_VERT,
+                            items=[
+                                PopupMenuItem(
+                                    icon=icons.VISIBILITY,
+                                    text="View",
+                                    on_click=lambda _: app_page.app.con.quicklook_invoice(
+                                        invoice
+                                    ),
+                                ),
+                                PopupMenuItem(
+                                    icon=icons.PREVIEW,
+                                    text="Open",
+                                    on_click=lambda _: app_page.app.con.open_invoice(
+                                        invoice
                                     ),
                                 ),
                                 PopupMenuItem(

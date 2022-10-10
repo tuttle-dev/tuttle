@@ -93,11 +93,9 @@ def render_invoice(
         return html
     else:
         # write invoice html
-        client_suffix = invoice.client.name.lower().split()[0]
-        prefix = f"{invoice.number}-{client_suffix}"
-        invoice_dir = Path(out_dir) / Path(prefix)
+        invoice_dir = Path(out_dir) / Path(invoice.prefix)
         invoice_dir.mkdir(parents=True, exist_ok=True)
-        invoice_path = invoice_dir / Path(f"{prefix}.html")
+        invoice_path = invoice_dir / Path(f"{invoice.prefix}.html")
         with open(invoice_path, "w") as invoice_file:
             invoice_file.write(html)
         # copy stylsheets
@@ -126,8 +124,10 @@ def render_invoice(
             convert_html_to_pdf(
                 in_path=str(invoice_path),
                 css_paths=css_paths,
-                out_path=invoice_dir / Path(f"{prefix}.pdf"),
+                out_path=invoice_dir / Path(f"{invoice.prefix}.pdf"),
             )
+    # finally set the rendered flag
+    invoice.rendered = True
 
 
 def render_timesheet(
