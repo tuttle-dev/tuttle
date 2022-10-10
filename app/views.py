@@ -1,5 +1,6 @@
 from typing import Optional, List, Tuple
 import datetime
+import random
 
 from loguru import logger
 
@@ -17,6 +18,7 @@ from flet import (
     PopupMenuItem,
     AlertDialog,
     TextButton,
+    ProgressBar,
 )
 from flet import icons
 
@@ -215,6 +217,10 @@ def make_contract_view(
                             ],
                         ),
                     ),
+                    ProgressBar(
+                        color="blue",
+                        value=random.random(),  # TODO: set project progress bar
+                    ),
                     Column(
                         [
                             # date range
@@ -320,6 +326,10 @@ def make_project_view(
                                 ),
                             ],
                         ),
+                    ),
+                    ProgressBar(
+                        color="blue",
+                        value=random.random(),  # TODO: set project progress bar
                     ),
                     Column(
                         [
