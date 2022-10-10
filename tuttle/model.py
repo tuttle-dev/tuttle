@@ -339,6 +339,7 @@ class Invoice(SQLModel, table=True):
     # payment: Optional["Payment"] = Relationship(back_populates="invoice")
     # invoice items
     items: List["InvoiceItem"] = Relationship(back_populates="invoice")
+    rendered: bool = Field(default=False)
 
     #
     @property
@@ -374,6 +375,13 @@ class Invoice(SQLModel, table=True):
     @property
     def client(self):
         return self.contract.client
+
+    @property
+    def prefix(self):
+        """A string that can be used as the prefix of a file name, or a folder name."""
+        client_suffix = self.client.name.lower().split()[0]
+        prefix = f"{self.number}-{client_suffix}"
+        return prefix
 
 
 class InvoiceItem(SQLModel, table=True):

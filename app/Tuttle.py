@@ -39,6 +39,7 @@ from tuttle.model import (
     Contract,
     Project,
     Client,
+    Invoice,
 )
 
 from tuttle_tests import demo
@@ -272,6 +273,30 @@ class ProjectsPage(AppPage):
             self.main_column.controls.append(
                 # TODO: replace with view class
                 views.make_project_view(project, self)
+            )
+        self.update()
+
+
+class InvoicesPage(AppPage):
+    def __init__(
+        self,
+        app: App,
+    ):
+        super().__init__(app)
+
+    def update(self):
+        super().update()
+
+    def update_content(self):
+        super().update_content()
+        self.main_column.controls.clear()
+
+        invoices = self.app.con.query(Invoice)
+
+        for invoice in invoices:
+            self.main_column.controls.append(
+                # TODO: replace with view class
+                views.make_invoice_view(invoice, self)
             )
         self.update()
 
@@ -534,6 +559,13 @@ def main(page: Page):
                 label="Invoicing",
             ),
             InvoicingPage(app),
+        ),
+        (
+            NavigationRailDestination(
+                icon=icons.OUTGOING_MAIL,
+                label="Invoices",
+            ),
+            InvoicesPage(app),
         ),
         (
             NavigationRailDestination(

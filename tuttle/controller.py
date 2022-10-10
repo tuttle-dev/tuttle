@@ -4,6 +4,8 @@ import os
 import sys
 import datetime
 from typing import Type
+import platform
+import subprocess
 
 import pandas
 import sqlmodel
@@ -257,6 +259,8 @@ class Controller:
                 period_end=period_end,
                 item_description=project.title,
             )
+            # FIXME: store timesheet
+            # self.store(timesheet)
             logger.info(f"✅ timesheet generated for {project.title}")
             try:
                 rendering.render_timesheet(
@@ -289,3 +293,40 @@ class Controller:
             except Exception as ex:
                 logger.error(f"❌ Error rendering invoice for {project.title}: {ex}")
                 logger.exception(ex)
+            # finally store invoice
+            self.store(invoice)
+
+    def open_invoice(self, invoice):
+        """Open an invoice in the default application for PDF files"""
+        invoice_file_path = (
+            self.home
+            / self.preferences.invoice_dir
+            / Path(invoice.prefix)
+            / Path(f"{invoice.prefix}.pdf")
+        )
+        if invoice_file_path.exists():
+            if platform.system() == "Darwin":  # macOS
+                subprocess.call(("open", invoice_file_path))
+            elif platform.system() == "Windows":  # Windows
+                os.startfile(invoice_file_path)
+            else:  # linux variants
+                subprocess.call(("xdg-open", invoice_file_path))
+
+        else:
+            logger.error(f"invoice file {invoice_file_path} not found")
+
+    def quicklook_invoice(self, invoice):
+        """Open an invoice in the preview application for PDF files"""
+        invoice_file_path = (
+            self.home
+            / self.preferences.invoice_dir
+            / Path(invoice.prefix)
+            / Path(f"{invoice.prefix}.pdf")
+        )
+        if invoice_file_path.exists():
+            if platform.system() == "Darwin":  # macOS
+                subprocess.call(["qlmanage", "-p", invoice_file_path])
+            else:
+                logger.error(f"quicklook not supported on {platform.system()}")
+        else:
+            logger.error(f"invoice file {invoice_file_path} not found")
