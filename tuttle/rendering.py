@@ -1,5 +1,7 @@
 """Document rendering."""
 
+import os
+import sys
 from pathlib import Path
 import shutil
 import glob
@@ -7,8 +9,13 @@ import glob
 import jinja2
 from babel.numbers import format_currency
 import pandas
-import pdfkit
 from loguru import logger
+
+# pdfkit needs wkhtmltopdf to be installed
+if getattr(sys, "frozen", False):
+    os.environ["PATH"] = sys._MEIPASS + os.pathsep + os.environ["PATH"]
+import pdfkit
+
 
 from .model import User, Invoice, Timesheet, Project
 from .view import Timeline
