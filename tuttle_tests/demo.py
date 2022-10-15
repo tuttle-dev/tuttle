@@ -38,7 +38,8 @@ user = User(
 # CONTACTS
 
 contact_one = Contact(
-    name="Sam Lowry",
+    first_name="Sam",
+    last_name="Lowry",
     email="lowry@centralservices.com",
     address=Address(
         street="Main Street",
@@ -50,13 +51,15 @@ contact_one = Contact(
 )
 
 contact_two = Contact(
-    name="Jill Layton",
+    first_name="Jill",
+    last_name="Layton",
     email="jilllayton@gmail.com",
     address=None,
 )
 
 contact_three = Contact(
-    name="Mr Kurtzman",
+    first_name="Mr",
+    last_name="Kurtzman",
     company="Central Services",
     email="kurtzman@centralservices.com",
     address=Address(
@@ -69,7 +72,8 @@ contact_three = Contact(
 )
 
 contact_four = Contact(
-    name="Harry Buttle",
+    first_name="Archibald",
+    last_name="Buttle",
     company="Shoe Repairs Central",
     address=Address(
         street="Main Street",
@@ -86,7 +90,8 @@ contact_four = Contact(
 client_one = Client(
     name="Central Services",
     invoicing_contact=Contact(
-        name="Central Services",
+        first_name="Central",
+        last_name="Services",
         email="info@centralservices.com",
         address=Address(
             street="Main Street",

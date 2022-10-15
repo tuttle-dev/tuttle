@@ -401,17 +401,24 @@ def make_invoice_view(
                         trailing=PopupMenuButton(
                             icon=icons.MORE_VERT,
                             items=[
-                                PopupMenuItem(
-                                    icon=icons.VISIBILITY,
-                                    text="View",
-                                    on_click=lambda _: app_page.app.con.quicklook_invoice(
-                                        invoice
-                                    ),
-                                ),
+                                # PopupMenuItem(
+                                #     icon=icons.VISIBILITY,
+                                #     text="View",
+                                #     on_click=lambda _: app_page.app.con.quicklook_invoice(
+                                #         invoice
+                                #     ),
+                                # ),
                                 PopupMenuItem(
                                     icon=icons.PREVIEW,
                                     text="Open",
                                     on_click=lambda _: app_page.app.con.open_invoice(
+                                        invoice
+                                    ),
+                                ),
+                                PopupMenuItem(
+                                    icon=icons.OUTGOING_MAIL,
+                                    text="Send",
+                                    on_click=lambda _: app_page.app.con.send_invoice(
                                         invoice
                                     ),
                                 ),

@@ -155,7 +155,8 @@ class Contact(SQLModel, table=True):
     """An entry in the address book."""
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    name: str
+    first_name: str
+    last_name: str
     company: Optional[str]
     email: Optional[str]
     address_id: Optional[int] = Field(default=None, foreign_key="address.id")
@@ -382,6 +383,11 @@ class Invoice(SQLModel, table=True):
         client_suffix = self.client.name.lower().split()[0]
         prefix = f"{self.number}-{client_suffix}"
         return prefix
+
+    @property
+    def file_name(self):
+        """A string that can be used as a file name."""
+        return f"{self.prefix}.pdf"
 
 
 class InvoiceItem(SQLModel, table=True):

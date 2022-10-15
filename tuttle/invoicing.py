@@ -1,6 +1,6 @@
 """Invoicing."""
 
-from typing import List
+from typing import List, Optional, Dict
 import datetime
 from pathlib import Path
 import shutil
@@ -53,3 +53,25 @@ def send_invoice(
         body=None,  #
         attachments=None,  # TODO: inovice as PDF
     )
+
+
+def generate_invoice_email(
+    invoice: Invoice,
+    user: User,
+) -> Dict:
+    """Generate an email with the invoice attached."""
+    body = f"""
+    Dear {invoice.client.invoicing_contact.first_name}
+
+    Please find attached the invoice number {invoice.number}.
+
+    Best regards
+    {user.name}
+    """
+
+    email = {
+        "subject": f"Invoice {invoice.number}",
+        "body": body,
+        "recipient": invoice.client.invoicing_contact.email,
+    }
+    return email

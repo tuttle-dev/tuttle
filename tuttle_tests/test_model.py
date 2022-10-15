@@ -84,7 +84,8 @@ def test_contract():
     the_client = model.Client(
         name="Central Services",
         invoicing_contact=model.Contact(
-            name="Central Services",
+            first_name="Central",
+            last_name="Services",
             address=model.Address(
                 street="Down the Road",
                 number="55",

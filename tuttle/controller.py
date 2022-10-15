@@ -13,8 +13,23 @@ from sqlmodel import pool, SQLModel
 
 from loguru import logger
 
-from . import model, timetracking, dataviz, rendering, invoicing, calendar, cloud
+from . import (
+    model,
+    timetracking,
+    dataviz,
+    rendering,
+    invoicing,
+    calendar,
+    cloud,
+    os_functions,
+)
 from .preferences import Preferences
+from .model import (
+    User,
+    Project,
+    Contract,
+    Invoice,
+)
 
 
 class Controller:
@@ -296,13 +311,16 @@ class Controller:
             # finally store invoice
             self.store(invoice)
 
-    def open_invoice(self, invoice):
+    def open_invoice(
+        self,
+        invoice: Invoice,
+    ):
         """Open an invoice in the default application for PDF files"""
         invoice_file_path = (
             self.home
             / self.preferences.invoice_dir
             / Path(invoice.prefix)
-            / Path(f"{invoice.prefix}.pdf")
+            / Path(invoice.file_name)
         )
         if invoice_file_path.exists():
             if platform.system() == "Darwin":  # macOS
@@ -315,18 +333,46 @@ class Controller:
         else:
             logger.error(f"invoice file {invoice_file_path} not found")
 
-    def quicklook_invoice(self, invoice):
+    def quicklook_invoice(
+        self,
+        invoice: Invoice,
+    ):
         """Open an invoice in the preview application for PDF files"""
         invoice_file_path = (
             self.home
             / self.preferences.invoice_dir
             / Path(invoice.prefix)
-            / Path(f"{invoice.prefix}.pdf")
+            / Path(invoice.file_name)
         )
         if invoice_file_path.exists():
             if platform.system() == "Darwin":  # macOS
                 subprocess.call(["qlmanage", "-p", invoice_file_path])
             else:
                 logger.error(f"quicklook not supported on {platform.system()}")
+        else:
+            logger.error(f"invoice file {invoice_file_path} not found")
+
+    def send_invoice(self, invoice: Invoice):
+        """Compose an email to the client with the invoice attached"""
+        invoice_file_path = (
+            self.home
+            / self.preferences.invoice_dir
+            / Path(invoice.prefix)
+            / Path(invoice.file_name)
+        )
+        if invoice_file_path.exists():
+            if platform.system() == "Darwin":
+                email = invoicing.generate_invoice_email(
+                    invoice,
+                    self.user,
+                )
+                os_functions.compose_email(
+                    recipient=email["recipient"],
+                    subject=email["subject"],
+                    body=email["body"],
+                    attachment_path=invoice_file_path,
+                )
+            else:
+                logger.error(f"emailing not yet supported on {platform.system()}")
         else:
             logger.error(f"invoice file {invoice_file_path} not found")

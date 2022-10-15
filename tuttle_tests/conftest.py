@@ -11,7 +11,8 @@ from tuttle.model import Project, Client, Address, Contact, User, BankAccount, C
 @pytest.fixture
 def demo_contact():
     return Contact(
-        name="Sam Lowry",
+        fist_name="Sam",
+        last_name="Lowry",
         email="info@centralservices.com",
         address=Address(
             street="Main Street",
@@ -26,7 +27,8 @@ def demo_contact():
 @pytest.fixture
 def demo_user():
     user = User(
-        name="Harry Tuttle",
+        first_name="Harry",
+        last_name="Tuttle",
         subtitle="Heating Engineer",
         website="https://tuttle-dev.github.io/tuttle/",
         email="mail@tuttle.com",
@@ -52,9 +54,11 @@ def demo_user():
 @pytest.fixture
 def demo_clients():
     central_services = Client(
-        name="Central Services",
+        first_name="Central",
+        last_name="Services",
         invoicing_contact=Contact(
-            name="Central Services",
+            first_name="Central",
+            last_name="Services",
             email="info@centralservices.com",
             address=Address(
                 street="Main Street",
@@ -69,7 +73,8 @@ def demo_clients():
     sam_lowry = Client(
         name="Sam Lowry",
         invoicing_contact=Contact(
-            name="Sam Lowry",
+            first_name="Sam",
+            last_name="Lowry",
             email="info@centralservices.com",
             address=Address(
                 street="Main Street",

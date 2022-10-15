@@ -32,7 +32,8 @@ def demo_user():
         phone_number="+55555555555",
         VAT_number="27B-6",
         address=Address(
-            name="Harry Tuttle",
+            first_name="Harry",
+            last_name="Tuttle",
             street="Main Street",
             number="450",
             city="Sao Paolo",
