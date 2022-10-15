@@ -1,7 +1,7 @@
 """Top-level package for tuttle."""
 
 __author__ = """Christian Staudt"""
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 from . import (
     banking,
