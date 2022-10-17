@@ -54,8 +54,7 @@ def demo_user():
 @pytest.fixture
 def demo_clients():
     central_services = Client(
-        first_name="Central",
-        last_name="Services",
+        name="Central Services",
         invoicing_contact=Contact(
             first_name="Central",
             last_name="Services",

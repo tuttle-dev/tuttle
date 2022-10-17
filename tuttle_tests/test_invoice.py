@@ -1,8 +1,9 @@
 """Tests for the invoice module."""
 
 import datetime
+from pathlib import Path
 
-from tuttle import invoicing, timetracking
+from tuttle import invoicing, timetracking, rendering
 from tuttle.model import Invoice, InvoiceItem
 
 
@@ -65,9 +66,63 @@ def test_generate_invoice(
         assert invoice.total > 0
 
 
-def test_render_invoice_to_html():
-    pass
+def test_render_invoice_to_html(
+    demo_user,
+    demo_projects,
+    demo_calendar_timetracking,
+):
+    for project in demo_projects:
+        timesheets = []
+        for period in ["January 2022", "February 2022"]:
+            timesheet = timetracking.generate_timesheet(
+                source=demo_calendar_timetracking,
+                project=project,
+                period_start=period,
+                item_description=project.title,
+            )
+            if not timesheet.empty:
+                timesheets.append(timesheet)
+        invoice = invoicing.generate_invoice(
+            timesheets=timesheets,
+            contract=project.contract,
+            date=datetime.date.today(),
+        )
+        # RENDERING
+        rendering.render_invoice(
+            user=demo_user,
+            invoice=invoice,
+            style="anvil",
+            document_format="html",
+            out_dir=Path("tuttle_tests/tmp"),
+        )
 
 
-def test_render_invoice_to_pdf():
-    pass
+def test_render_invoice_to_pdf(
+    demo_user,
+    demo_projects,
+    demo_calendar_timetracking,
+):
+    for project in demo_projects:
+        timesheets = []
+        for period in ["January 2022", "February 2022"]:
+            timesheet = timetracking.generate_timesheet(
+                source=demo_calendar_timetracking,
+                project=project,
+                period_start=period,
+                item_description=project.title,
+            )
+            if not timesheet.empty:
+                timesheets.append(timesheet)
+        invoice = invoicing.generate_invoice(
+            timesheets=timesheets,
+            contract=project.contract,
+            date=datetime.date.today(),
+        )
+        # RENDERING
+        rendering.render_invoice(
+            user=demo_user,
+            invoice=invoice,
+            style="anvil",
+            document_format="pdf",
+            out_dir=Path("tuttle_tests/tmp"),
+        )

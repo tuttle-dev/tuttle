@@ -11,11 +11,6 @@ from babel.numbers import format_currency
 import pandas
 from loguru import logger
 
-# pdfkit needs wkhtmltopdf to be installed
-if getattr(sys, "frozen", False):
-    os.environ["PATH"] = sys._MEIPASS + os.pathsep + os.environ["PATH"]
-import pdfkit
-
 
 from .model import User, Invoice, Timesheet, Project
 from .view import Timeline
@@ -41,12 +36,80 @@ def convert_html_to_pdf(
         dest_dir (_type_): _description_
     """
     logger.info(f"converting html to pdf: {in_path} -> {out_path}")
+    _convert_html_to_pdf_with_weasyprint(
+        in_path=in_path,
+        out_path=out_path,
+        css_paths=css_paths,
+    )
+
+
+def _convert_html_to_pdf_with_pdfkit(
+    in_path,
+    out_path,
+    css_paths=[],
+):
+    """Implementation of convert_html_to_pdf using pdfkit."""
+    # pdfkit needs wkhtmltopdf to be installed
+    if getattr(sys, "frozen", False):
+        os.environ["PATH"] = sys._MEIPASS + os.pathsep + os.environ["PATH"]
+    try:
+        import pdfkit
+    except ImportError:
+        logger.error("Please install pdfkit and wkhtmltopdf")
+        raise
     try:
         pdfkit.from_file(input=in_path, output_path=out_path, css=css_paths)
     except OSError as ex:
         # Exit with code 1 due to network error: ProtocolUnknownError
         # ignore this error since a correct output is produced anyway
         pass
+
+
+def _convert_html_to_pdf_with_weasyprint(
+    in_path,
+    out_path,
+    css_paths=[],
+):
+    """Implementation of convert_html_to_pdf using weasyprint."""
+    try:
+        import weasyprint
+    except ImportError:
+        logger.error("Please install weasyprint")
+        raise
+    css_paths = [Path(css_path).resolve() for css_path in css_paths]
+    logger.debug(f"css_paths: {css_paths}")
+    (
+        weasyprint.HTML(in_path).write_pdf(
+            out_path,
+            stylesheets=css_paths,
+        )
+    )
+
+
+def _convert_html_to_pdf_with_QT(
+    in_path,
+    out_path,
+    css_paths=[],
+):
+    """Implementation of convert_html_to_pdf using QT."""
+    try:
+        from PyQt5 import QtCore, QtWidgets, QtWebEngineWidgets
+    except ImportError:
+        logger.error("Please install PyQt5")
+        raise
+    app = QtWidgets.QApplication(sys.argv)
+    loader = QtWebEngineWidgets.QWebEngineView()
+    loader.setZoomFactor(1)
+    loader.page().pdfPrintingFinished.connect(lambda *args: print("finished:", args))
+    loader.load(QtCore.QUrl(in_path))
+
+    def emit_pdf(finished):
+        loader.show()
+        loader.page().printToPdf(out_path)
+
+    loader.loadFinished.connect(emit_pdf)
+
+    app.exec()
 
 
 def render_invoice(
