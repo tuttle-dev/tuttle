@@ -43,7 +43,7 @@ def build_macos(
 
     logger.info(f"calling pyinstaller with options: {' '.join(options)}")
     subprocess.call(
-        ["pyinstaller", "app/Tuttle.py"] + options,
+        ["pyinstaller", "app/tuttle_app.py"] + options,
         shell=False,
     )
 
@@ -68,7 +68,7 @@ def build_linux(
 
     logger.info(f"calling pyinstaller with options: {' '.join(options)}")
     subprocess.call(
-        ["pyinstaller", "app/Tuttle.py"] + options,
+        ["pyinstaller", "app/tuttle_app.py"] + options,
         shell=False,
     )
 
@@ -93,7 +93,7 @@ def build_windows(
 
     logger.info(f"calling pyinstaller with options: {' '.join(options)}")
     subprocess.call(
-        ["pyinstaller", "app/Tuttle.py"] + options,
+        ["pyinstaller", "app/tuttle_app.py"] + options,
         shell=False,
     )
 
