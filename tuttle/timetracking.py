@@ -119,8 +119,9 @@ def import_from_calendar(cal: Calendar) -> DataFrame:
     if issubclass(type(cal), ICloudCalendar):
         timetracking_data = cal.to_data()
         return timetracking_data
-    elif issubclass(cal, FileCalendar):
-        raise NotImplementedError()
+    elif issubclass(type(cal), FileCalendar):
+        timetracking_data = cal.to_data()
+        return timetracking_data
     else:
         raise NotImplementedError()
 

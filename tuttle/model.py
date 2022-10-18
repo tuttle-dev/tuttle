@@ -155,8 +155,8 @@ class Contact(SQLModel, table=True):
     """An entry in the address book."""
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    first_name: str
-    last_name: str
+    first_name: Optional[str]
+    last_name: Optional[str]
     company: Optional[str]
     email: Optional[str]
     address_id: Optional[int] = Field(default=None, foreign_key="address.id")
