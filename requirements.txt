@@ -7,7 +7,7 @@ ics
 babel
 loguru
 pandera
+weasyprint
 
 flet
 pyicloud
-pdfkit
