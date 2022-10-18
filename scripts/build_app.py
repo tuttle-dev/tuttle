@@ -80,7 +80,6 @@ def build_windows(
         "--noconfirm",
         "--windowed",
         "--clean",
-        "--onefile",
     ]
 
     if one_file:
