@@ -16,7 +16,6 @@ added_files = [
 
 def build_macos(
     one_file: bool,
-    bundle_third_party: bool,
 ):
     pyinstaller_options = [
         "--noconfirm",
@@ -28,19 +27,19 @@ def build_macos(
     else:
         pyinstaller_options += ["--onedir"]
 
-    if bundle_third_party:
-        added_binaries = [
-            ("/usr/local/bin/wkhtmltopdf", "."),
-        ]
-        added_binary_options = [
-            f"--add-binary={src}:{dst}" for src, dst in added_binaries
-        ]
-    else:
-        added_binary_options = []
+    # if bundle_third_party:
+    #     added_binaries = [
+    #         ("/usr/local/bin/wkhtmltopdf", "."),
+    #     ]
+    #     added_binary_options = [
+    #         f"--add-binary={src}:{dst}" for src, dst in added_binaries
+    #     ]
+    # else:
+    #     added_binary_options = []
 
     added_data_options = [f"--add-data={src}:{dst}" for src, dst in added_files]
 
-    options = pyinstaller_options + added_data_options + added_binary_options
+    options = pyinstaller_options + added_data_options
 
     logger.info(f"calling pyinstaller with options: {' '.join(options)}")
     subprocess.call(
@@ -107,9 +106,6 @@ def main(
     one_file: bool = typer.Option(
         False, "--one-file", "-f", help="Build a single file executable"
     ),
-    bundle_third_party: bool = typer.Option(
-        True, "--bundle-third-party", "-b", help="Bundle third party libraries"
-    ),
 ):
     if install_dir:
         logger.info(f"removing app from {install_dir}")
@@ -125,7 +121,6 @@ def main(
         logger.info("building for macOS")
         build_macos(
             one_file=one_file,
-            bundle_third_party=bundle_third_party,
         )
     elif sys.platform.startswith("win"):
         logger.info("building for Windows")

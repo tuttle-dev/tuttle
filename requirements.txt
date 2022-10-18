@@ -8,6 +8,7 @@ babel
 loguru
 pandera
 weasyprint
+pandera
 
 flet
 pyicloud
