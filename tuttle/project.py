@@ -1,1 +1,0 @@
-"""Function group 'Projects'."""

@@ -7,7 +7,6 @@ from . import (
     banking,
     calendar,
     cloud,
-    context,
     controller,
     invoicing,
     model,
