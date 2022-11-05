@@ -97,7 +97,7 @@ def test_contract():
         ),
     )
 
-    the_contract = model.Contract(
+    the_contract = model.TimeContract(
         title="CS Q1 2022",
         client=the_client,
         start_date=datetime.date(2022, 1, 1),

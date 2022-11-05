@@ -193,13 +193,17 @@ class Client(SQLModel, table=True):
     # non-invoice related contact person?
 
 
-class Contract(SQLModel, table=True):
+class Contract(SQLModel):
     """A contract defines the business conditions of a project"""
 
-    id: Optional[int] = Field(default=None, primary_key=True)
     title: str = Field(description="Short description of the contract.")
     client: Client = Relationship(
         back_populates="contracts",
+    )
+    # Contract n:1 Client
+    client_id: Optional[int] = Field(
+        default=None,
+        foreign_key="client.id",
     )
     signature_date: datetime.date = Field(
         description="Date on which the contract was signed",
@@ -210,19 +214,28 @@ class Contract(SQLModel, table=True):
     end_date: Optional[datetime.date] = Field(
         description="Date until which the contract is valid",
     )
-    # Contract n:1 Client
-    client_id: Optional[int] = Field(
-        default=None,
-        foreign_key="client.id",
-    )
-    rate: condecimal(decimal_places=2) = Field(
-        description="Rate of remuneration",
-    )
     currency: str  # TODO: currency representation
     VAT_rate: Decimal = Field(
         description="VAT rate applied to the contractual rate.",
         default=0.19,  # TODO: configure by country?
     )
+    term_of_payment: Optional[int] = Field(
+        description="How many days after receipt of invoice this invoice is due.",
+        default=31,
+    )
+    projects: List["Project"] = Relationship(back_populates="contract")
+    invoices: List["Invoice"] = Relationship(back_populates="contract")
+
+
+class TimeContract(Contract, table=True):
+    """A time-based contract with a rate per time unit"""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+
+    rate: condecimal(decimal_places=2) = Field(
+        description="Rate of remuneration",
+    )
+
     unit: TimeUnit = Field(
         description="Unit of time tracked. The rate applies to this unit.",
         sa_column=sqlalchemy.Column(sqlalchemy.Enum(TimeUnit)),
@@ -235,18 +248,23 @@ class Contract(SQLModel, table=True):
     volume: Optional[int] = Field(
         description="Number of units agreed on",
     )
-    term_of_payment: Optional[int] = Field(
-        description="How many days after receipt of invoice this invoice is due.",
-        default=31,
-    )
     billing_cycle: Cycle = Field(sa_column=sqlalchemy.Column(sqlalchemy.Enum(Cycle)))
-    projects: List["Project"] = Relationship(back_populates="contract")
-    invoices: List["Invoice"] = Relationship(back_populates="contract")
+
     # TODO: model contractual promises like "at least 2 days per week"
 
     @property
     def volume_as_time(self):
         return self.volume * self.unit.to_timedelta()
+
+
+class WorksContract(Contract, table=True):
+    """A contract with a fixed price"""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    price: condecimal(decimal_places=2) = Field(
+        description="Price of the contract",
+    )
+    deliverable: str = Field(description="Description of the deliverable")
 
 
 class Project(SQLModel, table=True):
