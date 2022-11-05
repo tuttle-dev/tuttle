@@ -1,13 +1,30 @@
-# tuttle - painless business planning for freelancers
+<br />
+<div align="center">
+  <h1>Tuttle</h1>
 
-> HARRY TUTTLE: Bloody paperwork. Huh!
->
-> SAM LOWRY: I suppose one has to expect a certain amount.
->
-> HARRY TUTTLE: Why? I came into this game for the action, the excitement. Go anywhere, travel light, get in, get out, wherever there's trouble, a man alone.
+  [![License](https://img.shields.io/github/license/tuttle-dev/tuttle?color=green&style=flat-square)](https://github.com/tuttle-dev/tuttle/blob/main/LICENSE)
+
+  <p><b>Painless business planning for freelancers</b></p>
+
+  <p align="center">
+    <blockquote align="left">
+    HARRY TUTTLE: Bloody paperwork. Huh!
+    <br />
+    SAM LOWRY: I suppose one has to expect a certain amount.
+    <br />
+    HARRY TUTTLE: Why? I came into this game for the action, the excitement. Go anywhere, travel light, get in, get out, wherever there's trouble, a man alone.
+    </blockquote>
+    <br />
+  </p>
+  <p><i>
+      Tuttle is an open-source software project supported by the <a href="https://prototypefund.de/en/about-2/">Prototype Fund</a>. We develop a time and finance planning tool tailored for the requirements of freelancers.
+      </i>
+    </p>
+</div>
 
 
-**Tuttle is an open-source software project supported by the [Prototype Fund](https://prototypefund.de/en/about-2/). We develop a finance and business planning tool tailored for the requirements of freelancers.**
+
+
 
 
 ## Which challenges does the project address?
