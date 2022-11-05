@@ -29,6 +29,8 @@ from .time import Cycle, TimeUnit
 
 # TODO: created & modified time stamps
 
+mapper_registry = sqlalchemy.orm.registry()
+
 
 def help(model_class):
     return pandas.DataFrame(
@@ -193,8 +195,15 @@ class Client(SQLModel, table=True):
     # non-invoice related contact person?
 
 
-class Contract(SQLModel):
+class Contract(SQLModel, table=True):
     """A contract defines the business conditions of a project"""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    contract_type: str
+    __mapper_args__ = {
+        "polymorphic_identity": "contract",
+        "polymorphic_on": "contract_type",
+    }
 
     title: str = Field(description="Short description of the contract.")
     client: Client = Relationship(
@@ -227,10 +236,16 @@ class Contract(SQLModel):
     invoices: List["Invoice"] = Relationship(back_populates="contract")
 
 
+@mapper_registry.mapped
 class TimeContract(Contract, table=True):
     """A time-based contract with a rate per time unit"""
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    contract_id: Optional[int] = Field(
+        default=None, foreign_key="contract.id", primary_key=True
+    )
+    __mapper_args__ = {
+        "polymorphic_identity": "time",
+    }
 
     rate: condecimal(decimal_places=2) = Field(
         description="Rate of remuneration",
@@ -257,20 +272,34 @@ class TimeContract(Contract, table=True):
         return self.volume * self.unit.to_timedelta()
 
 
+@mapper_registry.mapped
 class WorksContract(Contract, table=True):
     """A contract with a fixed price"""
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    contract_id: Optional[int] = Field(
+        default=None, foreign_key="contract.id", primary_key=True
+    )
+    __mapper_args__ = {
+        "polymorphic_identity": "works",
+    }
+
     price: condecimal(decimal_places=2) = Field(
         description="Price of the contract",
     )
     deliverable: str = Field(description="Description of the deliverable")
 
 
+# reference: https://github.com/tiangolo/sqlmodel/issues/488#issuecomment-1304599874
+contract_manager = sqlalchemy.orm.with_polymorphic(
+    Contract, [TimeContract, WorksContract]
+)
+
+
 class Project(SQLModel, table=True):
     """A project is a group of contract work for a client."""
 
     id: Optional[int] = Field(default=None, primary_key=True)
+
     title: str = Field(
         description="A short, unique description", sa_column_kwargs={"unique": True}
     )
