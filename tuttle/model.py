@@ -166,6 +166,19 @@ class Contact(SQLModel, table=True):
     )
     # post address
 
+    @property
+    def name(self):
+        if self.first_name and self.last_name:
+            return f"{self.first_name} {self.last_name}"
+        elif self.first_name:
+            return self.first_name
+        elif self.last_name:
+            return self.last_name
+        elif self.company:
+            return self.company
+        else:
+            return None
+
     def print_address(self):
         """Print address in common format."""
         if self.address is None:

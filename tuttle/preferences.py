@@ -8,3 +8,4 @@ class Preferences:
 
     home_dir: Path = None
     invoice_dir: Path = Path("Invoices")
+    # TODO: time tracking preference
