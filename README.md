@@ -3,6 +3,8 @@
   <h1>Tuttle</h1>
 
   [![License](https://img.shields.io/github/license/tuttle-dev/tuttle?color=green&style=flat-square)](https://github.com/tuttle-dev/tuttle/blob/main/LICENSE)
+  [![Commit Activity](https://img.shields.io/github/commit-activity/m/tuttle-dev/tuttle?style=flat-square)]()
+
 
   <p><b>Painless business planning for freelancers</b></p>
 
