@@ -6,7 +6,7 @@
   [![Commit Activity](https://img.shields.io/github/commit-activity/m/tuttle-dev/tuttle?style=flat-square)]()
 
 
-  <p><b>Painless business planning for freelancers</b></p>
+  <p><b>Time and money management for freelancers</b></p>
 
   <p align="center">
     <blockquote align="left">
