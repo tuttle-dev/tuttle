@@ -1,0 +1,39 @@
+[tool.poetry]
+name = "tuttle"
+version = "0.2.1"
+description = "time and money management for freelancers"
+authors = ["Christian Staudt <mail@clstaudt.me>"]
+license = "GPL3"
+readme = "README.md"
+packages = [
+    { include = "tuttle" },
+]
+
+[tool.poetry.dependencies]
+python = "^3.8,<3.11"
+pytest = "^7.2.0"
+pandas = "^1.5.1"
+altair = "^4.2.0"
+pydantic = "^1.10.2"
+sqlmodel = "^0.0.8"
+ics = "^0.7.2"
+Babel = "^2.11.0"
+loguru = "^0.6.0"
+pandera = "^0.13.4"
+flet = "^0.1.65"
+pyicloud = "^1.0.0"
+weasyprint = "^57.1"
+
+[tool.poetry.group.dev.dependencies]
+pyinstaller = "^5.6.2"
+typer = "^0.7.0"
+jupyterlab = "^3.5.0"
+ipywidgets = "^8.0.2"
+bump2version = "^1.0.1"
+black = "^22.10.0"
+nbdime = "^3.1.1"
+pre-commit = "^2.20.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
