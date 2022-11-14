@@ -1,0 +1,1 @@
+logoPath = f"/images/logo.png"
