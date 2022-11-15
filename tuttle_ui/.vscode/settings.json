@@ -1,3 +1,13 @@
 {
-    "python.formatting.provider": "black"
+    "python.formatting.provider": "black",
+    "python.autoComplete.extraPaths": [
+    
+    ],
+    "[python]": {
+    "editor.defaultFormatter": null,
+    "editor.insertSpaces": true,
+    "editor.tabSize": 4,
+    "editor.formatOnSave": true
+    },
+    "editor.fontLigatures": false
 }

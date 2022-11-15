@@ -1,3 +1,5 @@
+"""Defines the app theme"""
+
 from flet import theme
 from .fonts import ALL_FONTS, DEFAULT_FONT
 from .colors import PRIMARY_COLOR

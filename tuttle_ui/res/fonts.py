@@ -1,3 +1,4 @@
+"""Defines font related constants used in app"""
 
 """
 Roboto is used for numbers, labels and headers

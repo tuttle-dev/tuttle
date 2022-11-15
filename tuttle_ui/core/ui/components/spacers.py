@@ -1,3 +1,5 @@
+"""Empty containers that serve as space between Ui components"""
+
 from res import spacing
 from flet import Container
 
