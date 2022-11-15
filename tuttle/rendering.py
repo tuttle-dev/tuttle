@@ -128,6 +128,9 @@ def render_invoice(
         str: [description]
     """
 
+    assert invoice.contract is not None
+    assert invoice.contract.client is not None
+
     def as_currency(number):
         return format_currency(
             number, currency=invoice.contract.currency, locale="en_US"

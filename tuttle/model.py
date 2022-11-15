@@ -248,6 +248,14 @@ class Contract(SQLModel, table=True):
     projects: List["Project"] = Relationship(back_populates="contract")
     invoices: List["Invoice"] = Relationship(back_populates="contract")
 
+    def __repr__(self):
+        return f"""
+        Contract(
+            title={self.title},
+            client={self.client},
+        )
+        """
+
 
 @mapper_registry.mapped
 class TimeContract(Contract, table=True):

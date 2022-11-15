@@ -5,7 +5,17 @@ from pathlib import Path
 import datetime
 
 import tuttle
-from tuttle.model import Project, Client, Address, Contact, User, BankAccount, Contract
+from tuttle.model import (
+    Project,
+    Client,
+    Address,
+    Contact,
+    User,
+    BankAccount,
+    Contract,
+    TimeContract,
+    WorksContract,
+)
 
 
 @pytest.fixture
@@ -95,7 +105,10 @@ def demo_clients():
 
 @pytest.fixture
 def demo_contracts(demo_clients):
-    heating_engineering_contract = Contract(
+    assert demo_clients[0] is not None
+    assert demo_clients[1] is not None
+
+    heating_engineering_contract = TimeContract(
         title="Heating Engineering Contract",
         client=demo_clients[0],
         rate=100.00,
@@ -106,7 +119,7 @@ def demo_contracts(demo_clients):
         billing_cycle=tuttle.time.Cycle.monthly,
     )
 
-    heating_repair_contract = Contract(
+    heating_repair_contract = TimeContract(
         title="Heating Repair Contract",
         client=demo_clients[1],
         rate=50.00,
@@ -116,6 +129,9 @@ def demo_contracts(demo_clients):
         term_of_payment=14,
         billing_cycle=tuttle.time.Cycle.monthly,
     )
+
+    assert heating_engineering_contract.client is not None
+    assert heating_repair_contract.client is not None
 
     contracts = [
         heating_engineering_contract,
