@@ -4,7 +4,6 @@ from typing import List, Optional, Dict
 import datetime
 from pathlib import Path
 import shutil
-from venv import create
 
 
 import pandas
@@ -12,7 +11,6 @@ import datetime
 
 from .model import InvoiceItem, Invoice, Contract, User
 from .timetracking import Timesheet
-from .mail import create_email, send_email
 
 
 def generate_invoice(
@@ -40,19 +38,6 @@ def generate_invoice(
     # TODO: replace with auto-incrementing numbers
     invoice.generate_number(counter=counter)
     return invoice
-
-
-def send_invoice(
-    user: User,
-    invoice: Invoice,
-):
-    message = create_email(
-        email_from=user.email,
-        email_to=invoice.client,
-        subject=invoice.number,
-        body=None,  #
-        attachments=None,  # TODO: inovice as PDF
-    )
 
 
 def generate_invoice_email(

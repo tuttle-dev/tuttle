@@ -170,17 +170,17 @@ def make_contact_view(
                             ]
                         ),
                     ),
-                    # Row(
-                    #     [
-                    #         IconButton(
-                    #             icon=icons.EDIT,
-                    #         ),
-                    #         IconButton(
-                    #             icon=icons.DELETE,
-                    #         ),
-                    #     ],
-                    #     alignment="end",
-                    # ),
+                    Row(
+                        [
+                            IconButton(
+                                icon=icons.EDIT,
+                            ),
+                            IconButton(
+                                icon=icons.DELETE,
+                            ),
+                        ],
+                        alignment="end",
+                    ),
                 ]
             ),
             # width=400,

@@ -7,6 +7,7 @@ from pandera import (
     DateTime,
     Timedelta,
     String,
+    Decimal,
 )
 
 
@@ -24,3 +25,15 @@ time_tracking = DataFrameSchema(
 )
 
 time_planning = time_tracking  # REVIEW: identical?
+
+
+ledger = DataFrameSchema(
+    columns={
+        "date": Column(DateTime),
+        "name": Column(String),
+        "purpose": Column(String),
+        "account": Column(String),
+        "bank": Column(String),
+        "amount": Column(Decimal),
+    },
+)

@@ -13,7 +13,6 @@ from loguru import logger
 
 
 from .model import User, Invoice, Timesheet, Project
-from .view import Timeline
 
 
 def get_template_path(template_name) -> str:
@@ -257,30 +256,3 @@ def render_timesheet(
                 css_paths=css_paths,
                 out_path=timesheet_dir / Path(f"{prefix}.pdf"),
             )
-
-
-def render_timeline(
-    timeline: Timeline,
-    out_dir: str = None,
-) -> str:
-    """ """
-    # TODO: fill template from https://codepen.io/carrrter/pen/ELLmyX
-    template_name = "timeline"
-    template_path = get_template_path(template_name)
-    template_env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_path))
-    # filters
-    template_env.filters["as_date_rev"] = lambda date: date.strftime(format="%d/%m/%Y")
-
-    timesheet_template = template_env.get_template(f"{template_name}.html")
-    html = timesheet_template.render(timeline=timeline)
-    # output
-    if out_dir is None:
-        return html
-    else:
-        # write html
-        prefix = f"Timeline"
-        folder = Path(out_dir) / Path(prefix)
-        folder.mkdir(parents=True, exist_ok=True)
-        path = folder / Path(f"{prefix}.html")
-        with open(path, "w") as html_file:
-            html_file.write(html)

@@ -6,7 +6,7 @@
   [![Commit Activity](https://img.shields.io/github/commit-activity/m/tuttle-dev/tuttle?style=flat-square)]()
 
 
-  <p><b>Painless business planning for freelancers</b></p>
+  <p><b>Time and money management for freelancers</b></p>
 
   <p align="center">
     <blockquote align="left">
@@ -19,15 +19,15 @@
     <br />
   </p>
   <p><i>
-      Tuttle is an open-source software project supported by the <a href="https://prototypefund.de/en/about-2/">Prototype Fund</a>. We develop a time and finance planning tool tailored for the requirements of freelancers.
+      Tuttle is an open-source software project supported by the <a href="https://prototypefund.de/en/about-2/">Prototype Fund</a>. We are developing a time and finance planning tool tailored for the requirements of freelancers.
       </i>
     </p>
 </div>
 
 
-
-
-
+<div align="center">
+<img src="https://c.tenor.com/I6kN-6X7nhAAAAAj/loading-buffering.gif" width=32 />
+</div>
 
 ## Which challenges does the project address?
 
