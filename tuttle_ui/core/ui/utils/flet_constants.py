@@ -26,9 +26,18 @@ KEYBOARD_NONE = "none"
 AUTO_SCROLL = "auto"
 
 #Text Alignment
-ALIGN_RIGHT = "right"
-ALIGN_CENTER = "center"
-ALIGN_JUSTIFY = "justify"
-ALIGN_START = "start"
-ALIGN_END = "end"
-ALIGN_LEFT = "left"
+TXT_ALIGN_RIGHT = "right"
+TXT_ALIGN_CENTER = "center"
+TXT_ALIGN_JUSTIFY = "justify"
+TXT_ALIGN_START = "start"
+TXT_ALIGN_END = "end"
+TXT_ALIGN_LEFT = "left"
+
+#Navigation rail label style
+ALWAYS_SHOW = "all"
+NEVER_SHOW = "none"
+ONLY_SELECTED = "selected"
+#compact rail type (label is none)
+COMPACT_RAIL_WIDTH = 56
+#rail group_alignment
+CENTER_RAIL = 0.0

@@ -1,4 +1,4 @@
-from abc import ABC, abstractmethod
+from abc import ABC
 
 class Model(ABC):
     """A simple abstraction that defines a model class"""

@@ -4,10 +4,11 @@
     
     ],
     "[python]": {
-    "editor.defaultFormatter": null,
+    "editor.defaultFormatter": "ms-python.python",
     "editor.insertSpaces": true,
     "editor.tabSize": 4,
     "editor.formatOnSave": true
     },
-    "editor.fontLigatures": false
+    "editor.fontLigatures": false,
+    "python.analysis.extraPaths": []
 }

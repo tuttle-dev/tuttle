@@ -27,5 +27,13 @@ MISSING_NAME_ERR = "Your name is required"
 MISSING_EMAIL_ERR = "Your email is required"
 MISSING_PHONE_ERR ="Your phone number is required" 
 TITLE_NOT_SET_ERR = "You have not set your title.\nYou can use a generic one such as Freelancer"
+PROFILE = "My Profile"
 
+"""Side bar menu"""
+PROJECTS = "Projects"
+CLIENTS = "Clients"
+CONTRACTS = "Contracts"
+CONTACTS = "Contacts"
 
+"""Settings"""
+SETTINGS = "Settings"

@@ -1,6 +1,6 @@
 from typing import Callable
 from flet import (
-    UserControl, Column,  ElevatedButton
+    UserControl, Column, 
 )
 
 from res import strings, spacing
@@ -9,7 +9,7 @@ from core.ui.components.text import texts
 from core.ui.components.buttons import primary_buttons 
 from core.ui.utils.flet_constants import KEYBOARD_NAME, KEYBOARD_EMAIL, KEYBOARD_ADDRESS, KEYBOARD_TEXT, KEYBOARD_PHONE
 
-from authentication.utils.auth_intents_result import AuthIntentsResult
+from authentication.abstractions.auth_intents_result import AuthIntentsResult
 
 class LoginForm(UserControl):
     """Login form to set required user info"""
@@ -81,12 +81,11 @@ class LoginForm(UserControl):
                 self.formError = result.errorMsg
                 self.loginErrTxt.value = self.formError
                 self.loginErrTxt.visible = True
+                self.submitBtn.disabled = False
+                self.update()
             else:
                 # user is authenticated
                 self.onLoggedIn(result.data)
-
-        self.submitBtn.disabled = False
-        self.update()
 
     def build(self):
         """Called when form is built"""
