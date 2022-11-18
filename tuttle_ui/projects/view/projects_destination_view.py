@@ -1,33 +1,20 @@
-from flet import (
-    Card,
-    Column,
-    Container,
-    ElevatedButton,
-    GridView,
-    ResponsiveRow,
-    Row,
-    Text,
-    border_radius,
-    padding,
-)
+import typing
+from typing import Callable
 
+from flet import Card, Column, Container, GridView, ResponsiveRow, Text, padding
+
+from core.abstractions.local_cache import LocalCache
 from core.ui.components.progress.horizontal_progress_bars import PRIMARY_LIGHT_PROGRESS
 from core.ui.components.spacers import mdSpace
-from core.ui.components.text.headlines import (
-    get_headline_txt,
-    get_headline_with_subtitle,
-)
-from core.ui.utils.flet_constants import END_ALIGNMENT, SPACE_BETWEEN_ALIGNMENT
-from res.colors import BLACK_COLOR, ERROR_COLOR, WHITE_COLOR, PRIMARY_COLOR
+from core.ui.components.text.headlines import get_headline_txt
+from projects.abstractions.projects_destination_view import ProjectDestinationView
+from res.colors import BLACK_COLOR, ERROR_COLOR
 from res.fonts import HEADLINE_4_SIZE
 from res.spacing import SPACE_MD, SPACE_STD
-from res.strings import MY_PROJECTS, NO_PROJECTS_ADDED, VIEW_DETAILS
+from res.strings import MY_PROJECTS, NO_PROJECTS_ADDED
 
+from .components.project_card import ProjectCard
 from .components.projects_view_filters import ProjectFiltersView, ProjectStates
-from projects.abstractions.projects_destination_view import ProjectDestinationView
-from typing import Callable
-import typing
-from core.abstractions.local_cache import LocalCache
 
 
 class ProjectsDestinationViewImpl(ProjectDestinationView):
@@ -65,60 +52,32 @@ class ProjectsDestinationViewImpl(ProjectDestinationView):
             spacing=SPACE_STD,
             run_spacing=SPACE_MD,
         )
+        self.projectsToDisplay = {}
 
-    def get_all_projects(self):
-        projectsMap = self.intentHandler.get_all_projects()
-        return projectsMap
+    def load_all_projects(self):
+        self.projectsToDisplay = self.intentHandler.get_all_projects()
 
     def get_all_projects_count(self):
-        projects = self.get_all_projects()
-        for key in projects:
-            project = projects[key]
-            self.projectsContainer.controls.append(
-                Card(
-                    elevation=2,
-                    expand=True,
-                    content=Container(
-                        expand=True,
-                        bgcolor=WHITE_COLOR,
-                        padding=padding.all(SPACE_STD),
-                        border_radius=border_radius.all(12),
-                        content=Column(
-                            controls=[
-                                get_headline_with_subtitle(
-                                    title=project.title,
-                                    subtitle=project.description,
-                                    titleSize=HEADLINE_4_SIZE,
-                                ),
-                                Text(
-                                    f"Contract #{project.contract_id}",
-                                ),
-                                Text(f"Client #{project.client_id}"),
-                                Text(f"Start Date {project.get_start_date_as_str()}"),
-                                Text(f"End Date {project.get_end_date_as_str()}"),
-                                Row(
-                                    alignment=SPACE_BETWEEN_ALIGNMENT,
-                                    vertical_alignment=END_ALIGNMENT,
-                                    expand=True,
-                                    controls=[
-                                        Row(
-                                            controls=[
-                                                Text("Status: ", color=BLACK_COLOR),
-                                                Text("ACTIVE", color=PRIMARY_COLOR),
-                                            ]
-                                        ),
-                                        ElevatedButton(text=VIEW_DETAILS),
-                                    ],
-                                ),
-                            ],
-                        ),
-                    ),
-                )
-            )
         return self.intentHandler.get_total_projects_count()
 
+    def display_currently_filtered_projects(self):
+        self.projectsContainer.controls.clear()
+        for key in self.projectsToDisplay:
+            project = self.projectsToDisplay[key]
+            projectCard = ProjectCard(project=project)
+            self.projectsContainer.controls.append(projectCard)
+
     def on_filter_projects(self, filterByState: ProjectStates):
-        print(filterByState)
+        if filterByState.value == ProjectStates.ACTIVE.value:
+            self.projectsToDisplay = self.intentHandler.get_active_projects()
+        elif filterByState.value == ProjectStates.UPCOMING.value:
+            self.projectsToDisplay = self.intentHandler.get_upcoming_projects()
+        elif filterByState.value == ProjectStates.COMPLETED.value:
+            self.projectsToDisplay = self.intentHandler.get_completed_projects()
+        else:
+            self.projectsToDisplay = self.intentHandler.get_all_projects()
+        self.display_currently_filtered_projects()
+        self.update()
 
     def show_no_projects(self):
         self.noProjectsComponent.visible = True
@@ -128,6 +87,9 @@ class ProjectsDestinationViewImpl(ProjectDestinationView):
         self.progressBar.visible = False
         if count == 0:
             self.show_no_projects()
+        else:
+            self.load_all_projects()
+            self.display_currently_filtered_projects()
         self.update()
 
     def build(self):

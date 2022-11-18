@@ -35,6 +35,7 @@ class ProjectDataSourceImpl(ProjectDataSource):
                 title=f"Project {i}",
                 description=f"Dummy project {i}",
                 unique_tag=f"dummy{i}",
+                is_completed=True if i % 2 == 0 else False,
                 start_date=datetime.date.today(),
                 end_date=datetime.date.today() + datetime.timedelta((i + 1)),
             )
