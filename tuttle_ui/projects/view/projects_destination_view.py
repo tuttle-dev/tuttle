@@ -18,7 +18,7 @@ from core.ui.components.text.headlines import (
     get_headline_with_subtitle,
 )
 from core.ui.utils.flet_constants import END_ALIGNMENT, SPACE_BETWEEN_ALIGNMENT
-from res.colors import BLACK_COLOR, ERROR_COLOR, PRIMARY_COLOR, WHITE_COLOR
+from res.colors import BLACK_COLOR, ERROR_COLOR, WHITE_COLOR, PRIMARY_COLOR
 from res.fonts import HEADLINE_4_SIZE
 from res.spacing import SPACE_MD, SPACE_STD
 from res.strings import MY_PROJECTS, NO_PROJECTS_ADDED, VIEW_DETAILS
@@ -66,9 +66,14 @@ class ProjectsDestinationViewImpl(ProjectDestinationView):
             run_spacing=SPACE_MD,
         )
 
+    def get_all_projects(self):
+        projectsMap = self.intentHandler.get_all_projects()
+        return projectsMap
+
     def get_all_projects_count(self):
-        """TODO returns the number of projects this user has"""
-        for i in range(0, 5):
+        projects = self.get_all_projects()
+        for key in projects:
+            project = projects[key]
             self.projectsContainer.controls.append(
                 Card(
                     elevation=2,
@@ -81,17 +86,16 @@ class ProjectsDestinationViewImpl(ProjectDestinationView):
                         content=Column(
                             controls=[
                                 get_headline_with_subtitle(
-                                    title=f"Project {i}",
-                                    subtitle="This is a demo project",
+                                    title=project.title,
+                                    subtitle=project.description,
+                                    titleSize=HEADLINE_4_SIZE,
                                 ),
-                                get_headline_with_subtitle(
-                                    title=f"Contract #{i*2}",
-                                    subtitle="Tuttle UI",
+                                Text(
+                                    f"Contract #{project.contract_id}",
                                 ),
-                                get_headline_with_subtitle(
-                                    title=f"Client",
-                                    subtitle="Christian Tuttle",
-                                ),
+                                Text(f"Client #{project.client_id}"),
+                                Text(f"Start Date {project.get_start_date_as_str()}"),
+                                Text(f"End Date {project.get_end_date_as_str()}"),
                                 Row(
                                     alignment=SPACE_BETWEEN_ALIGNMENT,
                                     vertical_alignment=END_ALIGNMENT,
@@ -111,7 +115,7 @@ class ProjectsDestinationViewImpl(ProjectDestinationView):
                     ),
                 )
             )
-        return 0
+        return self.intentHandler.get_total_projects_count()
 
     def on_filter_projects(self, filterByState: ProjectStates):
         print(filterByState)

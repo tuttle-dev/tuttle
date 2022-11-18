@@ -11,7 +11,7 @@ class TuttleView(ABC):
     """Abstract class for all UI screens
 
     onChangeRouteCallback - used to route to a new destination
-    intentHandler - optional Intent object for communicating with model
+    intentHandler - optional Intent object for communicating with dataSource
     hasFloatingActionBtn - if screen has a floating action button, default is False
     hasAppBar - if screen has an appbar, default is False
     bgColor - background color, default is [WHITE_COLOR]

@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from .model import Model
+from .data_source import DataSource
 from core.abstractions.local_cache import LocalCache
 
 
@@ -7,10 +7,10 @@ class Intent(ABC):
     """A simple abstraction that defines an intent class
 
     cache - provides access to local/client storage
-    model - provides access to the data model
+    dataSource - provides access to the data dataSource
     """
 
-    def __init__(self, cache: LocalCache, model: Model):
+    def __init__(self, cache: LocalCache, dataSource: DataSource):
         super().__init__()
         self.cache = cache
-        self.model = model
+        self.dataSource = dataSource

@@ -14,7 +14,7 @@ class TuttleDestinationView(ABC):
     typically added as a tab / navigation rail / bottom nav destination
 
     onChangeRouteCallback - used to route to a new destination
-    intentHandler - optional Intent object for communicating with model
+    intentHandler - optional Intent object for communicating with dataSource
     bgColor - background color, default is [WHITE_COLOR]
     """
 

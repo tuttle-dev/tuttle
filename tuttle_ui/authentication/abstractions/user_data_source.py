@@ -1,9 +1,9 @@
-from core.abstractions.model import Model
+from core.abstractions.data_source import DataSource
 from authentication.abstractions.auth_intents_result import AuthIntentsResult
 from abc import abstractmethod
 
 
-class UserModel(Model):
+class UserDataSource(DataSource):
     """Defines methods for instantiating, updating, saving and deleting the user"""
 
     def __init__(self):

@@ -1,17 +1,17 @@
 from core.abstractions.intent import Intent
 from authentication.abstractions.auth_intents_result import AuthIntentsResult
 from abc import abstractmethod
-from authentication.abstractions.user_model import UserModel
+from authentication.abstractions.user_dataSource import UserDataSource
 from core.abstractions.local_cache import LocalCache
 
 
 class HomeIntent(Intent):
     """Handles user authentication intents"""
 
-    def __init__(self, model: UserModel, cache: LocalCache):
-        super().__init__(cache=cache, model=model)
+    def __init__(self, dataSource: UserDataSource, cache: LocalCache):
+        super().__init__(cache=cache, dataSource=dataSource)
         self.cache = cache
-        self.model = model
+        self.dataSource = dataSource
 
     @abstractmethod
     def is_user_created(

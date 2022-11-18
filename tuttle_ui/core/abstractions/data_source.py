@@ -1,8 +1,8 @@
 from abc import ABC
 
 
-class Model(ABC):
-    """A simple abstraction that defines a model class"""
+class DataSource(ABC):
+    """A simple abstraction that defines a dataSource class"""
 
     def __init__(
         self,

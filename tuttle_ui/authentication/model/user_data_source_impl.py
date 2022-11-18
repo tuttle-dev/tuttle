@@ -1,8 +1,8 @@
-from authentication.abstractions.user_model import UserModel
+from authentication.abstractions.user_data_source import UserDataSource
 from authentication.abstractions.auth_intents_result import AuthIntentsResult
 
 # TODO implement
-class UserModelImpl(UserModel):
+class UserDataSourceImpl(UserDataSource):
     def __init__(self):
         super().__init__()
 
