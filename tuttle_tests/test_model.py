@@ -110,4 +110,6 @@ def test_contract():
         volume=3 * 8 * 8,
         units_per_workday=8,
     )
+
+    assert the_contract.client is not None
     assert store_and_retrieve(the_contract)
