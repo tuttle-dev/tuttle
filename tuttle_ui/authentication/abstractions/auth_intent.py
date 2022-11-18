@@ -26,3 +26,8 @@ class AuthIntent(Intent):
     ) -> AuthIntentsResult:
         """Receives user info and attempts to create a new user"""
         pass
+
+    @abstractmethod
+    def cache_user_data(self, key: str, data: any):
+        """Caches frequently used user related info as key-value pairs"""
+        pass

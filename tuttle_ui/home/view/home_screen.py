@@ -41,7 +41,9 @@ class HomeScreen(TuttleView, UserControl):
             hasAppBar=True,
             onChangeRouteCallback=changeRouteCallback,
         )
-        self.smi = SideBarMenuItemsHandler()
+        self.smi = SideBarMenuItemsHandler(
+            localCacheHandler=localCacheHandler, onChangeRouteCallback=self.changeRoute
+        )
         self.selected_tab = self.smi.first_item_index
         self.settings_icon = IconButton(
             icon=icons.SETTINGS_SUGGEST_OUTLINED,

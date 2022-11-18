@@ -3,6 +3,7 @@
 # Layout Alignments
 SPACE_BETWEEN_ALIGNMENT = "spaceBetween"
 START_ALIGNMENT = "start"
+END_ALIGNMENT = "end"
 CENTER_ALIGNMENT = "center"
 
 

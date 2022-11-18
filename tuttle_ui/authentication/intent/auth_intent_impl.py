@@ -3,7 +3,7 @@ from core.abstractions.local_cache import LocalCache
 from authentication.model.user_model_impl import UserModelImpl
 from authentication.abstractions.auth_intents_result import AuthIntentsResult
 
-from authentication.utils.auth_data_keys import USER_ID, USER_NAME
+from authentication.utils.auth_data_keys import USER_ID
 
 
 class AuthIntentImpl(AuthIntent):
@@ -25,5 +25,8 @@ class AuthIntentImpl(AuthIntent):
             title=title, name=name, email=email, phone=phone, address=address
         )
         if result.wasIntentSuccessful:
-            self.cache.set_value(USER_ID, result.data)
+            self.cache_user_data(key=USER_ID, data=result.data)
         return result
+
+    def cache_user_data(self, key: str, data: any):
+        self.cache.set_value(key, data)

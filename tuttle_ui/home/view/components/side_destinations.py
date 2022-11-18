@@ -1,9 +1,12 @@
 from enum import Enum
 from res.strings import PROJECTS, CONTRACTS, CLIENTS, CONTACTS
-from projects.view.projects_destination_view import ProjectsDestinationView
+from projects.view.projects_destination_view import ProjectsDestinationViewImpl
 from clients.view.clients_destination_view import ClientsDestinationView
 from contracts.view.contracts_destination_view import ContractsDestinationView
 from contacts.view.contacts_destination_view import ContactsDestinationView
+from typing import Callable
+import typing
+from core.abstractions.local_cache import LocalCache
 
 from flet import icons
 
@@ -20,10 +23,17 @@ class SideBarMenuItems(Enum):
 class SideBarMenuItemsHandler:
     """Manages home's side menu"""
 
-    def __init__(self):
+    def __init__(
+        self,
+        localCacheHandler: LocalCache,
+        onChangeRouteCallback: Callable[[str, typing.Optional[any]], None],
+    ):
         super().__init__()
         self.first_item_index = 0
-        self.projectsView = ProjectsDestinationView()
+        self.projectsView = ProjectsDestinationViewImpl(
+            localCacheHandler=localCacheHandler,
+            onChangeRouteCallback=onChangeRouteCallback,
+        )
         self.contactsView = ContactsDestinationView()
         self.clientsView = ClientsDestinationView()
         self.contractsView = ContractsDestinationView()
