@@ -24,7 +24,6 @@ class ProjectIntentImpl(ProjectsIntent):
             return 0
 
     def get_completed_projects(self):
-        """filters projects to display only completed projects"""
         if not self.completedProjectsCache:
             self.completedProjectsCache = {}
             for key in self.allProjectsCache:
@@ -34,7 +33,6 @@ class ProjectIntentImpl(ProjectsIntent):
         return self.completedProjectsCache
 
     def get_active_projects(self):
-        """filters projects to display only active projects"""
         if not self.activeProjectsCache:
             self.activeProjectsCache = {}
             for key in self.allProjectsCache:
@@ -44,7 +42,6 @@ class ProjectIntentImpl(ProjectsIntent):
         return self.activeProjectsCache
 
     def get_upcoming_projects(self):
-        """filters projects to display only upcoming projects"""
         if not self.upcomingProjectsCache:
             self.upcomingProjectsCache = {}
             for key in self.allProjectsCache:
@@ -54,7 +51,6 @@ class ProjectIntentImpl(ProjectsIntent):
         return self.upcomingProjectsCache
 
     def _clear_cached_results(self):
-        """clears cached results"""
         self.allProjectsCache = None
         self.completedProjectsCache = None
         self.activeProjectsCache = None

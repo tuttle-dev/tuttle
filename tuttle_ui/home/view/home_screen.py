@@ -79,8 +79,8 @@ class HomeScreen(TuttleView, UserControl):
             on_click=self.on_floating_action_clicked,
         )
 
-    def on_floating_action_clicked(self):
-        pass
+    def on_floating_action_clicked(self, e):
+        print("clicked")  # TODO
 
     def on_view_notifications_clicked(self):
         print("==TODO===")

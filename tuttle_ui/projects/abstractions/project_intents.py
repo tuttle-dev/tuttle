@@ -29,6 +29,21 @@ class ProjectsIntent(Intent):
         pass
 
     @abstractmethod
+    def get_completed_projects(self) -> Mapping[str, Project]:
+        """filters projects to display only completed projects"""
+        pass
+
+    @abstractmethod
+    def get_active_projects(self) -> Mapping[str, Project]:
+        """filters projects to display only active projects"""
+        pass
+
+    @abstractmethod
+    def get_upcoming_projects(self) -> Mapping[str, Project]:
+        """filters projects to display only upcoming projects"""
+        pass
+
+    @abstractmethod
     def cache_projects_data(self, key: str, data: any):
         """caches frequently used key-value pairs related to projects"""
         pass
