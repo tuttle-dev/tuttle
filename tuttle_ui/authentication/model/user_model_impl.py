@@ -8,8 +8,10 @@ class UserModelImpl(UserModel):
 
     def get_user_id():
         result = AuthIntentsResult(wasIntentSuccessful=True, data=False)
-        return result 
+        return result
 
-    def create_and_save_user(self, title :str, name : str, email : str, phone : str, address : str):
+    def create_and_save_user(
+        self, title: str, name: str, email: str, phone: str, address: str
+    ):
         result = AuthIntentsResult(wasIntentSuccessful=True, data="userId")
         return result

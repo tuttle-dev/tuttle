@@ -1,4 +1,5 @@
-from flet import (UserControl, Text)
+from flet import UserControl, Text
+
 
 class ContactsDestinationView(UserControl):
     def __init__(self):

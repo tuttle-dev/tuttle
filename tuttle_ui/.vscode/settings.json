@@ -1,10 +1,10 @@
 {
-    "python.formatting.provider": "black",
+    "python.formatting.provider": "none",
     "python.autoComplete.extraPaths": [
     
     ],
     "[python]": {
-    "editor.defaultFormatter": "ms-python.python",
+    "editor.defaultFormatter": "ms-python.black-formatter",
     "editor.insertSpaces": true,
     "editor.tabSize": 4,
     "editor.formatOnSave": true

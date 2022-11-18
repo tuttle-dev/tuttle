@@ -5,7 +5,7 @@ APP_DESCRIPTION = "Time and money management for freelancers"
 APP_DESCRIPTION_LENGTHY = "Tuttle is a time and finance planning tool tailored for the requirements of freelancers."
 
 """splash screen strings"""
-WELCOME_TITLE = 'Hi, Welcome to Tuttle.'
+WELCOME_TITLE = "Hi, Welcome to Tuttle."
 WELCOME_SUBTITLE = "Let's get you started"
 GET_STARTED = "Get Started"
 SPLASH_IMG_SEMANTIC_LBL = "Tuttle splash image"
@@ -25,8 +25,10 @@ ADDRESS_HINT_OPTIONAL = "For your contracts & invoices. You can skip for now"
 """User info errors"""
 MISSING_NAME_ERR = "Your name is required"
 MISSING_EMAIL_ERR = "Your email is required"
-MISSING_PHONE_ERR ="Your phone number is required" 
-TITLE_NOT_SET_ERR = "You have not set your title.\nYou can use a generic one such as Freelancer"
+MISSING_PHONE_ERR = "Your phone number is required"
+TITLE_NOT_SET_ERR = (
+    "You have not set your title.\nYou can use a generic one such as Freelancer"
+)
 PROFILE = "My Profile"
 
 """Side bar menu"""
@@ -37,3 +39,11 @@ CONTACTS = "Contacts"
 
 """Settings"""
 SETTINGS = "Settings"
+
+"""My Projects View"""
+MY_PROJECTS = "My Projects"
+NO_PROJECTS_ADDED = "You have not added any projects yet."
+ACTIVE = "Active"
+COMPLETED = "Completed"
+UPCOMING = "Upcoming"
+ALL = "All"

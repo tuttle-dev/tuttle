@@ -1,7 +1,7 @@
 """Defines color constants used in app"""
 
 PRIMARY_COLOR = "#0336ff"
-PRIMARY_LIGHT_COLOR = '#714cfe'
+PRIMARY_LIGHT_COLOR = "#714cfe"
 ERROR_COLOR = "#B00020"
 GRAY_DARK_COLOR = "#212121"
 GRAY_LIGHT_COLOR = "#E0E0E0"

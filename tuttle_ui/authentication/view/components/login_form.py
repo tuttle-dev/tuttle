@@ -1,32 +1,45 @@
 from typing import Callable
 from flet import (
-    UserControl, Column, 
+    UserControl,
+    Column,
 )
 
 from res import strings, spacing
 from core.ui.components.text import textfields
 from core.ui.components.text import texts
-from core.ui.components.buttons import primary_buttons 
-from core.ui.utils.flet_constants import KEYBOARD_NAME, KEYBOARD_EMAIL, KEYBOARD_ADDRESS, KEYBOARD_TEXT, KEYBOARD_PHONE
+from core.ui.components.buttons import primary_buttons
+from core.ui.utils.flet_constants import (
+    KEYBOARD_NAME,
+    KEYBOARD_EMAIL,
+    KEYBOARD_ADDRESS,
+    KEYBOARD_TEXT,
+    KEYBOARD_PHONE,
+)
 
 from authentication.abstractions.auth_intents_result import AuthIntentsResult
 
+
 class LoginForm(UserControl):
     """Login form to set required user info"""
-    def __init__(self, onLoggedIn : Callable[[any],None], onLogInClicked : Callable[[str, str, str,  str, str], AuthIntentsResult]):
+
+    def __init__(
+        self,
+        onLoggedIn: Callable[[any], None],
+        onLogInClicked: Callable[[str, str, str, str, str], AuthIntentsResult],
+    ):
         super().__init__()
         self.formError = ""
-        self.name  = ""
-        self.email  = ""
-        self.phone  = ""
-        self.title  = ""
-        self.address  = ""
+        self.name = ""
+        self.email = ""
+        self.phone = ""
+        self.title = ""
+        self.address = ""
         self.onLogInClicked = onLogInClicked
         self.onLoggedIn = onLoggedIn
 
     def on_field_focus(self, e):
         """Called when a field receives focus
-        Clears error messages 
+        Clears error messages
         """
         self.nameField.error_text = ""
         self.emailField.error_text = ""
@@ -48,7 +61,6 @@ class LoginForm(UserControl):
 
     def on_change_address(self, e):
         self.address = e.control.value
-
 
     def on_submit_btn_clicked(self, e):
         # prevent multiple clicking
@@ -74,8 +86,12 @@ class LoginForm(UserControl):
 
         if not missingRequiredDataErr:
             # save user
-            result : AuthIntentsResult = self.onLogInClicked(
-                title=self.title, name=self.name,email=self.email,phone=self.phone, address=self.address
+            result: AuthIntentsResult = self.onLogInClicked(
+                title=self.title,
+                name=self.name,
+                email=self.email,
+                phone=self.phone,
+                address=self.address,
             )
             if not result.wasIntentSuccessful:
                 self.formError = result.errorMsg
@@ -86,16 +102,52 @@ class LoginForm(UserControl):
             else:
                 # user is authenticated
                 self.onLoggedIn(result.data)
+        else:
+            self.submitBtn.disabled = False
+            self.update()
 
     def build(self):
         """Called when form is built"""
-        self.nameField = textfields.get_std_txt_field(self.on_field_focus, self.on_change_name, strings.NAME_LBL, strings.NAME_HINT, KEYBOARD_NAME)
-        self.emailField = textfields.get_std_txt_field(self.on_field_focus, self.on_change_email, strings.EMAIL_LBL, strings.EMAIL_HINT, KEYBOARD_EMAIL)
-        self.phoneField = textfields.get_std_txt_field(self.on_field_focus, self.on_change_phone, strings.PHONE_LBL, strings.PHONE_HINT, KEYBOARD_PHONE)
-        self.titleField = textfields.get_std_txt_field(self.on_field_focus, self.on_change_title, strings.TITLE_LBL, strings.TITLE_HINT, KEYBOARD_TEXT)
-        self.addressField = textfields.get_std_multiline_field(self.on_field_focus, self.on_change_address, lbl=strings.ADDRESS_LBL, hint=strings.ADDRESS_HINT_OPTIONAL, keyboardType=KEYBOARD_ADDRESS)
+        self.nameField = textfields.get_std_txt_field(
+            self.on_field_focus,
+            self.on_change_name,
+            strings.NAME_LBL,
+            strings.NAME_HINT,
+            KEYBOARD_NAME,
+        )
+        self.emailField = textfields.get_std_txt_field(
+            self.on_field_focus,
+            self.on_change_email,
+            strings.EMAIL_LBL,
+            strings.EMAIL_HINT,
+            KEYBOARD_EMAIL,
+        )
+        self.phoneField = textfields.get_std_txt_field(
+            self.on_field_focus,
+            self.on_change_phone,
+            strings.PHONE_LBL,
+            strings.PHONE_HINT,
+            KEYBOARD_PHONE,
+        )
+        self.titleField = textfields.get_std_txt_field(
+            self.on_field_focus,
+            self.on_change_title,
+            strings.TITLE_LBL,
+            strings.TITLE_HINT,
+            KEYBOARD_TEXT,
+        )
+        self.addressField = textfields.get_std_multiline_field(
+            self.on_field_focus,
+            self.on_change_address,
+            lbl=strings.ADDRESS_LBL,
+            hint=strings.ADDRESS_HINT_OPTIONAL,
+            keyboardType=KEYBOARD_ADDRESS,
+        )
         self.loginErrTxt = texts.get_error_txt(self.formError)
-        self.submitBtn = primary_buttons.get_primary_btn(onClickCallback=self.on_submit_btn_clicked, label=strings.GET_STARTED,)
+        self.submitBtn = primary_buttons.get_primary_btn(
+            onClickCallback=self.on_submit_btn_clicked,
+            label=strings.GET_STARTED,
+        )
         self.form = Column(
             spacing=spacing.SPACE_MD,
             controls=[
@@ -106,7 +158,7 @@ class LoginForm(UserControl):
                 self.addressField,
                 self.loginErrTxt,
                 self.submitBtn,
-            ]
+            ],
         )
 
         return self.form
