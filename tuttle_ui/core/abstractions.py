@@ -2,6 +2,12 @@ import typing
 from abc import ABC, abstractmethod
 from typing import Callable
 
+from flet import AlertDialog
+
+from core.views.alert_dialog_controls import AlertDialogControls
+
+from .views.flet_constants import START_ALIGNMENT
+
 
 class LocalCache(ABC):
     """An abstraction that defines methods for caching data"""
@@ -93,7 +99,7 @@ class TuttleView(ABC):
     intentHandler - optional Intent object for communicating with dataSource
     hasFloatingActionBtn - if screen has a floating action button, default is False
     hasAppBar - if screen has an appbar, default is False
-    bgColor - background color, default is [WHITE_COLOR]
+    addDialogToPageCallback - [optional] used to add a dialog to the page
     """
 
     def __init__(
@@ -102,12 +108,24 @@ class TuttleView(ABC):
         intentHandler: typing.Optional[Intent] = None,
         hasFloatingActionBtn: bool = False,
         hasAppBar: bool = False,
+        pageDialogController: typing.Optional[
+            Callable[[any, AlertDialogControls], None]
+        ] = None,
+        verticalAlignmentInParent=START_ALIGNMENT,
+        horizontalAlignmentInParent=START_ALIGNMENT,
+        keepBackStack=False,
+        onNavigateBack: typing.Optional[Callable] = None,
     ):
         super().__init__()
-        self.has_floating_action_btn = (hasFloatingActionBtn,)
-        self.has_app_bar = (hasAppBar,)
+        self.hasFloatingActionBtn = hasFloatingActionBtn
+        self.hasAppBar = hasAppBar
         self.changeRoute = onChangeRouteCallback
         self.intentHandler = intentHandler
+        self.pageDialogController = pageDialogController
+        self.verticalAlignmentInParent = verticalAlignmentInParent
+        self.horizontalAlignmentInParent = horizontalAlignmentInParent
+        self.keepBackStack = keepBackStack
+        self.onNavigateBack = onNavigateBack
 
     def get_floating_action_btn_if_any(self):
         """Returns a floating action button OR None"""
@@ -116,3 +134,26 @@ class TuttleView(ABC):
     def get_app_bar_if_any(self):
         """Returns an app bar OR None"""
         return None
+
+
+class DialogHandler(ABC):
+    """Used by views to set, open, and dismiss dialogs"""
+
+    def __init__(
+        self,
+        dialog: AlertDialog,
+        dialogController: Callable[[any, AlertDialogControls], None],
+    ):
+        super().__init__()
+        self.dialogController = dialogController
+        self.dialog: AlertDialog = dialog
+
+    def close_dialog(self, e: typing.Optional[any] = None):
+        self.dialogController(self.dialog, AlertDialogControls.CLOSE)
+
+    def open_dialog(self, e: typing.Optional[any] = None):
+        self.dialogController(self.dialog, AlertDialogControls.ADD_AND_OPEN)
+
+    def dimiss_open_dialogs(self):
+        if self.dialog:
+            self.close_dialog()

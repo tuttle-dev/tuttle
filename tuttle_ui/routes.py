@@ -10,7 +10,21 @@ from core.views.error_404_view import Error404Screen
 from core.abstractions import TuttleView
 from core.abstractions import LocalCache
 from core.views.flet_constants import AUTO_SCROLL
-from res.utils import HOME_SCREEN_ROUTE, SPLASH_SCREEN_ROUTE
+from res.utils import (
+    HOME_SCREEN_ROUTE,
+    SPLASH_SCREEN_ROUTE,
+    PROJECT_EDITOR_SCREEN_ROUTE,
+)
+from projects.views.project_editor_view import ProjectEditorScreen
+from dataclasses import dataclass
+
+
+@dataclass
+class RouteView:
+    """A utility class that defines a route view"""
+
+    view: View
+    keepBackStack: bool
 
 
 class TuttleRoutes:
@@ -24,9 +38,13 @@ class TuttleRoutes:
         self,
         onChangeRouteCallback: Callable[[str, any], None],
         localCacheHandler: LocalCache,
+        dialogController: Callable,
+        onNavigateBack: Callable,
     ):
         self.onChangeRouteCallback = onChangeRouteCallback
         self.localCacheHandler = localCacheHandler
+        self.dialogController = dialogController
+        self.onNavigateBack = onNavigateBack
 
     def get_page_route_view(
         self,
@@ -35,7 +53,7 @@ class TuttleRoutes:
         hasFloatingAction: bool,
         screen: TuttleView,
         scrollType: str = AUTO_SCROLL,
-    ):
+    ) -> RouteView:
         """Constructs the view with a given route
 
         checks if view has an app bar or floating action button
@@ -47,13 +65,15 @@ class TuttleRoutes:
             route=routeName,
             scroll=scrollType,
             controls=[screen],
+            vertical_alignment=screen.verticalAlignmentInParent,
+            horizontal_alignment=screen.horizontalAlignmentInParent,
         )
 
         if hasAppBar:
             view.appbar = screen.get_app_bar_if_any()
         if hasFloatingAction:
             view.floating_action_button = screen.get_floating_action_btn_if_any()
-        return view
+        return RouteView(view=view, keepBackStack=screen.keepBackStack)
 
     def parse_route(self, pageRoute: str):
         """parses a given route path and returns it's view"""
@@ -65,29 +85,42 @@ class TuttleRoutes:
             )
             return self.get_page_route_view(
                 SPLASH_SCREEN_ROUTE,
-                hasAppBar=splashScreen.has_app_bar,
-                hasFloatingAction=splashScreen.has_floating_action_btn,
+                hasAppBar=splashScreen.hasAppBar,
+                hasFloatingAction=splashScreen.hasFloatingActionBtn,
                 screen=splashScreen,
             )
         elif routePath.match(HOME_SCREEN_ROUTE):
             homeScreen = HomeScreen(
                 changeRouteCallback=self.onChangeRouteCallback,
                 localCacheHandler=self.localCacheHandler,
+                dialogController=self.dialogController,
             )
             return self.get_page_route_view(
                 HOME_SCREEN_ROUTE,
-                hasAppBar=homeScreen.has_app_bar,
-                hasFloatingAction=homeScreen.has_floating_action_btn,
+                hasAppBar=homeScreen.hasAppBar,
+                hasFloatingAction=homeScreen.hasFloatingActionBtn,
                 screen=homeScreen,
             )
-
+        elif routePath.match(PROJECT_EDITOR_SCREEN_ROUTE):
+            projectEditorScreen = ProjectEditorScreen(
+                changeRouteCallback=self.onChangeRouteCallback,
+                localCacheHandler=self.localCacheHandler,
+                onNavigateBack=self.onNavigateBack,
+                pageDialogController=self.dialogController,
+            )
+            return self.get_page_route_view(
+                PROJECT_EDITOR_SCREEN_ROUTE,
+                hasAppBar=projectEditorScreen.hasAppBar,
+                hasFloatingAction=projectEditorScreen.hasFloatingActionBtn,
+                screen=projectEditorScreen,
+            )
         else:
             err404Screen = Error404Screen(
                 changeRouteCallback=self.onChangeRouteCallback
             )
             return self.get_page_route_view(
                 "/404",
-                hasAppBar=err404Screen.has_app_bar,
-                hasFloatingAction=err404Screen.has_floating_action_btn,
+                hasAppBar=err404Screen.hasAppBar,
+                hasFloatingAction=err404Screen.hasFloatingActionBtn,
                 screen=err404Screen,
             )

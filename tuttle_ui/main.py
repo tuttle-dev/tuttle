@@ -1,11 +1,13 @@
-import flet
-from flet import Page
+import flet as ft
+from flet import Page, AlertDialog, SnackBar, Text
 
 from core.local_cache_impl import LocalCacheImpl
 from res.strings import APP_NAME
 from res.theme import APP_FONTS, APP_THEME, APP_THEME_MODE
 from routes import TuttleRoutes
 from res.dimens import MIN_WINDOW_WIDTH
+import typing
+from core.views.alert_dialog_controls import AlertDialogControls
 
 
 def main(page: Page):
@@ -24,10 +26,31 @@ def main(page: Page):
         """
         page.go(toRoute)
 
+    def control_alert_dialog(
+        dialog: typing.Optional[AlertDialog],
+        control: AlertDialogControls,
+    ):
+        """handles adding, opening and closing of page alert dialogs"""
+        if control.value == AlertDialogControls.ADD_AND_OPEN.value:
+            if page.dialog:
+                # make sure no two dialogs attempt to open at once
+                page.dialog.open = False
+            if dialog:
+                page.dialog = dialog
+                dialog.open = True
+
+        if control.value == AlertDialogControls.CLOSE.value:
+            if page.dialog:
+                dialog.open = False
+        page.update()
+
     def get_route_view(route: str):
         """helper function that parses a route to route view"""
         routeParser = TuttleRoutes(
-            onChangeRouteCallback=change_route, localCacheHandler=localCacheHandler
+            onChangeRouteCallback=change_route,
+            localCacheHandler=localCacheHandler,
+            dialogController=control_alert_dialog,
+            onNavigateBack=on_view_pop,
         )
         return routeParser.parse_route(pageRoute=route)
 
@@ -38,15 +61,15 @@ def main(page: Page):
         then appends the new page to page views
         the splash view must always be in view
         """
-        page.views.clear()
         # insert the new view on top
         routeView = get_route_view(page.route)
-        page.views.append(routeView)
-
+        if not routeView.keepBackStack:
+            page.views.clear()
+        page.views.append(routeView.view)
         page.update()
 
     def on_view_pop(view):
-        """auto invoked on back pressed"""
+        """invoked on back pressed"""
         page.views.pop()
         top_view = page.views[-1]
         page.go(top_view.route)
@@ -56,4 +79,4 @@ def main(page: Page):
     page.go(page.route)
 
 
-flet.app(target=main, assets_dir="assets")
+ft.app(target=main, assets_dir="assets")

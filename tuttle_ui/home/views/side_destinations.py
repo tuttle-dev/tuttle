@@ -1,6 +1,18 @@
 from enum import Enum
-from res.strings import PROJECTS, CONTRACTS, CLIENTS, CONTACTS
-from projects.views.projects_destination_view import ProjectsDestinationViewImpl
+from res.strings import (
+    PROJECTS,
+    CONTRACTS,
+    CLIENTS,
+    CONTACTS,
+    SIDE_MENU_MAIN_GROUP_TITLE,
+)
+from res.utils import (
+    PROJECT_EDITOR_SCREEN_ROUTE,
+    CLIENT_EDITOR_SCREEN_ROUTE,
+    CONTACT_EDITOR_SCREEN_ROUTE,
+    CONTRACT_EDITOR_SCREEN_ROUTE,
+)
+from projects.views.projects_view import ProjectsViewImpl
 from clients.view.clients_destination_view import ClientsDestinationView
 from contracts.view.contracts_destination_view import ContractsDestinationView
 from contacts.view.contacts_destination_view import ContactsDestinationView
@@ -30,10 +42,11 @@ class SideBarMenuItemsHandler:
     ):
         super().__init__()
         self.first_item_index = 0
-        self.projectsView = ProjectsDestinationViewImpl(
+        self.projectsView = ProjectsViewImpl(
             localCacheHandler=localCacheHandler,
             onChangeRouteCallback=onChangeRouteCallback,
         )
+        self.mainMenuTitle = SIDE_MENU_MAIN_GROUP_TITLE
         self.contactsView = ContactsDestinationView()
         self.clientsView = ClientsDestinationView()
         self.contractsView = ContractsDestinationView()
@@ -92,3 +105,17 @@ class SideBarMenuItemsHandler:
             return self.contactsView
         else:
             return self.contractsView
+
+    def get_new_item_route(self, menuItem: SideBarMenuItems):
+        """Given a menu item, returns route for the view responsible for creating the corresponding item
+
+        e.g. item project ---> return route for New Project screen
+        """
+        if menuItem.value == SideBarMenuItems.PROJECTS.value:
+            return PROJECT_EDITOR_SCREEN_ROUTE
+        elif menuItem.value == SideBarMenuItems.CLIENTS.value:
+            return CLIENT_EDITOR_SCREEN_ROUTE
+        elif menuItem.value == SideBarMenuItems.CONTACTS.value:
+            return CONTACT_EDITOR_SCREEN_ROUTE
+        else:
+            return CONTRACT_EDITOR_SCREEN_ROUTE

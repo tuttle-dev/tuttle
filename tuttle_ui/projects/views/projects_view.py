@@ -5,7 +5,7 @@ from flet import Card, Column, Container, GridView, ResponsiveRow, Text, padding
 
 from core.abstractions import LocalCache
 from core.views.progress_bars import (
-    PRIMARY_LIGHT_PROGRESS,
+    horizontalProgressBar,
 )
 from core.views.spacers import mdSpace
 from core.views.texts import get_headline_txt
@@ -19,7 +19,7 @@ from .project_card import ProjectCard
 from .projects_view_filters import ProjectFiltersView, ProjectStates
 
 
-class ProjectsDestinationViewImpl(ProjectDestinationView):
+class ProjectsViewImpl(ProjectDestinationView):
     def __init__(
         self,
         localCacheHandler: LocalCache,
@@ -29,7 +29,7 @@ class ProjectsDestinationViewImpl(ProjectDestinationView):
             intentHandler=ProjectIntentImpl(cache=localCacheHandler),
             onChangeRouteCallback=onChangeRouteCallback,
         )
-        self.progressBar = PRIMARY_LIGHT_PROGRESS
+        self.progressBar = horizontalProgressBar
         self.noProjectsComponent = Text(
             value=NO_PROJECTS_ADDED, color=ERROR_COLOR, visible=False
         )

@@ -3,8 +3,15 @@
 from flet import Column, Text, TextField, TextStyle, padding
 
 from res import colors, fonts, spacing
+from typing import Callable
+import typing
 
-from .flet_constants import KEYBOARD_MULTILINE, START_ALIGNMENT, TXT_ALIGN_LEFT
+from .flet_constants import (
+    KEYBOARD_TEXT,
+    KEYBOARD_MULTILINE,
+    START_ALIGNMENT,
+    TXT_ALIGN_LEFT,
+)
 
 
 def get_headline_txt(
@@ -49,29 +56,34 @@ def get_headline_with_subtitle(
 
 
 def get_std_txt_field(
-    onFocusCallback, onChangeCallback, lbl: str, hint: str, keyboardType: str
+    onChangeCallback,
+    lbl: str,
+    hint: str,
+    keyboardType: str = KEYBOARD_TEXT,
+    onFocusCallback: typing.Optional[Callable] = None,
 ):
     """Displays commonly used text field in app forms"""
     txtFieldPad = padding.symmetric(horizontal=spacing.SPACE_XS)
-    txtFieldHintStyle = TextStyle(size=fonts.CAPTION_SIZE)
 
     return TextField(
         label=lbl,
         keyboard_type=keyboardType,
         content_padding=txtFieldPad,
         hint_text=hint,
-        hint_style=txtFieldHintStyle,
+        hint_style=TextStyle(size=fonts.CAPTION_SIZE),
         focused_border_width=1,
         on_focus=onFocusCallback,
         on_change=onChangeCallback,
+        label_style=TextStyle(size=fonts.BODY_2_SIZE),
+        error_style=TextStyle(size=fonts.BODY_2_SIZE, color=colors.ERROR_COLOR),
     )
 
 
 def get_std_multiline_field(
-    onFocusCallback,
     onChangeCallback,
     lbl: str,
     hint: str,
+    onFocusCallback: typing.Optional[Callable] = None,
     keyboardType: str = KEYBOARD_MULTILINE,
     minLines: int = 3,
     maxLines: int = 5,
@@ -89,6 +101,8 @@ def get_std_multiline_field(
         max_lines=maxLines,
         on_focus=onFocusCallback,
         on_change=onChangeCallback,
+        label_style=TextStyle(size=fonts.BODY_2_SIZE),
+        error_style=TextStyle(size=fonts.BODY_2_SIZE, color=colors.ERROR_COLOR),
     )
 
 
