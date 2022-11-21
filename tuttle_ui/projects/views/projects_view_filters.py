@@ -5,7 +5,7 @@ from flet import (
     UserControl,
 )
 from typing import Callable
-from res.colors import BLACK_COLOR, PRIMARY_COLOR
+from res.colors import PRIMARY_COLOR, GRAY_COLOR
 from res.dimens import CLICKABLE_PILL_HEIGHT
 from res.strings import ACTIVE, ALL, COMPLETED, UPCOMING
 from core.views.flet_constants import (
@@ -41,7 +41,7 @@ class ProjectFiltersView(UserControl):
             col={"xs": 6, "sm": 3, "lg": 2},
             on_click=lambda e: onClick(state),
             height=CLICKABLE_PILL_HEIGHT,
-            color=PRIMARY_COLOR if state == self.currentState else BLACK_COLOR,
+            color=PRIMARY_COLOR if state == self.currentState else GRAY_COLOR,
             style=ButtonStyle(
                 elevation={
                     PRESSED: 3,
@@ -55,7 +55,7 @@ class ProjectFiltersView(UserControl):
 
     def on_filter_button_clicked(self, state: ProjectStates):
         """sets the new state and updates selected button"""
-        self.stateTofilterButtonsMap[self.currentState].color = BLACK_COLOR
+        self.stateTofilterButtonsMap[self.currentState].color = GRAY_COLOR
         self.currentState = state
         self.stateTofilterButtonsMap[self.currentState].color = PRIMARY_COLOR
         self.update()

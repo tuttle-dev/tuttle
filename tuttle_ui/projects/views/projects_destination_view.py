@@ -10,7 +10,7 @@ from core.views.progress_bars import (
 from core.views.spacers import mdSpace
 from core.views.texts import get_headline_txt
 from projects.abstractions import ProjectDestinationView
-from res.colors import BLACK_COLOR, ERROR_COLOR
+from res.colors import ERROR_COLOR
 from res.fonts import HEADLINE_4_SIZE
 from res.spacing import SPACE_MD, SPACE_STD
 from res.strings import MY_PROJECTS, NO_PROJECTS_ADDED
@@ -38,9 +38,7 @@ class ProjectsDestinationViewImpl(ProjectDestinationView):
                 Column(
                     col={"xs": 12},
                     controls=[
-                        get_headline_txt(
-                            txt=MY_PROJECTS, size=HEADLINE_4_SIZE, color=BLACK_COLOR
-                        ),
+                        get_headline_txt(txt=MY_PROJECTS, size=HEADLINE_4_SIZE),
                         self.progressBar,
                         self.noProjectsComponent,
                     ],

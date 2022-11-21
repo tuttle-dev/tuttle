@@ -10,13 +10,5 @@ def get_primary_btn(
     width: int = 200,
 ):
     """An elevated button with primary styling"""
-    style = ButtonStyle(
-        color={"disabled": colors.GRAY_DARK_COLOR, "": colors.WHITE_COLOR},
-        bgcolor={
-            "hovered": colors.PRIMARY_LIGHT_COLOR,
-            "focused": colors.PRIMARY_LIGHT_COLOR,
-            "disabled": colors.GRAY_LIGHT_COLOR,
-            "": colors.PRIMARY_COLOR,
-        },
-    )
+    style = ButtonStyle()
     return ElevatedButton(label, width=width, style=style, on_click=onClickCallback)

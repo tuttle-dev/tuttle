@@ -5,6 +5,7 @@ from core.local_cache_impl import LocalCacheImpl
 from res.strings import APP_NAME
 from res.theme import APP_FONTS, APP_THEME, APP_THEME_MODE
 from routes import TuttleRoutes
+from res.dimens import MIN_WINDOW_WIDTH
 
 
 def main(page: Page):
@@ -13,7 +14,7 @@ def main(page: Page):
     page.fonts = APP_FONTS
     page.theme_mode = APP_THEME_MODE
     page.theme = APP_THEME
-    page.window_min_width = 480
+    page.window_min_width = MIN_WINDOW_WIDTH
     localCacheHandler = LocalCacheImpl(page=page)
 
     def change_route(toRoute: str, data: any):

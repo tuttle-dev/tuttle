@@ -20,7 +20,7 @@ from core.views.texts import (
     get_headline_with_subtitle,
 )
 from core.views.flet_constants import END_ALIGNMENT, SPACE_BETWEEN_ALIGNMENT
-from res.colors import BLACK_COLOR, WHITE_COLOR, PRIMARY_COLOR, ERROR_COLOR
+from res.colors import ERROR_COLOR
 from res.fonts import HEADLINE_4_SIZE
 from res.spacing import SPACE_STD
 from res.strings import VIEW_DETAILS
@@ -59,8 +59,10 @@ class ProjectCard(UserControl):
                     Row(
                         spacing=0,
                         controls=[
-                            Text(f"{PROJECT_TAG}", color=BLACK_COLOR),
-                            Text(f"{self.project.unique_tag}", color=PRIMARY_COLOR),
+                            Text(f"{PROJECT_TAG}"),
+                            Text(
+                                f"{self.project.unique_tag}",
+                            ),
                         ],
                     ),
                     ElevatedButton(text=VIEW_DETAILS),
@@ -72,7 +74,6 @@ class ProjectCard(UserControl):
             expand=True,
             content=Container(
                 expand=True,
-                bgcolor=WHITE_COLOR,
                 padding=padding.all(SPACE_STD),
                 border_radius=border_radius.all(12),
                 content=self.productInfoContainer,

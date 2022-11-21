@@ -1,6 +1,6 @@
 from flet import Container, Image, Row
 
-from res import colors, fonts, image_paths, strings
+from res import fonts, image_paths, strings
 
 from .flet_constants import CONTAIN
 from .texts import get_headline_txt
@@ -26,7 +26,8 @@ labelledLogo = Row(
     controls=[
         get_app_logo(),
         get_headline_txt(
-            strings.APP_NAME, size=fonts.HEADLINE_3_SIZE, color=colors.BLACK_COLOR
+            strings.APP_NAME,
+            size=fonts.HEADLINE_3_SIZE,
         ),
     ],
 )

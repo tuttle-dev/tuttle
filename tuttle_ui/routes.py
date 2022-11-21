@@ -3,7 +3,7 @@ from typing import Callable
 
 from flet import TemplateRoute, View
 
-from authentication.view.splash_screen import SplashScreen
+from authentication.views.splash_screen import SplashScreen
 from home.views.home_screen import HomeScreen
 from core.views.error_404_view import Error404Screen
 
@@ -47,7 +47,6 @@ class TuttleRoutes:
             route=routeName,
             scroll=scrollType,
             controls=[screen],
-            bgcolor=screen.bg_color,
         )
 
         if hasAppBar:

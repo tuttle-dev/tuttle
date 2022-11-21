@@ -14,7 +14,6 @@ def get_headline_txt(
     return Text(
         txt,
         font_family=fonts.HEADLINE_FONT,
-        color=color,
         weight=fonts.BOLD_FONT,
         size=size,
     )
@@ -36,14 +35,12 @@ def get_headline_with_subtitle(
             Text(
                 title,
                 font_family=fonts.HEADLINE_FONT,
-                color=colors.GRAY_DARK_COLOR,
                 size=titleSize,
                 text_align=txtAlignment,
             ),
             Text(
                 subtitle,
                 font_family=fonts.HEADLINE_FONT,
-                color=colors.GRAY_COLOR,
                 size=subtitleSize,
                 text_align=txtAlignment,
             ),
@@ -56,7 +53,7 @@ def get_std_txt_field(
 ):
     """Displays commonly used text field in app forms"""
     txtFieldPad = padding.symmetric(horizontal=spacing.SPACE_XS)
-    txtFieldHintStyle = TextStyle(color=colors.GRAY_COLOR, size=fonts.CAPTION_SIZE)
+    txtFieldHintStyle = TextStyle(size=fonts.CAPTION_SIZE)
 
     return TextField(
         label=lbl,
@@ -64,8 +61,6 @@ def get_std_txt_field(
         content_padding=txtFieldPad,
         hint_text=hint,
         hint_style=txtFieldHintStyle,
-        border_color=colors.GRAY_COLOR,
-        focused_border_color=colors.PRIMARY_LIGHT_COLOR,
         focused_border_width=1,
         on_focus=onFocusCallback,
         on_change=onChangeCallback,
@@ -82,15 +77,13 @@ def get_std_multiline_field(
     maxLines: int = 5,
 ):
     """Displays commonly used textarea field in app forms"""
-    txtFieldHintStyle = TextStyle(color=colors.GRAY_COLOR, size=fonts.CAPTION_SIZE)
+    txtFieldHintStyle = TextStyle(size=fonts.CAPTION_SIZE)
 
     return TextField(
         label=lbl,
         keyboard_type=keyboardType,
         hint_text=hint,
         hint_style=txtFieldHintStyle,
-        border_color=colors.GRAY_COLOR,
-        focused_border_color=colors.PRIMARY_LIGHT_COLOR,
         focused_border_width=1,
         min_lines=minLines,
         max_lines=maxLines,

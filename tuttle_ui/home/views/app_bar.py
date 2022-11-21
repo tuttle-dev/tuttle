@@ -9,6 +9,8 @@ from res import colors
 
 def get_app_bar(on_click_notifications: Callable):
     return AppBar(
+        bgcolor=colors.BLACK_COLOR,
+        elevation=12,
         title=Row(
             width=50,
             alignment=CENTER_ALIGNMENT,
@@ -18,7 +20,6 @@ def get_app_bar(on_click_notifications: Callable):
             ],
         ),
         center_title=False,
-        bgcolor=colors.WHITE_COLOR,
         actions=[
             IconButton(
                 icons.NOTIFICATIONS,

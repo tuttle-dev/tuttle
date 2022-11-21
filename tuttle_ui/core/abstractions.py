@@ -2,8 +2,6 @@ import typing
 from abc import ABC, abstractmethod
 from typing import Callable
 
-from res.colors import WHITE_COLOR
-
 
 class LocalCache(ABC):
     """An abstraction that defines methods for caching data"""
@@ -104,12 +102,10 @@ class TuttleView(ABC):
         intentHandler: typing.Optional[Intent] = None,
         hasFloatingActionBtn: bool = False,
         hasAppBar: bool = False,
-        bgColor: str = WHITE_COLOR,
     ):
         super().__init__()
         self.has_floating_action_btn = (hasFloatingActionBtn,)
         self.has_app_bar = (hasAppBar,)
-        self.bg_color = (bgColor,)
         self.changeRoute = onChangeRouteCallback
         self.intentHandler = intentHandler
 

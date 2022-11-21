@@ -1,32 +1,28 @@
 """Defines font related constants used in app"""
 
-"""
-Roboto is used for numbers, labels and headers
-Merriweather for supporting text.
-"""
 DEFAULT_FONT = "body"
 HEADLINE_FONT = "headline"
 
 ALL_FONTS = {
-    DEFAULT_FONT: "/fonts/Merriweather-Regular.ttf",
-    HEADLINE_FONT: "/fonts/Roboto-Regular.ttf",
+    DEFAULT_FONT: "/fonts/SF-Pro-Display-Regular.ttf",
+    HEADLINE_FONT: "/fonts/NewYork.ttf",
 }
 
 
 """
 FONT SIZES
 """
-HEADLING_1_SIZE = 48
-HEADLINE_2_SIZE = 34
-HEADLINE_3_SIZE = 24
-HEADLINE_4_SIZE = 20
-BODY_1_SIZE = 15
-BODY_2_SIZE = 13
-SUBTITLE_1_SIZE = 16
-SUBTITLE_2_SIZE = 14
-BUTTON_SIZE = 13
+HEADLING_1_SIZE = 44
+HEADLINE_2_SIZE = 30
+HEADLINE_3_SIZE = 20
+HEADLINE_4_SIZE = 16
+BODY_1_SIZE = 11
+BODY_2_SIZE = 12
+SUBTITLE_1_SIZE = 12
+SUBTITLE_2_SIZE = 10
+BUTTON_SIZE = 12
 OVERLINE_SIZE = 10
-CAPTION_SIZE = 11
+CAPTION_SIZE = 9
 
 """
 FONT WEIGHTS
