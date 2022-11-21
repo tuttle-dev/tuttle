@@ -1,19 +1,20 @@
 import typing
 from typing import Callable
-from flet import ProgressRing, Column, Container, ResponsiveRow, UserControl, padding
 
-from authentication.intent.auth_intent_impl import AuthIntentImpl
-from core.abstractions.local_cache import LocalCache
-from core.abstractions.view import TuttleView
-from core.ui.components.images.app_logo import labelledLogo
-from core.ui.components.spacers import stdSpace
-from core.ui.components.text import headlines
-from core.ui.utils.flet_constants import CENTER_ALIGNMENT
+from flet import Column, Container, ProgressRing, ResponsiveRow, UserControl, padding
+
+from authentication.abstractions import AuthView
+from authentication.auth_intent_impl import AuthIntentImpl
+from core.abstractions import LocalCache
+from core.views.flet_constants import CENTER_ALIGNMENT
+from core.views.images import labelledLogo
+from core.views.spacers import stdSpace
+from core.views.texts import get_headline_with_subtitle
 from res import spacing, strings
 from res.utils import HOME_SCREEN_ROUTE
-from authentication.abstractions.auth_view import AuthView
-from .components.login_form import LoginForm
-from .components.splash_section import splashSection
+
+from .login_form import LoginForm
+from .splash_section import splashSection
 
 
 class SplashScreen(AuthView):
@@ -23,7 +24,8 @@ class SplashScreen(AuthView):
         localCacheHandler: LocalCache,
     ):
         super().__init__(
-            changeRouteCallback=changeRouteCallback, localCacheHandler=localCacheHandler
+            changeRouteCallback=changeRouteCallback,
+            intentHandler=AuthIntentImpl(cache=localCacheHandler),
         )
 
     def on_log_in_clicked(
@@ -61,8 +63,8 @@ class SplashScreen(AuthView):
         self.update()
 
     def did_mount(self):
-        #TODO self.check_auth_status()
-        self.on_logged_in()
+        self.check_auth_status()
+        # self.on_logged_in()
 
     def build(self):
         """Called when page is built"""
@@ -70,7 +72,7 @@ class SplashScreen(AuthView):
         self.formContainer = Column(
             controls=[
                 labelledLogo,
-                headlines.get_headline_with_subtitle(
+                get_headline_with_subtitle(
                     strings.WELCOME_TITLE, strings.WELCOME_SUBTITLE
                 ),
                 self.progressBar,

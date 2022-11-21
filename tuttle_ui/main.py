@@ -1,7 +1,7 @@
 import flet
 from flet import Page
 
-from core.data.local_cache_impl import LocalCacheImpl
+from core.local_cache_impl import LocalCacheImpl
 from res.strings import APP_NAME
 from res.theme import APP_FONTS, APP_THEME, APP_THEME_MODE
 from routes import TuttleRoutes

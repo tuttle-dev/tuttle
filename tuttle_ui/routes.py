@@ -4,12 +4,12 @@ from typing import Callable
 from flet import TemplateRoute, View
 
 from authentication.view.splash_screen import SplashScreen
-from home.view.home_screen import HomeScreen
-from core.ui.default_views.err_404 import Error404Screen
+from home.views.home_screen import HomeScreen
+from core.views.error_404_view import Error404Screen
 
-from core.abstractions.view import TuttleView
-from core.abstractions.local_cache import LocalCache
-from core.ui.utils.flet_constants import AUTO_SCROLL
+from core.abstractions import TuttleView
+from core.abstractions import LocalCache
+from core.views.flet_constants import AUTO_SCROLL
 from res.utils import HOME_SCREEN_ROUTE, SPLASH_SCREEN_ROUTE
 
 
