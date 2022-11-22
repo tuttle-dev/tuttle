@@ -3,31 +3,15 @@ from abc import abstractmethod
 from typing import Callable, Mapping
 
 from flet import UserControl
-
+import datetime
 from core.abstractions import DataSource
 from core.abstractions import TuttleDestinationView
 from core.abstractions import Intent
-from core.abstractions import IntentResult
 from core.abstractions import LocalCache
 from projects.projects_model import Project
-
-
-class ProjectIntentsResult(IntentResult):
-    """Wrapper for results of executed project intents"""
-
-    def __init__(
-        self,
-        data=None,
-        wasIntentSuccessful: bool = False,
-        errorMsgIfAny: str = "",
-        logMsg: str = "",
-    ):
-        super().__init__(
-            data=data,
-            wasIntentSuccessful=wasIntentSuccessful,
-            errorMsgIfAny=errorMsgIfAny,
-            logMsg=logMsg,
-        )
+from projects.utils import ProjectIntentsResult
+from clients.client_model import Client
+from contracts.contract_model import Contract
 
 
 class ProjectDataSource(DataSource):
@@ -46,6 +30,53 @@ class ProjectDataSource(DataSource):
         self,
     ) -> ProjectIntentsResult:
         """if successful, returns data as all projects this user has in a map"""
+        pass
+
+    @abstractmethod
+    def create_contract(self, description: str) -> ProjectIntentsResult:
+        """attempts to create a new contract
+
+        returns new contract id as data if successful
+        """
+        pass
+
+    @abstractmethod
+    def create_client(self, title: str) -> ProjectIntentsResult:
+        """attempts to create a new client
+
+        returns new client id as data if successful
+        """
+        pass
+
+    @abstractmethod
+    def get_all_clients_as_map(
+        self,
+    ) -> Mapping[str, Client]:
+        """Returns all existing clients, mapped as id:str to object:Client"""
+        pass
+
+    @abstractmethod
+    def get_all_contracts_as_map(
+        self,
+    ) -> Mapping[str, Contract]:
+        """Returns all existing contracts, mapped as id:str to object:Contract"""
+        pass
+
+    @abstractmethod
+    def save_project(
+        self,
+        title: str,
+        description: str,
+        startDate: datetime.date,
+        endDate: datetime.date,
+        tag: str,
+        clientId: str,
+        contractId: str,
+    ) -> ProjectIntentsResult:
+        """attempts to save a project
+
+        returns new project id as data if successful
+        """
         pass
 
 
@@ -91,10 +122,56 @@ class ProjectsIntent(Intent):
         """caches frequently used key-value pairs related to projects"""
         pass
 
+    @abstractmethod
+    def create_contract(self, description: str) -> ProjectIntentsResult:
+        """attempts to create a new contract
+
+        returns new contract id as data if intent is successful
+        """
+        pass
+
+    @abstractmethod
+    def create_client(self, title: str) -> ProjectIntentsResult:
+        """attempts to create a new client
+
+        returns new client id as data if intent is successful
+        """
+        pass
+
+    @abstractmethod
+    def get_all_clients_as_map(
+        self,
+    ) -> Mapping[str, str]:
+        """Returns all existing clients, mapped as id to title"""
+        pass
+
+    @abstractmethod
+    def get_all_contracts_as_map(
+        self,
+    ) -> Mapping[str, str]:
+        """Returns all existing contracts, mapped as id to description"""
+        pass
+
+    @abstractmethod
+    def save_project(
+        self,
+        title: str,
+        description: str,
+        start_date: datetime.date,
+        end_date: datetime.date,
+        tag: str,
+        client_id: str,
+        contract_id: str,
+    ) -> ProjectIntentsResult:
+        """attempts to save a project
+
+        returns new project id as data if successful
+        """
+        pass
+
 
 class ProjectDestinationView(TuttleDestinationView, UserControl):
     """Describes the destination screen that displays all projects
-
     initializes the intent handler
     """
 

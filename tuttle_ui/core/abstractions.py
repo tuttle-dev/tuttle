@@ -40,7 +40,11 @@ class IntentResult(ABC):
     """An absraction that defines the result of a view's intent"""
 
     def __init__(
-        self, data, wasIntentSuccessful: bool, errorMsgIfAny: str, logMsg: str
+        self,
+        data,
+        wasIntentSuccessful: bool,
+        errorMsgIfAny: str = "",
+        logMsg: str = "",
     ):
         super().__init__()
         self.errorMsg = errorMsgIfAny
@@ -115,6 +119,7 @@ class TuttleView(ABC):
         horizontalAlignmentInParent=START_ALIGNMENT,
         keepBackStack=False,
         onNavigateBack: typing.Optional[Callable] = None,
+        showSnackCallback: typing.Optional[Callable[[str, bool], None]] = None,
     ):
         super().__init__()
         self.hasFloatingActionBtn = hasFloatingActionBtn
@@ -126,6 +131,8 @@ class TuttleView(ABC):
         self.horizontalAlignmentInParent = horizontalAlignmentInParent
         self.keepBackStack = keepBackStack
         self.onNavigateBack = onNavigateBack
+        # callback that shows a snack message which can be an error
+        self.showSnack = showSnackCallback
 
     def get_floating_action_btn_if_any(self):
         """Returns a floating action button OR None"""
@@ -155,5 +162,5 @@ class DialogHandler(ABC):
         self.dialogController(self.dialog, AlertDialogControls.ADD_AND_OPEN)
 
     def dimiss_open_dialogs(self):
-        if self.dialog:
+        if self.dialog and self.dialog.open:
             self.close_dialog()

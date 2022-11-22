@@ -1,13 +1,40 @@
-from flet import Dropdown, dropdown, TextStyle, padding, icons
-from typing import List, Callable
-from res import fonts, spacing, dimens, colors
+from flet import (
+    UserControl,
+    Container,
+    Row,
+    Icon,
+    icons,
+    Dropdown,
+    dropdown,
+    TextStyle,
+    padding,
+    icons,
+    Text,
+    Column,
+)
+from typing import List, Callable, Optional
+from res import fonts, spacing, colors
+from res.strings import DAY_LBL, MONTH_LBL, YEAR_LBL
+import datetime
+
+
+def update_dropdown_items(dropDown: Dropdown, items: List[str]):
+    options = []
+    for item in items:
+        options.append(
+            dropdown.Option(
+                text=item,
+            )
+        )
+    dropDown.options = options
 
 
 def get_dropdown(
     lbl: str,
-    hint: str,
     onChange: Callable,
     items: List[str],
+    hint: Optional[str] = "",
+    width: Optional[int] = None,
 ):
     options = []
     for item in items:
@@ -23,6 +50,78 @@ def get_dropdown(
         text_size=fonts.BODY_1_SIZE,
         label_style=TextStyle(size=fonts.BODY_2_SIZE),
         on_change=onChange,
+        width=width,
         content_padding=padding.all(spacing.SPACE_XS),
         error_style=TextStyle(size=fonts.BODY_2_SIZE, color=colors.ERROR_COLOR),
     )
+
+
+class DateSelector(UserControl):
+    """Date selector."""
+
+    def __init__(self, label: str):
+        super().__init__()
+        self.label = label
+        self.date = ""
+        self.month = ""
+        self.year = ""
+
+        self.day_dropdown = get_dropdown(
+            lbl=DAY_LBL,
+            hint="",
+            onChange=self.on_date_set,
+            items=[str(day) for day in range(1, 32)],
+            width=50,
+        )
+
+        self.month_dropdown = get_dropdown(
+            lbl=MONTH_LBL,
+            onChange=self.on_month_set,
+            items=[str(month) for month in range(1, 13)],
+            width=50,
+        )
+
+        self.year_dropdown = get_dropdown(
+            lbl=YEAR_LBL,
+            onChange=self.on_year_set,
+            items=[str(year) for year in range(2022, 2027)],
+            width=100,
+        )
+
+    def on_date_set(self, e):
+        self.date = e.control.value
+
+    def on_month_set(self, e):
+        self.month = e.control.value
+
+    def on_year_set(self, e):
+        self.year = e.control.value
+
+    def build(self):
+        self.view = Container(
+            content=Column(
+                controls=[
+                    Text(self.label, size=fonts.BODY_2_SIZE),
+                    Row(
+                        [
+                            self.day_dropdown,
+                            self.month_dropdown,
+                            self.year_dropdown,
+                        ],
+                    ),
+                ]
+            ),
+        )
+        return self.view
+
+    def get_date(self) -> Optional[datetime.date]:
+        """Return the selected timeframe."""
+        if not self.year or not self.month or not self.date:
+            return None
+
+        date = datetime.date(
+            year=int(self.year),
+            month=int(self.month),
+            day=int(self.date),
+        )
+        return date

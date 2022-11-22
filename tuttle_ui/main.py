@@ -3,6 +3,8 @@ from flet import Page, AlertDialog, SnackBar, Text
 
 from core.local_cache_impl import LocalCacheImpl
 from res.strings import APP_NAME
+from res.fonts import HEADLINE_4_SIZE, HEADLINE_FONT
+from res.colors import ERROR_COLOR
 from res.theme import APP_FONTS, APP_THEME, APP_THEME_MODE
 from routes import TuttleRoutes
 from res.dimens import MIN_WINDOW_WIDTH
@@ -19,7 +21,19 @@ def main(page: Page):
     page.window_min_width = MIN_WINDOW_WIDTH
     localCacheHandler = LocalCacheImpl(page=page)
 
-    def change_route(toRoute: str, data: any):
+    def show_snack(message: str, isError: bool):
+        page.snack_bar = SnackBar(
+            ft.Text(
+                message,
+                size=HEADLINE_4_SIZE,
+                color=ERROR_COLOR if isError else None,
+                font_family=HEADLINE_FONT,
+            ),
+        )
+        page.snack_bar.open = True
+        page.update()
+
+    def change_route(toRoute: str, data: typing.Optional[any] = None):
         """Navigates to a new route
 
         passes data to the destination if provided
@@ -44,15 +58,19 @@ def main(page: Page):
                 dialog.open = False
         page.update()
 
-    def get_route_view(route: str):
-        """helper function that parses a route to route view"""
-        routeParser = TuttleRoutes(
-            onChangeRouteCallback=change_route,
-            localCacheHandler=localCacheHandler,
-            dialogController=control_alert_dialog,
-            onNavigateBack=on_view_pop,
-        )
-        return routeParser.parse_route(pageRoute=route)
+    def on_view_pop(view):
+        """invoked on back pressed"""
+        page.views.pop()
+        top_view = page.views[-1]
+        page.go(top_view.route)
+
+    routeParser = TuttleRoutes(
+        onChangeRouteCallback=change_route,
+        localCacheHandler=localCacheHandler,
+        dialogController=control_alert_dialog,
+        onNavigateBack=on_view_pop,
+        showSnackCallback=show_snack,
+    )
 
     def on_route_change(route):
         """auto invoked when the route changes
@@ -62,17 +80,12 @@ def main(page: Page):
         the splash view must always be in view
         """
         # insert the new view on top
-        routeView = get_route_view(page.route)
+        routeView = routeParser.parse_route(pageRoute=route.route)
         if not routeView.keepBackStack:
+            """clear previous views"""
             page.views.clear()
         page.views.append(routeView.view)
         page.update()
-
-    def on_view_pop(view):
-        """invoked on back pressed"""
-        page.views.pop()
-        top_view = page.views[-1]
-        page.go(top_view.route)
 
     page.on_route_change = on_route_change
     page.on_view_pop = on_view_pop

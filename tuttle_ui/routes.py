@@ -40,11 +40,13 @@ class TuttleRoutes:
         localCacheHandler: LocalCache,
         dialogController: Callable,
         onNavigateBack: Callable,
+        showSnackCallback: Callable,
     ):
         self.onChangeRouteCallback = onChangeRouteCallback
         self.localCacheHandler = localCacheHandler
         self.dialogController = dialogController
         self.onNavigateBack = onNavigateBack
+        self.showSnackCallback = showSnackCallback
 
     def get_page_route_view(
         self,
@@ -107,6 +109,7 @@ class TuttleRoutes:
                 localCacheHandler=self.localCacheHandler,
                 onNavigateBack=self.onNavigateBack,
                 pageDialogController=self.dialogController,
+                showSnackCallback=self.showSnackCallback,
             )
             return self.get_page_route_view(
                 PROJECT_EDITOR_SCREEN_ROUTE,

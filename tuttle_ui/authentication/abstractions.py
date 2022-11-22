@@ -96,6 +96,7 @@ class AuthView(TuttleView, UserControl):
         intentHandler: AuthIntent,
     ):
         super().__init__(
-            intentHandler=intentHandler, onChangeRouteCallback=changeRouteCallback
+            intentHandler=intentHandler,
+            onChangeRouteCallback=changeRouteCallback,
         )
         self.intentHandler = intentHandler

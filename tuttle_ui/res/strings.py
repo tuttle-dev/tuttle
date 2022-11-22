@@ -55,3 +55,16 @@ CONTRACT_ID_LBL = "Contract #"
 PROJECT_TAG = "#"
 SIDE_MENU_MAIN_GROUP_TITLE = "Work"
 SIDE_MENU_SUB_GROUP_TITLE = "Generated"
+
+"""DATE PICKER"""
+DAY_LBL = "D"
+MONTH_LBL = "M"
+YEAR_LBL = "Y"
+
+
+"""Create project"""
+CREATE_PROJECT_FAILED = "Failed to create the project! Please retry"
+CREATE_CLIENT_MISSING_TITLE_ERR = "The title is required"
+CREATE_CLIENT_FAILED_ERR = "Saving new client failed. Please retry"
+CREATE_CONTRACT_MISSING_DESCRIPTION_ERR = "The contract description is required"
+CREATE_CONTRACT_FAILED_ERR = "Saving new contract failed. Please retry"

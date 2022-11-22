@@ -2,9 +2,16 @@ from typing import Mapping
 
 from authentication.auth_data_keys import USER_ID
 from core.abstractions import LocalCache
-from projects.abstractions import ProjectIntentsResult, ProjectsIntent
+from projects.abstractions import ProjectsIntent
+from projects.utils import ProjectIntentsResult
 from projects.projects_data_source_impl import ProjectDataSourceImpl
 from projects.projects_model import Project
+from res.strings import (
+    CREATE_CLIENT_FAILED_ERR,
+    CREATE_CONTRACT_FAILED_ERR,
+    CREATE_PROJECT_FAILED,
+)
+import datetime
 
 
 class ProjectIntentImpl(ProjectsIntent):
@@ -73,3 +80,56 @@ class ProjectIntentImpl(ProjectsIntent):
 
     def cache_projects_data(self, key: str, data: any):
         self.cache.set_value(key, data)
+
+    def create_contract(self, description: str) -> ProjectIntentsResult:
+        result = self.dataSource.create_contract(description)
+        if not result.wasIntentSuccessful:
+            result.errorMsg = CREATE_CONTRACT_FAILED_ERR
+        return result
+
+    def create_client(self, title: str) -> ProjectIntentsResult:
+        result = self.dataSource.create_client(title)
+        if not result.wasIntentSuccessful:
+            result.errorMsg = CREATE_CLIENT_FAILED_ERR
+        return result
+
+    def get_all_clients_as_map(self):
+        result = self.dataSource.get_all_clients_as_map()
+        idClientMap = {}
+        if len(result) > 0:
+            for key in result:
+                item = result[key]
+                idClientMap[key] = item.title
+        return idClientMap
+
+    def get_all_contracts_as_map(self):
+        result = self.dataSource.get_all_contracts_as_map()
+        idContractMap = {}
+        if len(result) > 0:
+            for key in result:
+                item = result[key]
+                idContractMap[key] = item.description
+        return idContractMap
+
+    def save_project(
+        self,
+        title: str,
+        description: str,
+        startDate: datetime.date,
+        endDate: datetime.date,
+        tag: str,
+        clientId: str,
+        contractId: str,
+    ) -> ProjectIntentsResult:
+        result = self.dataSource.save_project(
+            title=title,
+            description=description,
+            startDate=startDate,
+            endDate=endDate,
+            tag=tag,
+            clientId=clientId,
+            contractId=contractId,
+        )
+        if not result.wasIntentSuccessful:
+            result.errorMsg = CREATE_PROJECT_FAILED
+        return result
