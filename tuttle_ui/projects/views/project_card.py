@@ -33,10 +33,11 @@ from projects.projects_model import Project
 class ProjectCard(UserControl):
     """Formats a single project info into a card ui display"""
 
-    def __init__(self, project: Project):
+    def __init__(self, project: Project, onClickView: Callable[[str], None]):
         super().__init__()
         self.project = project
         self.productInfoContainer = Column()
+        self.onClickView = onClickView
 
     def build(self):
         self.productInfoContainer.controls = [
@@ -65,7 +66,10 @@ class ProjectCard(UserControl):
                             ),
                         ],
                     ),
-                    ElevatedButton(text=VIEW_DETAILS),
+                    ElevatedButton(
+                        text=VIEW_DETAILS,
+                        on_click=lambda e: self.onClickView(self.project.id),
+                    ),
                 ],
             ),
         ]

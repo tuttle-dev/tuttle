@@ -86,6 +86,9 @@ class ProjectEditorScreen(TuttleView, UserControl):
                 break
             id = id + c
         self.clientId = id
+        if self.clientsField.error_text:
+            self.clientsField.error_text = None
+            self.update()
 
     def on_contract_selected(self, e):
         # parse selected value to extract id
@@ -98,6 +101,19 @@ class ProjectEditorScreen(TuttleView, UserControl):
                 break
             id = id + c
         self.contractId = id
+        if self.contractsField.error_text:
+            self.contractsField.error_text = None
+            self.update()
+
+    def clear_title_error(self, e):
+        if self.titleField.error_text:
+            self.titleField.error_text = None
+            self.update()
+
+    def clear_description_error(self, e):
+        if self.descriptionField.error_text:
+            self.descriptionField.error_text = None
+            self.update()
 
     def show_progress_bar_disable_action(self):
         self.loadingBar.visible = True
@@ -239,11 +255,13 @@ class ProjectEditorScreen(TuttleView, UserControl):
             lbl="Title",
             hint="Project's title",
             onChangeCallback=self.on_title_changed,
+            onFocusCallback=self.clear_title_error,
         )
         self.descriptionField = texts.get_std_multiline_field(
             lbl="Description",
             hint="Project's description",
             onChangeCallback=self.on_description_changed,
+            onFocusCallback=self.clear_description_error,
         )
         self.tagField = texts.get_std_txt_field(
             lbl="Tag",
@@ -258,7 +276,7 @@ class ProjectEditorScreen(TuttleView, UserControl):
         )
         self.contractsField = selectors.get_dropdown(
             lbl="Contract",
-            hint="Contract under which this project is bind",
+            hint="",
             onChange=self.on_contract_selected,
             items=self.get_contracts_as_list(),
         )

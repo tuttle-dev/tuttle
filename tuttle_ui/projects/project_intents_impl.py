@@ -10,6 +10,7 @@ from res.strings import (
     CREATE_CLIENT_FAILED_ERR,
     CREATE_CONTRACT_FAILED_ERR,
     CREATE_PROJECT_FAILED,
+    PROJECT_NOT_FOUND,
 )
 import datetime
 
@@ -133,3 +134,11 @@ class ProjectIntentImpl(ProjectsIntent):
         if not result.wasIntentSuccessful:
             result.errorMsg = CREATE_PROJECT_FAILED
         return result
+
+    def get_project_by_id(self, projectId) -> ProjectIntentsResult:
+        projectIfFound = self.dataSource.get_project_by_id(projectId=projectId)
+        return ProjectIntentsResult(
+            wasIntentSuccessful=projectIfFound != None,
+            data=projectIfFound,
+            errorMsgIfAny=PROJECT_NOT_FOUND if projectIfFound == None else "",
+        )

@@ -38,7 +38,8 @@ def main(page: Page):
 
         passes data to the destination if provided
         """
-        page.go(toRoute)
+        newRoute = toRoute if data == None else f"{toRoute}/{data}"
+        page.go(newRoute)
 
     def control_alert_dialog(
         dialog: typing.Optional[AlertDialog],

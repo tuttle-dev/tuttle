@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 import datetime
+from res.strings import ACTIVE, COMPLETED, UPCOMING, ALL
 
 
 @dataclass
@@ -27,3 +28,14 @@ class Project:
     def is_upcoming(self) -> bool:
         today = datetime.date.today()
         return self.start_date > today
+
+    def get_status(self) -> str:
+        if self.is_active():
+            return ACTIVE
+        elif self.is_upcoming():
+            return UPCOMING
+        elif self.is_completed:
+            return COMPLETED
+        else:
+            # default
+            return ALL

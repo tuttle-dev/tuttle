@@ -28,8 +28,9 @@ from res import spacing
 from res.colors import GRAY_DARK_COLOR
 from res.fonts import HEADLINE_FONT, HEADLINE_3_SIZE
 from res.dimens import MIN_WINDOW_WIDTH
-from .app_bar import get_app_bar
+from .action_bar import get_action_bar
 from .side_destinations import SideBarMenuItems, SideBarMenuItemsHandler
+from core.views.spacers import mdSpace
 
 
 class HomeScreen(TuttleView, UserControl):
@@ -40,7 +41,7 @@ class HomeScreen(TuttleView, UserControl):
         dialogController: Callable,
     ):
         super().__init__(
-            hasAppBar=True,
+            hasAppBar=False,
             onChangeRouteCallback=changeRouteCallback,
             pageDialogController=dialogController,
         )
@@ -86,8 +87,8 @@ class HomeScreen(TuttleView, UserControl):
             expand=True,
         )
 
-    def get_app_bar_if_any(self):
-        return get_app_bar(
+    def get_action_bar(self):
+        return get_action_bar(
             onClickNotifications=self.on_view_notifications_clicked,
             onClickNew=self.on_click_add,
         )
@@ -137,16 +138,20 @@ class HomeScreen(TuttleView, UserControl):
         page_view = Row(
             [
                 Container(
-                    Column(
+                    padding=padding.only(top=spacing.SPACE_XL),
+                    content=Column(
                         controls=[self.destination_rails, self.settings_icon],
                         alignment=SPACE_BETWEEN_ALIGNMENT,
                         horizontal_alignment=CENTER_ALIGNMENT,
                         spacing=spacing.SPACE_LG,
                     ),
                 ),
-                Container(
+                Column(
                     expand=True,
-                    content=self.destination_body,
+                    controls=[
+                        self.get_action_bar(),
+                        Container(content=self.destination_body),
+                    ],
                 ),
             ],
             spacing=0,

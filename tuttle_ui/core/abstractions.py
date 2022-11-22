@@ -104,6 +104,7 @@ class TuttleView(ABC):
     hasFloatingActionBtn - if screen has a floating action button, default is False
     hasAppBar - if screen has an appbar, default is False
     addDialogToPageCallback - [optional] used to add a dialog to the page
+    keepBackStack - True if this screen has a go back button
     """
 
     def __init__(

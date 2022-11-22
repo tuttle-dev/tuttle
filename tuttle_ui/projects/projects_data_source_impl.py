@@ -53,6 +53,24 @@ class ProjectDataSourceImpl(ProjectDataSource):
     ) -> ProjectIntentsResult:
         return ProjectIntentsResult(wasIntentSuccessful=False)
 
+    def get_project_by_id(self, projectId):
+        i = int(projectId)
+        self.projects[projectId] = Project(
+            id=i,
+            contract_id=i * 2,
+            client_id=i * 3,
+            title=f"Project {i}",
+            description=f"Dummy project {i} Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.",
+            unique_tag=f"dummy{i}",
+            is_completed=True if i % 2 == 0 else False,
+            start_date=datetime.date.today(),
+            end_date=datetime.date.today() + datetime.timedelta((i + 1)),
+        )
+        if projectId in self.projects:
+            return self.projects[projectId]
+        else:
+            return None
+
     """DUMMY CONTENT BELOW ---  DELETE ALL"""
 
     def _get_total_projects(self):

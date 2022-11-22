@@ -12,7 +12,7 @@ from res.utils import (
     CONTACT_EDITOR_SCREEN_ROUTE,
     CONTRACT_EDITOR_SCREEN_ROUTE,
 )
-from projects.views.projects_view import ProjectsViewImpl
+from projects.views.projects_list import ProjectsListScreen
 from clients.view.clients_destination_view import ClientsDestinationView
 from contracts.view.contracts_destination_view import ContractsDestinationView
 from contacts.view.contacts_destination_view import ContactsDestinationView
@@ -42,7 +42,7 @@ class SideBarMenuItemsHandler:
     ):
         super().__init__()
         self.first_item_index = 0
-        self.projectsView = ProjectsViewImpl(
+        self.projectsView = ProjectsListScreen(
             localCacheHandler=localCacheHandler,
             onChangeRouteCallback=onChangeRouteCallback,
         )

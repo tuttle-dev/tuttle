@@ -14,8 +14,10 @@ from res.utils import (
     HOME_SCREEN_ROUTE,
     SPLASH_SCREEN_ROUTE,
     PROJECT_EDITOR_SCREEN_ROUTE,
+    PROJECT_DETAILS_SCREEN_ROUTE,
 )
-from projects.views.project_editor_view import ProjectEditorScreen
+from projects.views.project_details import ProjectDetailsScreen
+from projects.views.project_editor import ProjectEditorScreen
 from dataclasses import dataclass
 
 
@@ -61,6 +63,7 @@ class TuttleRoutes:
         checks if view has an app bar or floating action button
         then appends to view if available
         """
+
         view = View(
             padding=0,
             spacing=0,
@@ -79,7 +82,9 @@ class TuttleRoutes:
 
     def parse_route(self, pageRoute: str):
         """parses a given route path and returns it's view"""
+
         routePath = TemplateRoute(pageRoute)
+
         if routePath.match(SPLASH_SCREEN_ROUTE):
             splashScreen = SplashScreen(
                 changeRouteCallback=self.onChangeRouteCallback,
@@ -91,7 +96,9 @@ class TuttleRoutes:
                 hasFloatingAction=splashScreen.hasFloatingActionBtn,
                 screen=splashScreen,
             )
-        elif routePath.match(HOME_SCREEN_ROUTE):
+        elif routePath.match(HOME_SCREEN_ROUTE) or routePath.match(
+            f"{HOME_SCREEN_ROUTE}/:userId"
+        ):
             homeScreen = HomeScreen(
                 changeRouteCallback=self.onChangeRouteCallback,
                 localCacheHandler=self.localCacheHandler,
@@ -116,6 +123,22 @@ class TuttleRoutes:
                 hasAppBar=projectEditorScreen.hasAppBar,
                 hasFloatingAction=projectEditorScreen.hasFloatingActionBtn,
                 screen=projectEditorScreen,
+            )
+
+        elif routePath.match(f"{PROJECT_DETAILS_SCREEN_ROUTE}/:projectId"):
+            projectDetailsScreen = ProjectDetailsScreen(
+                changeRouteCallback=self.onChangeRouteCallback,
+                localCacheHandler=self.localCacheHandler,
+                onNavigateBack=self.onNavigateBack,
+                pageDialogController=self.dialogController,
+                showSnackCallback=self.showSnackCallback,
+                projectId=routePath.projectId,
+            )
+            return self.get_page_route_view(
+                PROJECT_DETAILS_SCREEN_ROUTE,
+                hasAppBar=projectDetailsScreen.hasAppBar,
+                hasFloatingAction=projectDetailsScreen.hasFloatingActionBtn,
+                screen=projectDetailsScreen,
             )
         else:
             err404Screen = Error404Screen(

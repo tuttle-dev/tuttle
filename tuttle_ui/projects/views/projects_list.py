@@ -7,6 +7,7 @@ from core.abstractions import LocalCache
 from core.views.progress_bars import (
     horizontalProgressBar,
 )
+from res.utils import PROJECT_DETAILS_SCREEN_ROUTE
 from core.views.spacers import mdSpace
 from core.views.texts import get_headline_txt
 from projects.abstractions import ProjectDestinationView
@@ -16,10 +17,10 @@ from res.spacing import SPACE_MD, SPACE_STD
 from res.strings import MY_PROJECTS, NO_PROJECTS_ADDED
 from projects.project_intents_impl import ProjectIntentImpl
 from .project_card import ProjectCard
-from .projects_view_filters import ProjectFiltersView, ProjectStates
+from .projects_filters import ProjectFiltersView, ProjectStates
 
 
-class ProjectsViewImpl(ProjectDestinationView):
+class ProjectsListScreen(ProjectDestinationView):
     def __init__(
         self,
         localCacheHandler: LocalCache,
@@ -64,8 +65,13 @@ class ProjectsViewImpl(ProjectDestinationView):
         self.projectsContainer.controls.clear()
         for key in self.projectsToDisplay:
             project = self.projectsToDisplay[key]
-            projectCard = ProjectCard(project=project)
+            projectCard = ProjectCard(
+                project=project, onClickView=self.on_view_project_clicked
+            )
             self.projectsContainer.controls.append(projectCard)
+
+    def on_view_project_clicked(self, projectId: str):
+        self.changeRoute(PROJECT_DETAILS_SCREEN_ROUTE, projectId)
 
     def on_filter_projects(self, filterByState: ProjectStates):
         if filterByState.value == ProjectStates.ACTIVE.value:

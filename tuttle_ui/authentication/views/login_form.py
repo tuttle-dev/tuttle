@@ -108,38 +108,38 @@ class LoginForm(UserControl):
     def build(self):
         """Called when form is built"""
         self.nameField = get_std_txt_field(
-            self.on_field_focus,
             self.on_change_name,
             strings.NAME_LBL,
             strings.NAME_HINT,
-            KEYBOARD_NAME,
+            onFocusCallback=self.on_field_focus,
+            keyboardType=KEYBOARD_NAME,
         )
         self.emailField = get_std_txt_field(
-            self.on_field_focus,
             self.on_change_email,
             strings.EMAIL_LBL,
             strings.EMAIL_HINT,
-            KEYBOARD_EMAIL,
+            onFocusCallback=self.on_field_focus,
+            keyboardType=KEYBOARD_EMAIL,
         )
         self.phoneField = get_std_txt_field(
-            self.on_field_focus,
             self.on_change_phone,
             strings.PHONE_LBL,
             strings.PHONE_HINT,
-            KEYBOARD_PHONE,
+            onFocusCallback=self.on_field_focus,
+            keyboardType=KEYBOARD_PHONE,
         )
         self.titleField = get_std_txt_field(
-            self.on_field_focus,
             self.on_change_title,
             strings.TITLE_LBL,
             strings.TITLE_HINT,
-            KEYBOARD_TEXT,
+            onFocusCallback=self.on_field_focus,
+            keyboardType=KEYBOARD_TEXT,
         )
         self.addressField = get_std_multiline_field(
-            self.on_field_focus,
             self.on_change_address,
             lbl=strings.ADDRESS_LBL,
             hint=strings.ADDRESS_HINT_OPTIONAL,
+            onFocusCallback=self.on_field_focus,
             keyboardType=KEYBOARD_ADDRESS,
         )
         self.loginErrTxt = get_error_txt(self.formError)

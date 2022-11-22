@@ -1,6 +1,6 @@
 import typing
 from abc import abstractmethod
-from typing import Callable, Mapping
+from typing import Callable, Mapping, Optional
 
 from flet import UserControl
 import datetime
@@ -77,6 +77,11 @@ class ProjectDataSource(DataSource):
 
         returns new project id as data if successful
         """
+        pass
+
+    @abstractmethod
+    def get_project_by_id(self, projectId) -> Optional[Project]:
+        """if successful, returns the project as data"""
         pass
 
 
@@ -167,6 +172,11 @@ class ProjectsIntent(Intent):
 
         returns new project id as data if successful
         """
+        pass
+
+    @abstractmethod
+    def get_project_by_id(self, projectId) -> ProjectIntentsResult:
+        """if successful, returns the project as data"""
         pass
 
 
