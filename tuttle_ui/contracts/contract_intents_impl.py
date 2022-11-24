@@ -1,7 +1,7 @@
 from typing import Mapping
 from pydantic import condecimal
 from decimal import Decimal
-from core.model_utils.time import Cycle, TimeUnit
+from core.models import Cycle, TimeUnit
 from core.abstractions import LocalCache
 from contracts.abstractions import ContractsIntent
 from contracts.utils import ContractIntentsResult

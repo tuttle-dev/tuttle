@@ -2,7 +2,7 @@ from decimal import Decimal
 
 from pydantic import condecimal
 from typing import Mapping
-from core.model_utils.time import Cycle, TimeUnit
+from core.models import Cycle, TimeUnit
 import datetime
 from .abstractions import ContractDataSource
 from .utils import ContractIntentsResult

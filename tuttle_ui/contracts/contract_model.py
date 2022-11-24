@@ -3,7 +3,7 @@ import datetime
 from typing import Optional
 from pydantic import condecimal
 from decimal import Decimal
-from core.model_utils.time import TimeUnit, Cycle
+from core.models import Cycle, TimeUnit
 from res.strings import ACTIVE, COMPLETED, UPCOMING, ALL
 
 
@@ -11,7 +11,7 @@ from res.strings import ACTIVE, COMPLETED, UPCOMING, ALL
 class Contract:
     """A contract defines the business conditions of a project"""
 
-    id: int
+    id: Optional[int]
     title: str
     signature_date: Optional[datetime.date]
     start_date: Optional[datetime.date]

@@ -9,7 +9,8 @@ from pydantic import condecimal
 from contracts.contract_model import Contract
 from contracts.utils import ContractIntentsResult
 from core.abstractions import DataSource, Intent, LocalCache, TuttleDestinationView
-from core.model_utils.time import Cycle, TimeUnit
+
+from core.models import Cycle, TimeUnit
 
 
 class ContractDataSource(DataSource):

@@ -1,7 +1,7 @@
 from core.abstractions import IntentResult
 
 
-class ContactsIntentsResult(IntentResult):
+class ContactIntentsResult(IntentResult):
     """Wrapper for results of executed contacts intents"""
 
     def __init__(

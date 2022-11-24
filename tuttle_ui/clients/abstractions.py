@@ -1,15 +1,11 @@
-import datetime
 from abc import abstractmethod
-from decimal import Decimal
 from typing import Callable, Mapping, Optional
 
 from flet import UserControl
-from pydantic import condecimal
 
-from clients.client_model import Client
-from clients.utils import ClientIntentsResult
+from .client_model import Client
+from .utils import ClientIntentsResult
 from core.abstractions import DataSource, Intent, LocalCache, TuttleDestinationView
-from core.model_utils.time import Cycle, TimeUnit
 
 
 class ClientDataSource(DataSource):
@@ -80,7 +76,7 @@ class ClientsIntent(Intent):
         pass
 
     @abstractmethod
-    def set_client_contact_id(
+    def set_client_invoicing_contact_id(
         self, invoicing_contact_id: str, client_id: str
     ) -> ClientIntentsResult:
         """sets the contact id of a given client"""

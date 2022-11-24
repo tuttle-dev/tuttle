@@ -15,7 +15,7 @@ from res.utils import (
 from projects.views.projects_list import ProjectsListView
 from clients.view.clients_list import ClientsListView
 from contracts.view.contracts_list import ContractsListView
-from contacts.view.contacts_destination_view import ContactsDestinationView
+from contacts.view.contacts_list import ContactsListView
 from typing import Callable
 import typing
 from core.abstractions import LocalCache
@@ -47,7 +47,10 @@ class SideBarMenuItemsHandler:
             onChangeRouteCallback=onChangeRouteCallback,
         )
         self.mainMenuTitle = SIDE_MENU_MAIN_GROUP_TITLE
-        self.contactsView = ContactsDestinationView()
+        self.contactsView = ContactsListView(
+            localCacheHandler=localCacheHandler,
+            onChangeRouteCallback=onChangeRouteCallback,
+        )
         self.clientsView = ClientsListView(
             localCacheHandler=localCacheHandler,
             onChangeRouteCallback=onChangeRouteCallback,

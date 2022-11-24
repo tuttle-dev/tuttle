@@ -6,7 +6,7 @@ from typing import Optional
 class Client:
     """A client the freelancer has contracted with."""
 
-    id: int
+    id: Optional[int]
     title: str
     invoicing_contact_id: Optional[int]
 

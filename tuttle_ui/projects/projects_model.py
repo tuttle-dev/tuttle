@@ -1,11 +1,12 @@
 from dataclasses import dataclass
 import datetime
 from res.strings import ACTIVE, COMPLETED, UPCOMING, ALL
+from typing import Optional
 
 
 @dataclass
 class Project:
-    id: int
+    id: Optional[int]
     contract_id: int
     client_id: int
     title: str

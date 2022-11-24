@@ -53,7 +53,7 @@ class ClientIntentImpl(ClientsIntent):
             errorMsgIfAny=CLIENT_NOT_FOUND if clientIfFound == None else "",
         )
 
-    def set_client_contact_id(
+    def set_client_invoicing_contact_id(
         self, invoicing_contact_id: str, client_id: str
     ) -> ClientIntentsResult:
         return self.dataSource.set_client_contact_id(invoicing_contact_id, client_id)
