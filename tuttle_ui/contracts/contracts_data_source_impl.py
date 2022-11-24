@@ -43,7 +43,7 @@ class ContractDataSourceImpl(ContractDataSource):
         c = Contract(
             id=i,
             client_id=i * 3,
-            title=f"Contract {i}",
+            title=f"Tuttle Ui Development Phase {i}",
             rate=i * 2.2,
             volume=int(i * 3.4),
             currency="usd",
@@ -57,7 +57,7 @@ class ContractDataSourceImpl(ContractDataSource):
             start_date=datetime.date.today(),
             end_date=datetime.date.today() + datetime.timedelta((i + 1)),
         )
-        return ContractIntentsResult(wasIntentSuccessful=True, data=c)
+        return c
 
     """DUMMY CONTENT BELOW ---  DELETE ALL"""
 

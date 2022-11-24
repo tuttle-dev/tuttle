@@ -6,7 +6,7 @@ from flet import TemplateRoute, View
 from authentication.views.splash_screen import SplashScreen
 from home.views.home_screen import HomeScreen
 from core.views.error_404_view import Error404Screen
-
+from contracts.view.contract_details import ContractDetailsScreen
 from core.abstractions import TuttleView
 from core.abstractions import LocalCache
 from core.views.flet_constants import AUTO_SCROLL
@@ -15,6 +15,8 @@ from res.utils import (
     SPLASH_SCREEN_ROUTE,
     PROJECT_EDITOR_SCREEN_ROUTE,
     PROJECT_DETAILS_SCREEN_ROUTE,
+    CONTACT_DETAILS_SCREEN_ROUTE,
+    CONTRACT_DETAILS_SCREEN_ROUTE,
 )
 from projects.views.project_details import ProjectDetailsScreen
 from projects.views.project_editor import ProjectEditorScreen
@@ -139,6 +141,21 @@ class TuttleRoutes:
                 hasAppBar=projectDetailsScreen.hasAppBar,
                 hasFloatingAction=projectDetailsScreen.hasFloatingActionBtn,
                 screen=projectDetailsScreen,
+            )
+        elif routePath.match(f"{CONTRACT_DETAILS_SCREEN_ROUTE}/:contractId"):
+            contractDetailsScreen = ContractDetailsScreen(
+                changeRouteCallback=self.onChangeRouteCallback,
+                localCacheHandler=self.localCacheHandler,
+                onNavigateBack=self.onNavigateBack,
+                pageDialogController=self.dialogController,
+                showSnackCallback=self.showSnackCallback,
+                contractId=routePath.contractId,
+            )
+            return self.get_page_route_view(
+                PROJECT_DETAILS_SCREEN_ROUTE,
+                hasAppBar=contractDetailsScreen.hasAppBar,
+                hasFloatingAction=contractDetailsScreen.hasFloatingActionBtn,
+                screen=contractDetailsScreen,
             )
         else:
             err404Screen = Error404Screen(

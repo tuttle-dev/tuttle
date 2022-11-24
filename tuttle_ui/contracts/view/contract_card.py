@@ -15,8 +15,8 @@ from res.strings import (
     CLIENT_ID_LBL,
     ID_LBL,
     VIEW_DETAILS,
-    BILLING_CYCLE_LBL,
-    TIME_UNIT_LBL,
+    CONTRACT_BILLING_CYCLE,
+    CONTRACT_TIME_UNIT,
 )
 from core.views.texts import get_headline_txt
 from core.views.flet_constants import (
@@ -77,7 +77,7 @@ class ContractCard(UserControl):
             Row(
                 controls=[
                     Text(
-                        BILLING_CYCLE_LBL,
+                        CONTRACT_BILLING_CYCLE,
                         color=GRAY_COLOR,
                         size=BODY_2_SIZE,
                         width=LABEL_WIDTH,

@@ -50,7 +50,7 @@ class ContractDataSource(DataSource):
         pass
 
     @abstractmethod
-    def get_contract_by_id(self, contractId) -> ContractIntentsResult:
+    def get_contract_by_id(self, contractId) -> Contract:
         """if successful, returns the contract as data"""
         pass
 
