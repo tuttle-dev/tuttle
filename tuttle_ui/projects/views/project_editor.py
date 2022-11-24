@@ -123,10 +123,10 @@ class ProjectEditorScreen(TuttleView, UserControl):
         self.loadingBar.visible = False
         self.submitButton.disabled = False
 
-    def on_new_contract_added(self, description: str):
+    def on_new_contract_added(self, title: str):
         """attempts to save new contract"""
         self.show_progress_bar_disable_action()
-        result = self.intentHandler.create_contract(description)
+        result = self.intentHandler.create_contract(title)
         if result.wasIntentSuccessful:
             self.reload_load_clients_and_contracts(reLoadClients=False)
         else:

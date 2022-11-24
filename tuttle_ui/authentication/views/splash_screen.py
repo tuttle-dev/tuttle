@@ -63,8 +63,8 @@ class SplashScreen(AuthView):
         self.update()
 
     def did_mount(self):
-        self.check_auth_status()
-        # UNCOMMENT TO SKIP self.on_logged_in()
+        # self.check_auth_status()
+        self.on_logged_in()
 
     def build(self):
         """Called when page is built"""

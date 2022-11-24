@@ -20,7 +20,7 @@ from .project_card import ProjectCard
 from .projects_filters import ProjectFiltersView, ProjectStates
 
 
-class ProjectsListScreen(ProjectDestinationView):
+class ProjectsListView(ProjectDestinationView):
     def __init__(
         self,
         localCacheHandler: LocalCache,

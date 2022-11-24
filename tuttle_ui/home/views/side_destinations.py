@@ -12,9 +12,9 @@ from res.utils import (
     CONTACT_EDITOR_SCREEN_ROUTE,
     CONTRACT_EDITOR_SCREEN_ROUTE,
 )
-from projects.views.projects_list import ProjectsListScreen
-from clients.view.clients_destination_view import ClientsDestinationView
-from contracts.view.contracts_destination_view import ContractsDestinationView
+from projects.views.projects_list import ProjectsListView
+from clients.view.clients_list import ClientsListView
+from contracts.view.contracts_list import ContractsListView
 from contacts.view.contacts_destination_view import ContactsDestinationView
 from typing import Callable
 import typing
@@ -42,14 +42,20 @@ class SideBarMenuItemsHandler:
     ):
         super().__init__()
         self.first_item_index = 0
-        self.projectsView = ProjectsListScreen(
+        self.projectsView = ProjectsListView(
             localCacheHandler=localCacheHandler,
             onChangeRouteCallback=onChangeRouteCallback,
         )
         self.mainMenuTitle = SIDE_MENU_MAIN_GROUP_TITLE
         self.contactsView = ContactsDestinationView()
-        self.clientsView = ClientsDestinationView()
-        self.contractsView = ContractsDestinationView()
+        self.clientsView = ClientsListView(
+            localCacheHandler=localCacheHandler,
+            onChangeRouteCallback=onChangeRouteCallback,
+        )
+        self.contractsView = ContractsListView(
+            localCacheHandler=localCacheHandler,
+            onChangeRouteCallback=onChangeRouteCallback,
+        )
 
     def get_side_bar_menu_item_lbl(self, item: SideBarMenuItems) -> str:
         """returns a label given a menu item"""

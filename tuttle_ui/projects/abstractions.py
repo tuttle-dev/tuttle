@@ -29,11 +29,11 @@ class ProjectDataSource(DataSource):
     def get_all_projects_as_map(
         self,
     ) -> ProjectIntentsResult:
-        """if successful, returns data as all projects this user has in a map"""
+        """if successful, returns data as all projects this user has in a map of projectId - project"""
         pass
 
     @abstractmethod
-    def create_contract(self, description: str) -> ProjectIntentsResult:
+    def create_contract(self, title: str) -> ProjectIntentsResult:
         """attempts to create a new contract
 
         returns new contract id as data if successful
@@ -84,6 +84,11 @@ class ProjectDataSource(DataSource):
         """if successful, returns the project as data"""
         pass
 
+    @abstractmethod
+    def update_contract_client(self, contractId: str, clientId: str):
+        """updates the client's id of a given contract"""
+        pass
+
 
 class ProjectsIntent(Intent):
     """Handles project view intents"""
@@ -128,7 +133,7 @@ class ProjectsIntent(Intent):
         pass
 
     @abstractmethod
-    def create_contract(self, description: str) -> ProjectIntentsResult:
+    def create_contract(self, title: str) -> ProjectIntentsResult:
         """attempts to create a new contract
 
         returns new contract id as data if intent is successful

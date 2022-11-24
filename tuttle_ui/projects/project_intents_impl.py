@@ -65,9 +65,9 @@ class ProjectIntentImpl(ProjectsIntent):
         self.upcomingProjectsCache = None
 
     def get_all_projects(self) -> Mapping[str, Project]:
-        if self.activeProjectsCache:
+        if self.allProjectsCache:
             # return cached results
-            return self.activeProjectsCache
+            return self.allProjectsCache
 
         # fetch from data source
         self._clear_cached_results()
@@ -82,8 +82,8 @@ class ProjectIntentImpl(ProjectsIntent):
     def cache_projects_data(self, key: str, data: any):
         self.cache.set_value(key, data)
 
-    def create_contract(self, description: str) -> ProjectIntentsResult:
-        result = self.dataSource.create_contract(description)
+    def create_contract(self, title: str) -> ProjectIntentsResult:
+        result = self.dataSource.create_contract(title)
         if not result.wasIntentSuccessful:
             result.errorMsg = CREATE_CONTRACT_FAILED_ERR
         return result
@@ -109,7 +109,7 @@ class ProjectIntentImpl(ProjectsIntent):
         if len(result) > 0:
             for key in result:
                 item = result[key]
-                idContractMap[key] = item.description
+                idContractMap[key] = item.title
         return idContractMap
 
     def save_project(
@@ -122,6 +122,7 @@ class ProjectIntentImpl(ProjectsIntent):
         clientId: str,
         contractId: str,
     ) -> ProjectIntentsResult:
+        self.dataSource.update_contract_client(contractId=contractId, clientId=clientId)
         result = self.dataSource.save_project(
             title=title,
             description=description,

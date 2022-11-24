@@ -69,11 +69,10 @@ class NewContractPopUp(DialogHandler):
                             subtitle="You can add more info later",
                         ),
                         mdSpace,
-                        texts.get_std_multiline_field(
-                            onChangeCallback=self.on_contract_desc_changed,
-                            lbl="Contract desctiption",
+                        texts.get_std_txt_field(
+                            onChangeCallback=self.on_contract_title_changed,
+                            lbl="Contract title",
                             hint="",
-                            minLines=5,
                         ),
                         mdSpace,
                         get_primary_btn(
@@ -86,14 +85,14 @@ class NewContractPopUp(DialogHandler):
             )
         )
         super().__init__(dialog, dialogController)
-        self.contractDesc = ""
+        self.contractTitle = ""
         self.onContractSet = onContractSet
 
-    def on_contract_desc_changed(self, e):
-        self.contractDesc = e.control.value
+    def on_contract_title_changed(self, e):
+        self.contractTitle = e.control.value
 
     def on_add(self, e):
-        if not self.contractDesc:
+        if not self.contractTitle:
             return
-        self.onContractSet(self.contractDesc)
+        self.onContractSet(self.contractTitle)
         self.close_dialog()

@@ -5,8 +5,8 @@ from projects.abstractions import ProjectDataSource
 from projects.utils import ProjectIntentsResult
 
 from .projects_model import Project
-from clients.client_model import Client
-from contracts.contract_model import Contract
+from clients.client_model import Client, create_client_from_title
+from contracts.contract_model import Contract, create_contract_from_title
 
 # TODO implement
 class ProjectDataSourceImpl(ProjectDataSource):
@@ -32,12 +32,12 @@ class ProjectDataSourceImpl(ProjectDataSource):
         return self.contracts
 
     def create_client(self, title: str) -> ProjectIntentsResult:
-        client = Client(id=1, title=title)
+        client = create_client_from_title(title=title)
         self.clients[str(client.id)] = client
         return ProjectIntentsResult(wasIntentSuccessful=True, data=client.id)
 
-    def create_contract(self, description: str) -> ProjectIntentsResult:
-        contract = Contract(id=1, description=description)
+    def create_contract(self, title: str) -> ProjectIntentsResult:
+        contract = create_contract_from_title(title=title)
         self.contracts[str(contract.id)] = contract
         return ProjectIntentsResult(wasIntentSuccessful=True, data=contract.id)
 
@@ -52,6 +52,9 @@ class ProjectDataSourceImpl(ProjectDataSource):
         contractId: str,
     ) -> ProjectIntentsResult:
         return ProjectIntentsResult(wasIntentSuccessful=False)
+
+    def update_contract_client(self, contractId: str, clientId: str):
+        print("TODO")
 
     def get_project_by_id(self, projectId):
         i = int(projectId)
