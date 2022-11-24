@@ -15,14 +15,13 @@ from res.strings import ID_LBL, EDIT_CONTACT_TOOLTIP, EMAIL_LBL, ADDRESS
 from core.views.texts import get_headline_with_subtitle
 from core.views.flet_constants import (
     END_ALIGNMENT,
-    SPACE_BETWEEN_ALIGNMENT,
     CENTER_ALIGNMENT,
     START_ALIGNMENT,
 )
-from core.views.spacers import mdSpace, xsSpace
+from core.views.spacers import mdSpace
 from res.spacing import SPACE_STD, SPACE_XS
 from res.colors import GRAY_COLOR
-from res.fonts import BODY_2_SIZE, CAPTION_SIZE
+from res.fonts import BODY_2_SIZE
 from typing import Callable
 from contacts.contact_model import Contact
 

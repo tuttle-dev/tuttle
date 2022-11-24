@@ -6,6 +6,7 @@ from flet import (
     ElevatedButton,
     Row,
     Text,
+    TextButton,
     border_radius,
     padding,
 )
@@ -19,15 +20,20 @@ from res.strings import (
 from core.views.texts import (
     get_headline_with_subtitle,
 )
-from core.views.flet_constants import END_ALIGNMENT, SPACE_BETWEEN_ALIGNMENT
-from res.colors import ERROR_COLOR
-from res.fonts import HEADLINE_4_SIZE
-from res.spacing import SPACE_STD
+from core.views.flet_constants import (
+    END_ALIGNMENT,
+    SPACE_BETWEEN_ALIGNMENT,
+    CENTER_ALIGNMENT,
+)
+from res.colors import ERROR_COLOR, GRAY_COLOR
+from res.fonts import HEADLINE_4_SIZE, BODY_2_SIZE
+from res.spacing import SPACE_STD, SPACE_XS
 from res.strings import VIEW_DETAILS
 
 from typing import Callable
-import typing
 from projects.projects_model import Project
+
+LABEL_WIDTH = 70
 
 
 class ProjectCard(UserControl):
@@ -43,15 +49,70 @@ class ProjectCard(UserControl):
         self.productInfoContainer.controls = [
             get_headline_with_subtitle(
                 title=self.project.title,
-                subtitle=self.project.description,
+                subtitle=self.project.get_brief_description(),
                 titleSize=HEADLINE_4_SIZE,
+                subtitleColor=GRAY_COLOR,
             ),
-            Text(
-                f"{CONTRACT_ID_LBL}{self.project.contract_id}",
+            Row(
+                controls=[
+                    Text(
+                        CONTRACT_ID_LBL,
+                        color=GRAY_COLOR,
+                        size=BODY_2_SIZE,
+                        width=LABEL_WIDTH,
+                    ),
+                    Text(self.project.contract_id, size=BODY_2_SIZE),
+                ],
+                spacing=SPACE_XS,
+                run_spacing=0,
+                vertical_alignment=CENTER_ALIGNMENT,
             ),
-            Text(f"{CLIENT_ID_LBL}{self.project.client_id}"),
-            Text(f"{START_DATE} {self.project.get_start_date_as_str()}"),
-            Text(f"{END_DATE} {self.project.get_end_date_as_str()}", color=ERROR_COLOR),
+            Row(
+                controls=[
+                    Text(
+                        CLIENT_ID_LBL,
+                        color=GRAY_COLOR,
+                        size=BODY_2_SIZE,
+                        width=LABEL_WIDTH,
+                    ),
+                    Text(self.project.client_id, size=BODY_2_SIZE),
+                ],
+                spacing=SPACE_XS,
+                run_spacing=0,
+                vertical_alignment=CENTER_ALIGNMENT,
+            ),
+            Row(
+                controls=[
+                    Text(
+                        START_DATE,
+                        color=GRAY_COLOR,
+                        size=BODY_2_SIZE,
+                        width=LABEL_WIDTH,
+                    ),
+                    Text(self.project.get_start_date_as_str(), size=BODY_2_SIZE),
+                ],
+                spacing=SPACE_XS,
+                run_spacing=0,
+                vertical_alignment=CENTER_ALIGNMENT,
+            ),
+            Row(
+                controls=[
+                    Text(
+                        END_DATE,
+                        color=GRAY_COLOR,
+                        size=BODY_2_SIZE,
+                        width=LABEL_WIDTH,
+                    ),
+                    Text(
+                        self.project.get_end_date_as_str(),
+                        size=BODY_2_SIZE,
+                        color=ERROR_COLOR,
+                    ),
+                ],
+                spacing=SPACE_XS,
+                run_spacing=0,
+                vertical_alignment=CENTER_ALIGNMENT,
+            ),
             Row(
                 alignment=SPACE_BETWEEN_ALIGNMENT,
                 vertical_alignment=END_ALIGNMENT,

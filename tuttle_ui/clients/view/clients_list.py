@@ -47,7 +47,7 @@ class ClientsListView(ClientDestinationView):
         )
         self.clientsContainer = GridView(
             expand=False,
-            max_extent=480,
+            max_extent=300,
             child_aspect_ratio=1.0,
             spacing=SPACE_STD,
             run_spacing=SPACE_MD,

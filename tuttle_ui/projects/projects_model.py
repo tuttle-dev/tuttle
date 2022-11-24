@@ -40,3 +40,9 @@ class Project:
         else:
             # default
             return ALL
+
+    def get_brief_description(self):
+        if len(self.description) <= 108:
+            return self.description
+        else:
+            return f"{self.description[0:108]}..."

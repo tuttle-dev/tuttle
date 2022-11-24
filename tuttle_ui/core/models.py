@@ -3,24 +3,35 @@ import datetime
 import textwrap
 from dataclasses import dataclass
 from typing import Optional
+from res.strings import (
+    HOURLY,
+    HOUR,
+    DAILY,
+    DAY,
+    WEEKLY,
+    MINUTE,
+    MONTHLY,
+    QUARTERLY,
+    YEARLY,
+)
 
 
 class Cycle(enum.Enum):
-    hourly = "hourly"
-    daily = "daily"
-    weekly = "weekly"
-    monthly = "monthly"
-    quarterly = "quarterly"
-    yearly = "yearly"
+    hourly = HOURLY
+    daily = DAILY
+    weekly = WEEKLY
+    monthly = MONTHLY
+    quarterly = QUARTERLY
+    yearly = YEARLY
 
     def __str__(self):
         return str(self.value)
 
 
 class TimeUnit(enum.Enum):
-    minute = "minute"
-    hour = "hour"
-    day = "day"
+    minute = MINUTE
+    hour = HOUR
+    day = DAY
 
     def to_timedelta(self):
         if self == TimeUnit.minute:

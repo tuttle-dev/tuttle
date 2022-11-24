@@ -15,13 +15,19 @@ from res.strings import (
     INVOICING_CONTACT_ID,
 )
 from core.views.texts import get_headline_txt
-from core.views.flet_constants import END_ALIGNMENT, SPACE_BETWEEN_ALIGNMENT
-from res.fonts import HEADLINE_4_SIZE
-from res.spacing import SPACE_STD
-
+from core.views.flet_constants import (
+    END_ALIGNMENT,
+    SPACE_BETWEEN_ALIGNMENT,
+    CENTER_ALIGNMENT,
+)
+from res.fonts import SUBTITLE_1_SIZE, BODY_2_SIZE
+from res.spacing import SPACE_STD, SPACE_XS
+from res.colors import GRAY_COLOR
 from typing import Callable
 import typing
 from clients.client_model import Client
+
+LABEL_WIDTH = 80
 
 
 class ClientCard(UserControl):
@@ -37,14 +43,38 @@ class ClientCard(UserControl):
         self.productInfoContainer.controls = [
             get_headline_txt(
                 txt=self.client.title,
-                size=HEADLINE_4_SIZE,
+                size=SUBTITLE_1_SIZE,
             ),
-            Text(
-                f"{ID_LBL} {self.client.id}",
-            ),
-            Text(f"{INVOICING_CONTACT_ID} {self.client.invoicing_contact_id}"),
             Row(
-                alignment=SPACE_BETWEEN_ALIGNMENT,
+                controls=[
+                    Text(
+                        ID_LBL,
+                        color=GRAY_COLOR,
+                        size=BODY_2_SIZE,
+                        width=LABEL_WIDTH,
+                    ),
+                    Text(self.client.id, size=BODY_2_SIZE),
+                ],
+                spacing=SPACE_XS,
+                run_spacing=0,
+                vertical_alignment=CENTER_ALIGNMENT,
+            ),
+            Row(
+                controls=[
+                    Text(
+                        INVOICING_CONTACT_ID.lower(),
+                        color=GRAY_COLOR,
+                        size=BODY_2_SIZE,
+                        width=LABEL_WIDTH,
+                    ),
+                    Text(self.client.invoicing_contact_id, size=BODY_2_SIZE),
+                ],
+                spacing=SPACE_XS,
+                run_spacing=0,
+                vertical_alignment=CENTER_ALIGNMENT,
+            ),
+            Row(
+                alignment=END_ALIGNMENT,
                 vertical_alignment=END_ALIGNMENT,
                 expand=True,
                 controls=[
