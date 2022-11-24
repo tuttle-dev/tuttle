@@ -14,3 +14,7 @@ mdSpace = Container(
 smSpace = Container(
     height=spacing.SPACE_SM, width=spacing.SPACE_SM, padding=0, margin=0
 )
+
+xsSpace = Container(
+    height=spacing.SPACE_XS, width=spacing.SPACE_XS, padding=0, margin=0
+)

@@ -3,7 +3,7 @@
 from flet import Column, Text, TextField, TextStyle, padding
 
 from res import colors, fonts, spacing
-from typing import Callable
+from typing import Callable, Optional
 import typing
 
 from .flet_constants import (
@@ -33,6 +33,7 @@ def get_headline_with_subtitle(
     txtAlignment: str = TXT_ALIGN_LEFT,
     titleSize: int = fonts.SUBTITLE_1_SIZE,
     subtitleSize: int = fonts.SUBTITLE_2_SIZE,
+    subtitleColor: Optional[str] = None,
 ):
     """Displays text formatted as a headline with a subtitle below it"""
     return Column(
@@ -50,6 +51,7 @@ def get_headline_with_subtitle(
                 font_family=fonts.HEADLINE_FONT,
                 size=subtitleSize,
                 text_align=txtAlignment,
+                color=subtitleColor,
             ),
         ],
     )

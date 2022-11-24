@@ -70,7 +70,12 @@ class ContactDataSourceImpl(ContactDataSource):
     def get_contact_by_id(self, contactId) -> ContactIntentsResult:
         i = int(contactId)
         contact = Contact(
-            id=i, first_name="Sample ", last_name="Contact", email="sample@contact.com"
+            id=i,
+            first_name="Sample ",
+            last_name="Contact",
+            email="sample@contact.com",
+            address=None,
+            address_id=None,
         )
         return ContactIntentsResult(wasIntentSuccessful=True, data=contact)
 
@@ -102,10 +107,11 @@ class ContactDataSourceImpl(ContactDataSource):
             )
             c = Contact(
                 id=i,
-                first_name=f"First ",
-                last_name=f"Last name",
-                email=f"sample@contact.com {i}",
-                company=f"Company {i}",
+                first_name=f"Saidah",
+                last_name=f"Van Lierop",
+                email="sample@contact.com",
+                company=f"wellpalcreative",
                 address_id=a.id,
+                address=a,
             )
             self.contacts[c.id] = c

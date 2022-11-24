@@ -1,6 +1,7 @@
 import textwrap
 from dataclasses import dataclass
 from typing import Optional
+
 from core.models import Address
 
 
@@ -14,6 +15,7 @@ class Contact:
     company: Optional[str]
     email: Optional[str]
     address_id: Optional[int]
+    address: Optional[Address]
 
     @property
     def name(self):
@@ -27,3 +29,26 @@ class Contact:
             return self.company
         else:
             return None
+
+    def print_address(self, onlyAddress: bool = False):
+        """Print address in common format."""
+        if self.address is None:
+            return ""
+
+        if onlyAddress:
+            return textwrap.dedent(
+                f"""
+                {self.address.street} {self.address.number}
+                {self.address.postal_code} {self.address.city}
+                {self.address.country}"""
+            )
+
+        return textwrap.dedent(
+            f"""
+        {self.name}
+        {self.company}
+        {self.address.street} {self.address.number}
+        {self.address.postal_code} {self.address.city}
+        {self.address.country}
+        """
+        )
