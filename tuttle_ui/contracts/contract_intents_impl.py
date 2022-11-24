@@ -1,6 +1,4 @@
-from typing import Mapping
-from pydantic import condecimal
-from decimal import Decimal
+from typing import Mapping, Optional
 from core.models import Cycle, TimeUnit
 from core.abstractions import LocalCache
 from contracts.abstractions import ContractsIntent
@@ -10,6 +8,7 @@ from contracts.contract_model import Contract
 from res.strings import (
     CREATE_CONTRACT_FAILED_ERR,
     CONTRACT_NOT_FOUND,
+    CREATE_CLIENT_FAILED_ERR,
 )
 import datetime
 
@@ -80,14 +79,14 @@ class ContractIntentImpl(ContractsIntent):
         start_date: datetime.date,
         end_date: datetime.date,
         client_id: int,
-        rate: condecimal(decimal_places=2),
-        currency: str,
-        VAT_rate: Decimal,
-        unit: TimeUnit,
-        units_per_workday: int,
-        volume: int,
-        term_of_payment: int,
-        billing_cycle: Cycle,
+        rate: Optional[str],
+        currency: Optional[str],
+        VAT_rate: Optional[str],
+        unit: Optional[TimeUnit],
+        units_per_workday: Optional[str],
+        volume: Optional[str],
+        term_of_payment: Optional[str],
+        billing_cycle: Optional[Cycle],
     ) -> ContractIntentsResult:
         result = self.dataSource.save_contract(
             title=title,
@@ -115,3 +114,18 @@ class ContractIntentImpl(ContractsIntent):
             data=contractIfFound,
             errorMsgIfAny=CONTRACT_NOT_FOUND if contractIfFound == None else "",
         )
+
+    def create_client(self, title: str) -> ContractIntentsResult:
+        result = self.dataSource.create_client(title)
+        if not result.wasIntentSuccessful:
+            result.errorMsg = CREATE_CLIENT_FAILED_ERR
+        return result
+
+    def get_all_clients_as_map(self):
+        result = self.dataSource.get_all_clients_as_map()
+        idClientMap = {}
+        if len(result) > 0:
+            for key in result:
+                item = result[key]
+                idClientMap[key] = item.title
+        return idClientMap

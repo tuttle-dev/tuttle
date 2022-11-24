@@ -17,10 +17,12 @@ from res.utils import (
     PROJECT_DETAILS_SCREEN_ROUTE,
     CONTACT_DETAILS_SCREEN_ROUTE,
     CONTRACT_DETAILS_SCREEN_ROUTE,
+    CONTRACT_EDITOR_SCREEN_ROUTE,
 )
 from projects.views.project_details import ProjectDetailsScreen
 from projects.views.project_editor import ProjectEditorScreen
 from dataclasses import dataclass
+from contracts.view.contract_editor import ContractEditorScreen
 
 
 @dataclass
@@ -113,7 +115,7 @@ class TuttleRoutes:
                 screen=homeScreen,
             )
         elif routePath.match(PROJECT_EDITOR_SCREEN_ROUTE):
-            projectEditorScreen = ProjectEditorScreen(
+            contractEditorScreen = ProjectEditorScreen(
                 changeRouteCallback=self.onChangeRouteCallback,
                 localCacheHandler=self.localCacheHandler,
                 onNavigateBack=self.onNavigateBack,
@@ -122,9 +124,9 @@ class TuttleRoutes:
             )
             return self.get_page_route_view(
                 PROJECT_EDITOR_SCREEN_ROUTE,
-                hasAppBar=projectEditorScreen.hasAppBar,
-                hasFloatingAction=projectEditorScreen.hasFloatingActionBtn,
-                screen=projectEditorScreen,
+                hasAppBar=contractEditorScreen.hasAppBar,
+                hasFloatingAction=contractEditorScreen.hasFloatingActionBtn,
+                screen=contractEditorScreen,
             )
 
         elif routePath.match(f"{PROJECT_DETAILS_SCREEN_ROUTE}/:projectId"):
@@ -156,6 +158,20 @@ class TuttleRoutes:
                 hasAppBar=contractDetailsScreen.hasAppBar,
                 hasFloatingAction=contractDetailsScreen.hasFloatingActionBtn,
                 screen=contractDetailsScreen,
+            )
+        elif routePath.match(CONTRACT_EDITOR_SCREEN_ROUTE):
+            contractEditorScreen = ContractEditorScreen(
+                changeRouteCallback=self.onChangeRouteCallback,
+                localCacheHandler=self.localCacheHandler,
+                onNavigateBack=self.onNavigateBack,
+                pageDialogController=self.dialogController,
+                showSnackCallback=self.showSnackCallback,
+            )
+            return self.get_page_route_view(
+                CONTRACT_EDITOR_SCREEN_ROUTE,
+                hasAppBar=contractEditorScreen.hasAppBar,
+                hasFloatingAction=contractEditorScreen.hasFloatingActionBtn,
+                screen=contractEditorScreen,
             )
         else:
             err404Screen = Error404Screen(

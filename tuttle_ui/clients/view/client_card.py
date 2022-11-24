@@ -3,7 +3,8 @@ from flet import (
     Card,
     Column,
     Container,
-    ElevatedButton,
+    IconButton,
+    icons,
     Row,
     Text,
     border_radius,
@@ -11,7 +12,7 @@ from flet import (
 )
 from res.strings import (
     ID_LBL,
-    VIEW_DETAILS,
+    EDIT_CLIENT_TOOLTIP,
     INVOICING_CONTACT_ID,
 )
 from core.views.texts import get_headline_txt
@@ -37,7 +38,7 @@ class ClientCard(UserControl):
         super().__init__()
         self.client = client
         self.productInfoContainer = Column()
-        self.onClickView = onClickView
+        self.onClickEdit = onClickView
 
     def build(self):
         self.productInfoContainer.controls = [
@@ -78,9 +79,10 @@ class ClientCard(UserControl):
                 vertical_alignment=END_ALIGNMENT,
                 expand=True,
                 controls=[
-                    ElevatedButton(
-                        text=VIEW_DETAILS,
-                        on_click=lambda e: self.onClickView(self.client.id),
+                    IconButton(
+                        icon=icons.EDIT_NOTE_OUTLINED,
+                        tooltip=EDIT_CLIENT_TOOLTIP,
+                        on_click=lambda e: self.onClickEdit(self.client.id),
                     ),
                 ],
             ),

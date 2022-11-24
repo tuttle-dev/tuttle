@@ -7,18 +7,28 @@ import datetime
 from .abstractions import ContractDataSource
 from .utils import ContractIntentsResult
 from .contract_model import Contract
+from clients.client_model import Client, create_client_from_title
 
 
 class ContractDataSourceImpl(ContractDataSource):
     def __init__(self):
         super().__init__()
         self.contracts: Mapping[str, Contract] = {}
+        self.clients: Mapping[str, Client] = {}
 
     def get_all_contracts_as_map(
         self,
     ) -> ContractIntentsResult:
         self._set_dummy_contracts()
         return ContractIntentsResult(wasIntentSuccessful=True, data=self.contracts)
+
+    def get_all_clients_as_map(self):
+        return self.clients
+
+    def create_client(self, title: str) -> ContractIntentsResult:
+        client = create_client_from_title(title=title)
+        self.clients[str(client.id)] = client
+        return ContractIntentsResult(wasIntentSuccessful=True, data=client.id)
 
     def save_contract(
         self,

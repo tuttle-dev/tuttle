@@ -96,6 +96,7 @@ NO_CONTRACTS_ADDED = "You currently have no contracts"
 """Clients List View"""
 MY_CLIENTS = "My Clients"
 NO_CLIENTS_ADDED = "You currently have no clients"
+EDIT_CLIENT_TOOLTIP = "Edit client"
 
 """Contacts List View"""
 MY_CONTACTS = "My Contacts"

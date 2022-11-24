@@ -2,13 +2,10 @@ from flet import (
     UserControl,
     Container,
     Row,
-    Icon,
-    icons,
     Dropdown,
     dropdown,
     TextStyle,
     padding,
-    icons,
     Text,
     Column,
 )

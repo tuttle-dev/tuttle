@@ -9,7 +9,7 @@ from pydantic import condecimal
 from contracts.contract_model import Contract
 from contracts.utils import ContractIntentsResult
 from core.abstractions import DataSource, Intent, LocalCache, TuttleDestinationView
-
+from clients.client_model import Client
 from core.models import Cycle, TimeUnit
 
 
@@ -54,6 +54,21 @@ class ContractDataSource(DataSource):
         """if successful, returns the contract as data"""
         pass
 
+    @abstractmethod
+    def get_all_clients_as_map(
+        self,
+    ) -> Mapping[str, Client]:
+        """Returns all existing clients, mapped as id:str to object:Client"""
+        pass
+
+    @abstractmethod
+    def create_client(self, title: str) -> ContractIntentsResult:
+        """attempts to create a new client
+
+        returns new client id as data if successful
+        """
+        pass
+
 
 class ContractsIntent(Intent):
     """Handles contract view intents"""
@@ -62,6 +77,13 @@ class ContractsIntent(Intent):
         super().__init__(cache=cache, dataSource=dataSource)
         self.cache = cache
         self.dataSource = dataSource
+
+    @abstractmethod
+    def get_all_clients_as_map(
+        self,
+    ) -> Mapping[str, str]:
+        """Returns all existing clients, mapped as id to title"""
+        pass
 
     @abstractmethod
     def get_all_contracts(
@@ -91,6 +113,14 @@ class ContractsIntent(Intent):
         pass
 
     @abstractmethod
+    def create_client(self, title: str) -> ContractIntentsResult:
+        """attempts to create a new client
+
+        returns new client id as data if intent is successful
+        """
+        pass
+
+    @abstractmethod
     def create_or_update_contract(
         self,
         title: str,
@@ -98,14 +128,14 @@ class ContractsIntent(Intent):
         start_date: datetime.date,
         end_date: datetime.date,
         client_id: int,
-        rate: condecimal(decimal_places=2),
-        currency: str,
-        VAT_rate: Decimal,
-        unit: TimeUnit,
-        units_per_workday: int,
-        volume: int,
-        term_of_payment: int,
-        billing_cycle: Cycle,
+        rate: Optional[str],
+        currency: Optional[str],
+        VAT_rate: Optional[str],
+        unit: Optional[TimeUnit],
+        units_per_workday: Optional[str],
+        volume: Optional[str],
+        term_of_payment: Optional[str],
+        billing_cycle: Optional[Cycle],
     ) -> ContractIntentsResult:
         """attempts to create a new contract
 

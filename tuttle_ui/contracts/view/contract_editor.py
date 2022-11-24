@@ -13,19 +13,28 @@ from flet import (
     padding,
 )
 
+from core.models import (
+    get_cycle_values_as_list,
+    get_time_unit_values_as_list,
+    get_cycle_from_value,
+)
 from core.abstractions import LocalCache, TuttleView
 from core.views import progress_bars, selectors, texts
 from core.views.alert_dialog_controls import AlertDialogControls
 from core.views.buttons import get_primary_btn
-from core.views.flet_constants import CENTER_ALIGNMENT, SPACE_BETWEEN_ALIGNMENT
+from core.views.flet_constants import (
+    KEYBOARD_NUMBER,
+    CENTER_ALIGNMENT,
+    SPACE_BETWEEN_ALIGNMENT,
+)
 from core.views.spacers import mdSpace, smSpace
-from projects.project_intents_impl import ProjectIntentImpl
+from contracts.contract_intents_impl import ContractIntentImpl
 from res import spacing
 from res.dimens import MIN_WINDOW_WIDTH
-from core.views.pop_ups import NewClientPopUp, NewContractPopUp
+from core.views.pop_ups import NewClientPopUp
 
 
-class ProjectEditorScreen(TuttleView, UserControl):
+class ContractEditorScreen(TuttleView, UserControl):
     def __init__(
         self,
         changeRouteCallback: Callable[[str, typing.Optional[any]], None],
@@ -36,7 +45,7 @@ class ProjectEditorScreen(TuttleView, UserControl):
             Callable[[any, AlertDialogControls], None]
         ],
     ):
-        intentHandler = ProjectIntentImpl(cache=localCacheHandler)
+        intentHandler = ContractIntentImpl(cache=localCacheHandler)
         super().__init__(
             onChangeRouteCallback=changeRouteCallback,
             keepBackStack=True,
@@ -51,29 +60,48 @@ class ProjectEditorScreen(TuttleView, UserControl):
             dialogController=self.pageDialogController,
             onClientSet=self.on_new_client_added,
         )
-        self.newContractPopUp = NewContractPopUp(
-            dialogController=self.pageDialogController,
-            onContractSet=self.on_new_contract_added,
-        )
         self.clients: Mapping[str, str] = {}
         self.contracts: Mapping[str, str] = {}
         self.loadingBar = progress_bars.horizontalProgressBar
-        # info of project being edited / created
-        self.projectId: Optional[int] = None
+        # info of contract being edited / created
+        self.contractId: Optional[int] = None
         self.title = ""
-        self.description = ""
-        self.contractId = ""
         self.clientId = ""
-        self.tag = ""
+        self.rate = ""
+        self.currency = ""
+        self.vatRate = ""
+        self.timeUnit = None
+        self.unitPW = ""
+        self.volume = ""
+        self.termOfPayment = ""
+        self.billing_cycle = None
 
     def on_title_changed(self, e):
         self.title = e.control.value
 
-    def on_description_changed(self, e):
-        self.description = e.control.value
+    def on_rate_changed(self, e):
+        self.rate = e.control.value
 
-    def on_tag_changed(self, e):
-        self.tag = e.control.value
+    def on_currency_changed(self, e):
+        self.currency = e.control.value
+
+    def on_volume_changed(self, e):
+        self.volume = e.control.value
+
+    def on_top_changed(self, e):
+        self.termOfPayment = e.control.value
+
+    def on_upw_changed(self, e):
+        self.unitPW = e.control.value
+
+    def on_vat_rate_changed(self, e):
+        self.vatRate = e.control.value
+
+    def on_unit_selected(self, e):
+        self.timeUnit = e.control.value
+
+    def on_billing_cycle_selected(self, e):
+        self.billing_cycle = get_cycle_from_value(e.control.value)
 
     def on_client_selected(self, e):
         # parse selected value to extract id
@@ -90,29 +118,39 @@ class ProjectEditorScreen(TuttleView, UserControl):
             self.clientsField.error_text = None
             self.update()
 
-    def on_contract_selected(self, e):
-        # parse selected value to extract id
-        selected = e.control.value
-        id = ""
-        for c in selected:
-            if c == "#":
-                continue
-            if c == " ":
-                break
-            id = id + c
-        self.contractId = id
-        if self.contractsField.error_text:
-            self.contractsField.error_text = None
-            self.update()
-
     def clear_title_error(self, e):
         if self.titleField.error_text:
             self.titleField.error_text = None
             self.update()
 
-    def clear_description_error(self, e):
-        if self.descriptionField.error_text:
-            self.descriptionField.error_text = None
+    def clear_rate_error(self, e):
+        if self.rateField.error_text:
+            self.rateField.error_text = None
+            self.update()
+
+    def clear_currency_error(self, e):
+        if self.currencyField.error_text:
+            self.currencyField.error_text = None
+            self.update()
+
+    def clear_volume_error(self, e):
+        if self.volumeField.error_text:
+            self.volumeField.error_text = None
+            self.update()
+
+    def clear_top_error(self, e):
+        if self.termOfPaymentField.error_text:
+            self.termOfPaymentField.error_text = None
+            self.update()
+
+    def clear_upw_error(self, e):
+        if self.unitPWField.error_text:
+            self.unitPWField.error_text = None
+            self.update()
+
+    def clear_vat_rate_error(self, e):
+        if self.vatRateField.error_text:
+            self.vatRateField.error_text = None
             self.update()
 
     def show_progress_bar_disable_action(self):
@@ -123,24 +161,13 @@ class ProjectEditorScreen(TuttleView, UserControl):
         self.loadingBar.visible = False
         self.submitButton.disabled = False
 
-    def on_new_contract_added(self, title: str):
-        """attempts to save new contract"""
-        self.show_progress_bar_disable_action()
-        result = self.intentHandler.create_contract(title)
-        if result.wasIntentSuccessful:
-            self.reload_load_clients_and_contracts(reLoadClients=False)
-        else:
-            self.showSnack(result.errorMsg, True)
-        self.enable_action_remove_progress_bar()
-        self.update()
-
     def on_new_client_added(self, title: str):
         """attempts to save new client"""
         self.loadingBar.visible = True
         self.submitButton.disabled = True
         result = self.intentHandler.create_client(title)
         if result.wasIntentSuccessful:
-            self.reload_load_clients_and_contracts(reLoadContracts=False)
+            self.reload_load_clients()
         else:
             self.showSnack(result.errorMsg, True)
         self.loadingBar.visible = False
@@ -154,55 +181,36 @@ class ProjectEditorScreen(TuttleView, UserControl):
             clients.append(f"#{key} {self.clients[key]}")
         return clients
 
-    def get_contracts_as_list(self):
-        """transforms a map of id-contract_desc to a list for dropdown options"""
-        contracts = []
-        for key in self.contracts:
-            contracts.append(f"#{key} {self.contracts[key]}")
-        return contracts
-
-    def reload_load_clients_and_contracts(
-        self, reLoadClients=True, reLoadContracts=True
-    ):
-
-        if reLoadClients:
-            self.clients = self.intentHandler.get_all_clients_as_map()
-            self.clientsField.error_text = (
-                "Please create a new client" if len(self.clients) == 0 else None
-            )
-            selectors.update_dropdown_items(
-                self.clientsField, self.get_clients_as_list()
-            )
-        if reLoadContracts:
-            self.contracts = self.intentHandler.get_all_contracts_as_map()
-            self.contractsField.error_text = (
-                "Please create a new contract" if len(self.contracts) == 0 else None
-            )
-            selectors.update_dropdown_items(
-                self.contractsField, self.get_contracts_as_list()
-            )
+    def reload_load_clients(self):
+        self.clients = self.intentHandler.get_all_clients_as_map()
+        self.clientsField.error_text = (
+            "Please create a new client" if len(self.clients) == 0 else None
+        )
+        selectors.update_dropdown_items(self.clientsField, self.get_clients_as_list())
 
     def did_mount(self):
         self.show_progress_bar_disable_action()
-        self.reload_load_clients_and_contracts()
+        self.reload_load_clients()
         self.enable_action_remove_progress_bar()
         self.update()
 
     def on_add_client(self, e):
         self.newClientPopUp.open_dialog()
 
-    def on_add_contract(self, e):
-        self.newContractPopUp.open_dialog()
-
     def on_save(self, e):
         if not self.title:
-            self.titleField.error_text = "Project title is required"
+            self.titleField.error_text = "Contract title is required"
             self.update()
             return
 
-        if not self.description:
-            self.descriptionField.error_text = "Project description is required"
+        if not self.clientId:
+            self.clientsField.error_text = "Please select a client"
             self.update()
+            return
+
+        signatureDate = self.signatureDateField.get_date()
+        if not signatureDate:
+            self.showSnack("Please specify the signature date", True)
             return
 
         startDate = self.startDateField.get_date()
@@ -217,32 +225,28 @@ class ProjectEditorScreen(TuttleView, UserControl):
 
         if startDate > endDate:
             self.showSnack(
-                "The end date of the project cannot be before the start date", True
+                "The end date of the contract cannot be before the start date", True
             )
             return
 
-        if not self.clientId:
-            self.clientsField.error_text = "Please select a client"
-            self.update()
-            return
-
-        if not self.contractId:
-            self.contractsField.error_text = "Please specify the contract"
-            self.update()
-            return
-
         self.show_progress_bar_disable_action()
-        result = self.intentHandler.save_project(
+        result = self.intentHandler.create_or_update_contract(
             title=self.title,
-            description=self.description,
-            startDate=startDate,
-            endDate=endDate,
-            tag=self.tag,
-            clientId=self.clientId,
-            contractId=self.contractId,
+            signature_date=signatureDate,
+            start_date=startDate,
+            end_date=endDate,
+            client_id=self.clientId,
+            rate=self.rate,
+            currency=self.currency,
+            VAT_rate=self.vatRate,
+            unit=self.timeUnit,
+            units_per_workday=self.unitPW,
+            volume=self.volume,
+            term_of_payment=self.termOfPayment,
+            billing_cycle=self.billing_cycle,
         )
         msg = (
-            "New project created successfully"
+            "New contract created successfully"
             if result.wasIntentSuccessful
             else result.errorMsg
         )
@@ -253,35 +257,80 @@ class ProjectEditorScreen(TuttleView, UserControl):
     def build(self):
         self.titleField = texts.get_std_txt_field(
             lbl="Title",
-            hint="Project's title",
+            hint="Contract's title",
             onChangeCallback=self.on_title_changed,
             onFocusCallback=self.clear_title_error,
         )
-        self.descriptionField = texts.get_std_multiline_field(
-            lbl="Description",
-            hint="Project's description",
-            onChangeCallback=self.on_description_changed,
-            onFocusCallback=self.clear_description_error,
+
+        self.rateField = texts.get_std_txt_field(
+            lbl="Rate (optional)",
+            hint="Contract's rate",
+            onChangeCallback=self.on_rate_changed,
+            onFocusCallback=self.clear_rate_error,
+            keyboardType=KEYBOARD_NUMBER,
         )
-        self.tagField = texts.get_std_txt_field(
-            lbl="Tag",
-            hint="an optional tag",
-            onChangeCallback=self.on_tag_changed,
+
+        self.currencyField = texts.get_std_txt_field(
+            lbl="Currency (optional)",
+            hint="Payment currency",
+            onChangeCallback=self.on_currency_changed,
+            onFocusCallback=self.clear_currency_error,
         )
+
+        self.vatRateField = texts.get_std_txt_field(
+            lbl="Vat (optional)",
+            hint="Vat rate",
+            onChangeCallback=self.on_vat_rate_changed,
+            onFocusCallback=self.clear_vat_rate_error,
+            keyboardType=KEYBOARD_NUMBER,
+        )
+
+        self.unitPWField = texts.get_std_txt_field(
+            lbl="Units per workday (optional)",
+            hint="",
+            onChangeCallback=self.on_upw_changed,
+            onFocusCallback=self.clear_upw_error,
+            keyboardType=KEYBOARD_NUMBER,
+        )
+
+        self.volumeField = texts.get_std_txt_field(
+            lbl="Volume (optional)",
+            hint="",
+            onChangeCallback=self.on_volume_changed,
+            onFocusCallback=self.clear_volume_error,
+            keyboardType=KEYBOARD_NUMBER,
+        )
+
+        self.termOfPaymentField = texts.get_std_txt_field(
+            lbl="Term of payment (optional)",
+            hint="",
+            onChangeCallback=self.on_top_changed,
+            onFocusCallback=self.clear_top_error,
+            keyboardType=KEYBOARD_NUMBER,
+        )
+
         self.clientsField = selectors.get_dropdown(
             lbl="Client",
             onChange=self.on_client_selected,
             items=self.get_clients_as_list(),
         )
-        self.contractsField = selectors.get_dropdown(
-            lbl="Contract",
-            onChange=self.on_contract_selected,
-            items=self.get_contracts_as_list(),
+        self.unitsField = selectors.get_dropdown(
+            lbl="Time Unit",
+            onChange=self.on_unit_selected,
+            items=get_time_unit_values_as_list(),
         )
+
+        self.billingCycleField = selectors.get_dropdown(
+            lbl="Billing Cycle",
+            onChange=self.on_billing_cycle_selected,
+            items=get_cycle_values_as_list(),
+        )
+
+        self.signatureDateField = selectors.DateSelector(label="Signed on Date")
         self.startDateField = selectors.DateSelector(label="Start Date")
         self.endDateField = selectors.DateSelector(label="End Date")
         self.submitButton = get_primary_btn(
-            label="Create Project", onClickCallback=self.on_save
+            label="Create Contract", onClickCallback=self.on_save
         )
         view = Container(
             expand=True,
@@ -300,8 +349,8 @@ class ProjectEditorScreen(TuttleView, UserControl):
                                         on_click=self.onNavigateBack,
                                     ),
                                     texts.get_headline_with_subtitle(
-                                        title="New Project",
-                                        subtitle="Create a new project",
+                                        title="New Contract",
+                                        subtitle="Create a new contract",
                                     ),
                                 ]
                             ),
@@ -309,7 +358,12 @@ class ProjectEditorScreen(TuttleView, UserControl):
                             mdSpace,
                             self.titleField,
                             smSpace,
-                            self.descriptionField,
+                            self.currencyField,
+                            self.rateField,
+                            self.termOfPaymentField,
+                            self.unitPWField,
+                            self.vatRateField,
+                            self.volumeField,
                             smSpace,
                             Row(
                                 alignment=SPACE_BETWEEN_ALIGNMENT,
@@ -324,21 +378,12 @@ class ProjectEditorScreen(TuttleView, UserControl):
                                 ],
                             ),
                             smSpace,
-                            Row(
-                                alignment=SPACE_BETWEEN_ALIGNMENT,
-                                vertical_alignment=CENTER_ALIGNMENT,
-                                spacing=spacing.SPACE_STD,
-                                controls=[
-                                    self.contractsField,
-                                    IconButton(
-                                        icon=icons.ADD_CIRCLE_OUTLINE,
-                                        on_click=self.on_add_contract,
-                                    ),
-                                ],
-                            ),
+                            self.unitsField,
                             smSpace,
-                            self.tagField,
-                            mdSpace,
+                            self.billingCycleField,
+                            smSpace,
+                            self.signatureDateField,
+                            smSpace,
                             self.startDateField,
                             mdSpace,
                             self.endDateField,
@@ -357,6 +402,5 @@ class ProjectEditorScreen(TuttleView, UserControl):
     def will_unmount(self):
         try:
             self.newClientPopUp.dimiss_open_dialogs()
-            self.newContractPopUp.dimiss_open_dialogs()
         except Exception as e:
             print(e)
