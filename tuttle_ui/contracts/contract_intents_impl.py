@@ -110,9 +110,9 @@ class ContractIntentImpl(ContractsIntent):
     def get_contract_by_id(self, contractId) -> ContractIntentsResult:
         contractIfFound = self.dataSource.get_contract_by_id(contractId=contractId)
         return ContractIntentsResult(
-            wasIntentSuccessful=contractIfFound != None,
+            wasIntentSuccessful=contractIfFound is not None,
             data=contractIfFound,
-            errorMsgIfAny=CONTRACT_NOT_FOUND if contractIfFound == None else "",
+            errorMsgIfAny=CONTRACT_NOT_FOUND if contractIfFound is None else "",
         )
 
     def create_client(self, title: str) -> ContractIntentsResult:

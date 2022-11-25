@@ -139,7 +139,7 @@ class ProjectIntentImpl(ProjectsIntent):
     def get_project_by_id(self, projectId) -> ProjectIntentsResult:
         projectIfFound = self.dataSource.get_project_by_id(projectId=projectId)
         return ProjectIntentsResult(
-            wasIntentSuccessful=projectIfFound != None,
+            wasIntentSuccessful=projectIfFound is not None,
             data=projectIfFound,
-            errorMsgIfAny=PROJECT_NOT_FOUND if projectIfFound == None else "",
+            errorMsgIfAny=PROJECT_NOT_FOUND if projectIfFound is None else "",
         )

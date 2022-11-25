@@ -13,9 +13,11 @@ from clients.abstractions import ClientDestinationView
 from res.colors import ERROR_COLOR
 from res.fonts import HEADLINE_4_SIZE
 from res.spacing import SPACE_MD, SPACE_STD
-from res.strings import MY_CLIENTS, NO_CLIENTS_ADDED
+from res.strings import MY_CLIENTS, NO_CLIENTS_ADDED, NEW_CLIENT_ADDED_SUCCESS
 from clients.client_intents_impl import ClientIntentImpl
 from .client_card import ClientCard
+from res.utils import ADD_CLIENT_INTENT
+from clients.utils import ClientIntentsResult
 
 
 class ClientsListView(ClientDestinationView):
@@ -23,6 +25,7 @@ class ClientsListView(ClientDestinationView):
         self,
         localCacheHandler: LocalCache,
         onChangeRouteCallback: Callable[[str, typing.Optional[any]], None],
+        showSnackCallback=Callable,
     ):
         super().__init__(
             intentHandler=ClientIntentImpl(cache=localCacheHandler),
@@ -52,20 +55,41 @@ class ClientsListView(ClientDestinationView):
             run_spacing=SPACE_MD,
         )
         self.clientsToDisplay = {}
+        self.showSnack = showSnackCallback
+
+    def parent_intent_listener(self, intent: str, data: any):
+        if intent == ADD_CLIENT_INTENT:
+            """New client was clicked"""
+            clientTitle = data
+            self.progressBar.visible = True
+            self.update()
+            result: ClientIntentsResult = self.intentHandler.create_or_update_client(
+                title=clientTitle
+            )
+            if not result.wasIntentSuccessful:
+                self.showSnack(result.errorMsg, True)
+            else:
+                client = result.data
+                self.clientsToDisplay[client.id] = client
+                self.refresh_clients()
+                self.showSnack(NEW_CLIENT_ADDED_SUCCESS, False)
+            self.progressBar.visible = False
+            self.update()
+        return
 
     def load_all_clients(self):
         self.clientsToDisplay = self.intentHandler.get_all_clients()
 
-    def display_currently_filtered_clients(self):
+    def refresh_clients(self):
         self.clientsContainer.controls.clear()
         for key in self.clientsToDisplay:
             client = self.clientsToDisplay[key]
             clientCard = ClientCard(
-                client=client, onClickView=self.on_view_client_clicked
+                client=client, onClickView=self.on_edit_client_clicked
             )
             self.clientsContainer.controls.append(clientCard)
 
-    def on_view_client_clicked(self, clientId: str):
+    def on_edit_client_clicked(self, clientId: str):
         # pop up
         print(clientId)
 
@@ -79,7 +103,7 @@ class ClientsListView(ClientDestinationView):
         if count == 0:
             self.show_no_clients()
         else:
-            self.display_currently_filtered_clients()
+            self.refresh_clients()
         self.update()
 
     def build(self):

@@ -8,12 +8,13 @@ from res.strings import (
 )
 from res.utils import (
     PROJECT_EDITOR_SCREEN_ROUTE,
-    CLIENT_EDITOR_SCREEN_ROUTE,
-    CONTACT_EDITOR_SCREEN_ROUTE,
+    ADD_CLIENT_INTENT,
+    ADD_CONTACT_INTENT,
     CONTRACT_EDITOR_SCREEN_ROUTE,
 )
 from projects.views.projects_list import ProjectsListView
 from clients.view.clients_list import ClientsListView
+from core.abstractions import TuttleDestinationView
 from contracts.view.contracts_list import ContractsListView
 from contacts.view.contacts_list import ContactsListView
 from typing import Callable
@@ -58,6 +59,7 @@ class SideBarMenuItemsHandler:
         self.clientsView = ClientsListView(
             localCacheHandler=localCacheHandler,
             onChangeRouteCallback=onChangeRouteCallback,
+            showSnackCallback=showSnackCallback,
         )
         self.contractsView = ContractsListView(
             localCacheHandler=localCacheHandler,
@@ -108,7 +110,7 @@ class SideBarMenuItemsHandler:
         else:
             return SideBarMenuItems.CONTRACTS
 
-    def get_destination_view_for_item(self, menuItem):
+    def get_destination_view_for_item(self, menuItem) -> TuttleDestinationView:
         """Given a sidemenu item, returns the corresponding view"""
         if menuItem.value == SideBarMenuItems.PROJECTS.value:
             return self.projectsView
@@ -119,7 +121,7 @@ class SideBarMenuItemsHandler:
         else:
             return self.contractsView
 
-    def get_new_item_route(self, menuItem: SideBarMenuItems):
+    def get_new_item_route_or_intent(self, menuItem: SideBarMenuItems):
         """Given a menu item, returns route for the view responsible for creating the corresponding item
 
         e.g. item project ---> return route for New Project screen
@@ -127,8 +129,8 @@ class SideBarMenuItemsHandler:
         if menuItem.value == SideBarMenuItems.PROJECTS.value:
             return PROJECT_EDITOR_SCREEN_ROUTE
         elif menuItem.value == SideBarMenuItems.CLIENTS.value:
-            return CLIENT_EDITOR_SCREEN_ROUTE
+            return ADD_CLIENT_INTENT
         elif menuItem.value == SideBarMenuItems.CONTACTS.value:
-            return CONTACT_EDITOR_SCREEN_ROUTE
+            return ADD_CONTACT_INTENT
         else:
             return CONTRACT_EDITOR_SCREEN_ROUTE

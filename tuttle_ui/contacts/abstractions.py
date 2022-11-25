@@ -71,6 +71,13 @@ class ContactDataSource(DataSource):
         """if successful, returns the address as data"""
         pass
 
+    @abstractmethod
+    def create_contact_and_address(self, contact: Contact) -> ContactIntentsResult:
+        """attemtpts to save a contact object with it's address
+
+        if successful, returns the newly created contact as data"""
+        pass
+
 
 class ContactsIntent(Intent):
     """Handles contact view intents"""
@@ -90,6 +97,13 @@ class ContactsIntent(Intent):
     @abstractmethod
     def cache_contacts_data(self, key: str, data: any):
         """caches frequently used key-value pairs related to contacts"""
+        pass
+
+    @abstractmethod
+    def create_contact_and_address(self, contact: Contact) -> ContactIntentsResult:
+        """attemtpts to save a contact object with it's address
+
+        if successful, returns the newly created contact as data"""
         pass
 
     @abstractmethod

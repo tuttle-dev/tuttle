@@ -1,5 +1,5 @@
 from .abstractions import ClientDataSource
-from .client_model import Client
+from .client_model import Client, create_client_from_title
 from .utils import ClientIntentsResult
 from typing import Mapping
 
@@ -16,7 +16,8 @@ class ClientDataSourceImpl(ClientDataSource):
         return ClientIntentsResult(wasIntentSuccessful=True, data=self.clients)
 
     def save_client(self, title: str) -> ClientIntentsResult:
-        return ClientIntentsResult(wasIntentSuccessful=False)
+        client = create_client_from_title(title)
+        return ClientIntentsResult(wasIntentSuccessful=True, data=client)
 
     def set_client_contact_id(
         self, invoicing_contact_id: str, client_id: str

@@ -31,7 +31,7 @@ from core.views.spacers import mdSpace, smSpace
 from contracts.contract_intents_impl import ContractIntentImpl
 from res import spacing
 from res.dimens import MIN_WINDOW_WIDTH
-from core.views.pop_ups import NewClientPopUp
+from clients.view.client_creator import NewClientPopUp
 
 
 class ContractEditorScreen(TuttleView, UserControl):
@@ -58,7 +58,7 @@ class ContractEditorScreen(TuttleView, UserControl):
         self.intentHandler = intentHandler
         self.newClientPopUp = NewClientPopUp(
             dialogController=self.pageDialogController,
-            onClientSet=self.on_new_client_added,
+            onSubmit=self.on_new_client_added,
         )
         self.clients: Mapping[str, str] = {}
         self.contracts: Mapping[str, str] = {}

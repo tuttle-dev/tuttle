@@ -52,3 +52,15 @@ class Contact:
         {self.address.country}
         """
         )
+
+
+def get_empty_contact(address: Address):
+    return Contact(
+        id=None,
+        first_name="",
+        last_name="",
+        company="",
+        email="",
+        address_id=address.id,
+        address=address,
+    )

@@ -3,6 +3,7 @@ from typing import Callable, Optional
 
 from flet import Card, Column, Container, GridView, ResponsiveRow, Text, padding
 
+from res.utils import ADD_CONTACT_INTENT
 from core.abstractions import LocalCache
 from core.views.progress_bars import (
     horizontalProgressBar,
@@ -23,6 +24,7 @@ from res.strings import (
     UPDATING_ADDRESS_FAILED,
     UPDATING_CONTACT_FAILED,
     UPDATING_CONTACT_SUCCESS,
+    NEW_CONTACT_ADDED_SUCCESS,
 )
 from contacts.contact_intents_impl import ContactIntentImpl
 from .contact_card import ContactCard
@@ -41,7 +43,7 @@ class ContactsListView(ContactDestinationView):
             onChangeRouteCallback=onChangeRouteCallback,
             pageDialogController=pageDialogController,
         )
-        self.showSnackCallback = showSnackCallback
+        self.showSnack = showSnackCallback
         self.progressBar = horizontalProgressBar
         self.noContactsComponent = Text(
             value=NO_CONTACTS_ADDED, color=ERROR_COLOR, visible=False
@@ -67,6 +69,25 @@ class ContactsListView(ContactDestinationView):
         )
         self.contactsToDisplay = {}
         self.editor = None
+
+    def parent_intent_listener(self, intent: str, data: any):
+        if intent == ADD_CONTACT_INTENT:
+            """New contact was clicked"""
+            contact: Contact = data
+            self.progressBar.visible = True
+            self.update()
+            result = self.intentHandler.create_contact_and_address(contact=contact)
+            if not result.wasIntentSuccessful:
+                self.showSnack(result.errorMsg, True)
+
+            else:
+                contact = result.data
+                self.contactsToDisplay[contact.id] = contact
+                self.refresh_list()
+                self.showSnack(NEW_CONTACT_ADDED_SUCCESS, False)
+            self.progressBar.visible = False
+            self.update()
+        return
 
     def load_all_contacts(self):
         self.contactsToDisplay = self.intentHandler.get_all_contacts()
@@ -118,7 +139,7 @@ class ContactsListView(ContactDestinationView):
         )
         if not result.wasIntentSuccessful:
             """an error occurred"""
-            self.showSnackCallback(UPDATING_ADDRESS_FAILED, True)
+            self.showSnack(UPDATING_ADDRESS_FAILED, True)
             self.progressBar.visible = False
             self.update()
             return
@@ -138,7 +159,7 @@ class ContactsListView(ContactDestinationView):
             else UPDATING_CONTACT_FAILED
         )
         isError = False if result.wasIntentSuccessful else True
-        self.showSnackCallback(msg, isError)
+        self.showSnack(msg, isError)
         self.progressBar.visible = False
         if not isError:
             updatedContact: Contact = result.data

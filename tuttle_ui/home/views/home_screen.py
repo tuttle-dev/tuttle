@@ -1,36 +1,40 @@
 import typing
-from typing import Callable
+from typing import Callable, Optional
 
 from flet import (
-    Text,
     Column,
     Container,
     IconButton,
     NavigationRail,
     NavigationRailDestination,
     Row,
+    Text,
     UserControl,
-    icons,
-    padding,
-    margin,
     alignment,
+    icons,
+    margin,
+    padding,
 )
 
-from core.abstractions import LocalCache
-from core.abstractions import TuttleView
+from core.abstractions import DialogHandler
+from clients.view.client_creator import NewClientPopUp
+from contacts.view.contact_creator import NewContactPopUp
+from core.abstractions import LocalCache, TuttleView
 from core.views.flet_constants import (
-    TXT_ALIGN_START,
     COMPACT_RAIL_WIDTH,
     SPACE_BETWEEN_ALIGNMENT,
     START_ALIGNMENT,
+    TXT_ALIGN_START,
 )
 from res import spacing
 from res.colors import GRAY_DARK_COLOR
-from res.fonts import HEADLINE_FONT, HEADLINE_3_SIZE
 from res.dimens import MIN_WINDOW_WIDTH
+from res.fonts import HEADLINE_3_SIZE, HEADLINE_FONT
+from res.strings import PREFERENCES
+from res.utils import ADD_CLIENT_INTENT, ADD_CONTACT_INTENT
+
 from .action_bar import get_action_bar
 from .side_destinations import SideBarMenuItems, SideBarMenuItemsHandler
-from res.strings import PREFERENCES
 
 MIN_SIDE_BAR_WIDTH = int(MIN_WINDOW_WIDTH * 0.3)
 
@@ -94,6 +98,7 @@ class HomeScreen(TuttleView, UserControl):
             horizontal_alignment=START_ALIGNMENT,
             expand=True,
         )
+        self.dialog: Optional[DialogHandler] = None
 
     def get_action_bar(self):
         return get_action_bar(
@@ -112,9 +117,38 @@ class HomeScreen(TuttleView, UserControl):
         print("==TODO===")
 
     def on_click_add(self, e):
+        """determines the item user wishes to create e.g. new project / client"""
         item = self.smi.get_side_bar_menu_item_from_index(self.selected_tab)
-        route = self.smi.get_new_item_route(item)
-        self.changeRoute(route, None)
+        routeOrIntent = self.smi.get_new_item_route_or_intent(item)
+        if routeOrIntent == ADD_CLIENT_INTENT:
+            # show pop up for creating client
+            if self.dialog:
+                self.dialog.close_dialog()
+            self.dialog = NewClientPopUp(
+                dialogController=self.pageDialogController,
+                onSubmit=lambda data: self.pass_intent_to_destination(
+                    ADD_CLIENT_INTENT, data
+                ),
+            )
+            self.dialog.open_dialog()
+
+        elif routeOrIntent == ADD_CONTACT_INTENT:
+            # show pop up for creating contact
+            if self.dialog:
+                self.dialog.close_dialog()
+            self.dialog = NewContactPopUp(
+                dialogController=self.pageDialogController,
+                onSubmit=lambda data: self.pass_intent_to_destination(
+                    ADD_CONTACT_INTENT, data
+                ),
+            )
+            self.dialog.open_dialog()
+        else:
+            self.changeRoute(routeOrIntent, None)
+
+    def pass_intent_to_destination(self, intent: str, data: str):
+        if self.destinationView:
+            self.destinationView.parent_intent_listener(intent, data)
 
     def get_main_menu_destinations(self) -> list:
         """loops through the sidebar menu items and creates nav-rail-destinations"""
@@ -133,8 +167,8 @@ class HomeScreen(TuttleView, UserControl):
 
     def get_main_menu_destination_view_by_index(self, menuItemIndex: int):
         menuItem = self.smi.get_side_bar_menu_item_from_index(menuItemIndex)
-        destinationView = self.smi.get_destination_view_for_item(menuItem)
-        return destinationView
+        self.destinationView = self.smi.get_destination_view_for_item(menuItem)
+        return self.destinationView
 
     def on_main_menu_destination_change(self, e):
         self.selected_tab = e.control.selected_index
@@ -180,3 +214,9 @@ class HomeScreen(TuttleView, UserControl):
         )
         page_view.padding = spacing.SPACE_STD
         return page_view
+
+    def will_unmount(self):
+        try:
+            self.dialog.dimiss_open_dialogs()
+        except Exception as e:
+            print(e)

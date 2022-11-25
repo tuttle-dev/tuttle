@@ -99,6 +99,10 @@ class TuttleDestinationView(ABC):
         self.intentHandler = intentHandler
         self.pageDialogController = pageDialogController
 
+    def parent_intent_listener(self, intent: str, data: any):
+        """listens for an intent from parent screen"""
+        return None
+
 
 class TuttleView(ABC):
     """Abstract class for all UI screens

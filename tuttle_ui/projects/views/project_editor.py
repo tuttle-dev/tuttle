@@ -15,14 +15,16 @@ from flet import (
 
 from core.abstractions import LocalCache, TuttleView
 from core.views import progress_bars, selectors, texts
-from core.views.alert_dialog_controls import AlertDialogControls
+
 from core.views.buttons import get_primary_btn
 from core.views.flet_constants import CENTER_ALIGNMENT, SPACE_BETWEEN_ALIGNMENT
 from core.views.spacers import mdSpace, smSpace
 from projects.project_intents_impl import ProjectIntentImpl
 from res import spacing
 from res.dimens import MIN_WINDOW_WIDTH
-from core.views.pop_ups import NewClientPopUp, NewContractPopUp
+from contracts.view.new_contract import NewContractPopUp
+from core.views.alert_dialog_controls import AlertDialogControls
+from clients.view.client_creator import NewClientPopUp
 
 
 class ProjectEditorScreen(TuttleView, UserControl):
@@ -49,7 +51,7 @@ class ProjectEditorScreen(TuttleView, UserControl):
         self.intentHandler = intentHandler
         self.newClientPopUp = NewClientPopUp(
             dialogController=self.pageDialogController,
-            onClientSet=self.on_new_client_added,
+            onSubmit=self.on_new_client_added,
         )
         self.newContractPopUp = NewContractPopUp(
             dialogController=self.pageDialogController,

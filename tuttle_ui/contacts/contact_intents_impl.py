@@ -83,20 +83,26 @@ class ContactIntentImpl(ContactsIntent):
             result.errorMsg = CREATE_ADDRESS_FAILED_ERR
         return result
 
+    def create_contact_and_address(self, contact: Contact) -> ContactIntentsResult:
+        result = self.dataSource.create_contact_and_address(contact=contact)
+        if not result.wasIntentSuccessful:
+            result.errorMsg = CREATE_CONTACT_FAILED_ERR
+        return result
+
     def get_address_by_id(self, addressId) -> ContactIntentsResult:
         addressIfFound = self.dataSource.get_address_by_id(addressId=addressId)
         return ContactIntentsResult(
-            wasIntentSuccessful=addressIfFound != None,
+            wasIntentSuccessful=addressIfFound is not None,
             data=addressIfFound,
-            errorMsgIfAny=ADDRESS_NOT_FOUND if addressIfFound == None else "",
+            errorMsgIfAny=ADDRESS_NOT_FOUND if addressIfFound is None else "",
         )
 
     def get_contact_by_id(self, contactId) -> ContactIntentsResult:
         contactIfFound = self.dataSource.get_contact_by_id(contactId=contactId)
         return ContactIntentsResult(
-            wasIntentSuccessful=contactIfFound != None,
+            wasIntentSuccessful=contactIfFound is not None,
             data=contactIfFound,
-            errorMsgIfAny=CONTACT_NOT_FOUND if contactIfFound == None else "",
+            errorMsgIfAny=CONTACT_NOT_FOUND if contactIfFound is None else "",
         )
 
     def set_contact_address_id(

@@ -28,7 +28,7 @@ class ClientDataSource(DataSource):
     ) -> ClientIntentsResult:
         """attempts to create a new client
 
-        returns new client id as data if successful
+        returns new client as data if successful
         """
         pass
 
@@ -71,7 +71,7 @@ class ClientsIntent(Intent):
     ) -> ClientIntentsResult:
         """attempts to create a new client
 
-        returns new client id as data if intent is successful
+        returns the client as data if intent is successful
         """
         pass
 

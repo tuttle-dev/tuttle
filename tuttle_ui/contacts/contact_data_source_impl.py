@@ -63,6 +63,12 @@ class ContactDataSourceImpl(ContactDataSource):
         )
         return ContactIntentsResult(wasIntentSuccessful=True, data=contact)
 
+    def create_contact_and_address(self, contact: Contact) -> ContactIntentsResult:
+        contact.id = 2
+        contact.address_id = 2
+        contact.address.id = contact.address_id
+        return ContactIntentsResult(wasIntentSuccessful=True, data=contact)
+
     def set_contact_address_id(
         self, address_id: str, contact_id: str
     ) -> ContactIntentsResult:

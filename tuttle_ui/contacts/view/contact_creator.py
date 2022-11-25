@@ -2,7 +2,7 @@ from typing import Callable
 
 from flet import AlertDialog, Column, Container, Row
 
-from contacts.contact_model import Contact
+from contacts.contact_model import Contact, get_empty_contact
 from core.abstractions import DialogHandler
 from core.models import get_empty_address
 from core.views import texts
@@ -14,22 +14,19 @@ from res.dimens import MIN_WINDOW_WIDTH
 from res.fonts import HEADLINE_4_SIZE
 
 
-class EditContactPopUp(DialogHandler):
+class NewContactPopUp(DialogHandler):
     """Pop up used for editing a contact"""
 
     def __init__(
         self,
         dialogController: Callable[[any, AlertDialogControls], None],
-        onUpdate: Callable,
-        contact: Contact,
+        onSubmit: Callable,
     ):
         dialogHeight = 550
         dialogWidth = int(MIN_WINDOW_WIDTH * 0.8)
         halfOfDialogWidth = int(MIN_WINDOW_WIDTH * 0.35)
-        self.contact = contact
-        # Add a default empty address if the contact has no address
-        if not self.contact.address:
-            self.contact.address = get_empty_address()
+        self.address = get_empty_address()
+        self.contact: Contact = get_empty_contact(self.address)
         dialog = AlertDialog(
             content=Container(
                 height=dialogHeight,
@@ -113,7 +110,9 @@ class EditContactPopUp(DialogHandler):
                 width=dialogWidth,
             ),
             actions=[
-                get_primary_btn(label="Done", onClickCallback=self.on_submit),
+                get_primary_btn(
+                    label="Done", onClickCallback=self.on_submit_btn_clicked
+                ),
             ],
         )
         super().__init__(dialog=dialog, dialogController=dialogController)
@@ -127,7 +126,7 @@ class EditContactPopUp(DialogHandler):
         self.postal_code = ""
         self.city = ""
         self.country = ""
-        self.onUpdate = onUpdate
+        self.onSubmit = onSubmit
 
     def on_fname_changed(self, e):
         self.fname = e.control.value
@@ -156,45 +155,16 @@ class EditContactPopUp(DialogHandler):
     def on_country_changed(self, e):
         self.country = e.control.value
 
-    def on_submit(self, e):
-        """update changed values"""
-        fname = self.fname.strip() if self.fname.strip() else self.contact.first_name
-        lname = self.lname.strip() if self.lname.strip() else self.contact.last_name
-        company = self.company.strip() if self.company.strip() else self.contact.company
-        email = self.email.strip() if self.email.strip() else self.contact.email
-        street = (
-            self.street.strip() if self.street.strip() else self.contact.address.street
-        )
-
-        street_num = (
-            self.street_num.strip()
-            if self.street_num.strip()
-            else self.contact.address.number
-        )
-        postal_code = (
-            self.postal_code.strip()
-            if self.postal_code.strip()
-            else self.contact.address.postal_code
-        )
-        city = self.city.strip() if self.city.strip() else self.contact.address.city
-        country = (
-            self.country.strip()
-            if self.country.strip()
-            else self.contact.address.country
-        )
+    def on_submit_btn_clicked(self, e):
+        self.contact.first_name = self.fname.strip()
+        self.contact.last_name = self.lname.strip()
+        self.contact.company = self.company.strip()
+        self.contact.email = self.email.strip()
+        self.address.street = self.street.strip()
+        self.address.number = self.street_num.strip()
+        self.address.postal_code = self.postal_code.strip()
+        self.address.city = self.city.strip()
+        self.address.country = self.country.strip()
+        self.contact.address = self.address
         self.close_dialog()
-        self.onUpdate(
-            contact_id=self.contact.id,
-            address_id=int(self.contact.address_id)
-            if self.contact.address_id
-            else None,
-            fname=fname,
-            lname=lname,
-            company=company,
-            email=email,
-            street=street,
-            street_num=street_num,
-            postal_code=postal_code,
-            city=city,
-            country=country,
-        )
+        self.onSubmit(self.contact)

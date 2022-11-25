@@ -1,16 +1,13 @@
 from typing import Callable
 
-from flet import AlertDialog, Column, Container, Row
-
+from flet import AlertDialog, Column, Container
 
 from core.abstractions import DialogHandler
 from core.views import texts
 from core.views.alert_dialog_controls import AlertDialogControls
 from core.views.buttons import get_primary_btn
-from core.views.spacers import mdSpace, xsSpace
+from core.views.spacers import mdSpace
 from res.dimens import MIN_WINDOW_WIDTH
-from core.views.flet_constants import CENTER_ALIGNMENT
-from res.fonts import HEADLINE_4_SIZE
 
 
 class NewClientPopUp(DialogHandler):

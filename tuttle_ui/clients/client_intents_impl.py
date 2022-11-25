@@ -34,7 +34,7 @@ class ClientIntentImpl(ClientsIntent):
         self.cache.set_value(key, data)
 
     def create_or_update_client(
-        self, title: str, invoicing_contact_id: Optional[str]
+        self, title: str, invoicing_contact_id: Optional[str] = None
     ) -> ClientIntentsResult:
         result = self.dataSource.save_client(title=title)
         if result.wasIntentSuccessful and invoicing_contact_id:
@@ -48,9 +48,9 @@ class ClientIntentImpl(ClientsIntent):
     def get_client_by_id(self, clientId) -> ClientIntentsResult:
         clientIfFound = self.dataSource.get_client_by_id(clientId=clientId)
         return ClientIntentsResult(
-            wasIntentSuccessful=clientIfFound != None,
+            wasIntentSuccessful=clientIfFound is not None,
             data=clientIfFound,
-            errorMsgIfAny=CLIENT_NOT_FOUND if clientIfFound == None else "",
+            errorMsgIfAny=CLIENT_NOT_FOUND if clientIfFound is None else "",
         )
 
     def set_client_invoicing_contact_id(
