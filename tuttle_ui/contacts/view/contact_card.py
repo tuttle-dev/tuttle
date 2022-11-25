@@ -104,7 +104,7 @@ class ContactCard(UserControl):
                     IconButton(
                         icon=icons.EDIT_NOTE_OUTLINED,
                         tooltip=EDIT_CONTACT_TOOLTIP,
-                        on_click=lambda e: self.onClickEdit(self.contact.id),
+                        on_click=lambda e: self.onClickEdit(self.contact),
                     ),
                 ],
             ),

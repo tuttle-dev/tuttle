@@ -90,10 +90,14 @@ class TuttleDestinationView(ABC):
         self,
         onChangeRouteCallback: Callable[[str, typing.Optional[any]], None],
         intentHandler: typing.Optional[Intent] = None,
+        pageDialogController: typing.Optional[
+            Callable[[any, AlertDialogControls], None]
+        ] = None,
     ):
         super().__init__()
         self.changeRoute = onChangeRouteCallback
         self.intentHandler = intentHandler
+        self.pageDialogController = pageDialogController
 
 
 class TuttleView(ABC):

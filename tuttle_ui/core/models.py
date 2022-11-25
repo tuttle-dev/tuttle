@@ -117,3 +117,8 @@ class Address:
         {self.country}
         """
         )
+
+
+def get_empty_address() -> Address:
+    """ "Returns an empty address used as a default"""
+    return Address(id=None, street="", number="", city="", postal_code="", country="")

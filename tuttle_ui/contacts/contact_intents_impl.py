@@ -1,15 +1,18 @@
 from typing import Mapping, Optional
+
 from core.abstractions import LocalCache
-from .abstractions import ContactsIntent
-from .utils import ContactIntentsResult
-from .contact_data_source_impl import ContactDataSourceImpl
-from .contact_model import Contact
+from core.models import Address
 from res.strings import (
+    ADDRESS_NOT_FOUND,
+    CONTACT_NOT_FOUND,
     CREATE_ADDRESS_FAILED_ERR,
     CREATE_CONTACT_FAILED_ERR,
-    CONTACT_NOT_FOUND,
-    ADDRESS_NOT_FOUND,
 )
+
+from .abstractions import ContactsIntent
+from .contact_data_source_impl import ContactDataSourceImpl
+from .contact_model import Contact
+from .utils import ContactIntentsResult
 
 
 class ContactIntentImpl(ContactsIntent):
@@ -44,16 +47,16 @@ class ContactIntentImpl(ContactsIntent):
         last_name: str,
         company: Optional[str],
         email: str,
-        address_id: Optional[int],
         contact_id: Optional[str] = None,
+        address: Optional[Address] = None,
     ) -> ContactIntentsResult:
         result = self.dataSource.save_contact(
-            contact_id=contact_id,
+            contact_id=int(contact_id),
             first_name=first_name,
             last_name=last_name,
             company=company,
             email=email,
-            address_id=address_id,
+            address=address,
         )
         if not result.wasIntentSuccessful:
             result.errorMsg = CREATE_CONTACT_FAILED_ERR
@@ -66,7 +69,7 @@ class ContactIntentImpl(ContactsIntent):
         city: str,
         postal_code: str,
         country: str,
-        address_id: Optional[str] = None,
+        address_id: Optional[int] = None,
     ) -> ContactIntentsResult:
         result = self.dataSource.save_address(
             address_id=address_id,

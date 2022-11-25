@@ -39,6 +39,8 @@ class SideBarMenuItemsHandler:
         self,
         localCacheHandler: LocalCache,
         onChangeRouteCallback: Callable[[str, typing.Optional[any]], None],
+        pageDialogController: Callable,
+        showSnackCallback: Callable,
     ):
         super().__init__()
         self.first_item_index = 0
@@ -50,6 +52,8 @@ class SideBarMenuItemsHandler:
         self.contactsView = ContactsListView(
             localCacheHandler=localCacheHandler,
             onChangeRouteCallback=onChangeRouteCallback,
+            pageDialogController=pageDialogController,
+            showSnackCallback=showSnackCallback,
         )
         self.clientsView = ClientsListView(
             localCacheHandler=localCacheHandler,

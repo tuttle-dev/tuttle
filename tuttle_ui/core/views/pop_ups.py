@@ -1,13 +1,16 @@
 from typing import Callable
 
-from flet import AlertDialog, Column, Container
+from flet import AlertDialog, Column, Container, Row
+
 
 from core.abstractions import DialogHandler
 from core.views import texts
 from core.views.alert_dialog_controls import AlertDialogControls
 from core.views.buttons import get_primary_btn
-from core.views.spacers import mdSpace
+from core.views.spacers import mdSpace, xsSpace
 from res.dimens import MIN_WINDOW_WIDTH
+from core.views.flet_constants import CENTER_ALIGNMENT
+from res.fonts import HEADLINE_4_SIZE
 
 
 class NewClientPopUp(DialogHandler):
@@ -30,15 +33,12 @@ class NewClientPopUp(DialogHandler):
                             lbl="Client Name",
                             hint="",
                         ),
-                        mdSpace,
-                        get_primary_btn(
-                            label="Add Client", onClickCallback=self.on_add
-                        ),
                     ]
                 ),
                 height=200,
                 width=int(MIN_WINDOW_WIDTH * 0.8),
-            )
+            ),
+            actions=[get_primary_btn(label="Add Client", onClickCallback=self.on_add)],
         )
         super().__init__(dialog, dialogController)
         self.clientTitle = ""
@@ -50,8 +50,8 @@ class NewClientPopUp(DialogHandler):
     def on_add(self, e):
         if not self.clientTitle:
             return
-        self.onClientSet(self.clientTitle)
         self.close_dialog()
+        self.onClientSet(self.clientTitle)
 
 
 class NewContractPopUp(DialogHandler):
@@ -74,15 +74,14 @@ class NewContractPopUp(DialogHandler):
                             lbl="Contract title",
                             hint="",
                         ),
-                        mdSpace,
-                        get_primary_btn(
-                            label="Add Contract", onClickCallback=self.on_add
-                        ),
                     ]
                 ),
                 height=300,
                 width=int(MIN_WINDOW_WIDTH * 0.8),
-            )
+            ),
+            actions=[
+                get_primary_btn(label="Add Contract", onClickCallback=self.on_add)
+            ],
         )
         super().__init__(dialog, dialogController)
         self.contractTitle = ""
@@ -94,5 +93,5 @@ class NewContractPopUp(DialogHandler):
     def on_add(self, e):
         if not self.contractTitle:
             return
-        self.onContractSet(self.contractTitle)
         self.close_dialog()
+        self.onContractSet(self.contractTitle)

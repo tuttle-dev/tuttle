@@ -11,5 +11,3 @@ CONTACT_EDITOR_SCREEN_ROUTE = "/contact_editor"
 
 PROJECT_DETAILS_SCREEN_ROUTE = "/project_view"
 CONTRACT_DETAILS_SCREEN_ROUTE = "/contract_view"
-CLIENT_DETAILS_SCREEN_ROUTE = "/client_view"
-CONTACT_DETAILS_SCREEN_ROUTE = "/contact_view"

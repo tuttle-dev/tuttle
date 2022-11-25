@@ -7,7 +7,6 @@ from core.abstractions import LocalCache
 from core.views.progress_bars import (
     horizontalProgressBar,
 )
-from res.utils import CLIENT_DETAILS_SCREEN_ROUTE
 from core.views.spacers import mdSpace
 from core.views.texts import get_headline_txt
 from clients.abstractions import ClientDestinationView
@@ -67,7 +66,8 @@ class ClientsListView(ClientDestinationView):
             self.clientsContainer.controls.append(clientCard)
 
     def on_view_client_clicked(self, clientId: str):
-        self.changeRoute(CLIENT_DETAILS_SCREEN_ROUTE, clientId)
+        # pop up
+        print(clientId)
 
     def show_no_clients(self):
         self.noClientsComponent.visible = True

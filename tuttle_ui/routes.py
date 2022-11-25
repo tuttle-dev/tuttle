@@ -15,7 +15,6 @@ from res.utils import (
     SPLASH_SCREEN_ROUTE,
     PROJECT_EDITOR_SCREEN_ROUTE,
     PROJECT_DETAILS_SCREEN_ROUTE,
-    CONTACT_DETAILS_SCREEN_ROUTE,
     CONTRACT_DETAILS_SCREEN_ROUTE,
     CONTRACT_EDITOR_SCREEN_ROUTE,
 )
@@ -107,6 +106,7 @@ class TuttleRoutes:
                 changeRouteCallback=self.onChangeRouteCallback,
                 localCacheHandler=self.localCacheHandler,
                 dialogController=self.dialogController,
+                showSnackCallback=self.showSnackCallback,
             )
             return self.get_page_route_view(
                 HOME_SCREEN_ROUTE,
@@ -115,7 +115,7 @@ class TuttleRoutes:
                 screen=homeScreen,
             )
         elif routePath.match(PROJECT_EDITOR_SCREEN_ROUTE):
-            contractEditorScreen = ProjectEditorScreen(
+            projectEditorScreen = ProjectEditorScreen(
                 changeRouteCallback=self.onChangeRouteCallback,
                 localCacheHandler=self.localCacheHandler,
                 onNavigateBack=self.onNavigateBack,
@@ -124,9 +124,9 @@ class TuttleRoutes:
             )
             return self.get_page_route_view(
                 PROJECT_EDITOR_SCREEN_ROUTE,
-                hasAppBar=contractEditorScreen.hasAppBar,
-                hasFloatingAction=contractEditorScreen.hasFloatingActionBtn,
-                screen=contractEditorScreen,
+                hasAppBar=projectEditorScreen.hasAppBar,
+                hasFloatingAction=projectEditorScreen.hasFloatingActionBtn,
+                screen=projectEditorScreen,
             )
 
         elif routePath.match(f"{PROJECT_DETAILS_SCREEN_ROUTE}/:projectId"):

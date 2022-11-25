@@ -63,6 +63,9 @@ def get_std_txt_field(
     hint: str,
     keyboardType: str = KEYBOARD_TEXT,
     onFocusCallback: typing.Optional[Callable] = None,
+    initialValue: typing.Optional[str] = None,
+    expand: typing.Optional[int] = None,
+    width: typing.Optional[int] = None,
 ):
     """Displays commonly used text field in app forms"""
     txtFieldPad = padding.symmetric(horizontal=spacing.SPACE_XS)
@@ -73,9 +76,12 @@ def get_std_txt_field(
         content_padding=txtFieldPad,
         hint_text=hint,
         hint_style=TextStyle(size=fonts.CAPTION_SIZE),
+        value=initialValue,
         focused_border_width=1,
         on_focus=onFocusCallback,
         on_change=onChangeCallback,
+        expand=expand,
+        width=width,
         label_style=TextStyle(size=fonts.BODY_2_SIZE),
         error_style=TextStyle(size=fonts.BODY_2_SIZE, color=colors.ERROR_COLOR),
     )

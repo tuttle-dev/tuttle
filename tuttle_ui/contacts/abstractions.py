@@ -2,7 +2,8 @@ from abc import abstractmethod
 from typing import Callable, Mapping, Optional
 
 from flet import UserControl
-
+from core.views.alert_dialog_controls import AlertDialogControls
+from core.models import Address
 from .contact_model import Contact
 from .utils import ContactIntentsResult
 from core.abstractions import DataSource, Intent, LocalCache, TuttleDestinationView
@@ -24,7 +25,7 @@ class ContactDataSource(DataSource):
     @abstractmethod
     def save_address(
         self,
-        address_id: Optional[str],
+        address_id: Optional[int],
         street: str,
         number: str,
         city: str,
@@ -33,23 +34,23 @@ class ContactDataSource(DataSource):
     ) -> ContactIntentsResult:
         """attempts to create or update a new address
 
-        returns new address id as data if successful
+        returns new/updated address as data if successful
         """
         pass
 
     @abstractmethod
     def save_contact(
         self,
-        contact_id: Optional[str],
+        contact_id: Optional[int],
         first_name: str,
         last_name: str,
         company: Optional[str],
         email: str,
-        address_id: Optional[int],
+        address: Optional[Address] = None,
     ) -> ContactIntentsResult:
         """attempts to create or update a new contact
 
-        returns new contact id as data if successful
+        returns new contact as data if successful
         """
         pass
 
@@ -94,7 +95,7 @@ class ContactsIntent(Intent):
     @abstractmethod
     def create_or_update_address(
         self,
-        address_id: Optional[str],
+        address_id: Optional[int],
         street: str,
         number: str,
         city: str,
@@ -103,7 +104,7 @@ class ContactsIntent(Intent):
     ) -> ContactIntentsResult:
         """attempts to create or update an address
 
-        returns new address id as data if successful
+        returns new/updated address as data if successful
         """
         pass
 
@@ -115,10 +116,10 @@ class ContactsIntent(Intent):
         last_name: str,
         company: Optional[str],
         email: str,
-        address_id: Optional[int],
+        address: Optional[Address] = None,
     ) -> ContactIntentsResult:
         """attempts to create or update a contact
-        returns a contact id as data if successful
+        returns the contact as data if successful
         """
         pass
 
@@ -149,8 +150,11 @@ class ContactDestinationView(TuttleDestinationView, UserControl):
         self,
         intentHandler: ContactsIntent,
         onChangeRouteCallback: Callable[[str, Optional[any]], None],
+        pageDialogController: Callable[[any, AlertDialogControls], None],
     ):
         super().__init__(
-            intentHandler=intentHandler, onChangeRouteCallback=onChangeRouteCallback
+            intentHandler=intentHandler,
+            onChangeRouteCallback=onChangeRouteCallback,
+            pageDialogController=pageDialogController,
         )
         self.intentHandler = intentHandler

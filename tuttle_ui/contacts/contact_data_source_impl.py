@@ -18,7 +18,7 @@ class ContactDataSourceImpl(ContactDataSource):
 
     def save_address(
         self,
-        address_id: Optional[str],
+        address_id: Optional[int],
         street: str,
         number: str,
         city: str,
@@ -26,9 +26,9 @@ class ContactDataSourceImpl(ContactDataSource):
         country: str,
     ) -> ContactIntentsResult:
         id = 1
-        if address_id:
+        if address_id is not None:
             # this is an update
-            id = int(address_id)
+            id = address_id
         address = Address(
             id=id,
             street=street,
@@ -37,30 +37,31 @@ class ContactDataSourceImpl(ContactDataSource):
             postal_code=postal_code,
             country=country,
         )
-        return ContactIntentsResult(wasIntentSuccessful=True, data=address.id)
+        return ContactIntentsResult(wasIntentSuccessful=True, data=address)
 
     def save_contact(
         self,
-        contact_id: Optional[str],
+        contact_id: Optional[int],
         first_name: str,
         last_name: str,
         company: Optional[str],
         email: str,
-        address_id: Optional[int],
+        address: Optional[Address] = None,
     ) -> ContactIntentsResult:
         id = 1
-        if contact_id:
+        if contact_id is not None:
             # this is an update
-            id = int(contact_id)
+            id = contact_id
         contact = Contact(
             id=id,
             first_name=first_name,
             last_name=last_name,
             company=company,
             email=email,
-            address_id=address_id,
+            address_id=None if not address else address.id,
+            address=address,
         )
-        return ContactIntentsResult(wasIntentSuccessful=True, data=contact.id)
+        return ContactIntentsResult(wasIntentSuccessful=True, data=contact)
 
     def set_contact_address_id(
         self, address_id: str, contact_id: str
