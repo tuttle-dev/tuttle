@@ -11,7 +11,16 @@ class UserDataSourceImpl(UserDataSource):
         return result
 
     def create_and_save_user(
-        self, title: str, name: str, email: str, phone: str, address: str
-    ):
+        self,
+        title: str,
+        name: str,
+        email: str,
+        phone: str,
+        street: str,
+        streetNum: str,
+        postalCode: str,
+        city: str,
+        country: str,
+    ) -> AuthIntentsResult:
         result = AuthIntentsResult(wasIntentSuccessful=True, data="userId")
         return result

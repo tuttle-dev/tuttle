@@ -60,7 +60,7 @@ def get_headline_with_subtitle(
 def get_std_txt_field(
     onChangeCallback,
     lbl: str,
-    hint: str,
+    hint: str = "",
     keyboardType: str = KEYBOARD_TEXT,
     onFocusCallback: typing.Optional[Callable] = None,
     initialValue: typing.Optional[str] = None,

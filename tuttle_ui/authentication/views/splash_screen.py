@@ -29,10 +29,27 @@ class SplashScreen(AuthView):
         )
 
     def on_log_in_clicked(
-        self, title: str, name: str, email: str, phone: str, address: str
+        self,
+        title: str,
+        name: str,
+        email: str,
+        phone: str,
+        street: str,
+        streetNum: str,
+        postalCode: str,
+        city: str,
+        country: str,
     ):
         return self.intentHandler.create_user(
-            title=title, name=name, email=email, phone=phone, address=address
+            title=title,
+            name=name,
+            email=email,
+            phone=phone,
+            street=street,
+            streetNum=streetNum,
+            postalCode=postalCode,
+            city=city,
+            country=country,
         )
 
     def on_logged_in(
@@ -63,8 +80,8 @@ class SplashScreen(AuthView):
         self.update()
 
     def did_mount(self):
-        # self.check_auth_status()
-        self.on_logged_in()
+        self.check_auth_status()
+        # self.on_logged_in()
 
     def build(self):
         """Called when page is built"""

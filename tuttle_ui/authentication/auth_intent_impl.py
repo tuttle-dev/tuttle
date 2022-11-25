@@ -19,10 +19,27 @@ class AuthIntentImpl(AuthIntent):
         return False
 
     def create_user(
-        self, title: str, name: str, email: str, phone: str, address: str
+        self,
+        title: str,
+        name: str,
+        email: str,
+        phone: str,
+        street: str,
+        streetNum: str,
+        postalCode: str,
+        city: str,
+        country: str,
     ) -> AuthIntentsResult:
         result = self.dataSource.create_and_save_user(
-            title=title, name=name, email=email, phone=phone, address=address
+            title=title,
+            name=name,
+            email=email,
+            phone=phone,
+            street=street,
+            streetNum=streetNum,
+            postalCode=postalCode,
+            city=city,
+            country=country,
         )
         if result.wasIntentSuccessful:
             self.cache_user_data(key=USER_ID, data=result.data)

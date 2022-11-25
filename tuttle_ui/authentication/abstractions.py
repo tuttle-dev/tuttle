@@ -45,7 +45,16 @@ class UserDataSource(DataSource):
 
     @abstractmethod
     def create_and_save_user(
-        self, title: str, name: str, email: str, phone: str, address: str
+        self,
+        title: str,
+        name: str,
+        email: str,
+        phone: str,
+        street: str,
+        streetNum: str,
+        postalCode: str,
+        city: str,
+        country: str,
     ) -> AuthIntentsResult:
         """attempts to create and save a user
 
@@ -71,7 +80,16 @@ class AuthIntent(Intent):
 
     @abstractmethod
     def create_user(
-        self, title: str, name: str, email: str, phone: str, address: str
+        self,
+        title: str,
+        name: str,
+        email: str,
+        phone: str,
+        street: str,
+        streetNum: str,
+        postalCode: str,
+        city: str,
+        country: str,
     ) -> AuthIntentsResult:
         """Receives user info and attempts to create a new user"""
         pass

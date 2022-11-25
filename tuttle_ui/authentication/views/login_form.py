@@ -2,6 +2,7 @@ from typing import Callable
 from flet import (
     UserControl,
     Column,
+    Row,
 )
 
 from res import strings, spacing
@@ -10,9 +11,10 @@ from core.views.buttons import get_primary_btn
 from core.views.flet_constants import (
     KEYBOARD_NAME,
     KEYBOARD_EMAIL,
-    KEYBOARD_ADDRESS,
     KEYBOARD_TEXT,
     KEYBOARD_PHONE,
+    KEYBOARD_NUMBER,
+    CENTER_ALIGNMENT,
 )
 
 from authentication.abstractions import AuthIntentsResult
@@ -32,7 +34,11 @@ class LoginForm(UserControl):
         self.email = ""
         self.phone = ""
         self.title = ""
-        self.address = ""
+        self.street = ""
+        self.streetNumber = ""
+        self.postalCode = ""
+        self.city = ""
+        self.country = ""
         self.onLogInClicked = onLogInClicked
         self.onLoggedIn = onLoggedIn
 
@@ -58,8 +64,20 @@ class LoginForm(UserControl):
     def on_change_phone(self, e):
         self.phone = e.control.value
 
-    def on_change_address(self, e):
-        self.address = e.control.value
+    def on_street_changed(self, e):
+        self.street = e.control.value
+
+    def on_street_num_changed(self, e):
+        self.streetNumber = e.control.value
+
+    def on_postal_code_changed(self, e):
+        self.postalCode = e.control.value
+
+    def on_city_changed(self, e):
+        self.city = e.control.value
+
+    def on_country_changed(self, e):
+        self.country = e.control.value
 
     def on_submit_btn_clicked(self, e):
         # prevent multiple clicking
@@ -90,7 +108,11 @@ class LoginForm(UserControl):
                 name=self.name,
                 email=self.email,
                 phone=self.phone,
-                address=self.address,
+                street=self.street,
+                streetNum=self.streetNumber,
+                postalCode=self.postalCode,
+                city=self.city,
+                country=self.country,
             )
             if not result.wasIntentSuccessful:
                 self.formError = result.errorMsg
@@ -135,12 +157,35 @@ class LoginForm(UserControl):
             onFocusCallback=self.on_field_focus,
             keyboardType=KEYBOARD_TEXT,
         )
-        self.addressField = get_std_multiline_field(
-            self.on_change_address,
-            lbl=strings.ADDRESS_LBL,
-            hint=strings.ADDRESS_HINT_OPTIONAL,
-            onFocusCallback=self.on_field_focus,
-            keyboardType=KEYBOARD_ADDRESS,
+        self.streetField = get_std_txt_field(
+            onChangeCallback=self.on_street_changed,
+            lbl="Street name",
+            keyboardType=KEYBOARD_TEXT,
+            expand=1,
+        )
+        self.streetNumberField = get_std_txt_field(
+            onChangeCallback=self.on_street_num_changed,
+            lbl="Street No.",
+            keyboardType=KEYBOARD_NUMBER,
+            expand=1,
+        )
+        self.postalCodeField = get_std_txt_field(
+            onChangeCallback=self.on_postal_code_changed,
+            lbl="Postal code",
+            keyboardType=KEYBOARD_NUMBER,
+            expand=1,
+        )
+
+        self.cityField = get_std_txt_field(
+            onChangeCallback=self.on_city_changed,
+            lbl="City",
+            keyboardType=KEYBOARD_TEXT,
+            expand=1,
+        )
+        self.countryField = get_std_txt_field(
+            onChangeCallback=self.on_country_changed,
+            lbl="Country",
+            keyboardType=KEYBOARD_TEXT,
         )
         self.loginErrTxt = get_error_txt(self.formError)
         self.submitBtn = get_primary_btn(
@@ -154,7 +199,21 @@ class LoginForm(UserControl):
                 self.nameField,
                 self.emailField,
                 self.phoneField,
-                self.addressField,
+                Row(
+                    vertical_alignment=CENTER_ALIGNMENT,
+                    controls=[
+                        self.streetField,
+                        self.streetNumberField,
+                    ],
+                ),
+                Row(
+                    vertical_alignment=CENTER_ALIGNMENT,
+                    controls=[
+                        self.postalCodeField,
+                        self.cityField,
+                    ],
+                ),
+                self.countryField,
                 self.loginErrTxt,
                 self.submitBtn,
             ],
