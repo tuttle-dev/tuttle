@@ -31,7 +31,7 @@ from res.colors import GRAY_DARK_COLOR
 from res.dimens import MIN_WINDOW_WIDTH
 from res.fonts import HEADLINE_3_SIZE, HEADLINE_FONT
 from res.strings import PREFERENCES
-from res.utils import ADD_CLIENT_INTENT, ADD_CONTACT_INTENT
+from res.utils import ADD_CLIENT_INTENT, ADD_CONTACT_INTENT, PROFILE_SCREEN_ROUTE
 
 from .action_bar import get_action_bar
 from .side_destinations import SideBarMenuItems, SideBarMenuItemsHandler
@@ -48,7 +48,6 @@ class HomeScreen(TuttleView, UserControl):
         showSnackCallback: Callable,
     ):
         super().__init__(
-            hasAppBar=False,
             onChangeRouteCallback=changeRouteCallback,
             pageDialogController=dialogController,
             showSnackCallback=showSnackCallback,
@@ -114,7 +113,7 @@ class HomeScreen(TuttleView, UserControl):
         print("==TODO===")
 
     def on_click_profile(self, e):
-        print("==TODO===")
+        self.changeRoute(PROFILE_SCREEN_ROUTE)
 
     def on_click_add(self, e):
         """determines the item user wishes to create e.g. new project / client"""
@@ -217,6 +216,7 @@ class HomeScreen(TuttleView, UserControl):
 
     def will_unmount(self):
         try:
-            self.dialog.dimiss_open_dialogs()
+            if self.dialog:
+                self.dialog.dimiss_open_dialogs()
         except Exception as e:
             print(e)

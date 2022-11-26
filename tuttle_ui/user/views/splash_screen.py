@@ -3,8 +3,8 @@ from typing import Callable
 
 from flet import Column, Container, ProgressRing, ResponsiveRow, UserControl, padding
 
-from authentication.abstractions import AuthView
-from authentication.auth_intent_impl import AuthIntentImpl
+from user.abstractions import AuthView
+from user.auth_intent_impl import AuthIntentImpl
 from core.abstractions import LocalCache
 from core.views.flet_constants import CENTER_ALIGNMENT
 from core.views.images import labelledLogo
@@ -80,8 +80,8 @@ class SplashScreen(AuthView):
         self.update()
 
     def did_mount(self):
-        self.check_auth_status()
-        # self.on_logged_in()
+        # self.check_auth_status()
+        self.on_logged_in()
 
     def build(self):
         """Called when page is built"""

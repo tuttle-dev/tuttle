@@ -171,5 +171,5 @@ class DialogHandler(ABC):
         self.dialogController(self.dialog, AlertDialogControls.ADD_AND_OPEN)
 
     def dimiss_open_dialogs(self):
-        if self.dialog and self.dialog.open:
+        if self.dialog is not None and self.dialog.open:
             self.close_dialog()

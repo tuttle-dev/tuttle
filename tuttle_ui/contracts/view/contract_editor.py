@@ -401,6 +401,7 @@ class ContractEditorScreen(TuttleView, UserControl):
 
     def will_unmount(self):
         try:
-            self.newClientPopUp.dimiss_open_dialogs()
+            if self.newClientPopUp:
+                self.newClientPopUp.dimiss_open_dialogs()
         except Exception as e:
             print(e)

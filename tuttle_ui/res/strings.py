@@ -145,3 +145,15 @@ UPDATING_ADDRESS_FAILED = "Failed to update the address! Please re-try"
 UPDATING_CONTACT_FAILED = "Failed to update the address! Please re-try"
 UPDATING_CONTACT_SUCCESS = "Contact updated successfully"
 NEW_CONTACT_ADDED_SUCCESS = "New contact added"
+
+
+# PROFILE
+STREET = "Street name"
+STREET_NUM = "Street No."
+POSTAL_CODE = "Postal code"
+CITY = "City"
+COUNTRY = "Country"
+UPDATE_PROFILE = "Update Profile"
+UPDATED_PROFILE_SUCCESS = "Your profile has been updated"
+UPDATE_PROFILE_FAIL = "Failed to update your profile! Please retry"
+FETCH_PROFILE_FAIL = "Oops! Failed to fetch your profile data! Please restart app"

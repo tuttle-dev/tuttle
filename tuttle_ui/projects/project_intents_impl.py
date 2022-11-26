@@ -1,6 +1,6 @@
 from typing import Mapping
 
-from authentication.auth_data_keys import USER_ID
+from user.auth_data_keys import USER_ID
 from core.abstractions import LocalCache
 from projects.abstractions import ProjectsIntent
 from projects.utils import ProjectIntentsResult

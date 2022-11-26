@@ -17,7 +17,7 @@ from core.views.flet_constants import (
     CENTER_ALIGNMENT,
 )
 
-from authentication.abstractions import AuthIntentsResult
+from user.abstractions import AuthIntentsResult
 
 
 class LoginForm(UserControl):
@@ -159,32 +159,32 @@ class LoginForm(UserControl):
         )
         self.streetField = get_std_txt_field(
             onChangeCallback=self.on_street_changed,
-            lbl="Street name",
+            lbl=strings.STREET,
             keyboardType=KEYBOARD_TEXT,
             expand=1,
         )
         self.streetNumberField = get_std_txt_field(
             onChangeCallback=self.on_street_num_changed,
-            lbl="Street No.",
+            lbl=strings.STREET_NUM,
             keyboardType=KEYBOARD_NUMBER,
             expand=1,
         )
         self.postalCodeField = get_std_txt_field(
             onChangeCallback=self.on_postal_code_changed,
-            lbl="Postal code",
+            lbl=strings.POSTAL_CODE,
             keyboardType=KEYBOARD_NUMBER,
             expand=1,
         )
 
         self.cityField = get_std_txt_field(
             onChangeCallback=self.on_city_changed,
-            lbl="City",
+            lbl=strings.CITY,
             keyboardType=KEYBOARD_TEXT,
             expand=1,
         )
         self.countryField = get_std_txt_field(
             onChangeCallback=self.on_country_changed,
-            lbl="Country",
+            lbl=strings.COUNTRY,
             keyboardType=KEYBOARD_TEXT,
         )
         self.loginErrTxt = get_error_txt(self.formError)

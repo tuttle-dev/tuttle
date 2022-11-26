@@ -3,7 +3,7 @@ from abc import abstractmethod
 from typing import Callable
 
 from flet import UserControl
-
+from .user_model import User
 from core.abstractions import DataSource
 from core.abstractions import Intent
 from core.abstractions import IntentResult
@@ -62,9 +62,33 @@ class UserDataSource(DataSource):
         else wasIntentSuccessful is False"""
         pass
 
+    @abstractmethod
+    def get_user_profile(self) -> AuthIntentsResult:
+        """If successful and signed in, gets the currently signed in user as data"""
+        pass
+
+    def update_user(
+        self,
+        user: User,
+        title: str,
+        name: str,
+        email: str,
+        phone: str,
+        street: str,
+        streetNum: str,
+        postalCode: str,
+        city: str,
+        country: str,
+    ) -> AuthIntentsResult:
+        """Updates the user info
+
+        if successful, returns the updated user
+        """
+        pass
+
 
 class AuthIntent(Intent):
-    """Handles user authentication intents"""
+    """Handles user user intents"""
 
     def __init__(self, dataSource: UserDataSource, cache: LocalCache):
         super().__init__(cache=cache, dataSource=dataSource)
@@ -95,8 +119,32 @@ class AuthIntent(Intent):
         pass
 
     @abstractmethod
+    def get_user_profile(self) -> AuthIntentsResult:
+        """If successful and signed in, gets the currently signed in user as data"""
+        pass
+
+    @abstractmethod
     def cache_user_data(self, key: str, data: any):
         """Caches frequently used user related info as key-value pairs"""
+        pass
+
+    def update_user(
+        self,
+        user: User,
+        title: str,
+        name: str,
+        email: str,
+        phone: str,
+        street: str,
+        streetNum: str,
+        postalCode: str,
+        city: str,
+        country: str,
+    ) -> AuthIntentsResult:
+        """Updates the user info
+
+        if successful, returns the updated user
+        """
         pass
 
 

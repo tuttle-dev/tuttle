@@ -3,8 +3,9 @@ from typing import Callable
 
 from flet import TemplateRoute, View
 
-from authentication.views.splash_screen import SplashScreen
-from home.views.home_screen import HomeScreen
+from user.views.splash_screen import SplashScreen
+from user.views.profile_screen import ProfileScreen
+from home.home_screen import HomeScreen
 from core.views.error_404_view import Error404Screen
 from contracts.view.contract_details import ContractDetailsScreen
 from core.abstractions import TuttleView
@@ -17,6 +18,7 @@ from res.utils import (
     PROJECT_DETAILS_SCREEN_ROUTE,
     CONTRACT_DETAILS_SCREEN_ROUTE,
     CONTRACT_EDITOR_SCREEN_ROUTE,
+    PROFILE_SCREEN_ROUTE,
 )
 from projects.views.project_details import ProjectDetailsScreen
 from projects.views.project_editor import ProjectEditorScreen
@@ -172,6 +174,20 @@ class TuttleRoutes:
                 hasAppBar=contractEditorScreen.hasAppBar,
                 hasFloatingAction=contractEditorScreen.hasFloatingActionBtn,
                 screen=contractEditorScreen,
+            )
+        elif routePath.match(PROFILE_SCREEN_ROUTE):
+            profileScreen = ProfileScreen(
+                changeRouteCallback=self.onChangeRouteCallback,
+                localCacheHandler=self.localCacheHandler,
+                dialogController=self.dialogController,
+                showSnackCallback=self.showSnackCallback,
+                onNavigateBack=self.onNavigateBack,
+            )
+            return self.get_page_route_view(
+                PROFILE_SCREEN_ROUTE,
+                hasAppBar=profileScreen.hasAppBar,
+                hasFloatingAction=profileScreen.hasFloatingActionBtn,
+                screen=profileScreen,
             )
         else:
             err404Screen = Error404Screen(

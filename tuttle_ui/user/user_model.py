@@ -1,5 +1,6 @@
 from core.models import Address
 from dataclasses import dataclass
+from typing import Optional
 
 
 @dataclass
@@ -9,4 +10,4 @@ class User:
     name: str
     email: str
     phone: str
-    address: Address
+    address: Optional[Address]
