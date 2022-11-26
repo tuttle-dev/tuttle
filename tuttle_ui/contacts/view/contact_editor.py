@@ -28,7 +28,7 @@ class EditContactPopUp(DialogHandler):
         halfOfDialogWidth = int(MIN_WINDOW_WIDTH * 0.35)
         self.contact = contact
         # Add a default empty address if the contact has no address
-        if not self.contact.address:
+        if self.contact.address is None:
             self.contact.address = get_empty_address()
         dialog = AlertDialog(
             content=Container(

@@ -1,6 +1,6 @@
 import typing
 from typing import Callable, Mapping, Optional
-
+from projects.projects_model import Project
 from flet import (
     Card,
     Column,
@@ -11,6 +11,7 @@ from flet import (
     icons,
     margin,
     padding,
+    Text,
 )
 
 from core.abstractions import LocalCache, TuttleView
@@ -25,6 +26,8 @@ from res.dimens import MIN_WINDOW_WIDTH
 from contracts.view.new_contract import NewContractPopUp
 from core.views.alert_dialog_controls import AlertDialogControls
 from clients.view.client_creator import NewClientPopUp
+from res.colors import GRAY_COLOR
+from res.fonts import BODY_1_SIZE
 
 
 class ProjectEditorScreen(TuttleView, UserControl):
@@ -37,6 +40,7 @@ class ProjectEditorScreen(TuttleView, UserControl):
         pageDialogController: typing.Optional[
             Callable[[any, AlertDialogControls], None]
         ],
+        projectId: Optional[str],
     ):
         intentHandler = ProjectIntentImpl(cache=localCacheHandler)
         super().__init__(
@@ -61,7 +65,8 @@ class ProjectEditorScreen(TuttleView, UserControl):
         self.contracts: Mapping[str, str] = {}
         self.loadingBar = progress_bars.horizontalProgressBar
         # info of project being edited / created
-        self.projectId: Optional[int] = None
+        self.projectId: Optional[int] = projectId
+        self.projectBeingEdited: Optional[Project] = None
         self.title = ""
         self.description = ""
         self.contractId = ""
@@ -77,9 +82,7 @@ class ProjectEditorScreen(TuttleView, UserControl):
     def on_tag_changed(self, e):
         self.tag = e.control.value
 
-    def on_client_selected(self, e):
-        # parse selected value to extract id
-        selected = e.control.value
+    def get_id_from_dropdown_selection(self, selected: str):
         id = ""
         for c in selected:
             if c == "#":
@@ -87,22 +90,18 @@ class ProjectEditorScreen(TuttleView, UserControl):
             if c == " ":
                 break
             id = id + c
-        self.clientId = id
+        return id
+
+    def on_client_selected(self, e):
+        # parse selected value to extract id
+        self.clientId = self.get_id_from_dropdown_selection(selected=e.control.value)
         if self.clientsField.error_text:
             self.clientsField.error_text = None
             self.update()
 
     def on_contract_selected(self, e):
         # parse selected value to extract id
-        selected = e.control.value
-        id = ""
-        for c in selected:
-            if c == "#":
-                continue
-            if c == " ":
-                break
-            id = id + c
-        self.contractId = id
+        self.contractId = self.get_id_from_dropdown_selection(selected=e.control.value)
         if self.contractsField.error_text:
             self.contractsField.error_text = None
             self.update()
@@ -136,6 +135,27 @@ class ProjectEditorScreen(TuttleView, UserControl):
         self.enable_action_remove_progress_bar()
         self.update()
 
+    def set_edited_project_info(self):
+        """if user is editing a project
+        set the data of the project as form values
+        """
+        self.titleField.value = self.projectBeingEdited.title
+        self.title = self.projectBeingEdited.title
+        self.descriptionField.value = self.projectBeingEdited.description
+        self.description = self.projectBeingEdited.description
+        self.tagField.value = self.projectBeingEdited.unique_tag
+        self.tag = self.projectBeingEdited.unique_tag
+        self.startDateField.set_date(self.projectBeingEdited.start_date)
+        self.endDateField.set_date(self.projectBeingEdited.end_date)
+        self.clientsEditor.visible = False
+        self.contractsEditor.visible = False
+        self.clientId = self.projectBeingEdited.client_id
+        self.contractId = self.projectBeingEdited.contract_id
+        self.clientIdView.value = f"Client Id {self.clientId}"
+        self.contractIdView.value = f"Contract Id {self.contractId}"
+        self.clientIdView.visible = True
+        self.contractIdView.visible = True
+
     def on_new_client_added(self, title: str):
         """attempts to save new client"""
         self.loadingBar.visible = True
@@ -149,18 +169,26 @@ class ProjectEditorScreen(TuttleView, UserControl):
         self.submitButton.disabled = False
         self.update()
 
+    def add_tag_to_dropdown_item_id(self, id, value):
+        """given id and value, prepends a # symbol and returns as str"""
+        return f"#{id} {value}"
+
     def get_clients_as_list(self):
         """transforms a map of id-client_title to a list for dropdown options"""
         clients = []
         for key in self.clients:
-            clients.append(f"#{key} {self.clients[key]}")
+            clients.append(
+                self.add_tag_to_dropdown_item_id(id=key, value=self.clients[key])
+            )
         return clients
 
     def get_contracts_as_list(self):
         """transforms a map of id-contract_desc to a list for dropdown options"""
         contracts = []
         for key in self.contracts:
-            contracts.append(f"#{key} {self.contracts[key]}")
+            contracts.append(
+                self.add_tag_to_dropdown_item_id(id=key, value=self.contracts[key])
+            )
         return contracts
 
     def reload_load_clients_and_contracts(
@@ -186,7 +214,17 @@ class ProjectEditorScreen(TuttleView, UserControl):
 
     def did_mount(self):
         self.show_progress_bar_disable_action()
-        self.reload_load_clients_and_contracts()
+        if self.projectId:
+            # user is editing an existing project
+            result = self.intentHandler.get_project_by_id(self.projectId)
+            if result.wasIntentSuccessful:
+                self.projectBeingEdited = result.data
+                self.set_edited_project_info()
+            else:
+                self.showSnack(result.errorMsg, True)
+        else:
+            # user is creating a new project
+            self.reload_load_clients_and_contracts()
         self.enable_action_remove_progress_bar()
         self.update()
 
@@ -197,23 +235,23 @@ class ProjectEditorScreen(TuttleView, UserControl):
         self.newContractPopUp.open_dialog()
 
     def on_save(self, e):
-        if not self.title:
+        if self.title is None:
             self.titleField.error_text = "Project title is required"
             self.update()
             return
 
-        if not self.description:
+        if self.description is None:
             self.descriptionField.error_text = "Project description is required"
             self.update()
             return
 
         startDate = self.startDateField.get_date()
-        if not startDate:
+        if startDate is None:
             self.showSnack("Please specify the start date", True)
             return
 
         endDate = self.endDateField.get_date()
-        if not endDate:
+        if endDate is None:
             self.showSnack("Please specify the end date", True)
             return
 
@@ -223,12 +261,12 @@ class ProjectEditorScreen(TuttleView, UserControl):
             )
             return
 
-        if not self.clientId:
+        if self.clientId is None:
             self.clientsField.error_text = "Please select a client"
             self.update()
             return
 
-        if not self.contractId:
+        if self.contractId is None:
             self.contractsField.error_text = "Please specify the contract"
             self.update()
             return
@@ -283,8 +321,38 @@ class ProjectEditorScreen(TuttleView, UserControl):
         self.startDateField = selectors.DateSelector(label="Start Date")
         self.endDateField = selectors.DateSelector(label="End Date")
         self.submitButton = get_primary_btn(
-            label="Create Project", onClickCallback=self.on_save
+            label="Create Project" if self.projectId is None else "Update Project",
+            onClickCallback=self.on_save,
         )
+        self.clientsEditor = Row(
+            alignment=SPACE_BETWEEN_ALIGNMENT,
+            vertical_alignment=CENTER_ALIGNMENT,
+            spacing=spacing.SPACE_STD,
+            controls=[
+                self.clientsField,
+                IconButton(
+                    icon=icons.ADD_CIRCLE_OUTLINE,
+                    on_click=self.on_add_client,
+                ),
+            ],
+        )
+        self.contractsEditor = Row(
+            alignment=SPACE_BETWEEN_ALIGNMENT,
+            vertical_alignment=CENTER_ALIGNMENT,
+            spacing=spacing.SPACE_STD,
+            controls=[
+                self.contractsField,
+                IconButton(
+                    icon=icons.ADD_CIRCLE_OUTLINE,
+                    on_click=self.on_add_contract,
+                ),
+            ],
+        )
+
+        """used to display client and contract ids 
+        for when editing the project"""
+        self.clientIdView = Text(size=BODY_1_SIZE, color=GRAY_COLOR, visible=False)
+        self.contractIdView = Text(size=BODY_1_SIZE, color=GRAY_COLOR, visible=False)
         view = Container(
             expand=True,
             padding=padding.all(spacing.SPACE_MD),
@@ -302,8 +370,12 @@ class ProjectEditorScreen(TuttleView, UserControl):
                                         on_click=self.onNavigateBack,
                                     ),
                                     texts.get_headline_with_subtitle(
-                                        title="New Project",
-                                        subtitle="Create a new project",
+                                        title="New Project"
+                                        if self.projectId is None
+                                        else "Edit Project",
+                                        subtitle="Create a new project"
+                                        if self.projectId is None
+                                        else "Update existing project",
                                     ),
                                 ]
                             ),
@@ -313,31 +385,11 @@ class ProjectEditorScreen(TuttleView, UserControl):
                             smSpace,
                             self.descriptionField,
                             smSpace,
-                            Row(
-                                alignment=SPACE_BETWEEN_ALIGNMENT,
-                                vertical_alignment=CENTER_ALIGNMENT,
-                                spacing=spacing.SPACE_STD,
-                                controls=[
-                                    self.clientsField,
-                                    IconButton(
-                                        icon=icons.ADD_CIRCLE_OUTLINE,
-                                        on_click=self.on_add_client,
-                                    ),
-                                ],
-                            ),
+                            self.clientsEditor,
+                            self.clientIdView,
                             smSpace,
-                            Row(
-                                alignment=SPACE_BETWEEN_ALIGNMENT,
-                                vertical_alignment=CENTER_ALIGNMENT,
-                                spacing=spacing.SPACE_STD,
-                                controls=[
-                                    self.contractsField,
-                                    IconButton(
-                                        icon=icons.ADD_CIRCLE_OUTLINE,
-                                        on_click=self.on_add_contract,
-                                    ),
-                                ],
-                            ),
+                            self.contractsEditor,
+                            self.contractIdView,
                             smSpace,
                             self.tagField,
                             mdSpace,

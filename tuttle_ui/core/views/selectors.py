@@ -111,9 +111,21 @@ class DateSelector(UserControl):
         )
         return self.view
 
+    def set_date(self, date: Optional[datetime.date] = None):
+        if date is None:
+            return
+        self.date = str(date.day)
+        self.month = str(date.month)
+        self.year = str(date.year)
+        self.day_dropdown.value = self.date
+        self.month_dropdown.value = self.month
+        self.year_dropdown.value = self.year
+
+        self.update()
+
     def get_date(self) -> Optional[datetime.date]:
         """Return the selected timeframe."""
-        if not self.year or not self.month or not self.date:
+        if self.year is None or self.month is None or self.date is None:
             return None
 
         date = datetime.date(

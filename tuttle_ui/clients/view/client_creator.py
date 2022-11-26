@@ -44,7 +44,7 @@ class NewClientPopUp(DialogHandler):
         self.clientTitle = e.control.value
 
     def on_add(self, e):
-        if not self.clientTitle:
+        if self.clientTitle is None:
             return
         self.close_dialog()
         self.onClientSet(self.clientTitle)

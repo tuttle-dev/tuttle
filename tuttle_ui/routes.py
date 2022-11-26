@@ -116,13 +116,19 @@ class TuttleRoutes:
                 hasFloatingAction=homeScreen.hasFloatingActionBtn,
                 screen=homeScreen,
             )
-        elif routePath.match(PROJECT_EDITOR_SCREEN_ROUTE):
+        elif routePath.match(PROJECT_EDITOR_SCREEN_ROUTE) or routePath.match(
+            f"{PROJECT_EDITOR_SCREEN_ROUTE}/:projectId"
+        ):
+            projectId = None
+            if hasattr(routePath, "projectId"):
+                projectId = routePath.projectId
             projectEditorScreen = ProjectEditorScreen(
                 changeRouteCallback=self.onChangeRouteCallback,
                 localCacheHandler=self.localCacheHandler,
                 onNavigateBack=self.onNavigateBack,
                 pageDialogController=self.dialogController,
                 showSnackCallback=self.showSnackCallback,
+                projectId=projectId,
             )
             return self.get_page_route_view(
                 PROJECT_EDITOR_SCREEN_ROUTE,

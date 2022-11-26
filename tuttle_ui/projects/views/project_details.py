@@ -45,6 +45,7 @@ from res.strings import (
     VIEW_CONTRACT_HINT,
     PROJECT_DESC_LBL,
 )
+from res.utils import PROJECT_EDITOR_SCREEN_ROUTE
 
 
 class ProjectDetailsScreen(TuttleView, UserControl):
@@ -106,7 +107,10 @@ class ProjectDetailsScreen(TuttleView, UserControl):
         self.showSnack("Coming soon", False)
 
     def on_edit_clicked(self, e):
-        self.showSnack("Coming soon", False)
+        if self.project is None:
+            # project is not loaded yet
+            return
+        self.changeRoute(PROJECT_EDITOR_SCREEN_ROUTE, self.project.id)
 
     def on_delete_clicked(self, e):
         self.showSnack("Coming soon", False)

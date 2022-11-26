@@ -45,7 +45,7 @@ class NewClientPopUp(DialogHandler):
         self.clientTitle = e.control.value
 
     def on_add(self, e):
-        if not self.clientTitle:
+        if self.clientTitle is None:
             return
         self.close_dialog()
         self.onClientSet(self.clientTitle)
@@ -88,7 +88,7 @@ class NewContractPopUp(DialogHandler):
         self.contractTitle = e.control.value
 
     def on_add(self, e):
-        if not self.contractTitle:
+        if self.contractTitle is None:
             return
         self.close_dialog()
         self.onContractSet(self.contractTitle)

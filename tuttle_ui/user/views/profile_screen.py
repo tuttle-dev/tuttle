@@ -119,7 +119,7 @@ class ProfileScreen(AuthView):
         self.country = e.control.value
 
     def on_update_btn_clicked(self, e):
-        if not self.user:
+        if self.user is None:
             # user is not loaded yet
             return
 
@@ -298,7 +298,7 @@ class ProfileScreen(AuthView):
                             padding=padding.all(spacing.SPACE_MD),
                             content=self.formContainer,
                         ),
-                        col={"xs": 12, "md": 6},
+                        col={"xs": 12, "md": 8, "lg": 6},
                     ),
                 ],
             ),
@@ -319,7 +319,7 @@ class ProfileScreen(AuthView):
         self.update()
 
     def refresh_user_info(self):
-        if not self.user:
+        if self.user is None:
             return
         self.name = self.user.name
         self.email = self.user.email

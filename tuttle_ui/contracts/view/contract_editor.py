@@ -198,28 +198,28 @@ class ContractEditorScreen(TuttleView, UserControl):
         self.newClientPopUp.open_dialog()
 
     def on_save(self, e):
-        if not self.title:
+        if self.title is None:
             self.titleField.error_text = "Contract title is required"
             self.update()
             return
 
-        if not self.clientId:
+        if self.clientId is None:
             self.clientsField.error_text = "Please select a client"
             self.update()
             return
 
         signatureDate = self.signatureDateField.get_date()
-        if not signatureDate:
+        if signatureDate is None:
             self.showSnack("Please specify the signature date", True)
             return
 
         startDate = self.startDateField.get_date()
-        if not startDate:
+        if startDate is None:
             self.showSnack("Please specify the start date", True)
             return
 
         endDate = self.endDateField.get_date()
-        if not endDate:
+        if endDate is None:
             self.showSnack("Please specify the end date", True)
             return
 

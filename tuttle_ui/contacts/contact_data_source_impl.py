@@ -58,7 +58,7 @@ class ContactDataSourceImpl(ContactDataSource):
             last_name=last_name,
             company=company,
             email=email,
-            address_id=None if not address else address.id,
+            address_id=None if address is None else address.id,
             address=address,
         )
         return ContactIntentsResult(wasIntentSuccessful=True, data=contact)

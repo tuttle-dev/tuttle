@@ -133,7 +133,7 @@ class ProjectIntentImpl(ProjectsIntent):
             contractId=contractId,
         )
         if not result.wasIntentSuccessful:
-            result.errorMsg = CREATE_PROJECT_FAILED
+            result.errorMsg = "Un implemented err"
         return result
 
     def get_project_by_id(self, projectId) -> ProjectIntentsResult:

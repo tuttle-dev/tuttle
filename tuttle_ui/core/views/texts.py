@@ -82,6 +82,7 @@ def get_std_txt_field(
         on_change=onChangeCallback,
         expand=expand,
         width=width,
+        text_size=fonts.BODY_1_SIZE,
         label_style=TextStyle(size=fonts.BODY_2_SIZE),
         error_style=TextStyle(size=fonts.BODY_2_SIZE, color=colors.ERROR_COLOR),
     )
@@ -109,6 +110,7 @@ def get_std_multiline_field(
         max_lines=maxLines,
         on_focus=onFocusCallback,
         on_change=onChangeCallback,
+        text_size=fonts.BODY_1_SIZE,
         label_style=TextStyle(size=fonts.BODY_2_SIZE),
         error_style=TextStyle(size=fonts.BODY_2_SIZE, color=colors.ERROR_COLOR),
     )

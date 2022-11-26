@@ -29,7 +29,7 @@ def main(page: Page):
                 color=ERROR_COLOR if isError else WHITE_COLOR,
                 font_family=HEADLINE_FONT,
             ),
-            bgcolor=BLACK_COLOR_ALT,
+            bgcolor=WHITE_COLOR if isError else BLACK_COLOR_ALT,
         )
         page.snack_bar.open = True
         page.update()
