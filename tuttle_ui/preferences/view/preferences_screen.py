@@ -87,6 +87,13 @@ class PreferencesScreen(TuttleView, UserControl):
             lbl="Appearance",
             hint="",
         )
+
+        self.currencyControl = get_dropdown(
+            items=["USD ($)", "EUR (€)", "GBP (£)"],
+            onChange=lambda e: None,
+            lbl="Default currency",
+            hint="",
+        )
         self.body = Container(
             padding=padding.all(spacing.SPACE_MD),
             width=int(MIN_WINDOW_WIDTH * 0.7),
@@ -103,6 +110,8 @@ class PreferencesScreen(TuttleView, UserControl):
                     self.loadingIndicator,
                     mdSpace,
                     self.themeControl,
+                    mdSpace,
+                    self.currencyControl,
                 ],
             ),
         )
