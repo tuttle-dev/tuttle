@@ -60,6 +60,7 @@ class SideBarMenuItemsHandler:
             localCacheHandler=localCacheHandler,
             onChangeRouteCallback=onChangeRouteCallback,
             showSnackCallback=showSnackCallback,
+            pageDialogController=pageDialogController,
         )
         self.contractsView = ContractsListView(
             localCacheHandler=localCacheHandler,

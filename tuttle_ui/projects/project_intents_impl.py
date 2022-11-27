@@ -1,6 +1,5 @@
 from typing import Mapping
 
-from user.auth_data_keys import USER_ID
 from core.abstractions import LocalCache
 from projects.abstractions import ProjectsIntent
 from projects.utils import ProjectIntentsResult
@@ -9,7 +8,6 @@ from projects.projects_model import Project
 from res.strings import (
     CREATE_CLIENT_FAILED_ERR,
     CREATE_CONTRACT_FAILED_ERR,
-    CREATE_PROJECT_FAILED,
     PROJECT_NOT_FOUND,
 )
 import datetime

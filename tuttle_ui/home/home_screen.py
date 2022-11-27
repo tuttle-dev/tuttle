@@ -31,7 +31,13 @@ from res.colors import GRAY_DARK_COLOR
 from res.dimens import MIN_WINDOW_WIDTH
 from res.fonts import HEADLINE_3_SIZE, HEADLINE_FONT
 from res.strings import PREFERENCES
-from res.utils import ADD_CLIENT_INTENT, ADD_CONTACT_INTENT, PROFILE_SCREEN_ROUTE
+
+from res.utils import (
+    ADD_CLIENT_INTENT,
+    ADD_CONTACT_INTENT,
+    PROFILE_SCREEN_ROUTE,
+    PREFERENCES_SCREEN_ROUTE,
+)
 
 from .action_bar import get_action_bar
 from .side_destinations import SideBarMenuItems, SideBarMenuItemsHandler
@@ -110,7 +116,7 @@ class HomeScreen(TuttleView, UserControl):
         print("==TODO===")
 
     def on_view_settings_clicked(self, e):
-        print("==TODO===")
+        self.changeRoute(PREFERENCES_SCREEN_ROUTE)
 
     def on_click_profile(self, e):
         self.changeRoute(PROFILE_SCREEN_ROUTE)

@@ -15,7 +15,10 @@ class ClientDataSourceImpl(ClientDataSource):
         self._set_dummy_clients()
         return ClientIntentsResult(wasIntentSuccessful=True, data=self.clients)
 
-    def save_client(self, title: str) -> ClientIntentsResult:
+    def update_client(self, client: Client):
+        return ClientIntentsResult(wasIntentSuccessful=True, data=client)
+
+    def create_client(self, title: str) -> ClientIntentsResult:
         client = create_client_from_title(title)
         return ClientIntentsResult(wasIntentSuccessful=True, data=client)
 

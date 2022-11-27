@@ -32,6 +32,7 @@ def get_dropdown(
     items: List[str],
     hint: Optional[str] = "",
     width: Optional[int] = None,
+    initialValue: Optional[str] = None,
 ):
     options = []
     for item in items:
@@ -48,6 +49,7 @@ def get_dropdown(
         label_style=TextStyle(size=fonts.BODY_2_SIZE),
         on_change=onChange,
         width=width,
+        value=initialValue,
         content_padding=padding.all(spacing.SPACE_XS),
         error_style=TextStyle(size=fonts.BODY_2_SIZE, color=colors.ERROR_COLOR),
     )

@@ -10,7 +10,6 @@ WELCOME_SUBTITLE = "Let's get you started"
 GET_STARTED = "Get Started"
 SPLASH_IMG_SEMANTIC_LBL = "Tuttle splash image"
 
-PREFERENCES = "Preferences"
 TOOLTIP_NEW = "New"
 TOOLTIP_NOTIFICATIONS = "Notifications"
 TOOLTIP_MY_PROFILE = "My Profile"
@@ -102,6 +101,8 @@ NO_CONTRACTS_ADDED = "You currently have no contracts"
 MY_CLIENTS = "My Clients"
 NO_CLIENTS_ADDED = "You currently have no clients"
 EDIT_CLIENT_TOOLTIP = "Edit client"
+UPDATING_CLIENT_FAILED = "Failed to update the client! Please retry"
+UPDATING_CLIENT_SUCCESS = "Client updated!"
 
 """Contacts List View"""
 MY_CONTACTS = "My Contacts"
@@ -157,3 +158,6 @@ UPDATE_PROFILE = "Update Profile"
 UPDATED_PROFILE_SUCCESS = "Your profile has been updated"
 UPDATE_PROFILE_FAIL = "Failed to update your profile! Please retry"
 FETCH_PROFILE_FAIL = "Oops! Failed to fetch your profile data! Please restart app"
+
+# Preferences
+PREFERENCES = "Preferences"

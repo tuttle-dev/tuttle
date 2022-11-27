@@ -3,8 +3,8 @@ from typing import Callable
 
 from flet import TemplateRoute, View
 
-from user.views.splash_screen import SplashScreen
-from user.views.profile_screen import ProfileScreen
+from user.view.splash_screen import SplashScreen
+from user.view.profile_screen import ProfileScreen
 from home.home_screen import HomeScreen
 from core.views.error_404_view import Error404Screen
 from contracts.view.contract_details import ContractDetailsScreen
@@ -19,11 +19,13 @@ from res.utils import (
     CONTRACT_DETAILS_SCREEN_ROUTE,
     CONTRACT_EDITOR_SCREEN_ROUTE,
     PROFILE_SCREEN_ROUTE,
+    PREFERENCES_SCREEN_ROUTE,
 )
 from projects.views.project_details import ProjectDetailsScreen
 from projects.views.project_editor import ProjectEditorScreen
 from dataclasses import dataclass
 from contracts.view.contract_editor import ContractEditorScreen
+from preferences.view.preferences_screen import PreferencesScreen
 
 
 @dataclass
@@ -48,12 +50,14 @@ class TuttleRoutes:
         dialogController: Callable,
         onNavigateBack: Callable,
         showSnackCallback: Callable,
+        onThemeChangedCallback: Callable,
     ):
         self.onChangeRouteCallback = onChangeRouteCallback
         self.localCacheHandler = localCacheHandler
         self.dialogController = dialogController
         self.onNavigateBack = onNavigateBack
         self.showSnackCallback = showSnackCallback
+        self.onThemeChangedCallback = onThemeChangedCallback
 
     def get_page_route_view(
         self,
@@ -83,6 +87,7 @@ class TuttleRoutes:
             view.appbar = screen.get_app_bar_if_any()
         if hasFloatingAction:
             view.floating_action_button = screen.get_floating_action_btn_if_any()
+
         return RouteView(view=view, keepBackStack=screen.keepBackStack)
 
     def parse_route(self, pageRoute: str):
@@ -194,6 +199,19 @@ class TuttleRoutes:
                 hasAppBar=profileScreen.hasAppBar,
                 hasFloatingAction=profileScreen.hasFloatingActionBtn,
                 screen=profileScreen,
+            )
+        elif routePath.match(PREFERENCES_SCREEN_ROUTE):
+            preferencesScreen = PreferencesScreen(
+                localCacheHandler=self.localCacheHandler,
+                onNavigateBack=self.onNavigateBack,
+                showSnackCallback=self.showSnackCallback,
+                onThemeChangedCallback=self.onThemeChangedCallback,
+            )
+            return self.get_page_route_view(
+                PREFERENCES_SCREEN_ROUTE,
+                hasAppBar=preferencesScreen.hasAppBar,
+                hasFloatingAction=preferencesScreen.hasFloatingActionBtn,
+                screen=preferencesScreen,
             )
         else:
             err404Screen = Error404Screen(

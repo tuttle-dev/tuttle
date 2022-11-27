@@ -117,7 +117,9 @@ class TuttleView(ABC):
 
     def __init__(
         self,
-        onChangeRouteCallback: Callable[[str, typing.Optional[any]], None],
+        onChangeRouteCallback: typing.Optional[
+            Callable[[str, typing.Optional[any]], None]
+        ] = None,
         intentHandler: typing.Optional[Intent] = None,
         hasFloatingActionBtn: bool = False,
         hasAppBar: bool = False,

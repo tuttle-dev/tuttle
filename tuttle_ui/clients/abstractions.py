@@ -22,7 +22,7 @@ class ClientDataSource(DataSource):
         pass
 
     @abstractmethod
-    def save_client(
+    def create_client(
         self,
         title: str,
     ) -> ClientIntentsResult:
@@ -30,6 +30,10 @@ class ClientDataSource(DataSource):
 
         returns new client as data if successful
         """
+        pass
+
+    def update_client(self, client: Client) -> ClientIntentsResult:
+        """attempts to update a client, if successful returns updated client as data"""
         pass
 
     @abstractmethod
@@ -66,9 +70,7 @@ class ClientsIntent(Intent):
         pass
 
     @abstractmethod
-    def create_or_update_client(
-        self, title: str, invoicing_contact_id: Optional[str]
-    ) -> ClientIntentsResult:
+    def create_client(self, title: str) -> ClientIntentsResult:
         """attempts to create a new client
 
         returns the client as data if intent is successful
@@ -85,6 +87,15 @@ class ClientsIntent(Intent):
     @abstractmethod
     def get_client_by_id(self, clientId) -> ClientIntentsResult:
         """if successful, returns the client as data"""
+        pass
+
+    @abstractmethod
+    def get_all_contacts_as_map(self) -> ClientIntentsResult:
+        """if successful, returns data as all contacts this user has in a map of contactId - contact"""
+        pass
+
+    def update_client(self, client: Client) -> ClientIntentsResult:
+        """attempts to update a client, if successful returns updated client as data"""
         pass
 
 

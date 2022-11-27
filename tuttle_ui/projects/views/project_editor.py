@@ -29,7 +29,7 @@ from clients.view.client_creator import NewClientPopUp
 from res.colors import GRAY_COLOR
 from res.fonts import BODY_1_SIZE
 
-
+# TODO BUG WHEN EDITING BACK BUTTON DOES NOT WORK
 class ProjectEditorScreen(TuttleView, UserControl):
     def __init__(
         self,

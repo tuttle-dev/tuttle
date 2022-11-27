@@ -73,7 +73,7 @@ class NewContractPopUp(DialogHandler):
                         ),
                     ]
                 ),
-                height=300,
+                height=200,
                 width=int(MIN_WINDOW_WIDTH * 0.8),
             ),
             actions=[

@@ -4,13 +4,19 @@ from clients.abstractions import ClientsIntent
 from clients.utils import ClientIntentsResult
 from clients.clients_data_source_impl import ClientDataSourceImpl
 from clients.client_model import Client
-from res.strings import CREATE_CLIENT_FAILED_ERR, CLIENT_NOT_FOUND
+from res.strings import (
+    CREATE_CLIENT_FAILED_ERR,
+    CLIENT_NOT_FOUND,
+    UPDATING_CLIENT_FAILED,
+)
+from contacts.contact_data_source_impl import ContactDataSourceImpl
 
 
 class ClientIntentImpl(ClientsIntent):
     def __init__(self, cache: LocalCache):
         super().__init__(cache=cache, dataSource=ClientDataSourceImpl())
         self.allClientsCache: Mapping[str, Client] = None
+        self.contactsDataSource = ContactDataSourceImpl()
 
     def get_all_clients(self) -> Mapping[str, Client]:
         if self.allClientsCache:
@@ -33,10 +39,10 @@ class ClientIntentImpl(ClientsIntent):
     def cache_clients_data(self, key: str, data: any):
         self.cache.set_value(key, data)
 
-    def create_or_update_client(
+    def create_client(
         self, title: str, invoicing_contact_id: Optional[str] = None
     ) -> ClientIntentsResult:
-        result = self.dataSource.save_client(title=title)
+        result = self.dataSource.create_client(title=title)
         if result.wasIntentSuccessful and invoicing_contact_id:
             self.dataSource.set_client_contact_id(
                 invoicing_contact_id=invoicing_contact_id, client_id=result.data
@@ -57,3 +63,12 @@ class ClientIntentImpl(ClientsIntent):
         self, invoicing_contact_id: str, client_id: str
     ) -> ClientIntentsResult:
         return self.dataSource.set_client_contact_id(invoicing_contact_id, client_id)
+
+    def get_all_contacts_as_map(self) -> ClientIntentsResult:
+        return self.contactsDataSource.get_all_contacts_as_map()
+
+    def update_client(self, client: Client):
+        result = self.dataSource.update_client(client)
+        if not result.wasIntentSuccessful:
+            result.errorMsg = UPDATING_CLIENT_FAILED
+        return result

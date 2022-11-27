@@ -5,7 +5,7 @@ from core.local_cache_impl import LocalCacheImpl
 from res.strings import APP_NAME
 from res.fonts import HEADLINE_4_SIZE, HEADLINE_FONT
 from res.colors import ERROR_COLOR, WHITE_COLOR, BLACK_COLOR_ALT
-from res.theme import APP_FONTS, APP_THEME, APP_THEME_MODE
+from res.theme import APP_FONTS, APP_THEME, THEME_MODES
 from routes import TuttleRoutes
 from res.dimens import MIN_WINDOW_WIDTH
 import typing
@@ -16,10 +16,14 @@ def main(page: Page):
     """Entry point of the app"""
     page.title = APP_NAME
     page.fonts = APP_FONTS
-    page.theme_mode = APP_THEME_MODE
+    page.theme_mode = THEME_MODES.system.value
     page.theme = APP_THEME
     page.window_min_width = MIN_WINDOW_WIDTH
     localCacheHandler = LocalCacheImpl(page=page)
+
+    def on_theme_mode_changed(themeMode: THEME_MODES):
+        page.theme_mode = themeMode.value
+        page.update()
 
     def show_snack(message: str, isError: bool):
         page.snack_bar = SnackBar(
@@ -72,6 +76,7 @@ def main(page: Page):
         dialogController=control_alert_dialog,
         onNavigateBack=on_view_pop,
         showSnackCallback=show_snack,
+        onThemeChangedCallback=on_theme_mode_changed,
     )
 
     def on_route_change(route):

@@ -26,7 +26,7 @@ class NewClientPopUp(DialogHandler):
                         mdSpace,
                         texts.get_std_txt_field(
                             onChangeCallback=self.on_client_title_changed,
-                            lbl="Client Name",
+                            lbl="Client Title",
                             hint="",
                         ),
                     ]
