@@ -77,7 +77,7 @@ class ProjectDataSourceImpl(ProjectDataSource):
     """DUMMY CONTENT BELOW ---  DELETE ALL"""
 
     def _get_total_projects(self):
-        return 50
+        return 8
 
     def _set_dummy_projects(self):
         self.projects.clear()

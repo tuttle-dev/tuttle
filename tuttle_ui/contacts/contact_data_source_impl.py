@@ -1,3 +1,5 @@
+import faker
+
 from .abstractions import ContactDataSource
 from .contact_model import Contact
 from .utils import ContactIntentsResult
@@ -101,23 +103,26 @@ class ContactDataSourceImpl(ContactDataSource):
     """DUMMY CONTENT BELOW ---  DELETE ALL"""
 
     def _set_dummy_contacts(self):
+        fake = faker.Faker(["de_DE", "en_US", "es_ES", "fr_FR", "it_IT", "sv_SE"])
         self.contacts.clear()
-        total = 50
+        total = 16
         for i in range(total):
+            street_line, city_line = fake.address().splitlines()
             a = Address(
                 id=i,
-                street=f"street 12{i}",
-                number=f"445{i}",
-                city="Berlin",
-                postal_code=f"365{i}",
-                country="Germany",
+                street=street_line.split(" ")[0],
+                number=street_line.split(" ")[1],
+                city=city_line.split(" ")[1],
+                postal_code=city_line.split(" ")[0],
+                country=fake.country(),
             )
+            first_name, last_name = fake.name().split(" ", 1)
             c = Contact(
                 id=i,
-                first_name=f"Saidah",
-                last_name=f"Van Lierop {i}",
-                email="sample@contact.com",
-                company=f"wellpalcreative",
+                first_name=first_name,
+                last_name=last_name,
+                email=fake.email(),
+                company=fake.company(),
                 address_id=a.id,
                 address=a,
             )
