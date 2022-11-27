@@ -32,9 +32,7 @@ class NewContactPopUp(DialogHandler):
                 height=dialogHeight,
                 content=Column(
                     controls=[
-                        texts.get_headline_txt(
-                            txt="Edit contact", size=HEADLINE_4_SIZE
-                        ),
+                        texts.get_headline_txt(txt="Add contact", size=HEADLINE_4_SIZE),
                         xsSpace,
                         texts.get_std_txt_field(
                             onChangeCallback=self.on_fname_changed,
