@@ -5,7 +5,7 @@ HEADLINE_FONT = "headline"
 
 ALL_FONTS = {
     DEFAULT_FONT: "/fonts/SF-Pro-Display-Regular.ttf",
-    HEADLINE_FONT: "/fonts/NewYork.ttf",
+    HEADLINE_FONT: "/fonts/SF-Pro-Display-Regular.ttf",
 }
 
 
