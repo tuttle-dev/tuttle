@@ -1,6 +1,8 @@
 import datetime
 from typing import Mapping
 
+import faker
+
 from projects.abstractions import ProjectDataSource
 from projects.utils import ProjectIntentsResult
 
@@ -80,16 +82,19 @@ class ProjectDataSourceImpl(ProjectDataSource):
         return 8
 
     def _set_dummy_projects(self):
+        fake = faker.Faker()
+
         self.projects.clear()
         total = self._get_total_projects()
         for i in range(total):
+            project_title = fake.bs()
             p = Project(
                 id=i,
                 contract_id=i * 2,
                 client_id=i * 3,
-                title="Tuttle Project Phase",
-                description=f"Ui Development of Tuttle Project Phase {i}, to be built with flet framework which combines flutter and python.",
-                unique_tag=f"tuttle_ui{i}",
+                title=project_title,
+                description=fake.paragraph(nb_sentences=2),
+                unique_tag=project_title.split(" ")[0].lower(),
                 is_completed=True if i % 2 == 0 else False,
                 start_date=datetime.date.today(),
                 end_date=datetime.date.today() + datetime.timedelta((i + 1)),
