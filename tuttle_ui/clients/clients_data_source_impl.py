@@ -1,3 +1,5 @@
+import faker
+
 from .abstractions import ClientDataSource
 from .client_model import Client, create_client_from_title
 from .utils import ClientIntentsResult
@@ -35,8 +37,12 @@ class ClientDataSourceImpl(ClientDataSource):
     """DUMMY CONTENT BELOW ---  DELETE ALL"""
 
     def _set_dummy_clients(self):
+        fake = faker.Faker(
+            ["fr_FR", "en_US", "de_DE", "es_ES", "it_IT", "sv_SE", "zh_CN"]
+        )
+
         self.clients.clear()
-        total = 50
+        total = 16
         for i in range(total):
-            c = Client(id=i, title=f"Client {i}", invoicing_contact_id=int(i * 3.142))
+            c = Client(id=i, title=fake.company(), invoicing_contact_id=int(i * 3.142))
             self.clients[c.id] = c
