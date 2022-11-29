@@ -208,7 +208,7 @@ class HomeScreen(TuttleView, UserControl):
         if self.mounted:
             self.is_on_main_menu = False
             self.main_menu.selected_index = None
-            self.show_snack("un implemented")
+            self.show_snack("not implemented yet")
             self.update()
 
     # ACTION BUTTONS

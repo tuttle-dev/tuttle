@@ -22,7 +22,7 @@ class UserDataSourceImpl(UserDataSource):
             id=456,
             name="vlad",
             subtitle="freelancer",
-            email="vlad.edna@gmail.com",
+            email="vlad@example.com",
             phone_number="123000123",
             address_id=add.id,
             address=add,

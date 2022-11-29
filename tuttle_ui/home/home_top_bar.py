@@ -40,7 +40,8 @@ def get_top_bar(
             controls=[
                 Row(
                     controls=[
-                        get_app_logo(width=10),
+                        # TODO: replace with actual app logo
+                        # get_app_logo(width=10),
                         Text(
                             APP_NAME,
                             size=HEADLINE_4_SIZE,
