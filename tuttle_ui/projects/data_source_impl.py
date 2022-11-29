@@ -5,7 +5,7 @@ import faker
 from clients.client_model import Client
 from contracts.contract_model import Contract
 from core.models import Cycle, IntentResult, TimeUnit
-
+from typing import Optional
 from .abstractions import ProjectDataSource
 from .project_model import Project
 
@@ -22,8 +22,6 @@ class ProjectDataSourceImpl(ProjectDataSource):
 
     def save_project(
         self,
-        id: int,
-        contract_id: int,
         contract: Contract,
         title: str,
         description: str,
@@ -31,10 +29,9 @@ class ProjectDataSourceImpl(ProjectDataSource):
         start_date: datetime.date,
         end_date: datetime.date,
         is_completed: bool = False,
+        project: Optional[Project] = None,
     ) -> IntentResult:
-        return IntentResult(
-            was_intent_successful=True,
-        )
+        return IntentResult(was_intent_successful=True, data=project)
 
     def get_project_by_id(self, projectId) -> IntentResult:
         try:

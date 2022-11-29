@@ -13,7 +13,7 @@ from flet import (
 )
 from core.models import IntentResult
 from core.abstractions import TuttleView
-from core.views import get_dropdown, horizontalProgressBar, mdSpace, START_ALIGNMENT
+from core.views import get_dropdown, horizontal_progress, mdSpace, START_ALIGNMENT
 from preferences.preferences_intents import PreferencesIntentImpl
 from preferences.preferences_model import Preferences
 from res.dimens import SPACE_MD, SPACE_STD, SPACE_XS, MIN_WINDOW_WIDTH
@@ -36,6 +36,7 @@ class PreferencesScreen(TuttleView, UserControl):
             show_snack=show_snack,
             dialog_controller=dialog_controller,
             on_navigate_back=on_navigate_back,
+            keep_back_stack=True,
         )
         self.intent_handler = PreferencesIntentImpl(client_storage=local_storage)
         self.on_theme_changed_callback = on_theme_changed
@@ -57,7 +58,7 @@ class PreferencesScreen(TuttleView, UserControl):
 
     def build(self):
 
-        self.loading_indicator = horizontalProgressBar
+        self.loading_indicator = horizontal_progress
         self.sideBar = Container(
             padding=padding.all(SPACE_STD),
             width=int(MIN_WINDOW_WIDTH * 0.3),

@@ -24,7 +24,7 @@ from core.constants_and_enums import (
     AlertDialogControls,
 )
 from core.models import IntentResult
-from core.views import horizontalProgressBar, mdSpace
+from core.views import horizontal_progress, mdSpace
 from projects.intent_impl import ProjectsIntentImpl
 from projects.project_model import Project
 from res import colors, dimens, fonts
@@ -67,7 +67,7 @@ class ViewProjectScreen(TuttleView, UserControl):
         )
         self.intent_handler = ProjectsIntentImpl(local_storage=local_storage)
         self.project_id = project_id
-        self.loading_indicator = horizontalProgressBar
+        self.loading_indicator = horizontal_progress
         self.project: Optional[Project] = None
 
     def display_project_data(self):

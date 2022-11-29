@@ -14,7 +14,7 @@ from flet import (
 )
 
 from core.models import IntentResult
-from core.views import horizontalProgressBar, mdSpace, get_headline_txt
+from core.views import horizontal_progress, mdSpace, get_headline_txt
 
 from res.colors import ERROR_COLOR
 from res.fonts import HEADLINE_4_SIZE
@@ -48,7 +48,7 @@ class ClientsListView(TuttleView, UserControl):
             dialog_controller=dialog_controller,
         )
         self.intent_handler = ClientsIntentImpl(local_storage=local_storage)
-        self.loading_indicator = horizontalProgressBar
+        self.loading_indicator = horizontal_progress
         self.no_clients_control = Text(
             value=NO_CLIENTS_ADDED, color=ERROR_COLOR, visible=False
         )

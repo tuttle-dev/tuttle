@@ -34,7 +34,7 @@ from core.views import (
     get_headline_with_subtitle,
     get_primary_btn,
     get_std_txt_field,
-    horizontalProgressBar,
+    horizontal_progress,
     mdSpace,
     smSpace,
     update_dropdown_items,
@@ -64,7 +64,7 @@ class ContractEditorScreen(TuttleView, UserControl):
         )
         self.intent_handler = ContractsIntentImpl(local_storage=local_storage)
 
-        self.loading_indicator = horizontalProgressBar
+        self.loading_indicator = horizontal_progress
         self.new_client_pop_up = None
 
         # info of contract being edited / created

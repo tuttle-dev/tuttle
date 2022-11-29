@@ -26,7 +26,7 @@ from core.constants_and_enums import (
     TXT_ALIGN_JUSTIFY,
     AlertDialogControls,
 )
-from core.views import horizontalProgressBar, mdSpace
+from core.views import horizontal_progress, mdSpace
 from res import colors, fonts, dimens
 from res.dimens import MIN_WINDOW_WIDTH
 from res.strings import (
@@ -72,7 +72,7 @@ class ViewContractScreen(TuttleView, UserControl):
         )
         self.intent_handler = ContractsIntentImpl(local_storage=local_storage)
         self.contract_id = contract_id
-        self.loading_indicator = horizontalProgressBar
+        self.loading_indicator = horizontal_progress
         self.contract: Optional[Contract] = None
 
     def display_contract_data(self):

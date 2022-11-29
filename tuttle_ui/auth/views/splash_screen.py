@@ -9,7 +9,7 @@ from flet import Column, Container, ResponsiveRow, UserControl, padding
 from ..auth_intent_impl import AuthIntentImpl
 from core.constants_and_enums import CENTER_ALIGNMENT
 from core.views import (
-    horizontalProgressBar,
+    horizontal_progress,
     get_labelled_logo,
     stdSpace,
     get_headline_with_subtitle,
@@ -99,7 +99,7 @@ class SplashScreen(TuttleView, UserControl):
 
     def build(self):
         """Called when page is built"""
-        self.loading_indicator = horizontalProgressBar
+        self.loading_indicator = horizontal_progress
         self.form_container = Column(
             controls=[
                 get_labelled_logo(),

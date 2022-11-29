@@ -17,7 +17,7 @@ from contacts.intent_impl import ContactsIntentImpl
 from core.abstractions import TuttleView
 from core.constants_and_enums import AlertDialogControls
 from core.models import Address, IntentResult
-from core.views import get_headline_txt, horizontalProgressBar, mdSpace
+from core.views import get_headline_txt, horizontal_progress, mdSpace
 from res.colors import ERROR_COLOR
 from res.dimens import SPACE_MD, SPACE_STD
 from res.fonts import HEADLINE_4_SIZE
@@ -42,7 +42,7 @@ class ContactsListView(TuttleView, UserControl):
             dialog_controller=dialog_controller,
         )
         self.intent_handler = ContactsIntentImpl(local_storage=local_storage)
-        self.loading_indicator = horizontalProgressBar
+        self.loading_indicator = horizontal_progress
         self.no_contacts_control = Text(
             value=NO_CONTACTS_ADDED, color=ERROR_COLOR, visible=False
         )

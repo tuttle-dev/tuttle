@@ -11,7 +11,7 @@ from flet import TemplateRoute, View
 from auth.views.splash_screen import SplashScreen
 from home.home_screen import HomeScreen
 from projects.views.view_project_screen import ViewProjectScreen
-from projects.views.create_or_edit_project_screen import CreateOrEditProjectScreen
+from projects.views.project_editor import ProjectEditorScreen
 from contracts.views.view_contract_screen import ViewContractScreen
 from contracts.views.contract_editor import ContractEditorScreen
 from preferences.views.preferences_screen import PreferencesScreen
@@ -144,6 +144,21 @@ class TuttleRoutes:
                 on_navigate_back=self.on_navigate_back,
                 local_storage=self.local_storage,
                 contract_id=contractId,
+            )
+
+        elif routePath.match(PROJECT_EDITOR_SCREEN_ROUTE) or routePath.match(
+            f"{PROJECT_EDITOR_SCREEN_ROUTE}/:projectId"
+        ):
+            projectId = None
+            if hasattr(routePath, "projectId"):
+                projectId = routePath.projectId
+            screen = ProjectEditorScreen(
+                navigate_to_route=self.on_change_route,
+                show_snack=self.show_snack,
+                dialog_controller=self.dialog_controller,
+                on_navigate_back=self.on_navigate_back,
+                local_storage=self.local_storage,
+                project_id=projectId,
             )
 
         else:

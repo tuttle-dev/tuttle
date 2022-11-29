@@ -5,7 +5,7 @@ from flet import Card, Column, Container, GridView, ResponsiveRow, Text, padding
 
 from contracts.intent_impl import ContractsIntentImpl
 from core.abstractions import ClientStorage
-from core.views import get_headline_txt, horizontalProgressBar, mdSpace
+from core.views import get_headline_txt, horizontal_progress, mdSpace
 from res.colors import ERROR_COLOR
 from res.fonts import HEADLINE_4_SIZE
 from res.dimens import SPACE_MD, SPACE_STD
@@ -26,7 +26,7 @@ class ContractsListView(TuttleView, UserControl):
             dialog_controller=dialog_controller,
         )
         self.intent_handler = ContractsIntentImpl(local_storage=local_storage)
-        self.loading_indicator = horizontalProgressBar
+        self.loading_indicator = horizontal_progress
         self.no_contracts_control = Text(
             value=NO_CONTRACTS_ADDED, color=ERROR_COLOR, visible=False
         )

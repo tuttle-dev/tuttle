@@ -117,10 +117,10 @@ def get_std_txt_field(
 
 
 def get_std_multiline_field(
-    onChangeCallback,
+    on_change,
     lbl: str,
     hint: str,
-    onFocusCallback: typing.Optional[Callable] = None,
+    on_focus: typing.Optional[Callable] = None,
     keyboardType: str = KEYBOARD_MULTILINE,
     minLines: int = 3,
     maxLines: int = 5,
@@ -136,8 +136,8 @@ def get_std_multiline_field(
         focused_border_width=1,
         min_lines=minLines,
         max_lines=maxLines,
-        on_focus=onFocusCallback,
-        on_change=onChangeCallback,
+        on_focus=on_focus,
+        on_change=on_change,
         text_size=fonts.BODY_1_SIZE,
         label_style=TextStyle(size=fonts.BODY_2_SIZE),
         error_style=TextStyle(size=fonts.BODY_2_SIZE, color=colors.ERROR_COLOR),
@@ -215,7 +215,7 @@ def get_labelled_logo():
     )
 
 
-horizontalProgressBar = ProgressBar(
+horizontal_progress = ProgressBar(
     width=320,
     height=4,
 )

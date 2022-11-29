@@ -24,7 +24,7 @@ from core.constants_and_enums import (
     KEYBOARD_PHONE,
     KEYBOARD_TEXT,
 )
-from core.views import horizontalProgressBar
+from core.views import horizontal_progress
 from core.views import stdSpace
 from core.views import get_headline_txt, get_std_txt_field, get_error_txt
 from core.views import get_primary_btn
@@ -303,7 +303,7 @@ class ProfileScreen(TuttleView, UserControl):
         self.country_field.value = self.country
 
     def build(self):
-        self.progressBar = horizontalProgressBar
+        self.progressBar = horizontal_progress
         self.progressBar.visible = False
         self.set_profile_form()
         self.form_container = Column(

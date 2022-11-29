@@ -8,7 +8,7 @@ from flet import (
 )
 
 from core.abstractions import TuttleView
-from core.views import get_headline_txt, horizontalProgressBar, mdSpace
+from core.views import get_headline_txt, horizontal_progress, mdSpace
 
 from projects.intent_impl import ProjectsIntentImpl
 from res.colors import ERROR_COLOR
@@ -29,7 +29,7 @@ class ProjectsListView(TuttleView, UserControl):
             dialog_controller=dialog_controller,
         )
         self.intent_handler = ProjectsIntentImpl(local_storage=local_storage)
-        self.loading_indicator = horizontalProgressBar
+        self.loading_indicator = horizontal_progress
         self.no_projects_component = Text(
             value=NO_PROJECTS_ADDED, color=ERROR_COLOR, visible=False
         )

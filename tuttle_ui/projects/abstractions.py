@@ -25,8 +25,6 @@ class ProjectDataSource(ABC):
     @abstractmethod
     def save_project(
         self,
-        id: int,
-        contract_id: int,
         contract: Contract,
         title: str,
         description: str,
@@ -34,6 +32,7 @@ class ProjectDataSource(ABC):
         start_date: datetime.date,
         end_date: datetime.date,
         is_completed: bool = False,
+        project: Optional[Project] = None,
     ) -> IntentResult:
         """attempts to create or update a project
 
@@ -66,7 +65,6 @@ class ProjectsIntent(ABC):
     @abstractmethod
     def save_project(
         self,
-        id: str,
         title: str,
         description: str,
         unique_tag: str,

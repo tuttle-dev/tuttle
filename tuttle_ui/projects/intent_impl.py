@@ -31,7 +31,6 @@ class ProjectsIntentImpl(ProjectsIntent):
 
     def save_project(
         self,
-        id: str,
         title: str,
         description: str,
         unique_tag: str,
@@ -41,12 +40,16 @@ class ProjectsIntentImpl(ProjectsIntent):
         contract: Optional[Contract] = None,
         project: Optional[Project] = None,
     ) -> IntentResult:
-        """attempts to create or update a project
-
-        if project is passed, then it is an update operation
-        returns the new /updated project as data if successful
-        """
-        pass
+        return self.data_source.save_project(
+            title=title,
+            description=description,
+            unique_tag=unique_tag,
+            start_date=start_date,
+            end_date=end_date,
+            is_completed=is_completed,
+            contract=contract,
+            project=project,
+        )
 
     def get_project_by_id(self, projectId) -> IntentResult:
         result = self.data_source.get_project_by_id(projectId=projectId)
@@ -54,14 +57,14 @@ class ProjectsIntentImpl(ProjectsIntent):
             result.error_msg = "-TODO- error message"
         return result
 
-    def get_all_clients_as_map(self) -> IntentResult:
+    def get_all_clients_as_map(self) -> Mapping[int, Client]:
         result = self.clients_data_source.get_all_clients_as_map()
         if result.was_intent_successful:
             return result.data
         else:
             return {}
 
-    def get_all_contracts_as_map(self) -> IntentResult:
+    def get_all_contracts_as_map(self) -> Mapping[int, Contract]:
         result = self.contracts_data_source.get_all_contracts_as_map()
         if result.was_intent_successful:
             return result.data
