@@ -2,7 +2,7 @@ import textwrap
 from dataclasses import dataclass
 from typing import Optional
 
-from core.models import Address
+from core.models import Address, get_empty_address
 
 
 @dataclass
@@ -10,8 +10,8 @@ class Contact:
     """An entry in the address book."""
 
     id: Optional[int]
-    first_name: Optional[str]
-    last_name: Optional[str]
+    first_name: str
+    last_name: str
     company: Optional[str]
     email: Optional[str]
     address_id: Optional[int]
@@ -54,13 +54,16 @@ class Contact:
         )
 
 
-def get_empty_contact(address: Address):
-    return Contact(
+def get_empty_contact():
+    """helper function, returns an empty contact for an editor"""
+    address = get_empty_address()
+    contact = Contact(
         id=None,
         first_name="",
         last_name="",
         company="",
         email="",
-        address_id=address.id,
         address=address,
+        address_id=address.id,
     )
+    return contact

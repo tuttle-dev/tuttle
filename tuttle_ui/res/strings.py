@@ -4,13 +4,20 @@ APP_NAME = "Tuttle"
 APP_DESCRIPTION = "Time and money management for freelancers"
 APP_DESCRIPTION_LENGTHY = "Tuttle is a time and finance planning tool tailored for the requirements of freelancers."
 
+"""Page Not Found screen strings"""
+PAGE_NOT_FOUND = "OOps! Looks like you took a wrong turn"
+GO_BACK = "Go Back"
+
+
 """splash screen strings"""
 WELCOME_TITLE = "Hi, Welcome to Tuttle."
 WELCOME_SUBTITLE = "Let's get you started"
 GET_STARTED = "Get Started"
 SPLASH_IMG_SEMANTIC_LBL = "Tuttle splash image"
 
+
 TOOLTIP_NEW = "New"
+ADD_NEW_BUTTON_TXT = "New"
 TOOLTIP_NOTIFICATIONS = "Notifications"
 TOOLTIP_MY_PROFILE = "My Profile"
 
@@ -28,6 +35,7 @@ ADDRESS = "Address"
 ADDRESS_HINT_OPTIONAL = "For your contracts & invoices. You can skip for now"
 ID_LBL = "Id"
 INVOICING_CONTACT_ID = "Invoicing Contact Id"
+INVOICING_CONTACT = "Invoicing Contact"
 
 """User info errors"""
 MISSING_NAME_ERR = "Your name is required"
@@ -59,10 +67,10 @@ START_DATE = "Start Date"
 END_DATE = "Deadline"
 CLIENT_ID_LBL = "Client Id"
 CONTRACT_ID_LBL = "Contract Id"
-PROJECT_TAG = "#"
+HASH_TAG = "#"
 PROJECT_STATUS_LBL = "status"
-SIDE_MENU_MAIN_GROUP_TITLE = "Work"
-SIDE_MENU_SUB_GROUP_TITLE = "Generated"
+MAIN_MENU_GROUP_TITLE = "Work"
+SECONDARY_MENU_GROUP_TITLE = "Generate"
 PROJECT_LBL = "Project"
 EDIT_PROJECT = "Edit Project"
 MARK_AS_COMPLETE = "Mark as complete"
@@ -98,6 +106,7 @@ MY_CONTRACTS = "My Contracts"
 NO_CONTRACTS_ADDED = "You currently have no contracts"
 
 """Clients List View"""
+CLIENT_LBL = "Client"
 MY_CLIENTS = "My Clients"
 NO_CLIENTS_ADDED = "You currently have no clients"
 EDIT_CLIENT_TOOLTIP = "Edit client"
@@ -105,6 +114,7 @@ UPDATING_CLIENT_FAILED = "Failed to update the client! Please retry"
 UPDATING_CLIENT_SUCCESS = "Client updated!"
 
 """Contacts List View"""
+CONTACT_LBL = "Contact"
 MY_CONTACTS = "My Contacts"
 NO_CONTACTS_ADDED = "You currentyl have no contacts"
 COMPANY_LBL = "Company"
@@ -125,6 +135,7 @@ CONTRACT_BILLING_CYCLE = "Billing Cycle"
 CONTRACT_TIME_UNIT = "Time Unit"
 
 """Contract Details screen"""
+CONTRACT_LBL = "Contract"
 CONTRACT_STATUS_LBL = "status"
 DELETE_CONTRACT = "Delete contract"
 EDIT_CONTRACT = "Edit contract"
@@ -161,3 +172,11 @@ FETCH_PROFILE_FAIL = "Oops! Failed to fetch your profile data! Please restart ap
 
 # Preferences
 PREFERENCES = "Preferences"
+
+# Home sub menu
+INVOICE = "Invoice"
+
+# ALERTS
+OK = "OK"
+CANCEL = "Cancel"
+PROCEED = "Proceed"

@@ -1,1 +1,1 @@
-"""Core components shared across all tuttle modules"""
+"""Core modules used throughout the app"""

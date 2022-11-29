@@ -1,6 +1,8 @@
 import enum
 import datetime
 import textwrap
+from flet import View
+from typing import Callable
 from dataclasses import dataclass
 from typing import Optional
 from res.strings import (
@@ -118,7 +120,48 @@ class Address:
         """
         )
 
+    def is_empty(self):
+        return (
+            not self.street
+            and not self.number
+            and not self.postal_code
+            and not self.city
+            and not self.country
+        )
+
 
 def get_empty_address() -> Address:
     """ "Returns an empty address used as a default"""
     return Address(id=None, street="", number="", city="", postal_code="", country="")
+
+
+class IntentResult:
+    """Wraps the result of a view's intent
+
+    data - the result else None
+    was_intent_successful - True if the operation did not encounter any error
+    error_msg_if_err - error message to be shown to the user, typically set by the intent instance
+    log_message - optional message to be logged, typically set by data_source instance, is not shown to the user
+    """
+
+    def __init__(
+        self,
+        data,
+        was_intent_successful: bool,
+        error_msg_if_err: str = "",
+        log_message: str = "",
+    ):
+        super().__init__()
+        self.error_msg = error_msg_if_err
+        self.data = data
+        self.was_intent_successful = was_intent_successful
+        self.log_message = log_message
+
+
+@dataclass
+class RouteView:
+    """A utility class that defines a route view"""
+
+    view: View
+    keep_back_stack: bool
+    on_window_resized: Callable

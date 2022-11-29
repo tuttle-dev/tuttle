@@ -5,6 +5,7 @@ from pydantic import condecimal
 from decimal import Decimal
 from core.models import Cycle, TimeUnit
 from res.strings import ACTIVE, COMPLETED, UPCOMING, ALL
+from clients.client_model import Client
 
 
 @dataclass
@@ -13,18 +14,19 @@ class Contract:
 
     id: Optional[int]
     title: str
-    signature_date: Optional[datetime.date]
-    start_date: Optional[datetime.date]
+    signature_date: datetime.date
+    start_date: datetime.date
     end_date: Optional[datetime.date]
-    client_id: Optional[int]
-    rate: Optional[condecimal(decimal_places=2)]
-    currency: Optional[str]
-    VAT_rate: Optional[Decimal]
-    unit: Optional[TimeUnit]
-    units_per_workday: Optional[int]
+    client_id: int
+    client: Client
+    rate: condecimal(decimal_places=2)
+    currency: str
+    VAT_rate: Decimal
+    unit: TimeUnit
+    units_per_workday: int
     volume: Optional[int]
     term_of_payment: Optional[int]
-    billing_cycle: Optional[Cycle]
+    billing_cycle: Cycle = Cycle.hourly
     is_completed: bool = False
 
     def get_start_date_as_str(self) -> str:
@@ -51,23 +53,3 @@ class Contract:
         else:
             # default
             return ALL
-
-
-# NOTE - other fields are marked as optional to support quick creation of a contract using just title
-def create_contract_from_title(title: str) -> Contract:
-    return Contract(
-        id=1,
-        title=title,
-        signature_date=None,
-        start_date=None,
-        end_date=None,
-        client_id=None,
-        rate=None,
-        currency=None,
-        VAT_rate=None,
-        unit=None,
-        units_per_workday=None,
-        volume=None,
-        term_of_payment=None,
-        billing_cycle=None,
-    )

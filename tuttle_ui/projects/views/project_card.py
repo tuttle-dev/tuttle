@@ -6,34 +6,32 @@ from flet import (
     ElevatedButton,
     Row,
     Text,
-    TextButton,
+    ResponsiveRow,
     border_radius,
     padding,
 )
 from res.strings import (
     START_DATE,
     END_DATE,
-    CLIENT_ID_LBL,
-    CONTRACT_ID_LBL,
-    PROJECT_TAG,
+    CLIENT_LBL,
+    CONTRACT_LBL,
+    HASH_TAG,
 )
-from core.views.texts import (
+from core.views import (
     get_headline_with_subtitle,
 )
-from core.views.flet_constants import (
+from core.constants_and_enums import (
     END_ALIGNMENT,
     SPACE_BETWEEN_ALIGNMENT,
     CENTER_ALIGNMENT,
 )
-from res.colors import ERROR_COLOR, GRAY_COLOR
+from res.colors import ERROR_COLOR, GRAY_COLOR, PRIMARY_COLOR
 from res.fonts import HEADLINE_4_SIZE, BODY_2_SIZE
-from res.spacing import SPACE_STD, SPACE_XS
+from res.dimens import SPACE_STD, SPACE_XS
 from res.strings import VIEW_DETAILS
 
 from typing import Callable
-from projects.projects_model import Project
-
-LABEL_WIDTH = 70
+from projects.project_model import Project
 
 
 class ProjectCard(UserControl):
@@ -53,60 +51,73 @@ class ProjectCard(UserControl):
                 titleSize=HEADLINE_4_SIZE,
                 subtitleColor=GRAY_COLOR,
             ),
-            Row(
+            ResponsiveRow(
                 controls=[
                     Text(
-                        CONTRACT_ID_LBL,
+                        CONTRACT_LBL,
                         color=GRAY_COLOR,
                         size=BODY_2_SIZE,
-                        width=LABEL_WIDTH,
+                        col={"xs": "12", "sm": "5", "md": "3"},
                     ),
-                    Text(self.project.contract_id, size=BODY_2_SIZE),
+                    Text(
+                        self.project.contract.title,
+                        size=BODY_2_SIZE,
+                        col={"xs": "12", "sm": "7", "md": "9"},
+                    ),
                 ],
                 spacing=SPACE_XS,
                 run_spacing=0,
                 vertical_alignment=CENTER_ALIGNMENT,
             ),
-            Row(
+            ResponsiveRow(
                 controls=[
                     Text(
-                        CLIENT_ID_LBL,
+                        CLIENT_LBL,
                         color=GRAY_COLOR,
                         size=BODY_2_SIZE,
-                        width=LABEL_WIDTH,
+                        col={"xs": "12", "sm": "5", "md": "3"},
                     ),
-                    Text(self.project.client_id, size=BODY_2_SIZE),
+                    Text(
+                        self.project.contract.client.title,
+                        size=BODY_2_SIZE,
+                        col={"xs": "12", "sm": "7", "md": "9"},
+                    ),
                 ],
                 spacing=SPACE_XS,
                 run_spacing=0,
                 vertical_alignment=CENTER_ALIGNMENT,
             ),
-            Row(
+            ResponsiveRow(
                 controls=[
                     Text(
                         START_DATE,
                         color=GRAY_COLOR,
                         size=BODY_2_SIZE,
-                        width=LABEL_WIDTH,
+                        col={"xs": "12", "sm": "5", "md": "3"},
                     ),
-                    Text(self.project.get_start_date_as_str(), size=BODY_2_SIZE),
+                    Text(
+                        self.project.get_start_date_as_str(),
+                        size=BODY_2_SIZE,
+                        col={"xs": "12", "sm": "7", "md": "9"},
+                    ),
                 ],
                 spacing=SPACE_XS,
                 run_spacing=0,
                 vertical_alignment=CENTER_ALIGNMENT,
             ),
-            Row(
+            ResponsiveRow(
                 controls=[
                     Text(
                         END_DATE,
                         color=GRAY_COLOR,
                         size=BODY_2_SIZE,
-                        width=LABEL_WIDTH,
+                        col={"xs": "12", "sm": "5", "md": "3"},
                     ),
                     Text(
                         self.project.get_end_date_as_str(),
                         size=BODY_2_SIZE,
                         color=ERROR_COLOR,
+                        col={"xs": "12", "sm": "7", "md": "9"},
                     ),
                 ],
                 spacing=SPACE_XS,
@@ -121,10 +132,8 @@ class ProjectCard(UserControl):
                     Row(
                         spacing=0,
                         controls=[
-                            Text(f"{PROJECT_TAG}"),
-                            Text(
-                                f"{self.project.unique_tag}",
-                            ),
+                            Text(f"{HASH_TAG}", color=PRIMARY_COLOR),
+                            Text(f"{self.project.unique_tag}", color=GRAY_COLOR),
                         ],
                     ),
                     ElevatedButton(

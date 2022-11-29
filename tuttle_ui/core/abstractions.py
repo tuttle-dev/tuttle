@@ -1,22 +1,18 @@
 import typing
 from abc import ABC, abstractmethod
 from typing import Callable
-
+from .constants_and_enums import AlertDialogControls, START_ALIGNMENT, AUTO_SCROLL
 from flet import AlertDialog
 
-from core.views.alert_dialog_controls import AlertDialogControls
 
-from .views.flet_constants import START_ALIGNMENT
-
-
-class LocalCache(ABC):
+class ClientStorage(ABC):
     """An abstraction that defines methods for caching data"""
 
     def __init__(
         self,
     ):
         super().__init__()
-        self.tuttleKeysPrefix = "tuttle"
+        self.keys_prefix = "tuttle_app"
 
     @abstractmethod
     def set_value(self, key: str, value: any):
@@ -36,122 +32,37 @@ class LocalCache(ABC):
         pass
 
 
-class IntentResult(ABC):
-    """An absraction that defines the result of a view's intent"""
+class TuttleView(ABC):
+    """Abstract class for all UI screens"""
 
     def __init__(
         self,
-        data,
-        wasIntentSuccessful: bool,
-        errorMsgIfAny: str = "",
-        logMsg: str = "",
+        navigate_to_route: Callable,
+        show_snack: Callable,
+        dialog_controller: Callable,
+        vertical_alignment_in_parent: str = START_ALIGNMENT,
+        horizontal_alignment_in_parent: str = START_ALIGNMENT,
+        keep_back_stack=True,
+        on_navigate_back: typing.Optional[Callable] = None,
+        page_scroll_type: typing.Optional[str] = AUTO_SCROLL,
     ):
         super().__init__()
-        self.errorMsg = errorMsgIfAny
-        self.data = data
-        self.wasIntentSuccessful = wasIntentSuccessful
-        self.logMsg = logMsg
-
-
-class DataSource(ABC):
-    """A simple abstraction that defines a dataSource class"""
-
-    def __init__(
-        self,
-    ):
-        super().__init__()
-
-
-class Intent(ABC):
-    """A simple abstraction that defines an intent class
-
-    cache - provides access to local/client storage
-    dataSource - provides access to the data dataSource
-    """
-
-    def __init__(self, cache: LocalCache, dataSource: DataSource):
-        super().__init__()
-        self.cache = cache
-        self.dataSource = dataSource
-
-
-class TuttleDestinationView(ABC):
-    """Abstract class for all UI destination screens
-
-    a destination screen does NOT take entire page
-    typically added as a tab / navigation rail / bottom nav destination
-
-    onChangeRouteCallback - used to route to a new destination
-    intentHandler - optional Intent object for communicating with dataSource
-    bgColor - background color, default is [WHITE_COLOR]
-    """
-
-    def __init__(
-        self,
-        onChangeRouteCallback: Callable[[str, typing.Optional[any]], None],
-        intentHandler: typing.Optional[Intent] = None,
-        pageDialogController: typing.Optional[
-            Callable[[any, AlertDialogControls], None]
-        ] = None,
-    ):
-        super().__init__()
-        self.changeRoute = onChangeRouteCallback
-        self.intentHandler = intentHandler
-        self.pageDialogController = pageDialogController
+        self.navigate_to_route = navigate_to_route
+        self.show_snack = show_snack
+        self.dialog_controller = dialog_controller
+        self.vertical_alignment_in_parent = vertical_alignment_in_parent
+        self.horizontal_alignment_in_parent = horizontal_alignment_in_parent
+        self.keep_back_stack = keep_back_stack
+        self.on_navigate_back = on_navigate_back
+        self.page_scroll_type = page_scroll_type
 
     def parent_intent_listener(self, intent: str, data: any):
-        """listens for an intent from parent screen"""
+        """listens for an intent from parent view"""
         return None
 
-
-class TuttleView(ABC):
-    """Abstract class for all UI screens
-
-    onChangeRouteCallback - used to route to a new destination
-    intentHandler - optional Intent object for communicating with dataSource
-    hasFloatingActionBtn - if screen has a floating action button, default is False
-    hasAppBar - if screen has an appbar, default is False
-    addDialogToPageCallback - [optional] used to add a dialog to the page
-    keepBackStack - True if this screen has a go back button
-    """
-
-    def __init__(
-        self,
-        onChangeRouteCallback: typing.Optional[
-            Callable[[str, typing.Optional[any]], None]
-        ] = None,
-        intentHandler: typing.Optional[Intent] = None,
-        hasFloatingActionBtn: bool = False,
-        hasAppBar: bool = False,
-        pageDialogController: typing.Optional[
-            Callable[[any, AlertDialogControls], None]
-        ] = None,
-        verticalAlignmentInParent=START_ALIGNMENT,
-        horizontalAlignmentInParent=START_ALIGNMENT,
-        keepBackStack=False,
-        onNavigateBack: typing.Optional[Callable] = None,
-        showSnackCallback: typing.Optional[Callable[[str, bool], None]] = None,
-    ):
-        super().__init__()
-        self.hasFloatingActionBtn = hasFloatingActionBtn
-        self.hasAppBar = hasAppBar
-        self.changeRoute = onChangeRouteCallback
-        self.intentHandler = intentHandler
-        self.pageDialogController = pageDialogController
-        self.verticalAlignmentInParent = verticalAlignmentInParent
-        self.horizontalAlignmentInParent = horizontalAlignmentInParent
-        self.keepBackStack = keepBackStack
-        self.onNavigateBack = onNavigateBack
-        # callback that shows a snack message which can be an error
-        self.showSnack = showSnackCallback
-
-    def get_floating_action_btn_if_any(self):
-        """Returns a floating action button OR None"""
-        return None
-
-    def get_app_bar_if_any(self):
-        """Returns an app bar OR None"""
-        return None
+    def window_on_resized(self, width, height):
+        self.page_width = width
+        self.page_height = height
 
 
 class DialogHandler(ABC):
@@ -160,17 +71,17 @@ class DialogHandler(ABC):
     def __init__(
         self,
         dialog: AlertDialog,
-        dialogController: Callable[[any, AlertDialogControls], None],
+        dialog_controller: Callable[[any, AlertDialogControls], None],
     ):
         super().__init__()
-        self.dialogController = dialogController
+        self.dialog_controller = dialog_controller
         self.dialog: AlertDialog = dialog
 
     def close_dialog(self, e: typing.Optional[any] = None):
-        self.dialogController(self.dialog, AlertDialogControls.CLOSE)
+        self.dialog_controller(self.dialog, AlertDialogControls.CLOSE)
 
     def open_dialog(self, e: typing.Optional[any] = None):
-        self.dialogController(self.dialog, AlertDialogControls.ADD_AND_OPEN)
+        self.dialog_controller(self.dialog, AlertDialogControls.ADD_AND_OPEN)
 
     def dimiss_open_dialogs(self):
         if self.dialog is not None and self.dialog.open:

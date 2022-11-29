@@ -1,7 +1,7 @@
 """Defines the app theme"""
 
 from flet import theme
-from .fonts import ALL_FONTS, DEFAULT_FONT
+from .fonts import DEFAULT_FONT
 from .colors import PRIMARY_COLOR
 from enum import Enum
 
@@ -30,5 +30,3 @@ APP_THEME = theme.Theme(
     font_family=DEFAULT_FONT,
     visual_density="adaptivePlatformDensity",
 )
-
-APP_FONTS = ALL_FONTS

@@ -1,1 +1,1 @@
-"""Resource package specifying colors, fonts, strings, assets paths, and app theme"""
+"""Defines App resources - strings, fonts, theme, colors, paths"""
