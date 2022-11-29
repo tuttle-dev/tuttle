@@ -169,7 +169,7 @@ class ViewProjectScreen(TuttleView, UserControl):
             size=fonts.BUTTON_SIZE, color=colors.PRIMARY_COLOR
         )
         self.project_tagline_control = Text(
-            size=fonts.BUTTON_SIZE, color=colors.PRIMARY_COLOR
+            size=fonts.SUBTITLE_1_SIZE, color=colors.PRIMARY_COLOR
         )
 
         page_view = Row(

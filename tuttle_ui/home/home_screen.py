@@ -24,6 +24,7 @@ from core.constants_and_enums import (
     SPACE_BETWEEN_ALIGNMENT,
     START_ALIGNMENT,
     TXT_ALIGN_START,
+    TXT_ALIGN_LEFT,
 )
 from res.colors import GRAY_DARK_COLOR, BLACK_COLOR
 from res.dimens import (
@@ -37,6 +38,7 @@ from res.dimens import (
     SPACE_LG,
 )
 from res.fonts import HEADLINE_4_SIZE, HEADLINE_FONT
+from res import fonts
 from res.strings import PREFERENCES
 from res.utils import (
     ADD_CLIENT_INTENT,
@@ -61,10 +63,10 @@ def create_and_get_navigation_menu(
         leading=Container(
             content=Text(
                 title,
-                text_align=TXT_ALIGN_START,
+                text_align=TXT_ALIGN_LEFT,
                 expand=True,
-                font_family=HEADLINE_FONT,
-                size=HEADLINE_4_SIZE,
+                font_family=fonts.HEADLINE_FONT,
+                size=fonts.SUBTITLE_2_SIZE,
                 color=GRAY_DARK_COLOR,
             ),
             expand=True,
