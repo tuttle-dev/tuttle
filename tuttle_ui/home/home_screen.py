@@ -16,6 +16,7 @@ from flet import (
     padding,
     ResponsiveRow,
     Icon,
+    border,
 )
 from core.views import get_body_txt
 from core.abstractions import DialogHandler, TuttleView
@@ -27,6 +28,7 @@ from core.constants_and_enums import (
     TXT_ALIGN_LEFT,
 )
 from res.colors import GRAY_DARK_COLOR, BLACK_COLOR
+from res import colors
 from res.dimens import (
     MIN_WINDOW_WIDTH,
     MIN_WINDOW_HEIGHT,
@@ -270,11 +272,13 @@ class HomeScreen(TuttleView, UserControl):
                 content=self.destination_body,
             ),
         )
+        # FIXME: the footer should span the entire window, not just the content area
         self.footer = Container(
             col={"xs": 12},
             height=56,
             content=Text("Tuttle 2022"),
             alignment=alignment.center,
+            border=border.only(top=border.BorderSide(1, "black")),
         )
         self.main_body = Column(
             col={
