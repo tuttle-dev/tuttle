@@ -247,7 +247,7 @@ class HomeScreen(TuttleView, UserControl):
 
     # RE ROUTING
     def on_view_notifications_clicked(self, e):
-        print("==TODO===")
+        self.show_snack("not implemented", is_error=True)
 
     def on_view_settings_clicked(self, e):
         self.navigate_to_route(PREFERENCES_SCREEN_ROUTE)
