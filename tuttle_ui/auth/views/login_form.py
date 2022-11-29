@@ -10,6 +10,7 @@ from core.views import (
     get_std_txt_field,
     get_error_txt,
     get_primary_btn,
+    get_secondary_btn,
 )
 from core.constants_and_enums import (
     KEYBOARD_NAME,
@@ -81,6 +82,10 @@ class LoginForm(UserControl):
 
     def on_country_changed(self, e):
         self.country = e.control.value
+
+    def on_skip_btn_clicked(self, e):
+        """Skip the login form and go to the main screen"""
+        self.on_logged_in()
 
     def on_submit_btn_clicked(self, e):
         # prevent multiple clicking
@@ -195,6 +200,10 @@ class LoginForm(UserControl):
             on_click=self.on_submit_btn_clicked,
             label=strings.GET_STARTED,
         )
+        self.skip_button = get_secondary_btn(
+            on_click=self.on_skip_btn_clicked,
+            label="Skip",
+        )
         self.form = Column(
             spacing=dimens.SPACE_MD,
             controls=[
@@ -219,6 +228,7 @@ class LoginForm(UserControl):
                 self.country_field,
                 self.login_err_txt,
                 self.submit_btn,
+                self.skip_button,
             ],
         )
 

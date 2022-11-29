@@ -78,7 +78,8 @@ def create_and_get_navigation_menu(
         min_width=COMPACT_RAIL_WIDTH,
         extended=True,
         min_extended_width=MIN_SIDE_BAR_WIDTH,
-        height=320,
+        # FIXME: make the NavigationRail height as high as required for the content
+        height=360,
         destinations=destinations,
         on_change=on_change,
     )
