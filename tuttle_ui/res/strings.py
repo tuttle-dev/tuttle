@@ -69,8 +69,8 @@ CLIENT_ID_LBL = "Client Id"
 CONTRACT_ID_LBL = "Contract Id"
 HASH_TAG = "#"
 PROJECT_STATUS_LBL = "status"
-MAIN_MENU_GROUP_TITLE = "Work"
-SECONDARY_MENU_GROUP_TITLE = "Generate"
+MAIN_MENU_GROUP_TITLE = "My Business"
+SECONDARY_MENU_GROUP_TITLE = "Workflows"
 PROJECT_LBL = "Project"
 EDIT_PROJECT = "Edit Project"
 MARK_AS_COMPLETE = "Mark as complete"
@@ -174,7 +174,8 @@ FETCH_PROFILE_FAIL = "Oops! Failed to fetch your profile data! Please restart ap
 PREFERENCES = "Preferences"
 
 # Home sub menu
-INVOICE = "Invoice"
+INVOICING = "Invoicing"
+TIME_TRACKING = "Time Tracking"
 
 # ALERTS
 OK = "OK"

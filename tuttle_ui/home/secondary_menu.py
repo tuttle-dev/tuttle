@@ -2,13 +2,14 @@ from enum import Enum
 
 from flet import Container, icons
 
-from res.strings import INVOICE, SECONDARY_MENU_GROUP_TITLE
+from res.strings import INVOICING, SECONDARY_MENU_GROUP_TITLE, TIME_TRACKING
 
 
 class SecondaryMenuItems(Enum):
     """Specifies the secondary menu items mapped to a zero based index"""
 
-    INVOICE = 0
+    TIME_TRACKING = 0
+    INVOICING = 1
 
 
 class SecondaryMenuHandler:
@@ -27,19 +28,31 @@ class SecondaryMenuHandler:
 
     def get_secondary_menu_item_lbl(self, item: SecondaryMenuItems) -> str:
         """returns a label given a secondary menu item"""
-        return INVOICE
+        if item.value == SecondaryMenuItems.TIME_TRACKING.value:
+            return TIME_TRACKING
+        elif item.value == SecondaryMenuItems.INVOICING.value:
+            return INVOICING
 
     def get_secondary_menu_item_icon(self, item: SecondaryMenuItems) -> str:
         """returns the un-selected-state-icon given a menu item"""
-        return icons.ATTACH_MONEY_OUTLINED
+        if item.value == SecondaryMenuItems.TIME_TRACKING.value:
+            return icons.TIMER
+        elif item.value == SecondaryMenuItems.INVOICING.value:
+            return icons.ATTACH_MONEY
 
     def get_secondary_menu_item_selected_icon(self, item: SecondaryMenuItems) -> str:
         """returns the selected-state-icon given a menu item"""
-        return icons.ATTACH_MONEY_ROUNDED
+        if item.value == SecondaryMenuItems.TIME_TRACKING.value:
+            return icons.TIMER_ROUNDED
+        elif item.value == SecondaryMenuItems.INVOICING.value:
+            return icons.ATTACH_MONEY_ROUNDED
 
     def get_secondary_menu_item_from_index(self, index: int) -> SecondaryMenuItems:
         """Given an integer index, returns the corresponding side menu item"""
-        return SecondaryMenuItems.INVOICE
+        if index == SecondaryMenuItems.TIME_TRACKING.value:
+            return SecondaryMenuItems.TIME_TRACKING
+        elif index == SecondaryMenuItems.INVOICING.value:
+            return SecondaryMenuItems.INVOICING
 
     def get_secondary_menu_destination_view_for_item(self, menu_item):
         """Given a sidemenu item, returns the corresponding view"""

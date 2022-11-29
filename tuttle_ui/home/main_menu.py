@@ -28,6 +28,7 @@ class MainMenuItems(Enum):
     CONTRACTS = 1
     CLIENTS = 2
     CONTACTS = 3
+    INVOICES = 4
 
 
 class MainMenuItemsHandler:
@@ -77,6 +78,8 @@ class MainMenuItemsHandler:
             return CONTACTS
         elif item.value == MainMenuItems.CLIENTS.value:
             return CLIENTS
+        elif item.value == MainMenuItems.INVOICES.value:
+            return "Invoices"
         else:
             return CONTRACTS
 
@@ -88,6 +91,8 @@ class MainMenuItemsHandler:
             return icons.CONTACTS_OUTLINED
         elif item.value == MainMenuItems.CONTACTS.value:
             return icons.CONTACT_MAIL_OUTLINED
+        elif item.value == MainMenuItems.INVOICES.value:
+            return icons.ATTACH_EMAIL
         else:
             return icons.HANDSHAKE_OUTLINED
 
@@ -99,6 +104,8 @@ class MainMenuItemsHandler:
             return icons.CONTACTS_ROUNDED
         elif item.value == MainMenuItems.CONTACTS.value:
             return icons.CONTACT_MAIL_ROUNDED
+        elif item.value == MainMenuItems.INVOICES.value:
+            return icons.ATTACH_EMAIL_ROUNDED
         else:
             return icons.HANDSHAKE_ROUNDED
 
@@ -110,6 +117,8 @@ class MainMenuItemsHandler:
             return MainMenuItems.CLIENTS
         elif index == MainMenuItems.CONTACTS.value:
             return MainMenuItems.CONTACTS
+        elif index == MainMenuItems.INVOICES.value:
+            return MainMenuItems.INVOICES
         else:
             return MainMenuItems.CONTRACTS
 
