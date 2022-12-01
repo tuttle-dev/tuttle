@@ -15,7 +15,6 @@ from . import (
     dataviz,
     time,
     rendering,
-    view,
     os_functions,
 )
 
