@@ -15,7 +15,7 @@ from flet import (
     padding,
 )
 
-from core.abstractions import ClientStorage, TuttleView
+from core.abstractions import TuttleView
 from core.constants_and_enums import (
     CENTER_ALIGNMENT,
     SPACE_BETWEEN_ALIGNMENT,
@@ -24,7 +24,12 @@ from core.constants_and_enums import (
     AlertDialogControls,
 )
 from core.models import IntentResult
-from core.views import horizontal_progress, mdSpace
+from core.views import (
+    horizontal_progress,
+    mdSpace,
+    AlertDisplayPopUp,
+    ConfirmDisplayPopUp,
+)
 from projects.intent_impl import ProjectsIntentImpl
 from projects.project_model import Project
 from res import colors, dimens, fonts
@@ -69,6 +74,7 @@ class ViewProjectScreen(TuttleView, UserControl):
         self.project_id = project_id
         self.loading_indicator = horizontal_progress
         self.project: Optional[Project] = None
+        self.dialog = None
 
     def display_project_data(self):
         self.project_title_control.value = self.project.title
@@ -109,7 +115,14 @@ class ViewProjectScreen(TuttleView, UserControl):
         self.show_snack("Coming soon", False)
 
     def on_mark_as_complete_clicked(self, e):
-        self.show_snack("Coming soon", False)
+        if self.dialog:
+            self.dialog.close_dialog()
+        self.dialog = AlertDisplayPopUp(
+            dialog_controller=self.dialog_controller,
+            title="Un Implemented Error",
+            description="This feature is coming soon!",
+        )
+        self.dialog.open_dialog()
 
     def on_edit_clicked(self, e):
         if self.project is None:
@@ -118,7 +131,21 @@ class ViewProjectScreen(TuttleView, UserControl):
         self.navigate_to_route(PROJECT_EDITOR_SCREEN_ROUTE, self.project.id)
 
     def on_delete_clicked(self, e):
-        self.show_snack("Coming soon", False)
+        if self.dialog:
+            self.dialog.close_dialog()
+        self.dialog = ConfirmDisplayPopUp(
+            dialog_controller=self.dialog_controller,
+            title="Are You Sure?",
+            description="Are you sure you wish to delete this project?",
+            on_proceed=self.on_delete_confirmed,
+            proceed_button_lbl="Yes! Delete",
+        )
+        self.dialog.open_dialog()
+
+    def on_delete_confirmed(
+        self,
+    ):
+        self.show_snack("Un Implemented feature!", True)
 
     def build(self):
         """Called when page is built"""
@@ -285,3 +312,5 @@ class ViewProjectScreen(TuttleView, UserControl):
 
     def will_unmount(self):
         self.mounted = False
+        if self.dialog:
+            self.dialog.dimiss_open_dialogs()

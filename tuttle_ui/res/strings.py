@@ -177,6 +177,6 @@ PREFERENCES = "Preferences"
 INVOICE = "Invoice"
 
 # ALERTS
-OK = "OK"
+GOT_IT_TXT = "Got It"
 CANCEL = "Cancel"
 PROCEED = "Proceed"

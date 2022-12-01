@@ -1,8 +1,10 @@
 import datetime
 import typing
 from typing import Callable, List, Optional
-
+from .abstractions import DialogHandler
+from .constants_and_enums import AlertDialogControls
 from flet import (
+    AlertDialog,
     Column,
     Container,
     Dropdown,
@@ -19,18 +21,26 @@ from flet import (
     padding,
 )
 
+
 from res import colors, dimens, fonts, image_paths
-from res.strings import APP_NAME, DAY_LBL, MONTH_LBL, YEAR_LBL
+from res.strings import (
+    APP_NAME,
+    DAY_LBL,
+    MONTH_LBL,
+    YEAR_LBL,
+    GOT_IT_TXT,
+    PROCEED,
+    CANCEL,
+)
 
 from .constants_and_enums import (
-    CENTER_ALIGNMENT,
+    AUTO_SCROLL,
     CONTAIN,
     KEYBOARD_MULTILINE,
     KEYBOARD_TEXT,
-    OTHER_CONTROL_STATES,
-    SPACE_BETWEEN_ALIGNMENT,
     START_ALIGNMENT,
     TXT_ALIGN_LEFT,
+    CENTER_ALIGNMENT,
 )
 
 stdSpace = Container(
@@ -346,3 +356,107 @@ class DateSelector(UserControl):
             day=int(self.date),
         )
         return date
+
+
+class AlertDisplayPopUp(DialogHandler):
+    """Pop up used for displaying alerts"""
+
+    def __init__(
+        self,
+        dialog_controller: Callable[[any, AlertDialogControls], None],
+        title: str,
+        description: str,
+        on_complete: Optional[Callable] = None,
+        button_lbl: str = GOT_IT_TXT,
+        is_error: bool = True,
+    ):
+        self.dialog_height = 150
+        self.dialog_width = int(dimens.MIN_WINDOW_WIDTH * 0.8)
+        dialog = AlertDialog(
+            content=Container(
+                height=self.dialog_height,
+                content=Column(
+                    scroll=AUTO_SCROLL,
+                    controls=[
+                        get_headline_txt(
+                            txt=title,
+                            size=fonts.HEADLINE_4_SIZE,
+                        ),
+                        xsSpace,
+                        get_body_txt(
+                            txt=description,
+                            size=fonts.SUBTITLE_1_SIZE,
+                            color=colors.ERROR_COLOR if is_error else None,
+                        ),
+                    ],
+                ),
+            ),
+            actions=[
+                get_primary_btn(
+                    label=button_lbl, on_click=self.on_complete_btn_clicked
+                ),
+            ],
+        )
+        super().__init__(dialog=dialog, dialog_controller=dialog_controller)
+        self.on_complete_callback = on_complete
+
+    def on_complete_btn_clicked(self, e):
+        self.close_dialog()
+        if self.on_complete_callback:
+            self.on_complete_callback()
+
+
+class ConfirmDisplayPopUp(DialogHandler):
+    """Pop up used for displaying confirmation pop up"""
+
+    def __init__(
+        self,
+        dialog_controller: Callable[[any, AlertDialogControls], None],
+        title: str,
+        description: str,
+        on_proceed: Callable,
+        on_cancel: Optional[Callable] = None,
+        proceed_button_lbl: str = PROCEED,
+        cancel_button_lbl: str = CANCEL,
+    ):
+        self.dialog_height = 150
+        self.dialog_width = int(dimens.MIN_WINDOW_WIDTH * 0.8)
+        dialog = AlertDialog(
+            content=Container(
+                height=self.dialog_height,
+                content=Column(
+                    scroll=AUTO_SCROLL,
+                    controls=[
+                        get_headline_txt(
+                            txt=title,
+                            size=fonts.HEADLINE_4_SIZE,
+                        ),
+                        xsSpace,
+                        get_body_txt(
+                            txt=description,
+                            size=fonts.SUBTITLE_1_SIZE,
+                        ),
+                    ],
+                ),
+            ),
+            actions=[
+                get_secondary_btn(
+                    label=cancel_button_lbl, on_click=self.on_cancel_btn_clicked
+                ),
+                get_primary_btn(
+                    label=proceed_button_lbl, on_click=self.on_proceed_btn_clicked
+                ),
+            ],
+        )
+        super().__init__(dialog=dialog, dialog_controller=dialog_controller)
+        self.on_proceed_callback = on_proceed
+        self.on_cancel_callback = on_cancel
+
+    def on_cancel_btn_clicked(self, e):
+        self.close_dialog()
+        if self.on_cancel_callback:
+            self.on_cancel_callback()
+
+    def on_proceed_btn_clicked(self, e):
+        self.close_dialog()
+        self.on_proceed_callback()
