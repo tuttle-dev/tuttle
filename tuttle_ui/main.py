@@ -21,6 +21,7 @@ class TuttleApp:
         self.page.title = APP_NAME
         self.page.fonts = APP_FONTS
         self.page.theme = APP_THEME
+        self.page.theme_mode = THEME_MODES.dark.value
         self.page.window_min_width = MIN_WINDOW_WIDTH
         self.page.window_min_height = MIN_WINDOW_HEIGHT
         self.local_storage = ClientStorageImpl(page=self.page)

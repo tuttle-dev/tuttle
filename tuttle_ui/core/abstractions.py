@@ -61,6 +61,7 @@ class TuttleView(ABC):
         return None
 
     def window_on_resized(self, width, height):
+        """sets the page width and height"""
         self.page_width = width
         self.page_height = height
 

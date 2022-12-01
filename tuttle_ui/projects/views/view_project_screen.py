@@ -1,6 +1,6 @@
 import typing
 from typing import Callable, Optional
-
+from core.date_time_utils import get_last_seven_days
 from flet import (
     Card,
     Column,
@@ -52,6 +52,7 @@ from res.strings import (
     VIEW_CONTRACT_LBL,
 )
 from res.utils import PROJECT_EDITOR_SCREEN_ROUTE
+from core.charts import BarChart
 
 
 class ViewProjectScreen(TuttleView, UserControl):
@@ -75,6 +76,7 @@ class ViewProjectScreen(TuttleView, UserControl):
         self.loading_indicator = horizontal_progress
         self.project: Optional[Project] = None
         self.dialog = None
+        self.chart = None
 
     def display_project_data(self):
         self.project_title_control.value = self.project.title
@@ -89,6 +91,23 @@ class ViewProjectScreen(TuttleView, UserControl):
             f"{PROJECT_STATUS_LBL} {self.project.get_status()}"
         )
         self.project_tagline_control.value = f"{HASH_TAG}{self.project.unique_tag}"
+        self.set_chart()
+
+    def set_chart(self):
+        dummy_hours = []
+        last_seven = get_last_seven_days()
+        for i in range(0, len(last_seven)):
+            dummy_hours.append((i + 1) * 10)
+
+        self.chart = BarChart(
+            x_items_labels=last_seven,
+            values=dummy_hours,
+            chart_title="Hours logged last 7 days",
+            x_label="Days",
+            y_lbl="Hours",
+            legend="hours per day",
+        )
+        self.chart_container.content = self.chart
 
     def did_mount(self):
         try:
@@ -147,6 +166,16 @@ class ViewProjectScreen(TuttleView, UserControl):
     ):
         self.show_snack("Un Implemented feature!", True)
 
+    def window_on_resized(self, desired_width, height):
+        super().window_on_resized(desired_width, height)
+        desired_width = self.page_width * 0.4
+        min_chart_width = MIN_WINDOW_WIDTH * 0.7
+        chart_width = (
+            desired_width if desired_width > min_chart_width else min_chart_width
+        )
+        self.chart_container.width = chart_width
+        self.update()
+
     def build(self):
         """Called when page is built"""
         self.edit_project_btn = IconButton(
@@ -198,6 +227,8 @@ class ViewProjectScreen(TuttleView, UserControl):
         self.project_tagline_control = Text(
             size=fonts.BUTTON_SIZE, color=colors.PRIMARY_COLOR
         )
+
+        self.chart_container = Container()
 
         page_view = Row(
             [
@@ -275,6 +306,8 @@ class ViewProjectScreen(TuttleView, UserControl):
                             self.project_description_control,
                             self.project_start_date_control,
                             self.project_end_date_control,
+                            mdSpace,
+                            self.chart_container,
                             mdSpace,
                             Row(
                                 spacing=dimens.SPACE_STD,
