@@ -221,7 +221,8 @@ class CreateContractScreen(TuttleView, UserControl):
                 self.clients_field.value = item
             else:
                 self.show_snack(result.error_msg, True)
-        self.update()
+            if self.mounted:
+                self.update()
 
     """ SAVING """
 

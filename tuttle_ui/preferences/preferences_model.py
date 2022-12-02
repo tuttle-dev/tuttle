@@ -5,7 +5,7 @@ from enum import Enum
 
 @dataclass
 class Preferences:
-    theme_mode: THEME_MODES = THEME_MODES.system
+    theme_mode: THEME_MODES = THEME_MODES.dark
 
 
 class PreferencesStorageKeys(Enum):

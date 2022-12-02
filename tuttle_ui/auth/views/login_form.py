@@ -53,7 +53,8 @@ class LoginForm(UserControl):
         self.email_field.error_text = ""
         self.phone_field.error_text = ""
         self.title_field.error_text = ""
-        self.update()
+        if self.mounted:
+            self.update()
 
     def on_change_name(self, e):
         self.name = e.control.value
@@ -128,7 +129,8 @@ class LoginForm(UserControl):
                 self.on_logged_in()
         else:
             self.submit_btn.disabled = False
-            self.update()
+            if self.mounted:
+                self.update()
 
     def build(self):
         """Called when form is built"""
@@ -223,3 +225,9 @@ class LoginForm(UserControl):
         )
 
         return self.form
+
+    def did_mount(self):
+        self.mounted = True
+
+    def will_unmount(self):
+        self.mounted = False

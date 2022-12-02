@@ -73,7 +73,7 @@ class TuttleRoutes:
 
         return RouteView(
             view=view_container,
-            on_window_resized=view.window_on_resized,
+            on_window_resized=view.on_window_resized,
             keep_back_stack=view.keep_back_stack,
         )
 

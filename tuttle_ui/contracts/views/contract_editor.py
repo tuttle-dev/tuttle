@@ -12,7 +12,7 @@ from flet import (
     margin,
     padding,
 )
-
+from clients.client_model import Client
 from clients.views.client_editor import ClientEditorPopUp
 from contracts.contract_model import Contract
 from contracts.intent_impl import ContractsIntentImpl
@@ -113,37 +113,44 @@ class ContractEditorScreen(TuttleView, UserControl):
     def clear_title_error(self, e):
         if self.title_field.error_text:
             self.title_field.error_text = None
-            self.update()
+            if self.mounted:
+                self.update()
 
     def clear_rate_error(self, e):
         if self.rate_field.error_text:
             self.rate_field.error_text = None
-            self.update()
+            if self.mounted:
+                self.update()
 
     def clear_currency_error(self, e):
         if self.currency_field.error_text:
             self.currency_field.error_text = None
-            self.update()
+            if self.mounted:
+                self.update()
 
     def clear_volume_error(self, e):
         if self.volume_field.error_text:
             self.volume_field.error_text = None
-            self.update()
+            if self.mounted:
+                self.update()
 
     def clear_top_error(self, e):
         if self.termOfPayment_field.error_text:
             self.termOfPayment_field.error_text = None
-            self.update()
+            if self.mounted:
+                self.update()
 
     def clear_upw_error(self, e):
         if self.unitPW_field.error_text:
             self.unitPW_field.error_text = None
-            self.update()
+            if self.mounted:
+                self.update()
 
     def clear_vat_rate_error(self, e):
         if self.vatRate_field.error_text:
             self.vatRate_field.error_text = None
-            self.update()
+            if self.mounted:
+                self.update()
 
     def show_progress_bar_disable_action(self):
         self.loading_indicator.visible = True
@@ -154,16 +161,18 @@ class ContractEditorScreen(TuttleView, UserControl):
         self.submit_btn.disabled = False
 
     def did_mount(self):
+        self.mounted = True
         self.show_progress_bar_disable_action()
-        self.load_contract_if_editing()
+        self.load_contract()
         self.load_clients()
         self.load_contacts()
         self.enable_action_remove_progress_bar()
-        self.update()
+        if self.mounted:
+            self.update()
 
     """ LOADING DATA """
 
-    def load_contract_if_editing(
+    def load_contract(
         self,
     ):
         if self.contract_id is None:
@@ -209,7 +218,8 @@ class ContractEditorScreen(TuttleView, UserControl):
 
         if self.clients_field.error_text:
             self.clients_field.error_text = None
-            self.update()
+            if self.mounted:
+                self.update()
         if int(id) in self.clients_map:
             self.selected_client = self.clients_map[int(id)]
 
@@ -230,13 +240,15 @@ class ContractEditorScreen(TuttleView, UserControl):
         if client:
             result: IntentResult = self.intent_handler.save_client(client)
             if result.was_intent_successful:
-                self.selected_client = result.data
-                self.clients_map[client.id] = self.selected_client
-                # TODO? update_dropdown_items(self.clients_field, self.clients_map)
+                self.selected_client: Client = result.data
+                self.clients_map[self.selected_client.id] = self.selected_client
+                update_dropdown_items(self.clients_field, self.get_clients_as_list())
                 item = self.get_client_dropdown_item(self.selected_client.id)
                 self.clients_field.value = item
-            # else failed to save
-        self.update()
+            else:
+                self.show_snack(result.error_msg, True)
+        if self.mounted:
+            self.update()
 
     """ SAVING """
 
@@ -449,6 +461,7 @@ class ContractEditorScreen(TuttleView, UserControl):
 
     def will_unmount(self):
         try:
+            self.mounted = False
             if self.new_client_pop_up:
                 self.new_client_pop_up.dimiss_open_dialogs()
         except Exception as e:

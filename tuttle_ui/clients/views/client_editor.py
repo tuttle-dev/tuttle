@@ -36,7 +36,6 @@ class ClientEditorPopUp(DialogHandler, UserControl):
         self.half_of_dialog_width = int(MIN_WINDOW_WIDTH * 0.35)
 
         # initialize the data
-
         self.client = client if client is not None else get_empty_client()
         self.invoicing_contact = (
             self.client.invoicing_contact

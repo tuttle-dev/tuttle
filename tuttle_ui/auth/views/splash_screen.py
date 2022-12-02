@@ -87,7 +87,8 @@ class SplashScreen(TuttleView, UserControl):
         )
         self.form_container.controls.remove(self.loading_indicator)
         self.form_container.controls.append(form)
-        self.update()
+        if self.mounted:
+            self.update()
 
     def did_mount(self):
         try:

@@ -86,6 +86,7 @@ class EditProjectScreen(TuttleView, UserControl):
 
     # LOADING DATA
     def did_mount(self):
+        self.mounted = True
         self.show_progress_bar_disable_action()
         result: IntentResult = self.intent_handler.get_project_by_id(self.project_id)
         if result.was_intent_successful:
@@ -94,7 +95,8 @@ class EditProjectScreen(TuttleView, UserControl):
         else:
             self.show_snack(result.error_msg, True)
         self.enable_action_remove_progress_bar()
-        self.update()
+        if self.mounted:
+            self.update()
 
     def show_progress_bar_disable_action(self):
         self.loading_indicator.visible = True
@@ -244,3 +246,6 @@ class EditProjectScreen(TuttleView, UserControl):
         )
 
         return view
+
+    def will_unmount(self):
+        self.mounted = False

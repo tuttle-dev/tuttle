@@ -7,6 +7,7 @@ from flet import (
     UserControl,
 )
 
+from core.constants_and_enums import ALWAYS_SCROLL
 from core.abstractions import TuttleView
 from core.views import get_headline_txt, horizontal_progress, mdSpace
 
@@ -30,17 +31,17 @@ class ProjectsListView(TuttleView, UserControl):
         )
         self.intent_handler = ProjectsIntentImpl(local_storage=local_storage)
         self.loading_indicator = horizontal_progress
-        self.no_projects_component = Text(
+        self.no_projects_control = Text(
             value=NO_PROJECTS_ADDED, color=ERROR_COLOR, visible=False
         )
-        self.title_component = ResponsiveRow(
+        self.title_control = ResponsiveRow(
             controls=[
                 Column(
                     col={"xs": 12},
                     controls=[
                         get_headline_txt(txt=MY_PROJECTS, size=HEADLINE_4_SIZE),
                         self.loading_indicator,
-                        self.no_projects_component,
+                        self.no_projects_control,
                     ],
                 )
             ]
@@ -82,7 +83,7 @@ class ProjectsListView(TuttleView, UserControl):
         self.update()
 
     def show_no_projects(self):
-        self.no_projects_component.visible = True
+        self.no_projects_control.visible = True
 
     def did_mount(self):
         try:
@@ -102,15 +103,15 @@ class ProjectsListView(TuttleView, UserControl):
             print(f"exception raised @projects.did_mount {e}")
 
     def build(self):
-        self.mounted = True
         return Column(
             controls=[
-                self.title_component,
+                self.title_control,
                 mdSpace,
                 ProjectFiltersView(onStateChanged=self.on_filter_projects),
                 mdSpace,
                 self.projects_container,
-            ]
+            ],
+            scroll=ALWAYS_SCROLL,
         )
 
     def will_unmount(self):
