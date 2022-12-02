@@ -118,10 +118,10 @@ class TuttleApp:
 
         parses the new destination route
         then appends the new page to page views
-        the splash view must always be in view
         """
 
         # if route is already in stack, get it's view
+        # this happens when the user presses back
         view_for_route = None
         for view in self.page.views:
             if view.route == route.route:
@@ -139,7 +139,7 @@ class TuttleApp:
             self.route_to_route_view_cache[route.route] = route_view_wrapper
             self.page.views.append(view_for_route)
 
-        self.current_route_view = self.route_to_route_view_cache[route.route]
+        self.current_route_view: RouteView = self.route_to_route_view_cache[route.route]
         self.page.update()
         self.current_route_view.on_window_resized(
             self.page.window_width, self.page.window_height

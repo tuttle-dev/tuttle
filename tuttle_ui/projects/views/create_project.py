@@ -37,7 +37,7 @@ from res.utils import CONTRACT_CREATOR_SCREEN_ROUTE
 from contracts.contract_model import Contract
 
 
-class ProjectCreatorScreen(TuttleView, UserControl):
+class CreateProjectScreen(TuttleView, UserControl):
     def __init__(
         self,
         navigate_to_route,
