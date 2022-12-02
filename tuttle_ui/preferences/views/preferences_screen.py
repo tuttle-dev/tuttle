@@ -36,7 +36,6 @@ class PreferencesScreen(TuttleView, UserControl):
             show_snack=show_snack,
             dialog_controller=dialog_controller,
             on_navigate_back=on_navigate_back,
-            keep_back_stack=True,
         )
         self.intent_handler = PreferencesIntentImpl(client_storage=local_storage)
         self.on_theme_changed_callback = on_theme_changed

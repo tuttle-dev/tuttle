@@ -7,10 +7,10 @@ from res.strings import (
     MAIN_MENU_GROUP_TITLE,
 )
 from res.utils import (
-    PROJECT_EDITOR_SCREEN_ROUTE,
+    PROJECT_CREATOR_SCREEN_ROUTE,
     ADD_CLIENT_INTENT,
     ADD_CONTACT_INTENT,
-    CONTRACT_EDITOR_SCREEN_ROUTE,
+    CONTRACT_CREATOR_SCREEN_ROUTE,
 )
 from core.abstractions import TuttleView, ClientStorage
 from typing import Callable
@@ -113,7 +113,9 @@ class MainMenuItemsHandler:
         else:
             return MainMenuItems.CONTRACTS
 
-    def get_main_menu_destination_view_for_item(self, menu_item) -> TuttleView:
+    def get_main_menu_destination_view_for_item(
+        self, menu_item: MainMenuItems
+    ) -> TuttleView:
         """Given a sidemenu item, returns the corresponding view"""
         if menu_item.value == MainMenuItems.PROJECTS.value:
             return self.projects_view
@@ -130,10 +132,10 @@ class MainMenuItemsHandler:
         e.g. item project ---> return route for New Project screen
         """
         if menu_item.value == MainMenuItems.PROJECTS.value:
-            return PROJECT_EDITOR_SCREEN_ROUTE
+            return PROJECT_CREATOR_SCREEN_ROUTE
         elif menu_item.value == MainMenuItems.CLIENTS.value:
             return ADD_CLIENT_INTENT
         elif menu_item.value == MainMenuItems.CONTACTS.value:
             return ADD_CONTACT_INTENT
         else:
-            return CONTRACT_EDITOR_SCREEN_ROUTE
+            return CONTRACT_CREATOR_SCREEN_ROUTE

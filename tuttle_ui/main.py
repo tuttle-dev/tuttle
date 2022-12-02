@@ -24,6 +24,11 @@ class TuttleApp:
         self.page.theme_mode = THEME_MODES.dark.value
         self.page.window_min_width = MIN_WINDOW_WIDTH
         self.page.window_min_height = MIN_WINDOW_HEIGHT
+
+        """holds the RouteView object associated with a route
+        used in on route change"""
+        self.route_to_route_view_cache = {}
+
         self.local_storage = ClientStorageImpl(page=self.page)
         self.page.on_route_change = self.on_route_change
         self.page.on_view_pop = self.on_view_pop
@@ -35,12 +40,12 @@ class TuttleApp:
             show_snack=self.show_snack,
             on_theme_changed=self.on_theme_mode_changed,
         )
-        self.currentRouteView: Optional[RouteView] = None
+        self.current_route_view: Optional[RouteView] = None
         self.page.on_resize = self.page_resize
 
     def page_resize(self, e):
-        if self.currentRouteView:
-            self.currentRouteView.on_window_resized(
+        if self.current_route_view:
+            self.current_route_view.on_window_resized(
                 self.page.window_width, self.page.window_height
             )
 
@@ -100,7 +105,7 @@ class TuttleApp:
 
         self.page.go(newRoute)
 
-    def on_view_pop(self, view):
+    def on_view_pop(self, view: Optional[any] = None):
         """invoked on back pressed"""
         if len(self.page.views) == 1:
             return
@@ -115,15 +120,28 @@ class TuttleApp:
         then appends the new page to page views
         the splash view must always be in view
         """
-        # insert the new view on top
-        routeView = self.routeParser.parse_route(pageRoute=route.route)
-        if not routeView.keep_back_stack:
-            """clear previous views"""
-            self.page.views.clear()
-        self.page.views.append(routeView.view)
-        self.currentRouteView = routeView
+
+        # if route is already in stack, get it's view
+        view_for_route = None
+        for view in self.page.views:
+            if view.route == route.route:
+                view_for_route = view
+                break
+
+        # get a new view if no view found in stack
+        if not view_for_route:
+            route_view_wrapper = self.routeParser.parse_route(pageRoute=route.route)
+            if not route_view_wrapper.keep_back_stack:
+                """clear previous views"""
+                self.route_to_route_view_cache.clear()
+                self.page.views.clear()
+            view_for_route = route_view_wrapper.view
+            self.route_to_route_view_cache[route.route] = route_view_wrapper
+            self.page.views.append(view_for_route)
+
+        self.current_route_view = self.route_to_route_view_cache[route.route]
         self.page.update()
-        self.currentRouteView.on_window_resized(
+        self.current_route_view.on_window_resized(
             self.page.window_width, self.page.window_height
         )
 
