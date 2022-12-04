@@ -11,20 +11,24 @@ from flet import TemplateRoute, View
 from auth.views.splash_screen import SplashScreen
 from home.home_screen import HomeScreen
 from projects.views.view_project_screen import ViewProjectScreen
-from projects.views.project_editor import ProjectEditorScreen
+from projects.views.edit_project import EditProjectScreen
+from projects.views.create_project import CreateProjectScreen
 from contracts.views.view_contract_screen import ViewContractScreen
 from contracts.views.contract_editor import ContractEditorScreen
 from preferences.views.preferences_screen import PreferencesScreen
 from error_views.page_not_found_screen import Error404Screen
 from core.abstractions import TuttleView
 from core.abstractions import ClientStorage
+from contracts.views.create_contract import CreateContractScreen
 from res.utils import (
     HOME_SCREEN_ROUTE,
     SPLASH_SCREEN_ROUTE,
     PROJECT_EDITOR_SCREEN_ROUTE,
+    PROJECT_CREATOR_SCREEN_ROUTE,
     PROJECT_DETAILS_SCREEN_ROUTE,
     CONTRACT_DETAILS_SCREEN_ROUTE,
     CONTRACT_EDITOR_SCREEN_ROUTE,
+    CONTRACT_CREATOR_SCREEN_ROUTE,
     PROFILE_SCREEN_ROUTE,
     PREFERENCES_SCREEN_ROUTE,
 )
@@ -69,7 +73,7 @@ class TuttleRoutes:
 
         return RouteView(
             view=view_container,
-            on_window_resized=view.window_on_resized,
+            on_window_resized=view.on_window_resized,
             keep_back_stack=view.keep_back_stack,
         )
 
@@ -78,7 +82,6 @@ class TuttleRoutes:
 
         routePath = TemplateRoute(pageRoute)
         screen = None
-
         if routePath.match(SPLASH_SCREEN_ROUTE):
             screen = SplashScreen(
                 navigate_to_route=self.on_change_route,
@@ -131,9 +134,15 @@ class TuttleRoutes:
                 contract_id=routePath.contractId,
             )
 
-        elif routePath.match(CONTRACT_EDITOR_SCREEN_ROUTE) or routePath.match(
-            f"{CONTRACT_EDITOR_SCREEN_ROUTE}/:contractId"
-        ):
+        elif routePath.match(CONTRACT_CREATOR_SCREEN_ROUTE):
+            screen = CreateContractScreen(
+                navigate_to_route=self.on_change_route,
+                show_snack=self.show_snack,
+                dialog_controller=self.dialog_controller,
+                on_navigate_back=self.on_navigate_back,
+                local_storage=self.local_storage,
+            )
+        elif routePath.match(f"{CONTRACT_EDITOR_SCREEN_ROUTE}/:contractId"):
             contractId = None
             if hasattr(routePath, "contractId"):
                 contractId = routePath.contractId
@@ -146,13 +155,21 @@ class TuttleRoutes:
                 contract_id=contractId,
             )
 
+        elif routePath.match(PROJECT_CREATOR_SCREEN_ROUTE):
+            screen = CreateProjectScreen(
+                navigate_to_route=self.on_change_route,
+                show_snack=self.show_snack,
+                dialog_controller=self.dialog_controller,
+                on_navigate_back=self.on_navigate_back,
+                local_storage=self.local_storage,
+            )
         elif routePath.match(PROJECT_EDITOR_SCREEN_ROUTE) or routePath.match(
             f"{PROJECT_EDITOR_SCREEN_ROUTE}/:projectId"
         ):
             projectId = None
             if hasattr(routePath, "projectId"):
                 projectId = routePath.projectId
-            screen = ProjectEditorScreen(
+            screen = EditProjectScreen(
                 navigate_to_route=self.on_change_route,
                 show_snack=self.show_snack,
                 dialog_controller=self.dialog_controller,

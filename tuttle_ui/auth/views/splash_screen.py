@@ -87,14 +87,17 @@ class SplashScreen(TuttleView, UserControl):
         )
         self.form_container.controls.remove(self.loading_indicator)
         self.form_container.controls.append(form)
-        self.update()
+        if self.mounted:
+            self.update()
 
     def did_mount(self):
         try:
+            self.mounted = True
             self.check_auth_status()
-            # self.on_logged_in()
+            # uncomment to skip login screen self.on_logged_in()
         except Exception as e:
             # log
+            self.mounted = False
             print(f"exception raised @splash_screen.did_mount {e}")
 
     def build(self):
@@ -127,3 +130,6 @@ class SplashScreen(TuttleView, UserControl):
             ],
         )
         return page_view
+
+    def will_unmount(self):
+        self.mounted = False

@@ -18,7 +18,7 @@ from flet import (
     Icon,
     border,
 )
-from core.views import get_body_txt
+from core.views import get_body_txt, get_headline_with_subtitle
 from core.abstractions import DialogHandler, TuttleView
 from core.constants_and_enums import (
     COMPACT_RAIL_WIDTH,
@@ -26,9 +26,10 @@ from core.constants_and_enums import (
     START_ALIGNMENT,
     TXT_ALIGN_START,
     TXT_ALIGN_LEFT,
+    ALWAYS_SCROLL,
+    STRETCH_ALIGNMENT,
 )
-from res.colors import GRAY_DARK_COLOR, BLACK_COLOR
-from res import colors
+from res.colors import GRAY_DARK_COLOR, GRAY_COLOR, BLACK_COLOR
 from res.dimens import (
     MIN_WINDOW_WIDTH,
     MIN_WINDOW_HEIGHT,
@@ -38,6 +39,7 @@ from res.dimens import (
     SPACE_XL,
     SPACE_XS,
     SPACE_LG,
+    TOOLBAR_HEIGHT,
 )
 from res.fonts import HEADLINE_4_SIZE, HEADLINE_FONT
 from res import fonts
@@ -56,6 +58,7 @@ from .secondary_menu import SecondaryMenuHandler, SecondaryMenuItems
 MIN_SIDE_BAR_WIDTH = int(MIN_WINDOW_WIDTH * 0.3)
 MIN_FOOTER_WIDTH = int(MIN_WINDOW_WIDTH * 0.7)
 MIN_BODY_HEIGHT = int(MIN_WINDOW_HEIGHT * 0.8)
+NO_MENU_ITEM_INDEX = -1
 
 
 def create_and_get_navigation_menu(
@@ -116,7 +119,7 @@ class HomeScreen(TuttleView, UserControl):
             local_storage=local_storage,
         )
 
-        self.selected_tab = self.main_menu_handler.first_item_index
+        self.selected_tab = NO_MENU_ITEM_INDEX
         self.settings_icon = IconButton(
             icon=icons.SETTINGS_SUGGEST_OUTLINED,
             on_click=self.on_view_settings_clicked,
@@ -124,7 +127,6 @@ class HomeScreen(TuttleView, UserControl):
         )
         self.main_menu = create_and_get_navigation_menu(
             title=self.main_menu_handler.main_menu_title,
-            selected_index=self.selected_tab,
             destinations=self.get_main_menu_destinations(),
             on_change=self.on_main_menu_destination_change,
         )
@@ -133,13 +135,18 @@ class HomeScreen(TuttleView, UserControl):
             destinations=self.get_secondary_menu_destinations(),
             on_change=self.on_secondary_menu_destination_change,
         )
-        # initialize destination view
-        self.set_main_menu_destination_view_by_index(self.selected_tab)
-        self.destination_body = Column(
-            controls=[self.destinationView],
-            alignment=START_ALIGNMENT,
-            horizontal_alignment=START_ALIGNMENT,
-            expand=True,
+        # initialize destination view with a welcome text
+        self.destination_view = Container(
+            padding=padding.all(SPACE_MD),
+            content=Row(
+                [
+                    get_headline_with_subtitle(
+                        title="Welcome back!",
+                        subtitle="Select an item on the menu to get started",
+                        subtitleColor=GRAY_COLOR,
+                    )
+                ]
+            ),
         )
         self.dialog: Optional[DialogHandler] = None
         self.action_bar = get_top_bar(
@@ -188,11 +195,15 @@ class HomeScreen(TuttleView, UserControl):
             items.append(itemDestination)
         return items
 
-    def set_main_menu_destination_view_by_index(self, menu_item_index: int):
+    def set_main_menu_destination_view_by_index(
+        self,
+    ):
+        if self.selected_tab == NO_MENU_ITEM_INDEX:
+            return
         menu_item = self.main_menu_handler.get_main_menu_item_from_index(
-            menu_item_index
+            self.selected_tab
         )
-        self.destinationView = (
+        self.destination_view = (
             self.main_menu_handler.get_main_menu_destination_view_for_item(menu_item)
         )
 
@@ -201,9 +212,8 @@ class HomeScreen(TuttleView, UserControl):
             self.selected_tab = e.control.selected_index
             self.is_on_main_menu = True
             self.secondary_menu.selected_index = None
-            self.set_main_menu_destination_view_by_index(self.selected_tab)
-            self.destination_body.controls.clear()
-            self.destination_body.controls.append(self.destinationView)
+            self.set_main_menu_destination_view_by_index()
+            self.destination_content_container.content = self.destination_view
             self.update()
 
     def on_secondary_menu_destination_change(self, e):
@@ -215,6 +225,8 @@ class HomeScreen(TuttleView, UserControl):
 
     # ACTION BUTTONS
     def on_click_add_new(self, e):
+        if self.selected_tab == NO_MENU_ITEM_INDEX:
+            return
         """determines the item user wishes to create e.g. new project / client"""
         item = None
         if self.is_on_main_menu:
@@ -245,8 +257,8 @@ class HomeScreen(TuttleView, UserControl):
             self.navigate_to_route(routeOrIntent)
 
     def pass_intent_to_destination(self, intent: str, data: str):
-        if self.destinationView:
-            self.destinationView.parent_intent_listener(intent, data)
+        if self.destination_view:
+            self.destination_view.parent_intent_listener(intent, data)
 
     # RE ROUTING
     def on_view_notifications_clicked(self, e):
@@ -258,27 +270,20 @@ class HomeScreen(TuttleView, UserControl):
     def on_click_profile(self, e):
         self.navigate_to_route(PROFILE_SCREEN_ROUTE)
 
-    def window_on_resized(self, width, height):
-        if not self.mounted:
-            return
-        super().window_on_resized(width, height)
-        # self.destination_content_container.height = self.page_height - 56
-        self.update()
-
     def build(self):
-        self.destination_content_container = Card(
-            content=Container(
-                padding=padding.all(SPACE_MD),
-                content=self.destination_body,
-            ),
+        self.destination_content_container = Container(
+            padding=padding.all(SPACE_MD),
+            content=self.destination_view,
+            margin=margin.only(bottom=SPACE_LG),
         )
         # FIXME: the footer should span the entire window, not just the content area
         self.footer = Container(
             col={"xs": 12},
-            height=56,
             content=Text("Tuttle 2022"),
             alignment=alignment.center,
-            border=border.only(top=border.BorderSide(1, "black")),
+            bgcolor=BLACK_COLOR,
+            padding=padding.symmetric(vertical=SPACE_LG),
+            margin=margin.only(top=SPACE_LG),
         )
         self.main_body = Column(
             col={
@@ -286,40 +291,49 @@ class HomeScreen(TuttleView, UserControl):
                 "md": 9,
                 "lg": 10,
             },
-            alignment=SPACE_BETWEEN_ALIGNMENT,
+            alignment=START_ALIGNMENT,
             horizontal_alignment=START_ALIGNMENT,
             controls=[
                 self.action_bar,
-                self.destination_content_container,
-                ResponsiveRow([self.footer]),
+                Card(self.destination_content_container),
             ],
         )
 
-        self.view = ResponsiveRow(
-            controls=[
-                Container(
-                    col={"xs": 4, "md": 3, "lg": 2},
-                    padding=padding.only(top=SPACE_XL),
-                    content=Column(
+        self.view = Container(
+            Column(
+                [
+                    ResponsiveRow(
                         controls=[
-                            self.main_menu,
-                            self.secondary_menu,
                             Container(
-                                self.settings_icon,
-                                alignment=alignment.center,
-                                width=MIN_SIDE_BAR_WIDTH,
+                                col={"xs": 4, "md": 3, "lg": 2},
+                                padding=padding.only(top=SPACE_XL),
+                                content=Column(
+                                    controls=[
+                                        self.main_menu,
+                                        self.secondary_menu,
+                                        Container(
+                                            self.settings_icon,
+                                            alignment=alignment.center,
+                                            width=MIN_SIDE_BAR_WIDTH,
+                                        ),
+                                    ],
+                                    alignment=SPACE_BETWEEN_ALIGNMENT,
+                                    horizontal_alignment=START_ALIGNMENT,
+                                    spacing=SPACE_LG,
+                                ),
                             ),
+                            self.main_body,
                         ],
-                        alignment=SPACE_BETWEEN_ALIGNMENT,
-                        horizontal_alignment=START_ALIGNMENT,
-                        spacing=SPACE_LG,
+                        spacing=0,
+                        alignment=START_ALIGNMENT,
+                        vertical_alignment=START_ALIGNMENT,
+                        expand=1,
                     ),
-                ),
-                self.main_body,
-            ],
-            spacing=0,
-            alignment=START_ALIGNMENT,
-            vertical_alignment=START_ALIGNMENT,
+                    self.footer,
+                ],
+                alignment=SPACE_BETWEEN_ALIGNMENT,
+                horizontal_alignment=STRETCH_ALIGNMENT,
+            ),
         )
         return self.view
 
@@ -330,3 +344,14 @@ class HomeScreen(TuttleView, UserControl):
         self.mounted = False
         if self.dialog:
             self.dialog.dimiss_open_dialogs()
+
+    def on_window_resized(self, width, height):
+        if not self.mounted:
+            return
+        super().on_window_resized(width, height)
+        self.view.height = self.page_height
+        DESTINATION_CONTENT_PERCENT_HEIGHT = 0.8 if self.page_height > 776 else 0.7
+        self.destination_content_container.height = (
+            self.page_height * DESTINATION_CONTENT_PERCENT_HEIGHT
+        )
+        self.update()

@@ -55,12 +55,14 @@ class TuttleView(ABC):
         self.keep_back_stack = keep_back_stack
         self.on_navigate_back = on_navigate_back
         self.page_scroll_type = page_scroll_type
+        self.mounted = False
 
     def parent_intent_listener(self, intent: str, data: any):
         """listens for an intent from parent view"""
         return None
 
-    def window_on_resized(self, width, height):
+    def on_window_resized(self, width, height):
+        """sets the page width and height"""
         self.page_width = width
         self.page_height = height
 

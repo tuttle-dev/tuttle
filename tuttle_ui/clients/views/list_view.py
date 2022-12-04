@@ -2,6 +2,7 @@ import typing
 from typing import Callable
 from core.constants_and_enums import AlertDialogControls
 
+from core.constants_and_enums import ALWAYS_SCROLL
 from flet import (
     UserControl,
     Card,
@@ -114,7 +115,8 @@ class ClientsListView(TuttleView, UserControl):
     def on_save_client(self, client_to_save: Client):
         is_updating = client_to_save.id is not None
         self.loading_indicator.visible = True
-        self.update()
+        if self.mounted:
+            self.update()
         result: IntentResult = self.intent_handler.save_client(client_to_save)
         if not result.was_intent_successful:
             self.show_snack(result.error_msg, True)
@@ -124,7 +126,8 @@ class ClientsListView(TuttleView, UserControl):
             msg = UPDATING_CLIENT_SUCCESS if is_updating else NEW_CLIENT_ADDED_SUCCESS
             self.show_snack(msg, False)
         self.loading_indicator.visible = False
-        self.update()
+        if self.mounted:
+            self.update()
 
     def show_no_clients(self):
         self.no_clients_control.visible = True
@@ -148,12 +151,12 @@ class ClientsListView(TuttleView, UserControl):
 
     def build(self):
         view = Column(
-            expand=1,
             controls=[
                 self.title_control,
                 mdSpace,
                 self.clients_container,
             ],
+            scroll=ALWAYS_SCROLL,
         )
         return view
 

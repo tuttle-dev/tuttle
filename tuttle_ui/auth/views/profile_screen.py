@@ -90,7 +90,8 @@ class ProfileScreen(TuttleView, UserControl):
         self.email_field.error_text = ""
         self.phone_field.error_text = ""
         self.title_field.error_text = ""
-        self.update()
+        if self.mounted:
+            self.update()
 
     def on_change_name(self, e):
         self.name = e.control.value
@@ -128,7 +129,8 @@ class ProfileScreen(TuttleView, UserControl):
         # prevent multiple submissions
         self.update_btn.disabled = True
         self.progressBar.visible = True
-        self.update()
+        if self.mounted:
+            self.update()
 
         missingRequiredDataErr = ""
         if len(self.name.strip()) == 0:
@@ -263,7 +265,7 @@ class ProfileScreen(TuttleView, UserControl):
 
     def did_mount(self):
         try:
-            super().did_mount()
+            self.mounted = True
             self.progressBar.visible = True
             self.update()
             result: IntentResult = self.intent_handler.get_user()
@@ -337,3 +339,6 @@ class ProfileScreen(TuttleView, UserControl):
             width=dimens.MIN_WINDOW_WIDTH,
         )
         return view
+
+    def will_unmount(self):
+        self.mounted = False

@@ -3,6 +3,7 @@ from typing import Callable
 
 from flet import Card, Column, Container, GridView, ResponsiveRow, Text, padding
 
+from core.constants_and_enums import ALWAYS_SCROLL
 from contracts.intent_impl import ContractsIntentImpl
 from core.abstractions import ClientStorage
 from core.views import get_headline_txt, horizontal_progress, mdSpace
@@ -76,7 +77,8 @@ class ContractsListView(TuttleView, UserControl):
         else:
             self.contracts_to_display = self.intent_handler.get_all_contracts()
         self.display_currently_filtered_contracts()
-        self.update()
+        if self.mounted:
+            self.update()
 
     def show_no_contracts(self):
         self.no_contracts_control.visible = True
@@ -106,7 +108,8 @@ class ContractsListView(TuttleView, UserControl):
                 ContractFiltersView(onStateChanged=self.on_filter_contracts),
                 mdSpace,
                 self.contracts_container,
-            ]
+            ],
+            scroll=ALWAYS_SCROLL,
         )
         return view
 

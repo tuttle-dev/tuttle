@@ -331,3 +331,6 @@ class ViewContractScreen(TuttleView, UserControl):
             expand=True,
         )
         return page_view
+
+    def will_unmount(self):
+        self.mounted = False

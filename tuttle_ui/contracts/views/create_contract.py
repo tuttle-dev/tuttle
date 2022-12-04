@@ -13,6 +13,7 @@ from flet import (
     padding,
 )
 from clients.client_model import Client
+from core.abstractions import DialogHandler
 from clients.views.client_editor import ClientEditorPopUp
 from contracts.contract_model import Contract
 from contracts.intent_impl import ContractsIntentImpl
@@ -45,7 +46,7 @@ from res.dimens import MIN_WINDOW_WIDTH
 LABEL_WIDTH = 80
 
 
-class ContractEditorScreen(TuttleView, UserControl):
+class CreateContractScreen(TuttleView, UserControl):
     def __init__(
         self,
         navigate_to_route,
@@ -53,7 +54,6 @@ class ContractEditorScreen(TuttleView, UserControl):
         dialog_controller,
         on_navigate_back,
         local_storage,
-        contract_id: str,
     ):
         super().__init__(
             navigate_to_route=navigate_to_route,
@@ -65,20 +65,18 @@ class ContractEditorScreen(TuttleView, UserControl):
         self.intent_handler = ContractsIntentImpl(local_storage=local_storage)
 
         self.loading_indicator = horizontal_progress
-        self.new_client_pop_up = None
+        self.new_client_pop_up: Optional[DialogHandler] = None
 
         # info of contract being edited / created
-        self.contract_id = contract_id
-        self.contract_to_edit: Optional[Contract] = None
         self.clients_map = {}
         self.contacts_map = {}
         self.title = ""
-        self.selected_client = None
+        self.client = None
         self.rate = ""
         self.currency = ""
         self.vat_rate = ""
         self.time_unit = None
-        self.unit_PW = ""
+        self.unit_pw = ""
         self.volume = ""
         self.term_of_payment = ""
         self.billing_cycle = None
@@ -99,7 +97,7 @@ class ContractEditorScreen(TuttleView, UserControl):
         self.term_of_payment = e.control.value
 
     def on_upw_changed(self, e):
-        self.unit_PW = e.control.value
+        self.unit_pw = e.control.value
 
     def on_vat_rate_changed(self, e):
         self.vat_rate = e.control.value
@@ -113,44 +111,37 @@ class ContractEditorScreen(TuttleView, UserControl):
     def clear_title_error(self, e):
         if self.title_field.error_text:
             self.title_field.error_text = None
-            if self.mounted:
-                self.update()
+            self.update()
 
     def clear_rate_error(self, e):
         if self.rate_field.error_text:
             self.rate_field.error_text = None
-            if self.mounted:
-                self.update()
+            self.update()
 
     def clear_currency_error(self, e):
         if self.currency_field.error_text:
             self.currency_field.error_text = None
-            if self.mounted:
-                self.update()
+            self.update()
 
     def clear_volume_error(self, e):
         if self.volume_field.error_text:
             self.volume_field.error_text = None
-            if self.mounted:
-                self.update()
+            self.update()
 
     def clear_top_error(self, e):
-        if self.termOfPayment_field.error_text:
-            self.termOfPayment_field.error_text = None
-            if self.mounted:
-                self.update()
+        if self.term_of_payment_field.error_text:
+            self.term_of_payment_field.error_text = None
+            self.update()
 
     def clear_upw_error(self, e):
-        if self.unitPW_field.error_text:
-            self.unitPW_field.error_text = None
-            if self.mounted:
-                self.update()
+        if self.unit_PW_field.error_text:
+            self.unit_PW_field.error_text = None
+            self.update()
 
     def clear_vat_rate_error(self, e):
-        if self.vatRate_field.error_text:
-            self.vatRate_field.error_text = None
-            if self.mounted:
-                self.update()
+        if self.vat_rate_field.error_text:
+            self.vat_rate_field.error_text = None
+            self.update()
 
     def show_progress_bar_disable_action(self):
         self.loading_indicator.visible = True
@@ -163,27 +154,11 @@ class ContractEditorScreen(TuttleView, UserControl):
     def did_mount(self):
         self.mounted = True
         self.show_progress_bar_disable_action()
-        self.load_contract()
         self.load_clients()
         self.load_contacts()
         self.enable_action_remove_progress_bar()
         if self.mounted:
             self.update()
-
-    """ LOADING DATA """
-
-    def load_contract(
-        self,
-    ):
-        if self.contract_id is None:
-            return
-        result = self.intent_handler.get_contract_by_id(self.contract_id)
-        if result.was_intent_successful:
-            self.contract_to_edit = result.data
-        else:
-            self.show_snack(
-                "Failed to load the contract! Please go back and retry", True
-            )
 
     def load_clients(self):
         self.clients_map = self.intent_handler.get_all_clients_as_map()
@@ -218,10 +193,9 @@ class ContractEditorScreen(TuttleView, UserControl):
 
         if self.clients_field.error_text:
             self.clients_field.error_text = None
-            if self.mounted:
-                self.update()
+            self.update()
         if int(id) in self.clients_map:
-            self.selected_client = self.clients_map[int(id)]
+            self.client = self.clients_map[int(id)]
 
     """ CLIENT POP UP """
 
@@ -240,15 +214,15 @@ class ContractEditorScreen(TuttleView, UserControl):
         if client:
             result: IntentResult = self.intent_handler.save_client(client)
             if result.was_intent_successful:
-                self.selected_client: Client = result.data
-                self.clients_map[self.selected_client.id] = self.selected_client
+                self.client: Client = result.data
+                self.clients_map[self.client.id] = self.client
                 update_dropdown_items(self.clients_field, self.get_clients_as_list())
-                item = self.get_client_dropdown_item(self.selected_client.id)
+                item = self.get_client_dropdown_item(self.client.id)
                 self.clients_field.value = item
             else:
                 self.show_snack(result.error_msg, True)
-        if self.mounted:
-            self.update()
+            if self.mounted:
+                self.update()
 
     """ SAVING """
 
@@ -258,22 +232,22 @@ class ContractEditorScreen(TuttleView, UserControl):
             self.update()
             return
 
-        if self.selected_client is None:
+        if self.client is None:
             self.clients_field.error_text = "Please select a client"
             self.update()
             return
 
-        signatureDate = self.signatureDate_field.get_date()
+        signatureDate = self.signature_date_field.get_date()
         if signatureDate is None:
             self.show_snack("Please specify the signature date", True)
             return
 
-        startDate = self.startDate_field.get_date()
+        startDate = self.start_date_field.get_date()
         if startDate is None:
             self.show_snack("Please specify the start date", True)
             return
 
-        endDate = self.endDate_field.get_date()
+        endDate = self.end_date_field.get_date()
         if endDate is None:
             self.show_snack("Please specify the end date", True)
             return
@@ -290,16 +264,15 @@ class ContractEditorScreen(TuttleView, UserControl):
             signature_date=signatureDate,
             start_date=startDate,
             end_date=endDate,
-            client=self.selected_client,
+            client=self.client,
             rate=self.rate,
             currency=self.currency,
             VAT_rate=self.vat_rate,
             unit=self.time_unit,
-            units_per_workday=self.unit_PW,
+            units_per_workday=self.unit_pw,
             volume=self.volume,
             term_of_payment=self.term_of_payment,
             billing_cycle=self.billing_cycle,
-            contract=self.contract_to_edit,
         )
         # TODO add contract if updating
         msg = (
@@ -321,7 +294,6 @@ class ContractEditorScreen(TuttleView, UserControl):
             on_change=self.on_title_changed,
             on_focus=self.clear_title_error,
         )
-
         self.rate_field = get_std_txt_field(
             lbl="Rate",
             hint="Contract's rate",
@@ -329,30 +301,26 @@ class ContractEditorScreen(TuttleView, UserControl):
             on_focus=self.clear_rate_error,
             keyboard_type=KEYBOARD_NUMBER,
         )
-
         self.currency_field = get_std_txt_field(
             lbl="Currency",
             hint="Payment currency",
             on_change=self.on_currency_changed,
             on_focus=self.clear_currency_error,
         )
-
-        self.vatRate_field = get_std_txt_field(
+        self.vat_rate_field = get_std_txt_field(
             lbl="Vat",
             hint="Vat rate",
             on_change=self.on_vat_rate_changed,
             on_focus=self.clear_vat_rate_error,
             keyboard_type=KEYBOARD_NUMBER,
         )
-
-        self.unitPW_field = get_std_txt_field(
+        self.unit_PW_field = get_std_txt_field(
             lbl="Units per workday",
             hint="",
             on_change=self.on_upw_changed,
             on_focus=self.clear_upw_error,
             keyboard_type=KEYBOARD_NUMBER,
         )
-
         self.volume_field = get_std_txt_field(
             lbl="Volume (optional)",
             hint="",
@@ -360,15 +328,13 @@ class ContractEditorScreen(TuttleView, UserControl):
             on_focus=self.clear_volume_error,
             keyboard_type=KEYBOARD_NUMBER,
         )
-
-        self.termOfPayment_field = get_std_txt_field(
+        self.term_of_payment_field = get_std_txt_field(
             lbl="Term of payment (optional)",
             hint="",
             on_change=self.on_top_changed,
             on_focus=self.clear_top_error,
             keyboard_type=KEYBOARD_NUMBER,
         )
-
         self.clients_field = get_dropdown(
             lbl="Client",
             on_change=self.on_client_selected,
@@ -379,16 +345,14 @@ class ContractEditorScreen(TuttleView, UserControl):
             on_change=self.on_unit_selected,
             items=get_time_unit_values_as_list(),
         )
-
-        self.billingCycle_field = get_dropdown(
+        self.billing_cycle_field = get_dropdown(
             lbl="Billing Cycle",
             on_change=self.on_billing_cycle_selected,
             items=get_cycle_values_as_list(),
         )
-
-        self.signatureDate_field = DateSelector(label="Signed on Date")
-        self.startDate_field = DateSelector(label="Start Date")
-        self.endDate_field = DateSelector(label="End Date")
+        self.signature_date_field = DateSelector(label="Signed on Date")
+        self.start_date_field = DateSelector(label="Start Date")
+        self.end_date_field = DateSelector(label="End Date")
         self.submit_btn = get_primary_btn(
             label="Create Contract", on_click=self.on_save
         )
@@ -420,9 +384,9 @@ class ContractEditorScreen(TuttleView, UserControl):
                             smSpace,
                             self.currency_field,
                             self.rate_field,
-                            self.termOfPayment_field,
-                            self.unitPW_field,
-                            self.vatRate_field,
+                            self.term_of_payment_field,
+                            self.unit_PW_field,
+                            self.vat_rate_field,
                             self.volume_field,
                             smSpace,
                             Row(
@@ -440,13 +404,13 @@ class ContractEditorScreen(TuttleView, UserControl):
                             smSpace,
                             self.units_field,
                             smSpace,
-                            self.billingCycle_field,
+                            self.billing_cycle_field,
                             smSpace,
-                            self.signatureDate_field,
+                            self.signature_date_field,
                             smSpace,
-                            self.startDate_field,
+                            self.start_date_field,
                             mdSpace,
-                            self.endDate_field,
+                            self.end_date_field,
                             mdSpace,
                             self.submit_btn,
                         ],
@@ -456,12 +420,11 @@ class ContractEditorScreen(TuttleView, UserControl):
                 ),
             ),
         )
-
         return view
 
     def will_unmount(self):
         try:
-            self.mounted = False
+            self.mounted = True
             if self.new_client_pop_up:
                 self.new_client_pop_up.dimiss_open_dialogs()
         except Exception as e:

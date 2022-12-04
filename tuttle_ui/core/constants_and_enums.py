@@ -9,6 +9,7 @@ class AlertDialogControls(Enum):
 
 
 # Layout Alignments
+STRETCH_ALIGNMENT = "stretch"
 SPACE_BETWEEN_ALIGNMENT = "spaceBetween"
 START_ALIGNMENT = "start"
 END_ALIGNMENT = "end"

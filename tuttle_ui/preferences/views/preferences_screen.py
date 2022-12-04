@@ -36,7 +36,6 @@ class PreferencesScreen(TuttleView, UserControl):
             show_snack=show_snack,
             dialog_controller=dialog_controller,
             on_navigate_back=on_navigate_back,
-            keep_back_stack=True,
         )
         self.intent_handler = PreferencesIntentImpl(client_storage=local_storage)
         self.on_theme_changed_callback = on_theme_changed
@@ -54,7 +53,8 @@ class PreferencesScreen(TuttleView, UserControl):
             self.preferences.theme_mode = mode
             self.theme_control.value = mode.value
             self.on_theme_changed_callback(mode)
-        self.update()
+            if self.mounted:
+                self.update()
 
     def build(self):
 
@@ -109,6 +109,7 @@ class PreferencesScreen(TuttleView, UserControl):
 
     def did_mount(self):
         try:
+            self.mounted = True
             self.loading_indicator.visible = True
             self.update()
             result: IntentResult = self.intent_handler.get_preferences()
@@ -125,4 +126,4 @@ class PreferencesScreen(TuttleView, UserControl):
         # save changes
         if self.preferences:
             self.intent_handler.set_preferences(self.preferences)
-        return super().will_unmount()
+        self.mounted = False

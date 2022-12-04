@@ -11,12 +11,11 @@ from flet import (
     UserControl,
     padding,
 )
-
+from core.constants_and_enums import ALWAYS_SCROLL
 from contacts.contact_model import Contact
 from contacts.intent_impl import ContactsIntentImpl
 from core.abstractions import TuttleView
-from core.constants_and_enums import AlertDialogControls
-from core.models import Address, IntentResult
+from core.models import IntentResult
 from core.views import get_headline_txt, horizontal_progress, mdSpace
 from res.colors import ERROR_COLOR
 from res.dimens import SPACE_MD, SPACE_STD
@@ -46,7 +45,7 @@ class ContactsListView(TuttleView, UserControl):
         self.no_contacts_control = Text(
             value=NO_CONTACTS_ADDED, color=ERROR_COLOR, visible=False
         )
-        self.title_component = ResponsiveRow(
+        self.title_control = ResponsiveRow(
             controls=[
                 Column(
                     col={"xs": 12},
@@ -73,7 +72,8 @@ class ContactsListView(TuttleView, UserControl):
             """New contact was clicked"""
             contact: Contact = data
             self.loading_indicator.visible = True
-            self.update()
+            if self.mounted:
+                self.update()
             result: IntentResult = self.intent_handler.save_contact(contact)
             if not result.was_intent_successful:
                 self.show_snack(result.error_msg, True)
@@ -83,7 +83,8 @@ class ContactsListView(TuttleView, UserControl):
                 self.refresh_list()
                 self.show_snack(NEW_CONTACT_ADDED_SUCCESS, False)
             self.loading_indicator.visible = False
-            self.update()
+            if self.mounted:
+                self.update()
         return
 
     def load_all_contacts(self):
@@ -112,7 +113,8 @@ class ContactsListView(TuttleView, UserControl):
 
     def on_update_contact(self, contact):
         self.loading_indicator.visible = True
-        self.update()
+        if self.mounted:
+            self.update()
         result = self.intent_handler.save_contact(contact)
         msg = (
             UPDATING_CONTACT_SUCCESS
@@ -126,7 +128,8 @@ class ContactsListView(TuttleView, UserControl):
             updatedContact: Contact = result.data
             self.contacts_to_display[updatedContact.id] = updatedContact
             self.refresh_list()
-        self.update()
+        if self.mounted:
+            self.update()
 
     def show_no_contacts(self):
         self.no_contacts_control.visible = True
@@ -150,10 +153,11 @@ class ContactsListView(TuttleView, UserControl):
     def build(self):
         view = Column(
             controls=[
-                self.title_component,
+                self.title_control,
                 mdSpace,
                 self.contacts_container,
             ],
+            scroll=ALWAYS_SCROLL,
         )
         return view
 
