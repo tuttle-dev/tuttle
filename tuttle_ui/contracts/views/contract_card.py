@@ -48,42 +48,6 @@ class ContractCard(UserControl):
             ResponsiveRow(
                 controls=[
                     Text(
-                        ID_LBL,
-                        color=GRAY_COLOR,
-                        size=BODY_2_SIZE,
-                        col={"xs": "12", "sm": "5", "md": "3"},
-                    ),
-                    Text(
-                        self.contract.id,
-                        size=BODY_2_SIZE,
-                        col={"xs": "12", "sm": "7", "md": "9"},
-                    ),
-                ],
-                spacing=SPACE_XS,
-                run_spacing=0,
-                vertical_alignment=CENTER_ALIGNMENT,
-            ),
-            ResponsiveRow(
-                controls=[
-                    Text(
-                        CLIENT_ID_LBL,
-                        color=GRAY_COLOR,
-                        size=BODY_2_SIZE,
-                        col={"xs": "12", "sm": "5", "md": "3"},
-                    ),
-                    Text(
-                        self.contract.client_id,
-                        size=BODY_2_SIZE,
-                        col={"xs": "12", "sm": "7", "md": "9"},
-                    ),
-                ],
-                spacing=SPACE_XS,
-                run_spacing=0,
-                vertical_alignment=CENTER_ALIGNMENT,
-            ),
-            ResponsiveRow(
-                controls=[
-                    Text(
                         CONTRACT_BILLING_CYCLE,
                         color=GRAY_COLOR,
                         size=BODY_2_SIZE,
