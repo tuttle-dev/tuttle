@@ -274,10 +274,10 @@ class HomeScreen(TuttleView, UserControl):
         )
         self.footer = Container(
             col={"xs": 12},
-            content=Text("Tuttle 2022"),
+            content=Text("."),
             alignment=alignment.center,
-            bgcolor=BLACK_COLOR,
-            padding=padding.symmetric(vertical=SPACE_LG),
+            # bgcolor=BLACK_COLOR,
+            padding=padding.symmetric(vertical=SPACE_MD),
             margin=margin.only(top=SPACE_LG),
         )
         self.main_body = Column(
