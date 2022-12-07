@@ -116,11 +116,6 @@ class HomeScreen(TuttleView, UserControl):
         )
 
         self.selected_tab = NO_MENU_ITEM_INDEX
-        self.settings_icon = IconButton(
-            icon=icons.SETTINGS_SUGGEST_OUTLINED,
-            on_click=self.on_view_settings_clicked,
-            tooltip=PREFERENCES,
-        )
         self.main_menu = create_and_get_navigation_menu(
             title=self.main_menu_handler.main_menu_title,
             destinations=self.get_main_menu_destinations(),
@@ -148,6 +143,7 @@ class HomeScreen(TuttleView, UserControl):
         self.action_bar = get_top_bar(
             on_click_notifications_btn=self.on_view_notifications_clicked,
             on_click_new_btn=self.on_click_add_new,
+            on_view_settings_clicked=self.on_view_settings_clicked,
             on_click_profile_btn=self.on_click_profile,
         )
         self.is_on_main_menu = True
@@ -258,7 +254,7 @@ class HomeScreen(TuttleView, UserControl):
 
     # RE ROUTING
     def on_view_notifications_clicked(self, e):
-        print("==TODO===")
+        self.show_snack("Not implemented", True)
 
     def on_view_settings_clicked(self, e):
         self.navigate_to_route(PREFERENCES_SCREEN_ROUTE)
@@ -306,11 +302,6 @@ class HomeScreen(TuttleView, UserControl):
                                     controls=[
                                         self.main_menu,
                                         self.secondary_menu,
-                                        Container(
-                                            self.settings_icon,
-                                            alignment=alignment.center,
-                                            width=MIN_SIDE_BAR_WIDTH,
-                                        ),
                                     ],
                                     alignment=SPACE_BETWEEN_ALIGNMENT,
                                     horizontal_alignment=START_ALIGNMENT,
