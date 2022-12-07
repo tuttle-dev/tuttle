@@ -155,9 +155,8 @@ class ContactsListView(TuttleView, UserControl):
             controls=[
                 self.title_control,
                 mdSpace,
-                self.contacts_container,
-            ],
-            scroll=ALWAYS_SCROLL,
+                Container(self.contacts_container, expand=True),
+            ]
         )
         return view
 
