@@ -11,6 +11,8 @@ from flet import (
     border_radius,
     padding,
     ResponsiveRow,
+    ListTile,
+    Icon,
 )
 from res.strings import ID_LBL, EDIT_CONTACT_TOOLTIP, EMAIL_LBL, ADDRESS
 from core.views import get_headline_with_subtitle
@@ -41,11 +43,21 @@ class ContactCard(UserControl):
 
     def build(self):
         self.product_info_container.controls = [
-            get_headline_with_subtitle(
-                title=self.contact.name,
-                subtitle=self.contact.company,
-                subtitleColor=GRAY_COLOR,
+            ListTile(
+                leading=Icon(icons.CONTACT_MAIL),
+                title=Text(self.contact.name),
+                subtitle=Text(self.contact.company, color=GRAY_COLOR),
+                trailing=IconButton(
+                    icon=icons.EDIT_NOTE_OUTLINED,
+                    tooltip=EDIT_CONTACT_TOOLTIP,
+                    on_click=lambda e: self.on_edit_clicked(self.contact),
+                ),
             ),
+            # get_headline_with_subtitle(
+            #     title=self.contact.name,
+            #     subtitle=self.contact.company,
+            #     subtitleColor=GRAY_COLOR,
+            # ),
             mdSpace,
             ResponsiveRow(
                 controls=[
@@ -87,18 +99,18 @@ class ContactCard(UserControl):
                 spacing=SPACE_XS,
                 run_spacing=0,
             ),
-            Row(
-                alignment=END_ALIGNMENT,
-                vertical_alignment=END_ALIGNMENT,
-                expand=True,
-                controls=[
-                    IconButton(
-                        icon=icons.EDIT_NOTE_OUTLINED,
-                        tooltip=EDIT_CONTACT_TOOLTIP,
-                        on_click=lambda e: self.on_edit_clicked(self.contact),
-                    ),
-                ],
-            ),
+            # Row(
+            #     alignment=END_ALIGNMENT,
+            #     vertical_alignment=END_ALIGNMENT,
+            #     expand=True,
+            #     controls=[
+            #         IconButton(
+            #             icon=icons.EDIT_NOTE_OUTLINED,
+            #             tooltip=EDIT_CONTACT_TOOLTIP,
+            #             on_click=lambda e: self.on_edit_clicked(self.contact),
+            #         ),
+            #     ],
+            # ),
         ]
         card = Card(
             elevation=2,
