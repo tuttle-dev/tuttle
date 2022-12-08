@@ -276,7 +276,6 @@ class HomeScreen(TuttleView, UserControl):
             content=self.destination_view,
             margin=margin.only(bottom=SPACE_LG),
         )
-        # FIXME: the footer should span the entire window, not just the content area
         self.footer = Container(
             col={"xs": 12},
             content=Text("."),
