@@ -10,6 +10,7 @@ class SecondaryMenuItems(Enum):
 
     TIME_TRACKING = 0
     INVOICING = 1
+    DATATABLE_DEMO = 2
 
 
 class SecondaryMenuHandler:
@@ -32,6 +33,8 @@ class SecondaryMenuHandler:
             return TIME_TRACKING
         elif item.value == SecondaryMenuItems.INVOICING.value:
             return INVOICING
+        elif item.value == SecondaryMenuItems.DATATABLE_DEMO.value:
+            return "Datatable"
 
     def get_secondary_menu_item_icon(self, item: SecondaryMenuItems) -> str:
         """returns the un-selected-state-icon given a menu item"""
@@ -39,6 +42,8 @@ class SecondaryMenuHandler:
             return icons.TIMER
         elif item.value == SecondaryMenuItems.INVOICING.value:
             return icons.ATTACH_MONEY
+        elif item.value == SecondaryMenuItems.DATATABLE_DEMO.value:
+            return icons.TABLE_CHART
 
     def get_secondary_menu_item_selected_icon(self, item: SecondaryMenuItems) -> str:
         """returns the selected-state-icon given a menu item"""
@@ -46,6 +51,8 @@ class SecondaryMenuHandler:
             return icons.TIMER_ROUNDED
         elif item.value == SecondaryMenuItems.INVOICING.value:
             return icons.ATTACH_MONEY_ROUNDED
+        elif item.value == SecondaryMenuItems.DATATABLE_DEMO.value:
+            return icons.TABLE_CHART_ROUNDED
 
     def get_secondary_menu_item_from_index(self, index: int) -> SecondaryMenuItems:
         """Given an integer index, returns the corresponding side menu item"""
@@ -53,6 +60,8 @@ class SecondaryMenuHandler:
             return SecondaryMenuItems.TIME_TRACKING
         elif index == SecondaryMenuItems.INVOICING.value:
             return SecondaryMenuItems.INVOICING
+        elif index == SecondaryMenuItems.DATATABLE_DEMO.value:
+            return SecondaryMenuItems.DATATABLE_DEMO
 
     def get_secondary_menu_destination_view_for_item(self, menu_item):
         """Given a sidemenu item, returns the corresponding view"""
