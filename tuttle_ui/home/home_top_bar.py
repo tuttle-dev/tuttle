@@ -1,5 +1,7 @@
 from typing import Callable
 
+import webbrowser
+
 from flet import (
     Container,
     Text,
@@ -9,6 +11,8 @@ from flet import (
     icons,
     alignment,
     ElevatedButton,
+    PopupMenuButton,
+    PopupMenuItem,
 )
 
 from core.constants_and_enums import SPACE_BETWEEN_ALIGNMENT, CENTER_ALIGNMENT
@@ -22,7 +26,6 @@ from res.strings import (
     TOOLTIP_MY_PROFILE,
 )
 from res.fonts import HEADLINE_4_SIZE, HEADLINE_FONT
-
 from res import strings
 
 
@@ -82,6 +85,25 @@ def get_top_bar(
                             icon_size=20,
                             tooltip=TOOLTIP_MY_PROFILE,
                             on_click=on_click_profile_btn,
+                        ),
+                        PopupMenuButton(
+                            icon=icons.HELP,
+                            items=[
+                                PopupMenuItem(
+                                    icon=icons.CONTACT_SUPPORT,
+                                    text="Ask a question",
+                                    on_click=lambda _: webbrowser.open(
+                                        "https://github.com/tuttle-dev/tuttle/discussions"
+                                    ),
+                                ),
+                                PopupMenuItem(
+                                    icon=icons.BUG_REPORT,
+                                    text="Report a bug",
+                                    on_click=lambda _: webbrowser.open(
+                                        "https://github.com/tuttle-dev/tuttle/issues"
+                                    ),
+                                ),
+                            ],
                         ),
                     ]
                 ),
