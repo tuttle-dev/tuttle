@@ -109,9 +109,8 @@ class ProjectsListView(TuttleView, UserControl):
                 mdSpace,
                 ProjectFiltersView(onStateChanged=self.on_filter_projects),
                 mdSpace,
-                self.projects_container,
-            ],
-            scroll=ALWAYS_SCROLL,
+                Container(self.projects_container, expand=True),
+            ]
         )
 
     def will_unmount(self):

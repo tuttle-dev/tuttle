@@ -39,7 +39,7 @@ from res.dimens import (
     SPACE_XL,
     SPACE_XS,
     SPACE_LG,
-    TOOLBAR_HEIGHT,
+    FOOTER_HEIGHT,
 )
 from res.fonts import HEADLINE_4_SIZE, HEADLINE_FONT
 from res import fonts
@@ -62,7 +62,11 @@ NO_MENU_ITEM_INDEX = -1
 
 
 def create_and_get_navigation_menu(
-    title: str, on_change, selected_index: Optional[int] = None, destinations=[]
+    title: str,
+    on_change,
+    selected_index: Optional[int] = None,
+    destinations=[],
+    menu_height: int = 300,
 ):
     return NavigationRail(
         leading=Container(
@@ -82,9 +86,8 @@ def create_and_get_navigation_menu(
         selected_index=selected_index,
         min_width=COMPACT_RAIL_WIDTH,
         extended=True,
+        height=menu_height,
         min_extended_width=MIN_SIDE_BAR_WIDTH,
-        # FIXME: make the NavigationRail height as high as required for the content
-        height=360,
         destinations=destinations,
         on_change=on_change,
     )
@@ -105,6 +108,7 @@ class HomeScreen(TuttleView, UserControl):
             dialog_controller=dialog_controller,
             keep_back_stack=False,
             on_navigate_back=on_navigate_back,
+            page_scroll_type=None,
         )
         self.main_menu_handler = MainMenuItemsHandler(
             navigate_to_route=navigate_to_route,
@@ -120,11 +124,6 @@ class HomeScreen(TuttleView, UserControl):
         )
 
         self.selected_tab = NO_MENU_ITEM_INDEX
-        self.settings_icon = IconButton(
-            icon=icons.SETTINGS_SUGGEST_OUTLINED,
-            on_click=self.on_view_settings_clicked,
-            tooltip=PREFERENCES,
-        )
         self.main_menu = create_and_get_navigation_menu(
             title=self.main_menu_handler.main_menu_title,
             destinations=self.get_main_menu_destinations(),
@@ -152,6 +151,7 @@ class HomeScreen(TuttleView, UserControl):
         self.action_bar = get_top_bar(
             on_click_notifications_btn=self.on_view_notifications_clicked,
             on_click_new_btn=self.on_click_add_new,
+            on_view_settings_clicked=self.on_view_settings_clicked,
             on_click_profile_btn=self.on_click_profile,
         )
         self.is_on_main_menu = True
@@ -262,7 +262,7 @@ class HomeScreen(TuttleView, UserControl):
 
     # RE ROUTING
     def on_view_notifications_clicked(self, e):
-        self.show_snack("not implemented", is_error=True)
+        self.show_snack("Not implemented", True)
 
     def on_view_settings_clicked(self, e):
         self.navigate_to_route(PREFERENCES_SCREEN_ROUTE)
@@ -279,10 +279,10 @@ class HomeScreen(TuttleView, UserControl):
         # FIXME: the footer should span the entire window, not just the content area
         self.footer = Container(
             col={"xs": 12},
-            content=Text("Tuttle 2022"),
+            content=Text("."),
             alignment=alignment.center,
-            bgcolor=BLACK_COLOR,
-            padding=padding.symmetric(vertical=SPACE_LG),
+            # bgcolor=BLACK_COLOR,
+            height=FOOTER_HEIGHT,
             margin=margin.only(top=SPACE_LG),
         )
         self.main_body = Column(
@@ -311,15 +311,11 @@ class HomeScreen(TuttleView, UserControl):
                                     controls=[
                                         self.main_menu,
                                         self.secondary_menu,
-                                        Container(
-                                            self.settings_icon,
-                                            alignment=alignment.center,
-                                            width=MIN_SIDE_BAR_WIDTH,
-                                        ),
                                     ],
-                                    alignment=SPACE_BETWEEN_ALIGNMENT,
+                                    alignment=START_ALIGNMENT,
                                     horizontal_alignment=START_ALIGNMENT,
-                                    spacing=SPACE_LG,
+                                    spacing=0,
+                                    run_spacing=0,
                                 ),
                             ),
                             self.main_body,
@@ -350,8 +346,8 @@ class HomeScreen(TuttleView, UserControl):
             return
         super().on_window_resized(width, height)
         self.view.height = self.page_height
-        DESTINATION_CONTENT_PERCENT_HEIGHT = 0.8 if self.page_height > 776 else 0.7
-        self.destination_content_container.height = (
-            self.page_height * DESTINATION_CONTENT_PERCENT_HEIGHT
+        DESTINATION_CONTENT_PERCENT_HEIGHT = self.page_height - (
+            self.action_bar.height + self.footer.height + 50
         )
+        self.destination_content_container.height = DESTINATION_CONTENT_PERCENT_HEIGHT
         self.update()
