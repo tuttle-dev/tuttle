@@ -107,9 +107,8 @@ class ContractsListView(TuttleView, UserControl):
                 mdSpace,
                 ContractFiltersView(onStateChanged=self.on_filter_contracts),
                 mdSpace,
-                self.contracts_container,
-            ],
-            scroll=ALWAYS_SCROLL,
+                Container(self.contracts_container, expand=True),
+            ]
         )
         return view
 

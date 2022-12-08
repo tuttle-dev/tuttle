@@ -154,9 +154,8 @@ class ClientsListView(TuttleView, UserControl):
             controls=[
                 self.title_control,
                 mdSpace,
-                self.clients_container,
+                Container(self.clients_container, expand=True),
             ],
-            scroll=ALWAYS_SCROLL,
         )
         return view
 
