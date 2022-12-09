@@ -13,6 +13,7 @@ from flet import (
     ElevatedButton,
     PopupMenuButton,
     PopupMenuItem,
+    border,
 )
 
 from core.constants_and_enums import SPACE_BETWEEN_ALIGNMENT, CENTER_ALIGNMENT
@@ -40,6 +41,7 @@ def get_top_bar(
         alignment=alignment.center,
         height=TOOLBAR_HEIGHT,
         padding=padding.symmetric(horizontal=SPACE_MD),
+        border=border.only(bottom=border.BorderSide(width=1)),
         content=Row(
             alignment=SPACE_BETWEEN_ALIGNMENT,
             vertical_alignment=CENTER_ALIGNMENT,

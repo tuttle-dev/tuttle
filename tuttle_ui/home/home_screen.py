@@ -238,6 +238,7 @@ class HomeScreen(TuttleView, UserControl):
             col={"xs": 12},
             content=Text(""),
             alignment=alignment.center,
+            border=border.all(),
             # bgcolor=BLACK_COLOR,
             height=FOOTER_HEIGHT,
             margin=margin.only(top=SPACE_LG),
@@ -252,7 +253,10 @@ class HomeScreen(TuttleView, UserControl):
             horizontal_alignment=START_ALIGNMENT,
             controls=[
                 self.action_bar,
-                Container(self.destination_content_container),
+                Container(
+                    self.destination_content_container,
+                    # border=border.only(left=border.BorderSide(width=1)),
+                ),
             ],
         )
 
@@ -264,7 +268,9 @@ class HomeScreen(TuttleView, UserControl):
                             Container(
                                 col={"xs": 4, "md": 3, "lg": 2},
                                 padding=padding.only(top=SPACE_XL),
+                                border=border.only(right=border.BorderSide(width=1)),
                                 content=Column(
+                                    # black border on the right side
                                     controls=[
                                         self.main_menu,
                                         self.secondary_menu,
