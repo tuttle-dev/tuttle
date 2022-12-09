@@ -235,7 +235,7 @@ class HomeScreen(TuttleView, UserControl):
         )
         self.footer = Container(
             col={"xs": 12},
-            content=Text("Tuttle 2022"),
+            content=Text(""),
             alignment=alignment.center,
             # bgcolor=BLACK_COLOR,
             height=FOOTER_HEIGHT,
