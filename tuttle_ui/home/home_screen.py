@@ -49,8 +49,7 @@ from res.utils import (
 )
 from contacts.views.contact_editor import ContactEditorPopUp
 from .home_top_bar import get_top_bar
-from .main_menu import MainMenuItems, MainMenuItemsHandler
-from .secondary_menu import SecondaryMenuHandler, SecondaryMenuItems
+from .side_menus import MainMenuItemsHandler, SecondaryMenuHandler
 
 MIN_SIDE_BAR_WIDTH = int(MIN_WINDOW_WIDTH * 0.3)
 MIN_FOOTER_WIDTH = int(MIN_WINDOW_WIDTH * 0.7)
@@ -161,18 +160,15 @@ class HomeScreen(TuttleView, UserControl):
     def get_menu_destinations(self, menu_level=0) -> list:
         """loops through the main menu items and creates nav-rail-destinations"""
         items = []
-        menuItems = MainMenuItems if menu_level == 0 else SecondaryMenuItems
         handler = (
             self.main_menu_handler if menu_level == 0 else self.secondary_menu_handler
         )
-        for item in menuItems:
+        for item in handler.items:
             itemDestination = NavigationRailDestination(
-                icon_content=Icon(handler.get_menu_item_icon(item)),
-                selected_icon_content=Icon(handler.get_menu_item_selected_icon(item)),
-                label_content=get_body_txt(
-                    handler.get_menu_item_lbl(item), size=BODY_2_SIZE
-                ),
-                padding=padding.symmetric(horizontal=SPACE_SM, vertical=0),
+                icon_content=Icon(item.icon),
+                selected_icon_content=Icon(item.selected_icon),
+                label_content=get_body_txt(item.label, size=BODY_2_SIZE),
+                padding=padding.symmetric(horizontal=SPACE_SM),
             )
             items.append(itemDestination)
         return items
@@ -188,14 +184,8 @@ class HomeScreen(TuttleView, UserControl):
             self.selected_tab = e.control.selected_index
             if self.selected_tab != NO_MENU_ITEM_INDEX:
                 # update the destination view
-                menu_item = self.current_menu_handler.get_menu_item_from_index(
-                    self.selected_tab
-                )
-                self.destination_view = (
-                    self.current_menu_handler.get_menu_destination_view_for_item(
-                        menu_item
-                    )
-                )
+                menu_item = self.current_menu_handler.items[self.selected_tab]
+                self.destination_view = menu_item.destination
                 self.destination_content_container.content = self.destination_view
 
             # clear selected items on the other menu
@@ -211,29 +201,24 @@ class HomeScreen(TuttleView, UserControl):
         if self.selected_tab == NO_MENU_ITEM_INDEX:
             return
         """determine the item user wishes to create"""
-        item = self.current_menu_handler.get_menu_item_from_index(self.selected_tab)
-        routeOrIntent = self.current_menu_handler.get_create_route_or_intent(item)
+        item = self.current_menu_handler.items[self.selected_tab]
+        routeOrIntent = (
+            item.on_new_screen_route if item.on_new_screen_route else item.on_new_intent
+        )
+
         if routeOrIntent == ADD_CLIENT_INTENT:
             self.pass_intent_to_destination(ADD_CLIENT_INTENT, "")
         elif routeOrIntent == ADD_CONTACT_INTENT:
-            # show pop up for creating contact - TODO move this to contact
-            if self.dialog:
-                self.dialog.close_dialog()
-            self.dialog = ContactEditorPopUp(
-                dialog_controller=self.dialog_controller,
-                on_submit=lambda data: self.pass_intent_to_destination(
-                    ADD_CONTACT_INTENT, data
-                ),
-            )
-            self.dialog.open_dialog()
+            # show pop up for creating contact
+            self.pass_intent_to_destination(ADD_CONTACT_INTENT, "")
         else:
             self.navigate_to_route(routeOrIntent)
 
     def pass_intent_to_destination(self, intent: str, data: str):
+        """forwards an intent to a child destination view"""
         if self.destination_view:
             self.destination_view.parent_intent_listener(intent, data)
 
-    # RE ROUTING
     def on_view_notifications_clicked(self, e):
         print("==TODO===")
 
@@ -251,9 +236,9 @@ class HomeScreen(TuttleView, UserControl):
         )
         self.footer = Container(
             col={"xs": 12},
-            content=Text("."),
+            content=Text("Tuttle 2022"),
             alignment=alignment.center,
-            # bgcolor=BLACK_COLOR,
+            bgcolor=BLACK_COLOR,
             height=FOOTER_HEIGHT,
             margin=margin.only(top=SPACE_LG),
         )
