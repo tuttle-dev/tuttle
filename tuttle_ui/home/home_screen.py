@@ -251,7 +251,7 @@ class HomeScreen(TuttleView, UserControl):
             horizontal_alignment=START_ALIGNMENT,
             controls=[
                 self.action_bar,
-                Card(self.destination_content_container),
+                Container(self.destination_content_container),
             ],
         )
 
