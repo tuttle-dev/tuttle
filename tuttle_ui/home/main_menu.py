@@ -42,7 +42,7 @@ class MainMenuItemsHandler:
     ):
         super().__init__()
         self.first_item_index = 0
-        self.main_menu_title = MAIN_MENU_GROUP_TITLE
+        self.menu_title = MAIN_MENU_GROUP_TITLE
 
         self.projects_view = ProjectsListView(
             show_snack=show_snack,
@@ -69,7 +69,7 @@ class MainMenuItemsHandler:
             local_storage=local_storage,
         )
 
-    def get_main_menu_item_lbl(self, item: MainMenuItems) -> str:
+    def get_menu_item_lbl(self, item: MainMenuItems) -> str:
         """returns a label given a menu item"""
         if item.value == MainMenuItems.PROJECTS.value:
             return PROJECTS
@@ -80,7 +80,7 @@ class MainMenuItemsHandler:
         else:
             return CONTRACTS
 
-    def get_main_menu_item_icon(self, item: MainMenuItems) -> str:
+    def get_menu_item_icon(self, item: MainMenuItems) -> str:
         """returns the un-selected-state-icon given a menu item"""
         if item.value == MainMenuItems.PROJECTS.value:
             return icons.WORK_OUTLINE
@@ -91,7 +91,7 @@ class MainMenuItemsHandler:
         else:
             return icons.HANDSHAKE_OUTLINED
 
-    def get_main_menu_item_selected_icon(self, item: MainMenuItems) -> str:
+    def get_menu_item_selected_icon(self, item: MainMenuItems) -> str:
         """returns the selected-state-icon given a menu item"""
         if item.value == MainMenuItems.PROJECTS.value:
             return icons.WORK_ROUNDED
@@ -102,7 +102,7 @@ class MainMenuItemsHandler:
         else:
             return icons.HANDSHAKE_ROUNDED
 
-    def get_main_menu_item_from_index(self, index: int) -> MainMenuItems:
+    def get_menu_item_from_index(self, index: int) -> MainMenuItems:
         """Given an integer index, returns the corresponding side menu item"""
         if index == MainMenuItems.PROJECTS.value:
             return MainMenuItems.PROJECTS
@@ -113,7 +113,7 @@ class MainMenuItemsHandler:
         else:
             return MainMenuItems.CONTRACTS
 
-    def get_main_menu_destination_view_for_item(
+    def get_menu_destination_view_for_item(
         self, menu_item: MainMenuItems
     ) -> TuttleView:
         """Given a sidemenu item, returns the corresponding view"""
@@ -126,7 +126,7 @@ class MainMenuItemsHandler:
         else:
             return self.contracts_view
 
-    def get_new_main_item_route_or_intent(self, menu_item: MainMenuItems):
+    def get_create_route_or_intent(self, menu_item: MainMenuItems):
         """Given a menu item, returns route for the view responsible for creating the corresponding item
 
         e.g. item project ---> return route for New Project screen
