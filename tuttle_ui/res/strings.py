@@ -175,6 +175,7 @@ PREFERENCES = "Preferences"
 
 # Home sub menu
 INVOICING = "Invoicing"
+INVOICE = "Invoice"
 TIME_TRACKING = "Time Tracking"
 
 # ALERTS
