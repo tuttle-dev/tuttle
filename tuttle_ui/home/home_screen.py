@@ -41,8 +41,8 @@ from res.dimens import (
     SPACE_LG,
     FOOTER_HEIGHT,
 )
-from res.fonts import HEADLINE_4_SIZE, HEADLINE_FONT
 from res import fonts
+from res.fonts import HEADLINE_4_SIZE, HEADLINE_FONT, BODY_2_SIZE
 from res.strings import PREFERENCES
 from res.utils import (
     ADD_CLIENT_INTENT,
@@ -52,8 +52,7 @@ from res.utils import (
 )
 from contacts.views.contact_editor import ContactEditorPopUp
 from .home_top_bar import get_top_bar
-from .main_menu import MainMenuItems, MainMenuItemsHandler
-from .secondary_menu import SecondaryMenuHandler, SecondaryMenuItems
+from .side_menus import MainMenuItemsHandler, SecondaryMenuHandler
 
 MIN_SIDE_BAR_WIDTH = int(MIN_WINDOW_WIDTH * 0.3)
 MIN_FOOTER_WIDTH = int(MIN_WINDOW_WIDTH * 0.7)
@@ -66,7 +65,7 @@ def create_and_get_navigation_menu(
     on_change,
     selected_index: Optional[int] = None,
     destinations=[],
-    menu_height: int = 300,
+    menu_height: int = 250,
 ):
     return NavigationRail(
         leading=Container(
@@ -125,14 +124,14 @@ class HomeScreen(TuttleView, UserControl):
 
         self.selected_tab = NO_MENU_ITEM_INDEX
         self.main_menu = create_and_get_navigation_menu(
-            title=self.main_menu_handler.main_menu_title,
-            destinations=self.get_main_menu_destinations(),
-            on_change=self.on_main_menu_destination_change,
+            title=self.main_menu_handler.menu_title,
+            destinations=self.get_menu_destinations(),
+            on_change=lambda e: self.on_menu_destination_change(e),
         )
         self.secondary_menu = create_and_get_navigation_menu(
-            title=self.secondary_menu_handler.secondary_menu_title,
-            destinations=self.get_secondary_menu_destinations(),
-            on_change=self.on_secondary_menu_destination_change,
+            title=self.secondary_menu_handler.menu_title,
+            destinations=self.get_menu_destinations(menu_level=1),
+            on_change=lambda e: self.on_menu_destination_change(e, menu_level=1),
         )
         # initialize destination view with a welcome text
         self.destination_view = Container(
@@ -154,113 +153,71 @@ class HomeScreen(TuttleView, UserControl):
             on_view_settings_clicked=self.on_view_settings_clicked,
             on_click_profile_btn=self.on_click_profile,
         )
-        self.is_on_main_menu = True
+        self.current_menu_handler = self.main_menu_handler
 
     # MENU DESTINATIONS SETUP
-    def get_main_menu_destinations(self) -> list:
+    def get_menu_destinations(self, menu_level=0) -> list:
         """loops through the main menu items and creates nav-rail-destinations"""
         items = []
-        for item in MainMenuItems:
+        handler = (
+            self.main_menu_handler if menu_level == 0 else self.secondary_menu_handler
+        )
+        for item in handler.items:
             itemDestination = NavigationRailDestination(
-                icon_content=Icon(self.main_menu_handler.get_main_menu_item_icon(item)),
-                selected_icon_content=Icon(
-                    self.main_menu_handler.get_main_menu_item_selected_icon(item)
-                ),
-                label_content=get_body_txt(
-                    self.main_menu_handler.get_main_menu_item_lbl(item)
-                ),
-                padding=padding.symmetric(horizontal=SPACE_SM, vertical=SPACE_XS),
+                icon_content=Icon(item.icon),
+                selected_icon_content=Icon(item.selected_icon),
+                label_content=get_body_txt(item.label, size=BODY_2_SIZE),
+                padding=padding.symmetric(horizontal=SPACE_SM),
             )
             items.append(itemDestination)
         return items
 
-    def get_secondary_menu_destinations(self) -> list:
-        """loops through the secondary menu items and creates nav-rail-destinations"""
-        items = []
-        for item in SecondaryMenuItems:
-            itemDestination = NavigationRailDestination(
-                icon_content=Icon(
-                    self.secondary_menu_handler.get_secondary_menu_item_icon(item)
-                ),
-                selected_icon=Icon(
-                    self.secondary_menu_handler.get_secondary_menu_item_selected_icon(
-                        item
-                    )
-                ),
-                label_content=get_body_txt(
-                    self.secondary_menu_handler.get_secondary_menu_item_lbl(item)
-                ),
-                padding=padding.symmetric(horizontal=SPACE_SM, vertical=SPACE_XS),
-            )
-            items.append(itemDestination)
-        return items
-
-    def set_main_menu_destination_view_by_index(
-        self,
-    ):
-        if self.selected_tab == NO_MENU_ITEM_INDEX:
-            return
-        menu_item = self.main_menu_handler.get_main_menu_item_from_index(
-            self.selected_tab
-        )
-        self.destination_view = (
-            self.main_menu_handler.get_main_menu_destination_view_for_item(menu_item)
-        )
-
-    def on_main_menu_destination_change(self, e):
+    def on_menu_destination_change(self, e, menu_level=0):
         if self.mounted:
+            # update the current menu
+            self.current_menu_handler = (
+                self.main_menu_handler
+                if menu_level == 0
+                else self.secondary_menu_handler
+            )
             self.selected_tab = e.control.selected_index
-            self.is_on_main_menu = True
-            self.secondary_menu.selected_index = None
-            self.set_main_menu_destination_view_by_index()
-            self.destination_content_container.content = self.destination_view
-            self.update()
+            if self.selected_tab != NO_MENU_ITEM_INDEX:
+                # update the destination view
+                menu_item = self.current_menu_handler.items[self.selected_tab]
+                self.destination_view = menu_item.destination
+                self.destination_content_container.content = self.destination_view
 
-    def on_secondary_menu_destination_change(self, e):
-        if self.mounted:
-            self.is_on_main_menu = False
-            self.main_menu.selected_index = None
-            self.show_snack("not implemented yet")
+            # clear selected items on the other menu
+            if menu_level == 0:
+                self.secondary_menu.selected_index = None
+            else:
+                self.main_menu.selected_index = None
+                self.show_snack("un implemented")
             self.update()
 
     # ACTION BUTTONS
     def on_click_add_new(self, e):
         if self.selected_tab == NO_MENU_ITEM_INDEX:
             return
-        """determines the item user wishes to create e.g. new project / client"""
-        item = None
-        if self.is_on_main_menu:
-            item = self.main_menu_handler.get_main_menu_item_from_index(
-                self.selected_tab
-            )
-        else:
-            item = self.secondary_menu_handler.get_secondary_menu_item_from_index(
-                self.selected_tab
-            )
+        """determine the item user wishes to create"""
+        item = self.current_menu_handler.items[self.selected_tab]
+        routeOrIntent = (
+            item.on_new_screen_route if item.on_new_screen_route else item.on_new_intent
+        )
 
-        routeOrIntent = self.main_menu_handler.get_new_main_item_route_or_intent(item)
         if routeOrIntent == ADD_CLIENT_INTENT:
             self.pass_intent_to_destination(ADD_CLIENT_INTENT, "")
-
         elif routeOrIntent == ADD_CONTACT_INTENT:
-            # show pop up for creating contact - TODO move this to contact
-            if self.dialog:
-                self.dialog.close_dialog()
-            self.dialog = ContactEditorPopUp(
-                dialog_controller=self.dialog_controller,
-                on_submit=lambda data: self.pass_intent_to_destination(
-                    ADD_CONTACT_INTENT, data
-                ),
-            )
-            self.dialog.open_dialog()
+            # show pop up for creating contact
+            self.pass_intent_to_destination(ADD_CONTACT_INTENT, "")
         else:
             self.navigate_to_route(routeOrIntent)
 
     def pass_intent_to_destination(self, intent: str, data: str):
+        """forwards an intent to a child destination view"""
         if self.destination_view:
             self.destination_view.parent_intent_listener(intent, data)
 
-    # RE ROUTING
     def on_view_notifications_clicked(self, e):
         self.show_snack("Not implemented", True)
 
@@ -278,9 +235,9 @@ class HomeScreen(TuttleView, UserControl):
         )
         self.footer = Container(
             col={"xs": 12},
-            content=Text("."),
+            content=Text("Tuttle 2022"),
             alignment=alignment.center,
-            # bgcolor=BLACK_COLOR,
+            bgcolor=BLACK_COLOR,
             height=FOOTER_HEIGHT,
             margin=margin.only(top=SPACE_LG),
         )

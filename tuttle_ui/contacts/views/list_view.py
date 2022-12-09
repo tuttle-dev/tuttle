@@ -69,23 +69,30 @@ class ContactsListView(TuttleView, UserControl):
 
     def parent_intent_listener(self, intent: str, data: any):
         if intent == ADD_CONTACT_INTENT:
-            """New contact was clicked"""
-            contact: Contact = data
-            self.loading_indicator.visible = True
-            if self.mounted:
-                self.update()
-            result: IntentResult = self.intent_handler.save_contact(contact)
-            if not result.was_intent_successful:
-                self.show_snack(result.error_msg, True)
-            else:
-                contact = result.data
-                self.contacts_to_display[contact.id] = contact
-                self.refresh_list()
-                self.show_snack(NEW_CONTACT_ADDED_SUCCESS, False)
-            self.loading_indicator.visible = False
-            if self.mounted:
-                self.update()
+            if self.editor:
+                self.editor.close_dialog()
+            self.editor = ContactEditorPopUp(
+                dialog_controller=self.dialog_controller,
+                on_submit=self.on_new_contact_added,
+            )
+            self.editor.open_dialog()
         return
+
+    def on_new_contact_added(self, contact):
+        self.loading_indicator.visible = True
+        if self.mounted:
+            self.update()
+        result: IntentResult = self.intent_handler.save_contact(contact)
+        if not result.was_intent_successful:
+            self.show_snack(result.error_msg, True)
+        else:
+            contact = result.data
+            self.contacts_to_display[contact.id] = contact
+            self.refresh_list()
+            self.show_snack(NEW_CONTACT_ADDED_SUCCESS, False)
+        self.loading_indicator.visible = False
+        if self.mounted:
+            self.update()
 
     def load_all_contacts(self):
         self.contacts_to_display = self.intent_handler.get_all_contacts_as_map()
