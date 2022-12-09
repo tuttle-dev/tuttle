@@ -30,7 +30,7 @@ def get_top_bar(
     on_click_profile_btn: Callable,
 ):
     return Container(
-        bgcolor=BLACK_COLOR,
+        # bgcolor=BLACK_COLOR,
         alignment=alignment.center,
         height=TOOLBAR_HEIGHT,
         padding=padding.symmetric(horizontal=SPACE_MD),
