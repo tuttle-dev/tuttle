@@ -127,6 +127,7 @@ class HomeScreen(TuttleView, UserControl):
             title=self.main_menu_handler.menu_title,
             destinations=self.get_menu_destinations(),
             on_change=lambda e: self.on_menu_destination_change(e),
+            menu_height=len(self.main_menu_handler.items) * 54,
         )
         self.secondary_menu = create_and_get_navigation_menu(
             title=self.secondary_menu_handler.menu_title,
