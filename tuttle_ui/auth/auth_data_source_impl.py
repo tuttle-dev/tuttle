@@ -1,3 +1,5 @@
+from faker import Faker
+
 from .abstractions import UserDataSource
 from core.abstractions import ClientStorage
 from .user_model import User
@@ -10,22 +12,23 @@ class UserDataSourceImpl(UserDataSource):
         self._dummy_user = None
 
     def get_user(self) -> IntentResult:
-        add = Address(
-            id=123,
-            street="virtual",
-            number="164",
-            postal_code="34100",
-            city="ganzhou",
-            country="china",
-        )
+        fake = Faker()
+        user_name = fake.name()
         user = User(
-            id=456,
-            name="vlad",
-            subtitle="freelancer",
-            email="vlad@example.com",
-            phone_number="123000123",
-            address_id=add.id,
-            address=add,
+            id=fake.random_number(digits=5),
+            name=user_name,
+            subtitle=fake.job(),
+            email=f"{user_name.lower().replace(' ', '')}@example.com",
+            phone_number=fake.phone_number(),
+            address_id=fake.random_number(digits=5),
+            address=Address(
+                id=fake.random_number(digits=5),
+                street=fake.street_name(),
+                number=fake.building_number(),
+                postal_code=fake.postalcode(),
+                city=fake.city(),
+                country=fake.country(),
+            ),
         )
         self._dummy_user = user
         return IntentResult(was_intent_successful=True, data=self._dummy_user)
