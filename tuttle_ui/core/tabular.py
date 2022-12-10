@@ -10,15 +10,12 @@ from flet import (
 )
 
 
-def data_frame_to_data_table(data_frame: pandas.DataFrame) -> DataTable:
+def data_frame_to_data_table(
+    data_frame: pandas.DataFrame,
+    table_style: Dict = None,
+) -> DataTable:
     """
     Convert a pandas DataFrame to a flet DataTable.
-
-    Args:
-        data_frame: The pandas DataFrame to convert.
-
-    Returns:
-        A flet DataTable object that represents the data in the DataFrame.
     """
     # Get the column names from the DataFrame
     column_names = data_frame.columns.tolist()
@@ -36,4 +33,8 @@ def data_frame_to_data_table(data_frame: pandas.DataFrame) -> DataTable:
         rows.append(DataRow(cells=cells))
 
     # Create and return a DataTable object using the columns and rows
-    return DataTable(columns=columns, rows=rows)
+    return DataTable(
+        columns=columns,
+        rows=rows,
+        **table_style or {},
+    )
