@@ -21,6 +21,7 @@ from clients.views.list_view import ClientsListView
 from contacts.views.list_view import ContactsListView
 from contracts.views.list_view import ContractsListView
 from projects.views.list_view import ProjectsListView
+from time_tracking.view import TimeTrackingView
 from flet import icons, Icon, Container
 
 
@@ -134,6 +135,14 @@ class SecondaryMenuHandler:
     ):
         super().__init__()
         self.menu_title = SECONDARY_MENU_GROUP_TITLE
+
+        self.time_tracking_view = TimeTrackingView(
+            show_snack=show_snack,
+            dialog_controller=dialog_controller,
+            navigate_to_route=navigate_to_route,
+            local_storage=local_storage,
+        )
+
         self.items = [
             # a menu item for time tracking
             MenuItem(
