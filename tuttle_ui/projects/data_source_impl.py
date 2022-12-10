@@ -50,7 +50,7 @@ class ProjectDataSourceImpl(ProjectDataSource):
     def _get_dummy_projects(self):
         fake = faker.Faker()
         projects = {}
-        total = 50
+        total = 10
         for i in range(total):
             p = self._get_fake_project(fake, i)
             projects[p.id] = p

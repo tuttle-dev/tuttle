@@ -40,7 +40,7 @@ class ClientDataSourceImpl(ClientDataSource):
         )
 
         self.clients.clear()
-        total = 64
+        total = 20
         for i in range(total):
             c = self._get_fake_client(fake, i)
             self.clients[c.id] = c
