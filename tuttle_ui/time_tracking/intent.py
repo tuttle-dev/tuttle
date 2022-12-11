@@ -26,4 +26,3 @@ class TimeTrackingIntentImpl(TimeTrackingIntent):
             data_source=TimeTrackingDataSourceImpl(client_storage=local_storage),
             local_storage=local_storage,
         )
-        self.contacts_data_source = TimeTrackingDataSourceImpl()

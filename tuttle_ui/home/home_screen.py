@@ -193,7 +193,7 @@ class HomeScreen(TuttleView, UserControl):
                 self.secondary_menu.selected_index = None
             else:
                 self.main_menu.selected_index = None
-                self.show_snack("un implemented")
+                # self.show_snack("un implemented")
             self.update()
 
     # ACTION BUTTONS
@@ -255,7 +255,7 @@ class HomeScreen(TuttleView, UserControl):
                 self.action_bar,
                 Container(
                     self.destination_content_container,
-                    # border=border.only(left=border.BorderSide(width=1)),
+                    # border=border.only(left=border.BorderSide(width=0.5)),
                 ),
             ],
         )
@@ -268,7 +268,7 @@ class HomeScreen(TuttleView, UserControl):
                             Container(
                                 col={"xs": 4, "md": 3, "lg": 2},
                                 padding=padding.only(top=SPACE_XL),
-                                border=border.only(right=border.BorderSide(width=1)),
+                                border=border.only(right=border.BorderSide(width=0.5)),
                                 content=Column(
                                     # black border on the right side
                                     controls=[

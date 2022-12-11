@@ -33,6 +33,7 @@ class TuttleApp:
         self.page.on_route_change = self.on_route_change
         self.page.on_view_pop = self.on_view_pop
         self.routeParser = TuttleRoutes(
+            # FIXME: why not pass self: TuttleApp ?
             on_change_route=self.change_route,
             local_storage=self.local_storage,
             dialog_controller=self.control_alert_dialog,

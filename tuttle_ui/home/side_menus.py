@@ -150,8 +150,9 @@ class SecondaryMenuHandler:
                 label="Time Tracking",
                 icon=icons.TIMER_OUTLINED,
                 selected_icon=icons.TIMER_ROUNDED,
-                destination=Container(),
+                destination=self.time_tracking_view,
                 on_new_screen_route="/404",
+                on_new_intent=None,
             ),
             MenuItem(
                 # index=1,
@@ -160,5 +161,6 @@ class SecondaryMenuHandler:
                 selected_icon=icons.ATTACH_MONEY_ROUNDED,
                 destination=Container(),
                 on_new_screen_route="/404",
+                on_new_intent=None,
             ),
         ]
