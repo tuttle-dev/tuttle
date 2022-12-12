@@ -1,4 +1,4 @@
-import flet as ft
+import flet
 from flet import Page, AlertDialog, SnackBar, Text
 
 from core.models import RouteView
@@ -153,4 +153,8 @@ def main(page: Page):
     app.build()
 
 
-ft.app(target=main, assets_dir="assets")
+flet.app(
+    name="Tuttle",
+    target=main,
+    assets_dir="assets",
+)

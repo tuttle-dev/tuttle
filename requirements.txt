@@ -9,6 +9,8 @@ loguru
 pandera
 weasyprint
 matplotlib
+faker
+
 
 flet
 pyicloud
