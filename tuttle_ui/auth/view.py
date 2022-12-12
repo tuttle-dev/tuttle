@@ -2,9 +2,6 @@ from typing import Callable
 
 from flet import Column, Container, Row, UserControl, padding
 
-"""Displays quick info about Tuttle app"""
-
-import typing
 from typing import Callable
 
 from flet import (
@@ -42,6 +39,7 @@ from core.views import (
     get_labelled_logo,
     get_primary_btn,
     get_std_txt_field,
+    get_secondary_btn,
     horizontal_progress,
     mdSpace,
     stdSpace,
@@ -164,6 +162,9 @@ class LoginForm(UserControl):
             if self.mounted:
                 self.update()
 
+    def on_skip_clicked(self, e):
+        self.on_logged_in()
+
     def build(self):
         """Called when form is built"""
         self.name_field = get_std_txt_field(
@@ -229,6 +230,10 @@ class LoginForm(UserControl):
             on_click=self.on_submit_btn_clicked,
             label="Get Started",
         )
+        self.skip_btn = get_secondary_btn(
+            on_click=self.on_skip_clicked,
+            label="Skip",
+        )
         self.form = Column(
             spacing=dimens.SPACE_MD,
             controls=[
@@ -253,6 +258,7 @@ class LoginForm(UserControl):
                 self.country_field,
                 self.login_err_txt,
                 self.submit_btn,
+                self.skip_btn,
             ],
         )
 

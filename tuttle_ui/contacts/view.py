@@ -13,9 +13,10 @@ from flet import (
     Text,
     UserControl,
     border_radius,
-    icon,
+    Icon,
     icons,
     padding,
+    ListTile,
 )
 
 from contacts.model import Contact, get_empty_contact
@@ -61,10 +62,15 @@ class ContactCard(UserControl):
 
     def build(self):
         self.product_info_container.controls = [
-            get_headline_with_subtitle(
-                title=self.contact.name,
-                subtitle=self.contact.company,
-                subtitleColor=GRAY_COLOR,
+            ListTile(
+                leading=Icon(icons.CONTACT_MAIL),
+                title=Text(self.contact.name),
+                subtitle=Text(self.contact.company, color=GRAY_COLOR),
+                trailing=IconButton(
+                    icon=icons.EDIT_NOTE_OUTLINED,
+                    tooltip="Edit Contact",
+                    on_click=lambda e: self.on_edit_clicked(self.contact),
+                ),
             ),
             mdSpace,
             ResponsiveRow(
@@ -106,18 +112,6 @@ class ContactCard(UserControl):
                 vertical_alignment=START_ALIGNMENT,
                 spacing=SPACE_XS,
                 run_spacing=0,
-            ),
-            Row(
-                alignment=END_ALIGNMENT,
-                vertical_alignment=END_ALIGNMENT,
-                expand=True,
-                controls=[
-                    IconButton(
-                        icon=icons.EDIT_NOTE_OUTLINED,
-                        tooltip="Edit Contact",
-                        on_click=lambda e: self.on_edit_clicked(self.contact),
-                    ),
-                ],
             ),
         ]
         card = Card(

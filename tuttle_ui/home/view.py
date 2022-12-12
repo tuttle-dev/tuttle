@@ -1,7 +1,8 @@
 from typing import Optional
-
+import webbrowser
 from flet import (
-    Card,
+    PopupMenuButton,
+    PopupMenuItem,
     Column,
     Container,
     IconButton,
@@ -16,6 +17,7 @@ from flet import (
     padding,
     ResponsiveRow,
     Icon,
+    border,
 )
 from core.views import get_body_txt, get_headline_with_subtitle
 from core.abstractions import DialogHandler, TuttleView
@@ -39,7 +41,13 @@ from res.dimens import (
     SPACE_LG,
     FOOTER_HEIGHT,
 )
-from res.fonts import HEADLINE_4_SIZE, HEADLINE_FONT, BODY_2_SIZE
+from res.fonts import (
+    HEADLINE_4_SIZE,
+    HEADLINE_FONT,
+    BODY_2_SIZE,
+    SUBTITLE_2_SIZE,
+    SUBTITLE_1_SIZE,
+)
 
 from res.utils import (
     ADD_CLIENT_INTENT,
@@ -91,23 +99,25 @@ MIN_BODY_HEIGHT = int(MIN_WINDOW_HEIGHT * 0.8)
 NO_MENU_ITEM_INDEX = -1
 
 
-def get_top_bar(
+def get_action_bar(
     on_click_new_btn: Callable,
     on_click_notifications_btn: Callable,
     on_click_profile_btn: Callable,
+    on_view_settings_clicked: Callable,
 ):
     return Container(
-        bgcolor=BLACK_COLOR,
         alignment=alignment.center,
         height=TOOLBAR_HEIGHT,
         padding=padding.symmetric(horizontal=SPACE_MD),
+        border=border.only(bottom=border.BorderSide(width=1)),
         content=Row(
             alignment=SPACE_BETWEEN_ALIGNMENT,
             vertical_alignment=CENTER_ALIGNMENT,
             controls=[
                 Row(
                     controls=[
-                        get_app_logo(width=10),
+                        # TODO: replace with actual app logo
+                        # get_app_logo(width=10),
                         Text(
                             "Tuttle",
                             size=HEADLINE_4_SIZE,
@@ -135,11 +145,37 @@ def get_top_bar(
                             on_click=on_click_notifications_btn,
                         ),
                         IconButton(
+                            icon=icons.SETTINGS_SUGGEST_OUTLINED,
+                            icon_color=PRIMARY_COLOR,
+                            icon_size=20,
+                            on_click=on_view_settings_clicked,
+                            tooltip="Preferences",
+                        ),
+                        IconButton(
                             icons.PERSON_OUTLINE_OUTLINED,
                             icon_color=PRIMARY_COLOR,
                             icon_size=20,
                             tooltip="Profile",
                             on_click=on_click_profile_btn,
+                        ),
+                        PopupMenuButton(
+                            icon=icons.HELP,
+                            items=[
+                                PopupMenuItem(
+                                    icon=icons.CONTACT_SUPPORT,
+                                    text="Ask a question",
+                                    on_click=lambda _: webbrowser.open(
+                                        "https://github.com/tuttle-dev/tuttle/discussions"
+                                    ),
+                                ),
+                                PopupMenuItem(
+                                    icon=icons.BUG_REPORT,
+                                    text="Report a bug",
+                                    on_click=lambda _: webbrowser.open(
+                                        "https://github.com/tuttle-dev/tuttle/issues"
+                                    ),
+                                ),
+                            ],
                         ),
                     ]
                 ),
@@ -153,21 +189,20 @@ def create_and_get_navigation_menu(
     on_change,
     selected_index: Optional[int] = None,
     destinations=[],
-    menu_height: int = 250,
+    menu_height: int = 300,
 ):
     return NavigationRail(
         leading=Container(
             content=Text(
                 title,
-                text_align=TXT_ALIGN_START,
+                text_align=START_ALIGNMENT,
                 expand=True,
-                font_family=HEADLINE_FONT,
+                font_family=SUBTITLE_2_SIZE,
                 size=HEADLINE_4_SIZE,
                 color=GRAY_DARK_COLOR,
             ),
             expand=True,
             width=MIN_SIDE_BAR_WIDTH,
-            padding=padding.symmetric(horizontal=SPACE_STD),
             margin=margin.only(top=SPACE_STD),
         ),
         selected_index=selected_index,
@@ -181,7 +216,7 @@ def create_and_get_navigation_menu(
 
 
 @dataclass
-class MenuItems:
+class MenuItem:
     """defines a menu item"""
 
     index: int
@@ -204,7 +239,7 @@ class MainMenuItemsHandler:
         local_storage,
     ):
         super().__init__()
-        self.menu_title = "Work"
+        self.menu_title = "My Business"
         self.projects_view = ProjectsListView(
             show_snack=show_snack,
             dialog_controller=dialog_controller,
@@ -230,8 +265,16 @@ class MainMenuItemsHandler:
             local_storage=local_storage,
         )
         self.items = [
-            MenuItems(
+            MenuItem(
                 0,
+                label="Dashboard",
+                icon=icons.SPEED,
+                selected_icon=icons.SPEED_ROUNDED,
+                destination=Container(),
+                on_new_screen_route="/404",
+            ),
+            MenuItem(
+                1,
                 "Projects",
                 icons.WORK_OUTLINE,
                 icons.WORK_ROUNDED,
@@ -239,8 +282,8 @@ class MainMenuItemsHandler:
                 on_new_screen_route=PROJECT_CREATOR_SCREEN_ROUTE,
                 on_new_intent=None,
             ),
-            MenuItems(
-                1,
+            MenuItem(
+                2,
                 "Contacts",
                 icons.CONTACT_MAIL_OUTLINED,
                 icons.CONTACT_MAIL_ROUNDED,
@@ -248,8 +291,8 @@ class MainMenuItemsHandler:
                 on_new_screen_route=None,
                 on_new_intent=ADD_CONTACT_INTENT,
             ),
-            MenuItems(
-                2,
+            MenuItem(
+                3,
                 "Clients",
                 icons.CONTACTS_OUTLINED,
                 icons.CONTACTS_ROUNDED,
@@ -257,8 +300,8 @@ class MainMenuItemsHandler:
                 on_new_screen_route=None,
                 on_new_intent=ADD_CLIENT_INTENT,
             ),
-            MenuItems(
-                3,
+            MenuItem(
+                4,
                 "Contracts",
                 icons.HANDSHAKE_OUTLINED,
                 icons.HANDSHAKE_ROUNDED,
@@ -280,16 +323,32 @@ class SecondaryMenuHandler:
         local_storage,
     ):
         super().__init__()
-        self.menu_title = "Generate"
+        self.menu_title = "Workflows"
         self.items = [
-            MenuItems(
+            MenuItem(
                 0,
-                "Invoices",
-                icons.ATTACH_MONEY_OUTLINED,
+                "Time Tracking",
+                icons.TIMER_OUTLINED,
+                icons.TIMER_ROUNDED,
+                Container(),
+                "/404",
+            ),
+            MenuItem(
+                0,
+                "Invoicing",
+                icons.ATTACH_MONEY_SHARP,
                 icons.ATTACH_MONEY_ROUNDED,
                 Container(),
                 "/404",
-            )
+            ),
+            MenuItem(
+                0,
+                "Datatable",
+                icons.TABLE_CHART,
+                icons.TABLE_CHART_ROUNDED,
+                Container(),
+                "/404",
+            ),
         ]
 
 
@@ -324,11 +383,7 @@ class HomeScreen(TuttleView, UserControl):
         )
 
         self.selected_tab = NO_MENU_ITEM_INDEX
-        self.settings_icon = IconButton(
-            icon=icons.SETTINGS_SUGGEST_OUTLINED,
-            on_click=self.on_view_settings_clicked,
-            tooltip="Preferences",
-        )
+
         self.main_menu = create_and_get_navigation_menu(
             title=self.main_menu_handler.menu_title,
             destinations=self.get_menu_destinations(),
@@ -353,10 +408,11 @@ class HomeScreen(TuttleView, UserControl):
             ),
         )
         self.dialog: Optional[DialogHandler] = None
-        self.action_bar = get_top_bar(
+        self.action_bar = get_action_bar(
             on_click_notifications_btn=self.on_view_notifications_clicked,
             on_click_new_btn=self.on_click_add_new,
             on_click_profile_btn=self.on_click_profile,
+            on_view_settings_clicked=self.on_view_settings_clicked,
         )
         self.current_menu_handler = self.main_menu_handler
 
@@ -397,7 +453,7 @@ class HomeScreen(TuttleView, UserControl):
                 self.secondary_menu.selected_index = None
             else:
                 self.main_menu.selected_index = None
-                self.show_snack("un implemented")
+                self.show_snack("not implemented yet")
             self.update()
 
     # ACTION BUTTONS
@@ -424,7 +480,7 @@ class HomeScreen(TuttleView, UserControl):
             self.destination_view.parent_intent_listener(intent, data)
 
     def on_view_notifications_clicked(self, e):
-        print("==TODO===")
+        self.show_snack("not implemented", True)
 
     def on_view_settings_clicked(self, e):
         self.navigate_to_route(PREFERENCES_SCREEN_ROUTE)
@@ -440,9 +496,9 @@ class HomeScreen(TuttleView, UserControl):
         )
         self.footer = Container(
             col={"xs": 12},
-            content=Text("Tuttle 2022", color=WHITE_COLOR),
+            content=Text(""),
             alignment=alignment.center,
-            bgcolor=BLACK_COLOR,
+            border=border.only(top=border.BorderSide(1, "black")),
             height=FOOTER_HEIGHT,
             margin=margin.only(top=SPACE_LG),
         )
@@ -456,7 +512,7 @@ class HomeScreen(TuttleView, UserControl):
             horizontal_alignment=START_ALIGNMENT,
             controls=[
                 self.action_bar,
-                Card(self.destination_content_container),
+                self.destination_content_container,
             ],
         )
 
@@ -472,17 +528,13 @@ class HomeScreen(TuttleView, UserControl):
                                     controls=[
                                         self.main_menu,
                                         self.secondary_menu,
-                                        Container(
-                                            self.settings_icon,
-                                            alignment=alignment.center,
-                                            width=MIN_SIDE_BAR_WIDTH,
-                                        ),
                                     ],
                                     alignment=START_ALIGNMENT,
                                     horizontal_alignment=START_ALIGNMENT,
                                     spacing=0,
                                     run_spacing=0,
                                 ),
+                                border=border.only(right=border.BorderSide(width=1)),
                             ),
                             self.main_body,
                         ],
