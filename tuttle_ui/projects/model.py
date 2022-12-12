@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 import datetime
-from res.strings import ACTIVE, COMPLETED, UPCOMING, ALL
+
 from typing import Optional
 from contracts.model import Contract
 from clients.model import Client
@@ -34,14 +34,14 @@ class Project:
 
     def get_status(self) -> str:
         if self.is_active():
-            return ACTIVE
+            return "Active"
         elif self.is_upcoming():
-            return UPCOMING
+            return "Upcoming"
         elif self.is_completed:
-            return COMPLETED
+            return "Completed"
         else:
             # default
-            return ALL
+            return "All"
 
     def get_brief_description(self):
         if len(self.description) <= 108:

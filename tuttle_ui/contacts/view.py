@@ -43,17 +43,7 @@ from core.views import (
 from res.colors import ERROR_COLOR, GRAY_COLOR
 from res.dimens import MIN_WINDOW_WIDTH, SPACE_MD, SPACE_STD, SPACE_XS
 from res.fonts import BODY_2_SIZE, HEADLINE_4_SIZE
-from res.strings import (
-    ADDRESS,
-    EDIT_CONTACT_TOOLTIP,
-    EMAIL_LBL,
-    ID_LBL,
-    MY_CONTACTS,
-    NEW_CONTACT_ADDED_SUCCESS,
-    NO_CONTACTS_ADDED,
-    UPDATING_CONTACT_FAILED,
-    UPDATING_CONTACT_SUCCESS,
-)
+
 from res.utils import ADD_CONTACT_INTENT
 
 
@@ -80,7 +70,7 @@ class ContactCard(UserControl):
             ResponsiveRow(
                 controls=[
                     Text(
-                        EMAIL_LBL.lower(),
+                        "email",
                         color=GRAY_COLOR,
                         size=BODY_2_SIZE,
                         col={"xs": "12"},
@@ -99,7 +89,7 @@ class ContactCard(UserControl):
             ResponsiveRow(
                 controls=[
                     Text(
-                        ADDRESS.lower(),
+                        "address",
                         color=GRAY_COLOR,
                         size=BODY_2_SIZE,
                         col={"xs": "12"},
@@ -124,7 +114,7 @@ class ContactCard(UserControl):
                 controls=[
                     IconButton(
                         icon=icons.EDIT_NOTE_OUTLINED,
-                        tooltip=EDIT_CONTACT_TOOLTIP,
+                        tooltip="Edit Contact",
                         on_click=lambda e: self.on_edit_clicked(self.contact),
                     ),
                 ],
@@ -339,14 +329,16 @@ class ContactsListView(TuttleView, UserControl):
         self.intent_handler = ContactsIntentImpl(local_storage=local_storage)
         self.loading_indicator = horizontal_progress
         self.no_contacts_control = Text(
-            value=NO_CONTACTS_ADDED, color=ERROR_COLOR, visible=False
+            value="You have not added any contacts yet",
+            color=ERROR_COLOR,
+            visible=False,
         )
         self.title_control = ResponsiveRow(
             controls=[
                 Column(
                     col={"xs": 12},
                     controls=[
-                        get_headline_txt(txt=MY_CONTACTS, size=HEADLINE_4_SIZE),
+                        get_headline_txt(txt="My Contacts", size=HEADLINE_4_SIZE),
                         self.loading_indicator,
                         self.no_contacts_control,
                     ],
@@ -385,7 +377,7 @@ class ContactsListView(TuttleView, UserControl):
             contact = result.data
             self.contacts_to_display[contact.id] = contact
             self.refresh_list()
-            self.show_snack(NEW_CONTACT_ADDED_SUCCESS, False)
+            self.show_snack("A new contact has been added", False)
         self.loading_indicator.visible = False
         if self.mounted:
             self.update()
@@ -420,9 +412,9 @@ class ContactsListView(TuttleView, UserControl):
             self.update()
         result = self.intent_handler.save_contact(contact)
         msg = (
-            UPDATING_CONTACT_SUCCESS
+            "The contact's info has been updated"
             if result.was_intent_successful
-            else UPDATING_CONTACT_FAILED
+            else "Failed to update the contact"
         )
         isError = False if result.was_intent_successful else True
         self.show_snack(msg, isError)

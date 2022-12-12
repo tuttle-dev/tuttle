@@ -2,6 +2,7 @@ import typing
 from enum import Enum
 from typing import Callable, Optional
 from clients.view import ClientEditorPopUp
+from res.utils import CONTRACT_EDITOR_SCREEN_ROUTE
 from flet import (
     Card,
     Column,
@@ -31,27 +32,7 @@ from core.models import IntentResult
 from core.views import horizontal_progress, mdSpace
 from res import colors, dimens, fonts
 from res.dimens import MIN_WINDOW_WIDTH
-from res.strings import (
-    CLIENT_LBL,
-    CONTRACT_BILLING_CYCLE,
-    CONTRACT_CURRENCY,
-    CONTRACT_LBL,
-    CONTRACT_RATE,
-    CONTRACT_SIGNATURE_DATE,
-    CONTRACT_STATUS_LBL,
-    CONTRACT_TERM_OF_PAYMENT,
-    CONTRACT_TIME_UNIT,
-    CONTRACT_UNITS_PER_WORKDAY,
-    CONTRACT_VAT_RATE,
-    CONTRACT_VOLUME,
-    DELETE_CONTRACT,
-    EDIT_CONTRACT,
-    END_DATE,
-    MARK_AS_COMPLETE,
-    START_DATE,
-    VIEW_CLIENT_HINT,
-    VIEW_CLIENT_LBL,
-)
+
 
 LABEL_WIDTH = 80
 
@@ -116,21 +97,7 @@ from res.dimens import (
     SPACE_XS,
 )
 from res.fonts import BODY_2_SIZE, HEADLINE_4_SIZE, SUBTITLE_1_SIZE
-from res.strings import (
-    ACTIVE,
-    ALL,
-    CLIENT_ID_LBL,
-    COMPLETED,
-    CONTRACT_BILLING_CYCLE,
-    CONTRACT_TIME_UNIT,
-    END_DATE,
-    ID_LBL,
-    MY_CONTRACTS,
-    NO_CONTRACTS_ADDED,
-    START_DATE,
-    UPCOMING,
-    VIEW_DETAILS,
-)
+
 from res.utils import CONTRACT_DETAILS_SCREEN_ROUTE
 
 LABEL_WIDTH = 80
@@ -198,7 +165,7 @@ class ContractCard(UserControl):
             ResponsiveRow(
                 controls=[
                     Text(
-                        ID_LBL,
+                        "Id",
                         color=GRAY_COLOR,
                         size=BODY_2_SIZE,
                         col={"xs": "12", "sm": "5", "md": "3"},
@@ -216,7 +183,7 @@ class ContractCard(UserControl):
             ResponsiveRow(
                 controls=[
                     Text(
-                        CLIENT_ID_LBL,
+                        "Client Id",
                         color=GRAY_COLOR,
                         size=BODY_2_SIZE,
                         col={"xs": "12", "sm": "5", "md": "3"},
@@ -234,7 +201,7 @@ class ContractCard(UserControl):
             ResponsiveRow(
                 controls=[
                     Text(
-                        CONTRACT_BILLING_CYCLE,
+                        "Billing Cycle",
                         color=GRAY_COLOR,
                         size=BODY_2_SIZE,
                         col={"xs": "12", "sm": "5", "md": "3"},
@@ -252,7 +219,7 @@ class ContractCard(UserControl):
             ResponsiveRow(
                 controls=[
                     Text(
-                        START_DATE,
+                        "Start date",
                         color=GRAY_COLOR,
                         size=BODY_2_SIZE,
                         col={"xs": "12", "sm": "5", "md": "3"},
@@ -270,7 +237,7 @@ class ContractCard(UserControl):
             ResponsiveRow(
                 controls=[
                     Text(
-                        END_DATE,
+                        "End date",
                         color=GRAY_COLOR,
                         size=BODY_2_SIZE,
                         col={"xs": "12", "sm": "5", "md": "3"},
@@ -292,7 +259,7 @@ class ContractCard(UserControl):
                 expand=True,
                 controls=[
                     ElevatedButton(
-                        text=VIEW_DETAILS,
+                        text="View",
                         on_click=lambda e: self.on_click_view(self.contract.id),
                     ),
                 ],
@@ -780,13 +747,13 @@ class ContractFiltersView(UserControl):
 
     def get_filter_button_lbl(self, state: ContractStates):
         if state.value == ContractStates.ACTIVE.value:
-            return ACTIVE
+            return "Active"
         elif state.value == ContractStates.UPCOMING.value:
-            return UPCOMING
+            return "Upcoming"
         elif state.value == ContractStates.COMPLETED.value:
-            return COMPLETED
+            return "Completed"
         else:
-            return ALL
+            return "All"
 
     def set_filter_buttons(self):
         for state in ContractStates:
@@ -1203,14 +1170,16 @@ class ContractsListView(TuttleView, UserControl):
         self.intent_handler = ContractsIntentImpl(local_storage=local_storage)
         self.loading_indicator = horizontal_progress
         self.no_contracts_control = Text(
-            value=NO_CONTRACTS_ADDED, color=ERROR_COLOR, visible=False
+            value="You have not added any contracts yet",
+            color=ERROR_COLOR,
+            visible=False,
         )
         self.title_control = ResponsiveRow(
             controls=[
                 Column(
                     col={"xs": 12},
                     controls=[
-                        get_headline_txt(txt=MY_CONTRACTS, size=HEADLINE_4_SIZE),
+                        get_headline_txt(txt="My Contracts", size=HEADLINE_4_SIZE),
                         self.loading_indicator,
                         self.no_contracts_control,
                     ],
@@ -1249,7 +1218,7 @@ class ContractsListView(TuttleView, UserControl):
         elif filterByState.value == ContractStates.COMPLETED.value:
             self.contracts_to_display = self.intent_handler.get_completed_contracts()
         else:
-            self.contracts_to_display = self.intent_handler.get_all_contracts()
+            self.contracts_to_display = self.intent_handler.get_all_contracts_as_map()
         self.display_currently_filtered_contracts()
         if self.mounted:
             self.update()
@@ -1317,9 +1286,7 @@ class ViewContractScreen(TuttleView, UserControl):
         self.contract_title_control.value = self.contract.title
         self.start_date_control.value = self.contract.start_date
         self.end_date_control.value = self.contract.end_date
-        self.status_control.value = (
-            f"{CONTRACT_STATUS_LBL} {self.contract.get_status()}"
-        )
+        self.status_control.value = f"Status {self.contract.get_status()}"
         self.billing_cycle_control.value = self.contract.billing_cycle
         self.rate_control.value = self.contract.rate
         self.currency_control.value = self.contract.currency
@@ -1349,6 +1316,10 @@ class ViewContractScreen(TuttleView, UserControl):
         self.show_snack("Coming soon", False)
 
     def on_edit_clicked(self, e):
+        """TODO if self.contract is None:
+            # project is not loaded yet
+            return
+        self.navigate_to_route(CONTRACT_EDITOR_SCREEN_ROUTE, self.contract.id)"""
         self.show_snack("Coming soon", False)
 
     def on_delete_clicked(self, e):
@@ -1376,19 +1347,19 @@ class ViewContractScreen(TuttleView, UserControl):
         """Called when page is built"""
         self.edit_contract_btn = IconButton(
             icon=icons.EDIT_OUTLINED,
-            tooltip=EDIT_CONTRACT,
+            tooltip="Edit contract",
             on_click=self.on_edit_clicked,
         )
         self.mark_as_complete_btn = IconButton(
             icon=icons.CHECK_CIRCLE_OUTLINE,
             icon_color=colors.PRIMARY_COLOR,
-            tooltip=MARK_AS_COMPLETE,
+            tooltip="Mark contract as completed",
             on_click=self.on_mark_as_complete_clicked,
         )
         self.delete_contract_btn = IconButton(
             icon=icons.DELETE_OUTLINE_ROUNDED,
             icon_color=colors.ERROR_COLOR,
-            tooltip=DELETE_CONTRACT,
+            tooltip="Delete contract",
             on_click=self.on_delete_clicked,
         )
 
@@ -1458,8 +1429,8 @@ class ViewContractScreen(TuttleView, UserControl):
                                 on_click=self.on_navigate_back,
                             ),
                             TextButton(
-                                VIEW_CLIENT_LBL,
-                                tooltip=VIEW_CLIENT_HINT,
+                                "Client",
+                                tooltip="View contract's client",
                                 on_click=self.on_view_client_clicked,
                             ),
                         ]
@@ -1484,7 +1455,7 @@ class ViewContractScreen(TuttleView, UserControl):
                                                 alignment=SPACE_BETWEEN_ALIGNMENT,
                                                 controls=[
                                                     Text(
-                                                        CONTRACT_LBL,
+                                                        "Contract",
                                                         size=fonts.HEADLINE_4_SIZE,
                                                         font_family=fonts.HEADLINE_FONT,
                                                         color=colors.PRIMARY_COLOR,
@@ -1503,11 +1474,11 @@ class ViewContractScreen(TuttleView, UserControl):
                                                 ],
                                             ),
                                             self.get_body_element(
-                                                CONTRACT_LBL,
+                                                "Title",
                                                 self.contract_title_control,
                                             ),
                                             self.get_body_element(
-                                                CLIENT_LBL, self.client_control
+                                                "Client", self.client_control
                                             ),
                                         ],
                                     ),
@@ -1515,31 +1486,27 @@ class ViewContractScreen(TuttleView, UserControl):
                             ),
                             mdSpace,
                             self.get_body_element(
-                                CONTRACT_BILLING_CYCLE, self.billing_cycle_control
+                                "Billing Cycle", self.billing_cycle_control
                             ),
-                            self.get_body_element(CONTRACT_RATE, self.rate_control),
+                            self.get_body_element("Rate", self.rate_control),
+                            self.get_body_element("Currency", self.currency_control),
+                            self.get_body_element("Vat Rate", self.vat_rate_control),
+                            self.get_body_element("Time Unit", self.unit_control),
                             self.get_body_element(
-                                CONTRACT_CURRENCY, self.currency_control
-                            ),
-                            self.get_body_element(
-                                CONTRACT_VAT_RATE, self.vat_rate_control
-                            ),
-                            self.get_body_element(
-                                CONTRACT_TIME_UNIT, self.unit_control
-                            ),
-                            self.get_body_element(
-                                CONTRACT_UNITS_PER_WORKDAY,
+                                "Units per Workday",
                                 self.units_per_workday_control,
                             ),
-                            self.get_body_element(CONTRACT_VOLUME, self.volume_control),
+                            self.get_body_element("Volume", self.volume_control),
                             self.get_body_element(
-                                CONTRACT_TERM_OF_PAYMENT, self.term_of_payment_control
+                                "Term of Payment", self.term_of_payment_control
                             ),
                             self.get_body_element(
-                                CONTRACT_SIGNATURE_DATE, self.signature_date_control
+                                "Signed on Date", self.signature_date_control
                             ),
-                            self.get_body_element(START_DATE, self.start_date_control),
-                            self.get_body_element(END_DATE, self.end_date_control),
+                            self.get_body_element(
+                                "Start Date", self.start_date_control
+                            ),
+                            self.get_body_element("End Date", self.end_date_control),
                             mdSpace,
                             Row(
                                 spacing=dimens.SPACE_STD,

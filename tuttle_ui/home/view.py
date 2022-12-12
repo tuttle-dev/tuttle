@@ -40,7 +40,7 @@ from res.dimens import (
     FOOTER_HEIGHT,
 )
 from res.fonts import HEADLINE_4_SIZE, HEADLINE_FONT, BODY_2_SIZE
-from res.strings import PREFERENCES
+
 from res.utils import (
     ADD_CLIENT_INTENT,
     ADD_CONTACT_INTENT,
@@ -65,24 +65,11 @@ from core.constants_and_enums import SPACE_BETWEEN_ALIGNMENT, CENTER_ALIGNMENT
 from core.views import get_app_logo, get_std_txt_field
 from res.colors import BLACK_COLOR, WHITE_COLOR, PRIMARY_COLOR
 from res.dimens import SPACE_MD, TOOLBAR_HEIGHT
-from res.strings import (
-    APP_NAME,
-    TOOLTIP_NOTIFICATIONS,
-    ADD_NEW_BUTTON_TXT,
-    TOOLTIP_MY_PROFILE,
-)
+
 from res.fonts import HEADLINE_4_SIZE, HEADLINE_FONT
 from dataclasses import dataclass
 
-from res.strings import (
-    INVOICE,
-    PROJECTS,
-    CONTRACTS,
-    CLIENTS,
-    CONTACTS,
-    MAIN_MENU_GROUP_TITLE,
-    SECONDARY_MENU_GROUP_TITLE,
-)
+
 from res.utils import (
     PROJECT_CREATOR_SCREEN_ROUTE,
     ADD_CLIENT_INTENT,
@@ -122,7 +109,7 @@ def get_top_bar(
                     controls=[
                         get_app_logo(width=10),
                         Text(
-                            APP_NAME,
+                            "Tuttle",
                             size=HEADLINE_4_SIZE,
                             font_family=HEADLINE_FONT,
                             color=WHITE_COLOR,
@@ -134,7 +121,7 @@ def get_top_bar(
                 Row(
                     controls=[
                         ElevatedButton(
-                            text=ADD_NEW_BUTTON_TXT,
+                            text="New",
                             icon=icons.ADD_OUTLINED,
                             icon_color=PRIMARY_COLOR,
                             color=PRIMARY_COLOR,
@@ -144,14 +131,14 @@ def get_top_bar(
                             icons.NOTIFICATIONS,
                             icon_color=PRIMARY_COLOR,
                             icon_size=20,
-                            tooltip=TOOLTIP_NOTIFICATIONS,
+                            tooltip="Notifications",
                             on_click=on_click_notifications_btn,
                         ),
                         IconButton(
                             icons.PERSON_OUTLINE_OUTLINED,
                             icon_color=PRIMARY_COLOR,
                             icon_size=20,
-                            tooltip=TOOLTIP_MY_PROFILE,
+                            tooltip="Profile",
                             on_click=on_click_profile_btn,
                         ),
                     ]
@@ -217,7 +204,7 @@ class MainMenuItemsHandler:
         local_storage,
     ):
         super().__init__()
-        self.menu_title = MAIN_MENU_GROUP_TITLE
+        self.menu_title = "Work"
         self.projects_view = ProjectsListView(
             show_snack=show_snack,
             dialog_controller=dialog_controller,
@@ -245,7 +232,7 @@ class MainMenuItemsHandler:
         self.items = [
             MenuItems(
                 0,
-                PROJECTS,
+                "Projects",
                 icons.WORK_OUTLINE,
                 icons.WORK_ROUNDED,
                 self.projects_view,
@@ -254,7 +241,7 @@ class MainMenuItemsHandler:
             ),
             MenuItems(
                 1,
-                CONTACTS,
+                "Contacts",
                 icons.CONTACT_MAIL_OUTLINED,
                 icons.CONTACT_MAIL_ROUNDED,
                 self.contacts_view,
@@ -263,7 +250,7 @@ class MainMenuItemsHandler:
             ),
             MenuItems(
                 2,
-                CLIENTS,
+                "Clients",
                 icons.CONTACTS_OUTLINED,
                 icons.CONTACTS_ROUNDED,
                 self.clients_view,
@@ -272,7 +259,7 @@ class MainMenuItemsHandler:
             ),
             MenuItems(
                 3,
-                CONTRACTS,
+                "Contracts",
                 icons.HANDSHAKE_OUTLINED,
                 icons.HANDSHAKE_ROUNDED,
                 self.contracts_view,
@@ -293,11 +280,11 @@ class SecondaryMenuHandler:
         local_storage,
     ):
         super().__init__()
-        self.menu_title = SECONDARY_MENU_GROUP_TITLE
+        self.menu_title = "Generate"
         self.items = [
             MenuItems(
                 0,
-                INVOICE,
+                "Invoices",
                 icons.ATTACH_MONEY_OUTLINED,
                 icons.ATTACH_MONEY_ROUNDED,
                 Container(),
@@ -340,7 +327,7 @@ class HomeScreen(TuttleView, UserControl):
         self.settings_icon = IconButton(
             icon=icons.SETTINGS_SUGGEST_OUTLINED,
             on_click=self.on_view_settings_clicked,
-            tooltip=PREFERENCES,
+            tooltip="Preferences",
         )
         self.main_menu = create_and_get_navigation_menu(
             title=self.main_menu_handler.menu_title,

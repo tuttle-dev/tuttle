@@ -46,34 +46,10 @@ from core.views import (
     mdSpace,
     stdSpace,
 )
-from res import dimens, strings
+from res import dimens
 from res.dimens import SPACE_XL, SPACE_XS
 from res.fonts import HEADLINE_3_SIZE, HEADLINE_4_SIZE
 from res.image_paths import splashImgPath
-from res.strings import (
-    CITY,
-    COUNTRY,
-    EMAIL_HINT,
-    EMAIL_LBL,
-    MISSING_EMAIL_ERR,
-    MISSING_NAME_ERR,
-    MISSING_PHONE_ERR,
-    NAME_HINT,
-    NAME_LBL,
-    PHONE_HINT,
-    PHONE_LBL,
-    POSTAL_CODE,
-    PROFILE,
-    STREET,
-    STREET_NUM,
-    TITLE_HINT,
-    TITLE_LBL,
-    TITLE_NOT_SET_ERR,
-    UPDATE_PROFILE,
-    UPDATED_PROFILE_SUCCESS,
-    WELCOME_SUBTITLE,
-    WELCOME_TITLE,
-)
 from res.utils import HOME_SCREEN_ROUTE
 
 from .intent import AuthIntentImpl
@@ -149,16 +125,16 @@ class LoginForm(UserControl):
 
         missingRequiredDataErr = ""
         if len(self.name.strip()) == 0:
-            missingRequiredDataErr = strings.MISSING_NAME_ERR
+            missingRequiredDataErr = "Your name is required."
             self.name_field.error_text = missingRequiredDataErr
         elif len(self.email.strip()) == 0:
-            missingRequiredDataErr = strings.MISSING_EMAIL_ERR
+            missingRequiredDataErr = "Your email is required."
             self.email_field.error_text = missingRequiredDataErr
         elif len(self.phone.strip()) == 0:
-            missingRequiredDataErr = strings.MISSING_PHONE_ERR
+            missingRequiredDataErr = "Your phone number is required."
             self.phone_field.error_text = missingRequiredDataErr
         elif len(self.title.strip()) == 0:
-            missingRequiredDataErr = strings.TITLE_NOT_SET_ERR
+            missingRequiredDataErr = "Please specify a title. e.g. freelancer"
             self.title_field.error_text = missingRequiredDataErr
 
         if not missingRequiredDataErr:
@@ -192,66 +168,66 @@ class LoginForm(UserControl):
         """Called when form is built"""
         self.name_field = get_std_txt_field(
             self.on_change_name,
-            strings.NAME_LBL,
-            strings.NAME_HINT,
+            "Name",
+            "your name",
             on_focus=self.on_field_focus,
             keyboard_type=KEYBOARD_NAME,
         )
         self.email_field = get_std_txt_field(
             self.on_change_email,
-            strings.EMAIL_LBL,
-            strings.EMAIL_HINT,
+            "Email",
+            "your email address",
             on_focus=self.on_field_focus,
             keyboard_type=KEYBOARD_EMAIL,
         )
         self.phone_field = get_std_txt_field(
             self.on_change_phone,
-            strings.PHONE_LBL,
-            strings.PHONE_HINT,
+            "Phone",
+            "your phone number",
             on_focus=self.on_field_focus,
             keyboard_type=KEYBOARD_PHONE,
         )
         self.title_field = get_std_txt_field(
             self.on_change_title,
-            strings.TITLE_LBL,
-            strings.TITLE_HINT,
+            "Title",
+            "your work title",
             on_focus=self.on_field_focus,
             keyboard_type=KEYBOARD_TEXT,
         )
         self.street_field = get_std_txt_field(
             on_change=self.on_street_changed,
-            lbl=strings.STREET,
+            lbl="Street Name",
             keyboard_type=KEYBOARD_TEXT,
             expand=1,
         )
         self.street_number_field = get_std_txt_field(
             on_change=self.on_street_num_changed,
-            lbl=strings.STREET_NUM,
+            lbl="Street Number",
             keyboard_type=KEYBOARD_NUMBER,
             expand=1,
         )
         self.postal_code_field = get_std_txt_field(
             on_change=self.on_postal_code_changed,
-            lbl=strings.POSTAL_CODE,
+            lbl="Postal Code",
             keyboard_type=KEYBOARD_NUMBER,
             expand=1,
         )
 
         self.city_field = get_std_txt_field(
             on_change=self.on_city_changed,
-            lbl=strings.CITY,
+            lbl="City",
             keyboard_type=KEYBOARD_TEXT,
             expand=1,
         )
         self.country_field = get_std_txt_field(
             on_change=self.on_country_changed,
-            lbl=strings.COUNTRY,
+            lbl="Country",
             keyboard_type=KEYBOARD_TEXT,
         )
         self.login_err_txt = get_error_txt(self.form_error)
         self.submit_btn = get_primary_btn(
             on_click=self.on_submit_btn_clicked,
-            label=strings.GET_STARTED,
+            label="Get Started",
         )
         self.form = Column(
             spacing=dimens.SPACE_MD,
@@ -368,16 +344,16 @@ class ProfileScreen(TuttleView, UserControl):
 
         missingRequiredDataErr = ""
         if len(self.name.strip()) == 0:
-            missingRequiredDataErr = MISSING_NAME_ERR
+            missingRequiredDataErr = "Your name is required."
             self.name_field.error_text = missingRequiredDataErr
         elif len(self.email.strip()) == 0:
-            missingRequiredDataErr = MISSING_EMAIL_ERR
+            missingRequiredDataErr = "Your email address is required."
             self.email_field.error_text = missingRequiredDataErr
         elif len(self.phone.strip()) == 0:
-            missingRequiredDataErr = MISSING_PHONE_ERR
+            missingRequiredDataErr = "Your phone number is required."
             self.phone_field.error_text = missingRequiredDataErr
         elif len(self.title.strip()) == 0:
-            missingRequiredDataErr = TITLE_NOT_SET_ERR
+            missingRequiredDataErr = "Please specify your title. e.g. freelancer"
             self.title_field.error_text = missingRequiredDataErr
 
         if missingRequiredDataErr:
@@ -399,7 +375,7 @@ class ProfileScreen(TuttleView, UserControl):
             if not result.was_intent_successful:
                 self.show_snack(result.error_msg, True)
             else:
-                self.show_snack(UPDATED_PROFILE_SUCCESS, False)
+                self.show_snack("Your profile has been updated", False)
                 self.user: User = result.data
                 self.refresh_user_info()
         self.update_btn.disabled = False
@@ -409,67 +385,67 @@ class ProfileScreen(TuttleView, UserControl):
     def set_profile_form(self):
         self.name_field = get_std_txt_field(
             self.on_change_name,
-            NAME_LBL,
-            NAME_HINT,
+            "Name",
+            "your name",
             on_focus=self.on_field_focus,
             keyboard_type=KEYBOARD_NAME,
         )
         self.email_field = get_std_txt_field(
             self.on_change_email,
-            EMAIL_LBL,
-            EMAIL_HINT,
+            "Email",
+            "your email address",
             on_focus=self.on_field_focus,
             keyboard_type=KEYBOARD_EMAIL,
         )
         self.phone_field = get_std_txt_field(
             self.on_change_phone,
-            PHONE_LBL,
-            PHONE_HINT,
+            "Phone",
+            "Your phone number",
             on_focus=self.on_field_focus,
             keyboard_type=KEYBOARD_PHONE,
         )
         self.title_field = get_std_txt_field(
             self.on_change_title,
-            TITLE_LBL,
-            TITLE_HINT,
+            "Title",
+            "your work title",
             on_focus=self.on_field_focus,
             keyboard_type=KEYBOARD_TEXT,
         )
         self.street_field = get_std_txt_field(
             on_change=self.on_street_changed,
-            lbl=STREET,
+            lbl="Street Name",
             keyboard_type=KEYBOARD_TEXT,
             expand=1,
         )
         self.street_number_field = get_std_txt_field(
             on_change=self.on_street_num_changed,
-            lbl=STREET_NUM,
+            lbl="Street Number",
             keyboard_type=KEYBOARD_NUMBER,
             expand=1,
         )
         self.postal_code_field = get_std_txt_field(
             on_change=self.on_postal_code_changed,
-            lbl=POSTAL_CODE,
+            lbl="Postal Code",
             keyboard_type=KEYBOARD_NUMBER,
             expand=1,
         )
 
         self.city_field = get_std_txt_field(
             on_change=self.on_city_changed,
-            lbl=CITY,
+            lbl="City",
             keyboard_type=KEYBOARD_TEXT,
             expand=1,
         )
 
         self.country_field = get_std_txt_field(
             on_change=self.on_country_changed,
-            lbl=COUNTRY,
+            lbl="Country",
             keyboard_type=KEYBOARD_TEXT,
         )
 
         self.update_btn = get_primary_btn(
             on_click=self.on_update_btn_clicked,
-            label=UPDATE_PROFILE,
+            label="Update Profile",
         )
         self.profile_form = Column(
             spacing=dimens.SPACE_MD,
@@ -555,7 +531,7 @@ class ProfileScreen(TuttleView, UserControl):
                             icon=icons.KEYBOARD_ARROW_LEFT,
                             on_click=self.on_navigate_back,
                         ),
-                        get_headline_txt(PROFILE, size=HEADLINE_4_SIZE),
+                        get_headline_txt("Profile", size=HEADLINE_4_SIZE),
                     ],
                 ),
                 Container(
@@ -586,10 +562,10 @@ class SplashView(UserControl):
             expand=True,
             controls=[
                 mdSpace,
-                get_image(splashImgPath, strings.SPLASH_IMG_SEMANTIC_LBL, width=300),
+                get_image(splashImgPath, "welcome screen image", width=300),
                 get_headline_with_subtitle(
-                    strings.APP_NAME,
-                    strings.APP_DESCRIPTION,
+                    "Tuttle",
+                    "Time and money management for freelancers",
                     alignmentInContainer=CENTER_ALIGNMENT,
                     txtAlignment=TXT_ALIGN_CENTER,
                     titleSize=HEADLINE_3_SIZE,
@@ -685,7 +661,9 @@ class SplashScreen(TuttleView, UserControl):
         self.form_container = Column(
             controls=[
                 get_labelled_logo(),
-                get_headline_with_subtitle(WELCOME_TITLE, WELCOME_SUBTITLE),
+                get_headline_with_subtitle(
+                    "Hi, Welcome to Tuttle.", "Let's get you started"
+                ),
                 self.loading_indicator,
                 stdSpace,
             ]

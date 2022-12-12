@@ -66,30 +66,7 @@ from res.dimens import (
     SPACE_XS,
 )
 from res.fonts import BODY_1_SIZE, BODY_2_SIZE, HEADLINE_4_SIZE
-from res.strings import (
-    ACTIVE,
-    ALL,
-    CLIENT_LBL,
-    COMPLETED,
-    CONTRACT_LBL,
-    DELETE_PROJECT,
-    EDIT_PROJECT,
-    END_DATE,
-    HASH_TAG,
-    MARK_AS_COMPLETE,
-    MY_PROJECTS,
-    NO_PROJECTS_ADDED,
-    PROJECT_DESC_LBL,
-    PROJECT_LBL,
-    PROJECT_STATUS_LBL,
-    START_DATE,
-    UPCOMING,
-    VIEW_CLIENT_HINT,
-    VIEW_CLIENT_LBL,
-    VIEW_CONTRACT_HINT,
-    VIEW_CONTRACT_LBL,
-    VIEW_DETAILS,
-)
+
 from res.utils import (
     CONTRACT_CREATOR_SCREEN_ROUTE,
     PROJECT_DETAILS_SCREEN_ROUTE,
@@ -117,7 +94,7 @@ class ProjectCard(UserControl):
             ResponsiveRow(
                 controls=[
                     Text(
-                        CONTRACT_LBL,
+                        "Contract",
                         color=GRAY_COLOR,
                         size=BODY_2_SIZE,
                         col={"xs": "12", "sm": "5", "md": "3"},
@@ -135,7 +112,7 @@ class ProjectCard(UserControl):
             ResponsiveRow(
                 controls=[
                     Text(
-                        CLIENT_LBL,
+                        "Client",
                         color=GRAY_COLOR,
                         size=BODY_2_SIZE,
                         col={"xs": "12", "sm": "5", "md": "3"},
@@ -153,7 +130,7 @@ class ProjectCard(UserControl):
             ResponsiveRow(
                 controls=[
                     Text(
-                        START_DATE,
+                        "Start Date",
                         color=GRAY_COLOR,
                         size=BODY_2_SIZE,
                         col={"xs": "12", "sm": "5", "md": "3"},
@@ -171,7 +148,7 @@ class ProjectCard(UserControl):
             ResponsiveRow(
                 controls=[
                     Text(
-                        END_DATE,
+                        "End date",
                         color=GRAY_COLOR,
                         size=BODY_2_SIZE,
                         col={"xs": "12", "sm": "5", "md": "3"},
@@ -195,12 +172,12 @@ class ProjectCard(UserControl):
                     Row(
                         spacing=0,
                         controls=[
-                            Text(f"{HASH_TAG}", color=PRIMARY_COLOR),
+                            Text(f"#", color=PRIMARY_COLOR),
                             Text(f"{self.project.unique_tag}", color=GRAY_COLOR),
                         ],
                     ),
                     ElevatedButton(
-                        text=VIEW_DETAILS,
+                        text="View",
                         on_click=lambda e: self.onClickView(self.project.id),
                     ),
                 ],
@@ -265,13 +242,13 @@ class ProjectFiltersView(UserControl):
 
     def get_filter_button_lbl(self, state: ProjectStates):
         if state.value == ProjectStates.ACTIVE.value:
-            return ACTIVE
+            return "Active"
         elif state.value == ProjectStates.UPCOMING.value:
-            return UPCOMING
+            return "Upcoming"
         elif state.value == ProjectStates.COMPLETED.value:
-            return COMPLETED
+            return "Completed"
         else:
-            return ALL
+            return "All"
 
     def set_filter_buttons(self):
         for state in ProjectStates:
@@ -321,14 +298,10 @@ class ViewProjectScreen(TuttleView, UserControl):
         self.client_control.value = self.project.contract.client.title
         self.contract_control.value = self.project.contract.title
         self.project_description_control.value = self.project.description
-        self.project_start_date_control.value = (
-            f"{START_DATE}: {self.project.start_date}"
-        )
-        self.project_end_date_control.value = f"{END_DATE}: {self.project.end_date}"
-        self.project_status_control.value = (
-            f"{PROJECT_STATUS_LBL} {self.project.get_status()}"
-        )
-        self.project_tagline_control.value = f"{HASH_TAG}{self.project.unique_tag}"
+        self.project_start_date_control.value = f"Start Date: {self.project.start_date}"
+        self.project_end_date_control.value = f"End Date: {self.project.end_date}"
+        self.project_status_control.value = f"Status {self.project.get_status()}"
+        self.project_tagline_control.value = f"#{self.project.unique_tag}"
         self.set_chart()
 
     def set_chart(self):
@@ -419,19 +392,19 @@ class ViewProjectScreen(TuttleView, UserControl):
         """Called when page is built"""
         self.edit_project_btn = IconButton(
             icon=icons.EDIT_OUTLINED,
-            tooltip=EDIT_PROJECT,
+            tooltip="Edit project",
             on_click=self.on_edit_clicked,
         )
         self.mark_as_complete_btn = IconButton(
             icon=icons.CHECK_CIRCLE_OUTLINE,
             icon_color=colors.PRIMARY_COLOR,
-            tooltip=MARK_AS_COMPLETE,
+            tooltip="Mark as complete",
             on_click=self.on_mark_as_complete_clicked,
         )
         self.delete_project_btn = IconButton(
             icon=icons.DELETE_OUTLINE_ROUNDED,
             icon_color=colors.ERROR_COLOR,
-            tooltip=DELETE_PROJECT,
+            tooltip="Delete project",
             on_click=self.on_delete_clicked,
         )
 
@@ -481,13 +454,13 @@ class ViewProjectScreen(TuttleView, UserControl):
                                 on_click=self.on_navigate_back,
                             ),
                             TextButton(
-                                VIEW_CLIENT_LBL,
-                                tooltip=VIEW_CLIENT_HINT,
+                                "Client",
+                                tooltip="View project's client",
                                 on_click=self.on_view_client_clicked,
                             ),
                             TextButton(
-                                VIEW_CONTRACT_LBL,
-                                tooltip=VIEW_CONTRACT_HINT,
+                                "Contract",
+                                tooltip="View project's contract",
                                 on_click=self.on_view_contract_clicked,
                             ),
                         ]
@@ -512,7 +485,7 @@ class ViewProjectScreen(TuttleView, UserControl):
                                                 alignment=SPACE_BETWEEN_ALIGNMENT,
                                                 controls=[
                                                     Text(
-                                                        PROJECT_LBL,
+                                                        "Project",
                                                         size=fonts.HEADLINE_4_SIZE,
                                                         font_family=fonts.HEADLINE_FONT,
                                                         color=colors.PRIMARY_COLOR,
@@ -539,7 +512,7 @@ class ViewProjectScreen(TuttleView, UserControl):
                             ),
                             mdSpace,
                             Text(
-                                PROJECT_DESC_LBL,
+                                "Project Description",
                                 size=fonts.SUBTITLE_1_SIZE,
                             ),
                             self.project_description_control,
@@ -598,14 +571,16 @@ class ProjectsListView(TuttleView, UserControl):
         self.intent_handler = ProjectsIntentImpl(local_storage=local_storage)
         self.loading_indicator = horizontal_progress
         self.no_projects_control = Text(
-            value=NO_PROJECTS_ADDED, color=ERROR_COLOR, visible=False
+            value="You have not added any projects yet.",
+            color=ERROR_COLOR,
+            visible=False,
         )
         self.title_control = ResponsiveRow(
             controls=[
                 Column(
                     col={"xs": 12},
                     controls=[
-                        get_headline_txt(txt=MY_PROJECTS, size=HEADLINE_4_SIZE),
+                        get_headline_txt(txt="My Projects", size=HEADLINE_4_SIZE),
                         self.loading_indicator,
                         self.no_projects_control,
                     ],

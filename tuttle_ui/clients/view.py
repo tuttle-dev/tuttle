@@ -54,15 +54,7 @@ from res.fonts import (
     SUBTITLE_1_SIZE,
     SUBTITLE_2_SIZE,
 )
-from res.strings import (
-    EDIT_CLIENT_TOOLTIP,
-    INVOICING_CONTACT,
-    MY_CLIENTS,
-    NEW_CLIENT_ADDED_SUCCESS,
-    NO_CLIENTS_ADDED,
-    UPDATING_CLIENT_FAILED,
-    UPDATING_CLIENT_SUCCESS,
-)
+
 from res.utils import ADD_CLIENT_INTENT
 
 
@@ -88,7 +80,7 @@ class ClientCard(UserControl):
             ResponsiveRow(
                 controls=[
                     Text(
-                        INVOICING_CONTACT,
+                        "Invoicing Contact",
                         color=GRAY_COLOR,
                         size=BODY_2_SIZE,
                         col={"xs": "12"},
@@ -110,7 +102,7 @@ class ClientCard(UserControl):
                 controls=[
                     IconButton(
                         icon=icons.EDIT_NOTE_OUTLINED,
-                        tooltip=EDIT_CLIENT_TOOLTIP,
+                        tooltip="Edit client",
                         on_click=lambda e: self.on_edit_clicked(self.client),
                     ),
                 ],
@@ -434,14 +426,16 @@ class ClientsListView(TuttleView, UserControl):
         self.intent_handler = ClientsIntentImpl(local_storage=local_storage)
         self.loading_indicator = horizontal_progress
         self.no_clients_control = Text(
-            value=NO_CLIENTS_ADDED, color=ERROR_COLOR, visible=False
+            value="You have not added any clients yet.",
+            color=ERROR_COLOR,
+            visible=False,
         )
         self.title_control = ResponsiveRow(
             controls=[
                 Column(
                     col={"xs": 12},
                     controls=[
-                        get_headline_txt(txt=MY_CLIENTS, size=HEADLINE_4_SIZE),
+                        get_headline_txt(txt="My Clients", size=HEADLINE_4_SIZE),
                         self.loading_indicator,
                         self.no_clients_control,
                     ],
@@ -506,7 +500,11 @@ class ClientsListView(TuttleView, UserControl):
         else:
             self.clients_to_display[result.data.id] = result.data
             self.refresh_clients()
-            msg = UPDATING_CLIENT_SUCCESS if is_updating else NEW_CLIENT_ADDED_SUCCESS
+            msg = (
+                "The client's info has been updated"
+                if is_updating
+                else "A new client has been added"
+            )
             self.show_snack(msg, False)
         self.loading_indicator.visible = False
         if self.mounted:

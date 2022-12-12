@@ -4,11 +4,6 @@ from core.abstractions import ClientStorage
 from core.models import Address, IntentResult
 from .model import Contact
 from .data_source import ContactDataSourceImpl
-from res.strings import (
-    UPDATING_ADDRESS_FAILED,
-    UPDATING_CONTACT_FAILED,
-    UPDATING_CONTACT_SUCCESS,
-)
 
 
 class ContactsIntentImpl:

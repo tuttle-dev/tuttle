@@ -5,26 +5,15 @@ from flet import View
 from typing import Callable
 from dataclasses import dataclass
 from typing import Optional
-from res.strings import (
-    HOURLY,
-    HOUR,
-    DAILY,
-    DAY,
-    WEEKLY,
-    MINUTE,
-    MONTHLY,
-    QUARTERLY,
-    YEARLY,
-)
 
 
 class Cycle(enum.Enum):
-    hourly = HOURLY
-    daily = DAILY
-    weekly = WEEKLY
-    monthly = MONTHLY
-    quarterly = QUARTERLY
-    yearly = YEARLY
+    hourly = "Hourly"
+    daily = "Daily"
+    weekly = "Weekly"
+    monthly = "Monthly"
+    quarterly = "Quarterly"
+    yearly = "Yearly"
 
     def __str__(self):
         return str(self.value)
@@ -53,9 +42,9 @@ def get_cycle_from_value(value: str) -> Optional[Cycle]:
 
 
 class TimeUnit(enum.Enum):
-    minute = MINUTE
-    hour = HOUR
-    day = DAY
+    minute = "Minute"
+    hour = "Hour"
+    day = "Day"
 
     def to_timedelta(self):
         if self == TimeUnit.minute:

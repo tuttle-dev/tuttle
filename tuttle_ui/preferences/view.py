@@ -18,7 +18,6 @@ from preferences.intent import PreferencesIntentImpl
 from preferences.model import Preferences
 from res.dimens import SPACE_MD, SPACE_STD, SPACE_XS, MIN_WINDOW_WIDTH
 from res.theme import THEME_MODES, get_theme_mode_from_value
-from res.strings import PREFERENCES
 
 
 class PreferencesScreen(TuttleView, UserControl):
@@ -89,7 +88,7 @@ class PreferencesScreen(TuttleView, UserControl):
                         controls=[
                             Icon(icons.SETTINGS_SUGGEST_OUTLINED),
                             Text(
-                                PREFERENCES,
+                                "Preferences",
                             ),
                         ],
                     ),
