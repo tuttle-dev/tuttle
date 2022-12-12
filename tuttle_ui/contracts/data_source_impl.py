@@ -10,10 +10,9 @@ from clients.client_model import Client
 from core.models import IntentResult
 
 from .contract_model import Contract
-from .abstractions import ContractDataSource
 
 
-class ContractDataSourceImpl(ContractDataSource):
+class ContractDataSourceImpl:
     def __init__(self):
         super().__init__()
         self.contracts = {}

@@ -1,10 +1,9 @@
-from .abstractions import UserDataSource
 from core.abstractions import ClientStorage
 from .user_model import User
 from core.models import Address, IntentResult
 
 # TODO implement
-class UserDataSourceImpl(UserDataSource):
+class UserDataSourceImpl:
     def __init__(self):
         super().__init__()
         self._dummy_user = None

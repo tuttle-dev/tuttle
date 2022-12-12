@@ -6,11 +6,10 @@ from clients.client_model import Client
 from contracts.contract_model import Contract
 from core.models import Cycle, IntentResult, TimeUnit
 from typing import Optional
-from .abstractions import ProjectDataSource
 from .project_model import Project
 
 
-class ProjectDataSourceImpl(ProjectDataSource):
+class ProjectDataSourceImpl:
     def __init__(self):
         super().__init__()
 

@@ -6,15 +6,16 @@ from .project_model import Project
 from clients.client_model import Client
 from contracts.contract_model import Contract
 from .data_source_impl import ProjectDataSourceImpl
-from .abstractions import ProjectsIntent
+
 
 from clients.data_source_impl import ClientDataSourceImpl
 from contracts.data_source_impl import ContractDataSourceImpl
 
 
-class ProjectsIntentImpl(ProjectsIntent):
+class ProjectsIntentImpl:
     def __init__(self, local_storage: ClientStorage):
-        super().__init__(ProjectDataSourceImpl(), local_storage)
+        self.local_storage = local_storage
+        self.data_source = ProjectDataSourceImpl()
         self.clients_data_source = ClientDataSourceImpl()
         self.contracts_data_source = ContractDataSourceImpl()
 

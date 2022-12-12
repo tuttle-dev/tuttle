@@ -9,20 +9,18 @@ from core.abstractions import ClientStorage
 from core.models import IntentResult
 
 from .contract_model import Contract
-from .abstractions import ContractsIntent
 from .data_source_impl import ContractDataSourceImpl
 from clients.data_source_impl import ClientDataSourceImpl
 from contacts.data_source_impl import ContactDataSourceImpl
 from contacts.contact_model import Contact
 
 
-class ContractsIntentImpl(ContractsIntent):
+class ContractsIntentImpl:
     def __init__(self, local_storage: ClientStorage):
-        super().__init__(
-            data_source=ContractDataSourceImpl(), local_storage=local_storage
-        )
         self.clients_data_source = ClientDataSourceImpl()
         self.contacts_data_source = ContactDataSourceImpl()
+        self.data_source = ContractDataSourceImpl()
+        self.local_storage = local_storage
 
         self.all_contracts_cache: Mapping[str, Contract] = None
         self.completed_conracts_cache: Mapping[str, Contract] = None

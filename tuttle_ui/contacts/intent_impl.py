@@ -3,7 +3,6 @@ from typing import Optional, Mapping
 from core.abstractions import ClientStorage
 from core.models import Address, IntentResult
 from .contact_model import Contact
-from .abstractions import ContactsIntent
 from .data_source_impl import ContactDataSourceImpl
 from res.strings import (
     UPDATING_ADDRESS_FAILED,
@@ -12,9 +11,10 @@ from res.strings import (
 )
 
 
-class ContactsIntentImpl(ContactsIntent):
+class ContactsIntentImpl:
     def __init__(self, local_storage: ClientStorage):
-        super().__init__(ContactDataSourceImpl(), local_storage)
+        self.data_source = ContactDataSourceImpl()
+        self.local_storage = local_storage
 
     def get_all_contacts_as_map(self) -> Mapping[int, Contact]:
         result = self.data_source.get_all_contacts_as_map()

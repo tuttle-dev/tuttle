@@ -1,4 +1,3 @@
-from .abstractions import ContactDataSource
 import faker
 
 from typing import Optional
@@ -7,9 +6,8 @@ from core.models import Address, IntentResult
 from .contact_model import Contact
 
 
-class ContactDataSourceImpl(ContactDataSource):
+class ContactDataSourceImpl:
     def __init__(self):
-        super().__init__()
         self.contacts = {}
 
     def get_all_contacts_as_map(self) -> IntentResult:

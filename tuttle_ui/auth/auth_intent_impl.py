@@ -1,15 +1,13 @@
-from .abstractions import AuthIntent
 from .auth_data_source_impl import UserDataSourceImpl
 from core.abstractions import ClientStorage
 from core.models import IntentResult
 from .user_model import User
 
 
-class AuthIntentImpl(AuthIntent):
+class AuthIntentImpl:
     def __init__(self, local_storage: ClientStorage):
-        data_source = UserDataSourceImpl()
-        super().__init__(data_source, local_storage)
-        self.data_source = data_source
+        self.data_source = UserDataSourceImpl()
+        self.local_storage = local_storage
 
     def create_user(
         self,

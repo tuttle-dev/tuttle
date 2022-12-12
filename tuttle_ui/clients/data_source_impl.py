@@ -3,12 +3,10 @@ import faker
 from core.models import IntentResult, Address
 from .client_model import Client
 from contacts.contact_model import Contact
-from .abstractions import ClientDataSource
 
 
-class ClientDataSourceImpl(ClientDataSource):
+class ClientDataSourceImpl:
     def __init__(self):
-        super().__init__()
         self.clients = {}
 
     def get_client_by_id(self, clientId) -> IntentResult:
