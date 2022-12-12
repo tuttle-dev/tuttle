@@ -1,0 +1,551 @@
+import typing
+from typing import Callable, Optional
+
+from flet import (
+    AlertDialog,
+    Card,
+    Column,
+    Container,
+    GridView,
+    IconButton,
+    ResponsiveRow,
+    Row,
+    Text,
+    UserControl,
+    border_radius,
+    icons,
+    padding,
+)
+
+from clients.model import Client, get_empty_client
+from clients.intent import ClientsIntentImpl
+from contacts.model import Contact, get_empty_contact
+from core.abstractions import DialogHandler, TuttleView
+from core.constants_and_enums import (
+    ALWAYS_SCROLL,
+    AUTO_SCROLL,
+    CENTER_ALIGNMENT,
+    END_ALIGNMENT,
+    AlertDialogControls,
+)
+from core.models import IntentResult, get_empty_address
+from core.views import (
+    CENTER_ALIGNMENT,
+    get_dropdown,
+    get_headline_txt,
+    get_primary_btn,
+    get_std_txt_field,
+    horizontal_progress,
+    mdSpace,
+    xsSpace,
+)
+from res.colors import ERROR_COLOR, GRAY_COLOR
+from res.dimens import (
+    MIN_WINDOW_HEIGHT,
+    MIN_WINDOW_WIDTH,
+    SPACE_MD,
+    SPACE_STD,
+    SPACE_XS,
+)
+from res.fonts import (
+    BODY_1_SIZE,
+    BODY_2_SIZE,
+    HEADLINE_4_SIZE,
+    SUBTITLE_1_SIZE,
+    SUBTITLE_2_SIZE,
+)
+from res.strings import (
+    EDIT_CLIENT_TOOLTIP,
+    INVOICING_CONTACT,
+    MY_CLIENTS,
+    NEW_CLIENT_ADDED_SUCCESS,
+    NO_CLIENTS_ADDED,
+    UPDATING_CLIENT_FAILED,
+    UPDATING_CLIENT_SUCCESS,
+)
+from res.utils import ADD_CLIENT_INTENT
+
+
+class ClientCard(UserControl):
+    """Formats a single client info into a card ui display"""
+
+    def __init__(self, client: Client, on_edit: Callable[[str], None]):
+        super().__init__()
+        self.client = client
+        self.product_info_container = Column()
+        self.on_edit_clicked = on_edit
+
+    def build(self):
+        if self.client.invoicing_contact:
+            invoicing_contact_info = self.client.invoicing_contact.print_address()
+        else:
+            invoicing_contact_info = "*not specified"
+        self.product_info_container.controls = [
+            get_headline_txt(
+                txt=self.client.title,
+                size=SUBTITLE_1_SIZE,
+            ),
+            ResponsiveRow(
+                controls=[
+                    Text(
+                        INVOICING_CONTACT,
+                        color=GRAY_COLOR,
+                        size=BODY_2_SIZE,
+                        col={"xs": "12"},
+                    ),
+                    Text(
+                        invoicing_contact_info,
+                        size=BODY_2_SIZE,
+                        col={"xs": "12"},
+                    ),
+                ],
+                spacing=SPACE_XS,
+                run_spacing=0,
+                vertical_alignment=CENTER_ALIGNMENT,
+            ),
+            Row(
+                alignment=END_ALIGNMENT,
+                vertical_alignment=END_ALIGNMENT,
+                expand=True,
+                controls=[
+                    IconButton(
+                        icon=icons.EDIT_NOTE_OUTLINED,
+                        tooltip=EDIT_CLIENT_TOOLTIP,
+                        on_click=lambda e: self.on_edit_clicked(self.client),
+                    ),
+                ],
+            ),
+        ]
+        card = Card(
+            elevation=2,
+            expand=True,
+            content=Container(
+                expand=True,
+                padding=padding.all(SPACE_STD),
+                border_radius=border_radius.all(12),
+                content=self.product_info_container,
+            ),
+        )
+        return card
+
+
+class ClientEditorPopUp(DialogHandler, UserControl):
+    """Pop up used for editing a client"""
+
+    def __init__(
+        self,
+        dialog_controller: Callable[[any, AlertDialogControls], None],
+        on_submit: Callable,
+        contacts_map,
+        client: Optional[Client] = None,
+    ):
+        self.dialog_height = MIN_WINDOW_HEIGHT
+        self.dialog_width = int(MIN_WINDOW_WIDTH * 0.8)
+        self.half_of_dialog_width = int(MIN_WINDOW_WIDTH * 0.35)
+
+        # initialize the data
+        self.client = client if client is not None else get_empty_client()
+        self.invoicing_contact = (
+            self.client.invoicing_contact
+            if self.client.invoicing_contact is not None
+            else get_empty_contact()
+        )
+        self.address = (
+            self.invoicing_contact.address
+            if self.invoicing_contact.address is not None
+            else get_empty_address()
+        )
+        self.contacts_as_map = contacts_map
+        self.contact_options = self.get_contacts_as_list()
+
+        title = "Edit Client" if client is not None else "New Client"
+
+        initial_selected_contact = self.get_contact_dropdown_item(
+            self.invoicing_contact.id
+        )
+
+        self.first_name_field = get_std_txt_field(
+            on_change=self.on_fname_changed,
+            lbl="First Name",
+            hint=self.invoicing_contact.first_name,
+            initial_value=self.invoicing_contact.first_name,
+        )
+
+        self.last_name_field = get_std_txt_field(
+            on_change=self.on_lname_changed,
+            lbl="Last Name",
+            hint=self.invoicing_contact.last_name,
+            initial_value=self.invoicing_contact.last_name,
+        )
+        self.company_field = get_std_txt_field(
+            on_change=self.on_company_changed,
+            lbl="Company",
+            hint=self.invoicing_contact.company,
+            initial_value=self.invoicing_contact.company,
+        )
+        self.email_field = get_std_txt_field(
+            on_change=self.on_email_changed,
+            lbl="Email",
+            hint=self.invoicing_contact.email,
+            initial_value=self.invoicing_contact.email,
+        )
+
+        self.street_field = get_std_txt_field(
+            on_change=self.on_street_changed,
+            lbl="Street",
+            hint=self.invoicing_contact.address.street,
+            initial_value=self.invoicing_contact.address.street,
+            width=self.half_of_dialog_width,
+        )
+        self.street_num_field = get_std_txt_field(
+            on_change=self.on_street_num_changed,
+            lbl="Street No.",
+            hint=self.invoicing_contact.address.number,
+            initial_value=self.invoicing_contact.address.number,
+            width=self.half_of_dialog_width,
+        )
+        self.postal_code_field = get_std_txt_field(
+            on_change=self.on_postal_code_changed,
+            lbl="Postal code",
+            hint=self.invoicing_contact.address.postal_code,
+            initial_value=self.invoicing_contact.address.postal_code,
+            width=self.half_of_dialog_width,
+        )
+        self.city_field = get_std_txt_field(
+            on_change=self.on_city_changed,
+            lbl="City",
+            hint=self.invoicing_contact.address.city,
+            initial_value=self.invoicing_contact.address.city,
+            width=self.half_of_dialog_width,
+        )
+        self.country_field = get_std_txt_field(
+            on_change=self.on_country_changed,
+            lbl="Country",
+            hint=self.invoicing_contact.address.country,
+            initial_value=self.invoicing_contact.address.country,
+        )
+
+        dialog = AlertDialog(
+            content=Container(
+                height=self.dialog_height,
+                content=Column(
+                    scroll=AUTO_SCROLL,
+                    controls=[
+                        get_headline_txt(txt=title, size=HEADLINE_4_SIZE),
+                        xsSpace,
+                        get_std_txt_field(
+                            on_change=self.on_title_changed,
+                            lbl="Client's title",
+                            hint=self.client.title,
+                            initial_value=self.client.title,
+                        ),
+                        xsSpace,
+                        get_headline_txt(
+                            txt="Invoicing Contact",
+                            size=SUBTITLE_2_SIZE,
+                            color=GRAY_COLOR,
+                        ),
+                        xsSpace,
+                        get_dropdown(
+                            on_change=self.on_contact_selected,
+                            lbl="Select contact",
+                            items=self.contact_options,
+                            initial_value=initial_selected_contact,
+                        ),
+                        xsSpace,
+                        self.first_name_field,
+                        self.last_name_field,
+                        self.company_field,
+                        self.email_field,
+                        Row(
+                            vertical_alignment=CENTER_ALIGNMENT,
+                            controls=[self.street_field, self.street_num_field],
+                        ),
+                        Row(
+                            vertical_alignment=CENTER_ALIGNMENT,
+                            controls=[
+                                self.postal_code_field,
+                                self.city_field,
+                            ],
+                        ),
+                        self.country_field,
+                        xsSpace,
+                    ],
+                ),
+                width=self.dialog_width,
+            ),
+            actions=[
+                get_primary_btn(label="Done", on_click=self.on_submit_btn_clicked),
+            ],
+        )
+        super().__init__(dialog=dialog, dialog_controller=dialog_controller)
+        self.title = ""
+        self.fname = ""
+        self.lname = ""
+        self.company = ""
+        self.email = ""
+        self.street = ""
+        self.street_num = ""
+        self.postal_code = ""
+        self.city = ""
+        self.country = ""
+        self.on_submit = on_submit
+
+    def get_contacts_as_list(self):
+        """transforms a map of id-contact_name to a list for dropdown options"""
+        contacts_list = []
+        for key in self.contacts_as_map:
+            item = self.get_contact_dropdown_item(key)
+            if item:
+                contacts_list.append(item)
+        return contacts_list
+
+    def get_contact_dropdown_item(self, key):
+        if key is not None and key in self.contacts_as_map:
+            return f"#{key} {self.contacts_as_map[key].name}"
+        return ""
+
+    def on_contact_selected(self, e):
+        # parse selected value to extract id
+        selected = e.control.value
+        id = ""
+        for c in selected:
+            if c == "#":
+                continue
+            if c == " ":
+                break
+            id = id + c
+        if int(id) in self.contacts_as_map:
+            self.invoicing_contact: Contact = self.contacts_as_map[int(id)]
+            self.set_invoicing_contact_fields()
+
+    def set_invoicing_contact_fields(self):
+        self.first_name_field.value = self.invoicing_contact.first_name
+        self.last_name_field.value = self.invoicing_contact.last_name
+        self.company_field.value = self.invoicing_contact.company
+        self.email_field.value = self.invoicing_contact.email
+        self.street_field.value = self.invoicing_contact.address.street
+        self.street_num_field.value = self.invoicing_contact.address.number
+        self.postal_code_field.value = self.invoicing_contact.address.postal_code
+        self.city_field.value = self.invoicing_contact.address.city
+        self.country_field.value = self.invoicing_contact.address.country
+        self.dialog.update()
+
+    def on_title_changed(self, e):
+        self.title = e.control.value
+
+    def on_fname_changed(self, e):
+        self.fname = e.control.value
+
+    def on_lname_changed(self, e):
+        self.lname = e.control.value
+
+    def on_company_changed(self, e):
+        self.company = e.control.value
+
+    def on_email_changed(self, e):
+        self.email = e.control.value
+
+    def on_street_changed(self, e):
+        self.street = e.control.value
+
+    def on_street_num_changed(self, e):
+        self.street_num = e.control.value
+
+    def on_postal_code_changed(self, e):
+        self.postal_code = e.control.value
+
+    def on_city_changed(self, e):
+        self.city = e.control.value
+
+    def on_country_changed(self, e):
+        self.country = e.control.value
+
+    def on_submit_btn_clicked(self, e):
+        self.client.title = (
+            self.title.strip() if self.title.strip() else self.client.title
+        )
+        self.invoicing_contact.first_name = (
+            self.fname.strip()
+            if self.fname.strip()
+            else self.invoicing_contact.first_name
+        )
+        self.invoicing_contact.last_name = (
+            self.lname.strip()
+            if self.lname.strip()
+            else self.invoicing_contact.last_name
+        )
+        self.invoicing_contact.company = (
+            self.company.strip()
+            if self.company.strip()
+            else self.invoicing_contact.company
+        )
+        self.invoicing_contact.email = (
+            self.email.strip() if self.email.strip() else self.invoicing_contact.email
+        )
+        self.address.street = (
+            self.street.strip()
+            if self.street.strip()
+            else self.invoicing_contact.address.street
+        )
+
+        self.address.number = (
+            self.street_num.strip()
+            if self.street_num.strip()
+            else self.invoicing_contact.address.number
+        )
+        self.address.postal_code = (
+            self.postal_code.strip()
+            if self.postal_code.strip()
+            else self.invoicing_contact.address.postal_code
+        )
+        self.address.city = (
+            self.city.strip()
+            if self.city.strip()
+            else self.invoicing_contact.address.city
+        )
+        self.address.country = (
+            self.country.strip()
+            if self.country.strip()
+            else self.invoicing_contact.address.country
+        )
+        self.invoicing_contact.address = self.address
+        self.client.invoicing_contact = self.invoicing_contact
+        self.close_dialog()
+        self.on_submit(self.client)
+
+    def build(self):
+        return self.dialog
+
+
+class ClientsListView(TuttleView, UserControl):
+    def __init__(
+        self,
+        navigate_to_route,
+        show_snack,
+        dialog_controller,
+        local_storage,
+    ):
+        super().__init__(
+            navigate_to_route=navigate_to_route,
+            show_snack=show_snack,
+            dialog_controller=dialog_controller,
+        )
+        self.intent_handler = ClientsIntentImpl(local_storage=local_storage)
+        self.loading_indicator = horizontal_progress
+        self.no_clients_control = Text(
+            value=NO_CLIENTS_ADDED, color=ERROR_COLOR, visible=False
+        )
+        self.title_control = ResponsiveRow(
+            controls=[
+                Column(
+                    col={"xs": 12},
+                    controls=[
+                        get_headline_txt(txt=MY_CLIENTS, size=HEADLINE_4_SIZE),
+                        self.loading_indicator,
+                        self.no_clients_control,
+                    ],
+                )
+            ]
+        )
+        self.clients_container = GridView(
+            expand=False,
+            max_extent=540,
+            child_aspect_ratio=1.0,
+            spacing=SPACE_STD,
+            run_spacing=SPACE_MD,
+        )
+        self.clients_to_display = {}
+        self.contacts = {}
+        self.editor = None
+
+    def parent_intent_listener(self, intent: str, data: any):
+        if intent == ADD_CLIENT_INTENT:
+            if self.editor is not None:
+                self.editor.close_dialog()
+            self.editor = ClientEditorPopUp(
+                self.dialog_controller,
+                on_submit=self.on_save_client,
+                contacts_map=self.contacts,
+            )
+            self.editor.open_dialog()
+        return
+
+    def load_all_clients(self):
+        self.clients_to_display = self.intent_handler.get_all_clients_as_map()
+
+    def load_all_contacts(self):
+        self.contacts = self.intent_handler.get_all_contacts_as_map()
+
+    def refresh_clients(self):
+        self.clients_container.controls.clear()
+        for key in self.clients_to_display:
+            client = self.clients_to_display[key]
+            clientCard = ClientCard(client=client, on_edit=self.on_edit_client_clicked)
+            self.clients_container.controls.append(clientCard)
+
+    def on_edit_client_clicked(self, client: Client):
+        if self.editor is not None:
+            self.editor.close_dialog()
+        self.editor = ClientEditorPopUp(
+            self.dialog_controller,
+            on_submit=self.on_save_client,
+            contacts_map=self.contacts,
+            client=client,
+        )
+        self.editor.open_dialog()
+
+    def on_save_client(self, client_to_save: Client):
+        is_updating = client_to_save.id is not None
+        self.loading_indicator.visible = True
+        if self.mounted:
+            self.update()
+        result: IntentResult = self.intent_handler.save_client(client_to_save)
+        if not result.was_intent_successful:
+            self.show_snack(result.error_msg, True)
+        else:
+            self.clients_to_display[result.data.id] = result.data
+            self.refresh_clients()
+            msg = UPDATING_CLIENT_SUCCESS if is_updating else NEW_CLIENT_ADDED_SUCCESS
+            self.show_snack(msg, False)
+        self.loading_indicator.visible = False
+        if self.mounted:
+            self.update()
+
+    def show_no_clients(self):
+        self.no_clients_control.visible = True
+
+    def did_mount(self):
+        try:
+            self.mounted = True
+            self.loading_indicator.visible = True
+            self.load_all_clients()
+            count = len(self.clients_to_display)
+            self.loading_indicator.visible = False
+            if count == 0:
+                self.show_no_clients()
+            else:
+                self.refresh_clients()
+            self.load_all_contacts()
+            self.update()
+        except Exception as e:
+            # log
+            print(f"exception raised @clients.did_mount {e}")
+
+    def build(self):
+        view = Column(
+            controls=[
+                self.title_control,
+                mdSpace,
+                Container(self.clients_container, expand=True),
+            ],
+        )
+        return view
+
+    def will_unmount(self):
+        try:
+            self.mounted = False
+            if self.editor:
+                self.editor.dimiss_open_dialogs()
+        except Exception as e:
+            print(e)

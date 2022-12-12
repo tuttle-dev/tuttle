@@ -1,38 +1,33 @@
-from core.constants_and_enums import (
-    AUTO_SCROLL,
-    NEVER_SHOW,
-)
-from core.models import RouteView
 import re
 from typing import Callable
 
 from flet import TemplateRoute, View
 
-from auth.views.splash_screen import SplashScreen
-from home.home_screen import HomeScreen
-from projects.views.view_project_screen import ViewProjectScreen
-from projects.views.edit_project import EditProjectScreen
-from projects.views.create_project import CreateProjectScreen
-from contracts.views.view_contract_screen import ViewContractScreen
-from contracts.views.contract_editor import ContractEditorScreen
-from preferences.views.preferences_screen import PreferencesScreen
+from auth.view import ProfileScreen, SplashScreen
+from contracts.view import (
+    ContractEditorScreen,
+    CreateContractScreen,
+    ViewContractScreen,
+)
+from core.abstractions import ClientStorage, TuttleView
+from core.constants_and_enums import AUTO_SCROLL, NEVER_SHOW
+from core.models import RouteView
 from error_views.page_not_found_screen import Error404Screen
-from core.abstractions import TuttleView
-from core.abstractions import ClientStorage
-from contracts.views.create_contract import CreateContractScreen
+from home.view import HomeScreen
+from preferences.view import PreferencesScreen
+from projects.view import CreateProjectScreen, EditProjectScreen, ViewProjectScreen
 from res.utils import (
-    HOME_SCREEN_ROUTE,
-    SPLASH_SCREEN_ROUTE,
-    PROJECT_EDITOR_SCREEN_ROUTE,
-    PROJECT_CREATOR_SCREEN_ROUTE,
-    PROJECT_DETAILS_SCREEN_ROUTE,
+    CONTRACT_CREATOR_SCREEN_ROUTE,
     CONTRACT_DETAILS_SCREEN_ROUTE,
     CONTRACT_EDITOR_SCREEN_ROUTE,
-    CONTRACT_CREATOR_SCREEN_ROUTE,
-    PROFILE_SCREEN_ROUTE,
+    HOME_SCREEN_ROUTE,
     PREFERENCES_SCREEN_ROUTE,
+    PROFILE_SCREEN_ROUTE,
+    PROJECT_CREATOR_SCREEN_ROUTE,
+    PROJECT_DETAILS_SCREEN_ROUTE,
+    PROJECT_EDITOR_SCREEN_ROUTE,
+    SPLASH_SCREEN_ROUTE,
 )
-from auth.views.profile_screen import ProfileScreen
 
 
 class TuttleRoutes:
