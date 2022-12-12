@@ -1,6 +1,4 @@
 """helper functions for manipulating dates"""
-# FIXME: make this module unnecessary
-
 import datetime
 
 
@@ -8,7 +6,6 @@ DAYS_IN_A_WEEK = 7
 
 
 def get_date_as_str(date: datetime.date, hide_year: bool = False):
-    # FIXME: no need to reinvent the wheel here
     if hide_year:
         return f"{date.day} / {date.month}"
     else:

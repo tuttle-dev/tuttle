@@ -3,7 +3,7 @@ from typing import Callable
 from flet import UserControl, Column, Container, padding
 from core.constants_and_enums import CENTER_ALIGNMENT
 from core.views import get_error_txt, get_primary_btn
-from res.strings import PAGE_NOT_FOUND, GO_BACK
+
 from res.dimens import SPACE_MD, SPACE_STD
 
 
@@ -31,9 +31,9 @@ class Error404Screen(TuttleView, UserControl):
                 spacing=SPACE_STD,
                 run_spacing=SPACE_STD,
                 controls=[
-                    get_error_txt(PAGE_NOT_FOUND),
+                    get_error_txt("OOps! Looks like you took a wrong turn"),
                     get_primary_btn(
-                        label=GO_BACK.upper(), on_click=self.on_navigate_back
+                        label="Go Back".upper(), on_click=self.on_navigate_back
                     ),
                 ],
             ),

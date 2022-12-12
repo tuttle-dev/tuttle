@@ -23,15 +23,7 @@ from flet import (
 
 
 from res import colors, dimens, fonts, image_paths
-from res.strings import (
-    APP_NAME,
-    DAY_LBL,
-    MONTH_LBL,
-    YEAR_LBL,
-    GOT_IT_TXT,
-    PROCEED,
-    CANCEL,
-)
+
 
 from .constants_and_enums import (
     AUTO_SCROLL,
@@ -218,7 +210,7 @@ def get_labelled_logo():
         controls=[
             get_app_logo(),
             get_headline_txt(
-                APP_NAME,
+                "Tuttle",
                 size=fonts.HEADLINE_3_SIZE,
             ),
         ],
@@ -283,7 +275,7 @@ class DateSelector(UserControl):
         self.year = str(self.initialDate.year)
 
         self.day_dropdown = get_dropdown(
-            lbl=DAY_LBL,
+            lbl="Day",
             hint="",
             on_change=self.on_date_set,
             items=[str(day) for day in range(1, 32)],
@@ -292,7 +284,7 @@ class DateSelector(UserControl):
         )
 
         self.month_dropdown = get_dropdown(
-            lbl=MONTH_LBL,
+            lbl="Month",
             on_change=self.on_month_set,
             items=[str(month) for month in range(1, 13)],
             width=50,
@@ -300,7 +292,7 @@ class DateSelector(UserControl):
         )
 
         self.year_dropdown = get_dropdown(
-            lbl=YEAR_LBL,
+            lbl="Year",
             on_change=self.on_year_set,
             items=[str(year) for year in range(2022, 2027)],
             width=100,
@@ -367,7 +359,7 @@ class AlertDisplayPopUp(DialogHandler):
         title: str,
         description: str,
         on_complete: Optional[Callable] = None,
-        button_lbl: str = GOT_IT_TXT,
+        button_lbl: str = "Got it",
         is_error: bool = True,
     ):
         self.dialog_height = 150
@@ -416,8 +408,8 @@ class ConfirmDisplayPopUp(DialogHandler):
         description: str,
         on_proceed: Callable,
         on_cancel: Optional[Callable] = None,
-        proceed_button_lbl: str = PROCEED,
-        cancel_button_lbl: str = CANCEL,
+        proceed_button_lbl: str = "Proceed",
+        cancel_button_lbl: str = "Cancel",
     ):
         self.dialog_height = 150
         self.dialog_width = int(dimens.MIN_WINDOW_WIDTH * 0.8)

@@ -1,11 +1,9 @@
-import flet
+import flet as ft
 from flet import Page, AlertDialog, SnackBar, Text
 
 from core.models import RouteView
 from typing import Optional, Callable
-from res.strings import (
-    APP_NAME,
-)
+
 from res.fonts import APP_FONTS, HEADLINE_4_SIZE, HEADLINE_FONT
 from res.theme import THEME_MODES, APP_THEME
 from res.dimens import MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT
@@ -18,7 +16,7 @@ from routing import TuttleRoutes
 class TuttleApp:
     def __init__(self, page: Page) -> None:
         self.page = page
-        self.page.title = APP_NAME
+        self.page.title = "Tuttle"
         self.page.fonts = APP_FONTS
         self.page.theme = APP_THEME
         self.page.theme_mode = THEME_MODES.dark.value
@@ -155,8 +153,4 @@ def main(page: Page):
     app.build()
 
 
-flet.app(
-    name="Tuttle",
-    target=main,
-    assets_dir="assets",
-)
+ft.app(target=main, assets_dir="assets")
