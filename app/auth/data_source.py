@@ -4,7 +4,7 @@ from core.models import Address, IntentResult
 from faker import Faker
 
 # TODO implement
-class UserDataSourceImpl:
+class UserDataSource:
     def __init__(self):
         super().__init__()
         self._dummy_user = None

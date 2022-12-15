@@ -5,19 +5,19 @@ from core.models import IntentResult
 from .model import Project
 from clients.model import Client
 from contracts.model import Contract
-from .data_source import ProjectDataSourceImpl
+from .data_source import ProjectDataSource
 
 
-from clients.data_source import ClientDataSourceImpl
-from contracts.data_source import ContractDataSourceImpl
+from clients.data_source import ClientDataSource
+from contracts.data_source import ContractDataSource
 
 
 class ProjectsIntentImpl:
     def __init__(self, local_storage: ClientStorage):
         self.local_storage = local_storage
-        self.data_source = ProjectDataSourceImpl()
-        self.clients_data_source = ClientDataSourceImpl()
-        self.contracts_data_source = ContractDataSourceImpl()
+        self.data_source = ProjectDataSource()
+        self.clients_data_source = ClientDataSource()
+        self.contracts_data_source = ContractDataSource()
 
         self.all_projects_cache: Mapping[int, Project] = None
         self.completed_projects_cache: Mapping[int, Project] = None

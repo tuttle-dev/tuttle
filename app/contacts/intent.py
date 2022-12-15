@@ -3,12 +3,12 @@ from typing import Optional, Mapping
 from core.abstractions import ClientStorage
 from core.models import Address, IntentResult
 from .model import Contact
-from .data_source import ContactDataSourceImpl
+from .data_source import ContactDataSource
 
 
 class ContactsIntentImpl:
     def __init__(self, local_storage: ClientStorage):
-        self.data_source = ContactDataSourceImpl()
+        self.data_source = ContactDataSource()
         self.local_storage = local_storage
 
     def get_all_contacts_as_map(self) -> Mapping[int, Contact]:

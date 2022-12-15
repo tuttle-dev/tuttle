@@ -9,7 +9,7 @@ from typing import Optional
 from .model import Project
 
 
-class ProjectDataSourceImpl:
+class ProjectDataSource:
     def __init__(self):
         super().__init__()
 

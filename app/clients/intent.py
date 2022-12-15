@@ -4,15 +4,15 @@ from core.abstractions import ClientStorage
 from core.models import IntentResult
 from .model import Client
 from contacts.model import Contact
-from .data_source import ClientDataSourceImpl
-from contacts.data_source import ContactDataSourceImpl
+from .data_source import ClientDataSource
+from contacts.data_source import ContactDataSource
 
 
 class ClientsIntentImpl:
     def __init__(self, local_storage: ClientStorage):
-        self.contacts_data_source = ContactDataSourceImpl()
+        self.contacts_data_source = ContactDataSource()
         self.local_storage = local_storage
-        self.data_source = ClientDataSourceImpl()
+        self.data_source = ClientDataSource()
 
     def get_all_clients_as_map(self) -> Mapping[int, Client]:
         try:
