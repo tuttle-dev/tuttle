@@ -12,6 +12,8 @@ from res.colors import BLACK_COLOR_ALT, WHITE_COLOR, ERROR_COLOR, PRIMARY_COLOR
 from core.constants_and_enums import AlertDialogControls
 from routing import TuttleRoutes
 
+import demo
+
 
 class TuttleApp:
     def __init__(self, page: Page) -> None:
@@ -150,6 +152,7 @@ class TuttleApp:
 def main(page: Page):
     """Entry point of the app"""
     app = TuttleApp(page)
+    demo.install_demo_data(n=10)
     app.build()
 
 
