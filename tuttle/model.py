@@ -179,10 +179,19 @@ class Contact(SQLModel, table=True):
         else:
             return None
 
-    def print_address(self):
+    def print_address(self, onlyAddress: bool = False):
         """Print address in common format."""
         if self.address is None:
             return ""
+
+        if onlyAddress:
+            return textwrap.dedent(
+                f"""
+                {self.address.street} {self.address.number}
+                {self.address.postal_code} {self.address.city}
+                {self.address.country}"""
+            )
+
         return textwrap.dedent(
             f"""
         {self.name}
@@ -192,7 +201,6 @@ class Contact(SQLModel, table=True):
         {self.address.country}
         """
         )
-
 
 class Client(SQLModel, table=True):
     """A client the freelancer has contracted with."""

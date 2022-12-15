@@ -1,6 +1,8 @@
 import flet
 from flet import Page, AlertDialog, SnackBar, Text
 
+from loguru import logger
+
 from core.models import RouteView
 from typing import Optional, Callable
 
@@ -152,7 +154,11 @@ class TuttleApp:
 def main(page: Page):
     """Entry point of the app"""
     app = TuttleApp(page)
-    demo.install_demo_data(n=10)
+    try:
+        demo.install_demo_data(n=10)
+    except Exception as e:
+        logger.error("Failed to install demo data")
+        logger.exception(e)
     app.build()
 
 

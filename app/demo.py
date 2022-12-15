@@ -4,11 +4,13 @@ import faker
 import random
 import datetime
 from sqlmodel import Field, SQLModel, create_engine, Session, select
+import sqlalchemy
 
 from tuttle.model import Address, Contact, Client, Project, Contract, TimeUnit, Cycle
 
-def create_fake_contact():
-    fake = faker.Faker()
+def create_fake_contact(
+    fake: faker.Faker,
+):
     street_line, city_line = fake.address().splitlines()
     a = Address(
         id=id,
@@ -32,8 +34,8 @@ def create_fake_contact():
 
 def create_fake_client(
     invoicing_contact: Contact,
+    fake: faker.Faker,
 ):
-    fake = faker.Faker()
     client = Client(
         id=id,
         name=fake.company(),
@@ -44,11 +46,11 @@ def create_fake_client(
 
 def create_fake_contract(
     client: Client,
+    fake: faker.Faker,
 ) -> Contract:
     """
     Create a fake contract for the given client.
     """
-    fake = faker.Faker()
     return Contract(
         title=fake.sentence(),
         client=client,
@@ -66,12 +68,12 @@ def create_fake_contract(
 
 def create_fake_project(
     contract: Contract,
+    fake: faker.Faker, 
 ):
-    fake = faker.Faker()
     project_title = fake.bs()
     project = Project(
         title=project_title,
-        tag=project_title.split(" ")[0].lower(),
+        tag=project_title.replace(' ', '-').lower(),
         description=fake.paragraph(nb_sentences=2),
         unique_tag=project_title.split(" ")[0].lower(),
         is_completed=fake.pybool(),
@@ -86,10 +88,12 @@ def create_fake_project(
 def create_fake_data(
     n: int = 10,
 ):
-    contacts = [create_fake_contact() for _ in range(n)]
-    clients = [create_fake_client(contact) for contact in contacts]
-    contracts = [create_fake_contract(client) for client in clients]
-    projects = [create_fake_project(contract) for contract in contracts]
+    locales = ["de_DE", "en_US", "es_ES", "fr_FR", "it_IT", "sv_SE"]
+    fake = faker.Faker()
+    contacts = [create_fake_contact(fake) for _ in range(n)]
+    clients = [create_fake_client(contact, fake) for contact in contacts]
+    contracts = [create_fake_contract(client, fake) for client in clients]
+    projects = [create_fake_project(contract, fake) for contract in contracts]
     return projects
 
 
@@ -102,8 +106,10 @@ def install_demo_data(
     db_engine = create_engine("sqlite:///")
     SQLModel.metadata.create_all(db_engine)
     with Session(db_engine) as session:
-        session.add_all(projects)
-        session.commit()
+        for project in projects:
+            session.add(project)
+            session.commit()
+
 
 
 if __name__ == "__main__":
