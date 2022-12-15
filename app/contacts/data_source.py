@@ -6,7 +6,7 @@ from core.models import Address, IntentResult
 from .model import Contact
 
 
-class ContactDataSourceImpl:
+class ContactDataSource:
     def __init__(self):
         self.contacts = {}
 

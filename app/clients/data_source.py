@@ -5,7 +5,7 @@ from .model import Client
 from contacts.model import Contact
 
 
-class ClientDataSourceImpl:
+class ClientDataSource:
     def __init__(self):
         self.clients = {}
 

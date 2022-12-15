@@ -1,4 +1,4 @@
-from .data_source import UserDataSourceImpl
+from .data_source import UserDataSource
 from core.abstractions import ClientStorage
 from core.models import IntentResult
 from .model import User
@@ -6,7 +6,7 @@ from .model import User
 
 class AuthIntentImpl:
     def __init__(self, local_storage: ClientStorage):
-        self.data_source = UserDataSourceImpl()
+        self.data_source = UserDataSource()
         self.local_storage = local_storage
 
     def create_user(

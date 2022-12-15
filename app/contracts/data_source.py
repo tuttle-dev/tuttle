@@ -12,7 +12,7 @@ from core.models import IntentResult
 from .model import Contract
 
 
-class ContractDataSourceImpl:
+class ContractDataSource:
     def __init__(self):
         super().__init__()
         self.contracts = {}

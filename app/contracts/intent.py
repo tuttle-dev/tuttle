@@ -9,17 +9,17 @@ from core.abstractions import ClientStorage
 from core.models import IntentResult
 
 from .model import Contract
-from .data_source import ContractDataSourceImpl
-from clients.data_source import ClientDataSourceImpl
-from contacts.data_source import ContactDataSourceImpl
+from .data_source import ContractDataSource
+from clients.data_source import ClientDataSource
+from contacts.data_source import ContactDataSource
 from contacts.model import Contact
 
 
 class ContractsIntentImpl:
     def __init__(self, local_storage: ClientStorage):
-        self.clients_data_source = ClientDataSourceImpl()
-        self.contacts_data_source = ContactDataSourceImpl()
-        self.data_source = ContractDataSourceImpl()
+        self.clients_data_source = ClientDataSource()
+        self.contacts_data_source = ContactDataSource()
+        self.data_source = ContractDataSource()
         self.local_storage = local_storage
 
         self.all_contracts_cache: Mapping[str, Contract] = None
