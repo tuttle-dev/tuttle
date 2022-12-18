@@ -4,3 +4,4 @@ bump2version
 black
 nbdime
 pre-commit
+pydocstyle
