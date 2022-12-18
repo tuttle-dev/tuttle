@@ -1,8 +1,11 @@
-import typing
+from typing import Callable, Type, Optional, List
 from abc import ABC, abstractmethod
-from typing import Callable
-from .constants_and_enums import AlertDialogControls, START_ALIGNMENT, AUTO_SCROLL
 from flet import AlertDialog
+from loguru import logger
+import sqlmodel
+
+from .models import IntentResult
+from .constants_and_enums import AlertDialogControls, START_ALIGNMENT, AUTO_SCROLL
 
 
 class ClientStorage(ABC):
@@ -22,7 +25,7 @@ class ClientStorage(ABC):
         pass
 
     @abstractmethod
-    def get_value(self, key: str) -> typing.Optional[any]:
+    def get_value(self, key: str) -> Optional[any]:
         """appends an identifier prefix to the key and gets the value if exists"""
         pass
 
@@ -43,8 +46,8 @@ class TuttleView(ABC):
         vertical_alignment_in_parent: str = START_ALIGNMENT,
         horizontal_alignment_in_parent: str = START_ALIGNMENT,
         keep_back_stack=True,
-        on_navigate_back: typing.Optional[Callable] = None,
-        page_scroll_type: typing.Optional[str] = AUTO_SCROLL,
+        on_navigate_back: Optional[Callable] = None,
+        page_scroll_type: Optional[str] = AUTO_SCROLL,
     ):
         super().__init__()
         self.navigate_to_route = navigate_to_route
@@ -79,12 +82,44 @@ class DialogHandler(ABC):
         self.dialog_controller = dialog_controller
         self.dialog: AlertDialog = dialog
 
-    def close_dialog(self, e: typing.Optional[any] = None):
+    def close_dialog(self, e: Optional[any] = None):
         self.dialog_controller(self.dialog, AlertDialogControls.CLOSE)
 
-    def open_dialog(self, e: typing.Optional[any] = None):
+    def open_dialog(self, e: Optional[any] = None):
         self.dialog_controller(self.dialog, AlertDialogControls.ADD_AND_OPEN)
 
     def dimiss_open_dialogs(self):
         if self.dialog is not None and self.dialog.open:
             self.close_dialog()
+
+
+class SQLModelDataSourceMixin:
+    """Implements common methods for data sources that interact with SQLModel"""
+
+    def __init__(
+        self,
+        db_path: str,
+    ):
+        logger.info(f"Creating {self.__class__.__name__} with db_path: {db_path}")
+        self.db_engine = sqlmodel.create_engine(
+            db_path,
+            echo=False,
+            connect_args={"check_same_thread": False},
+            poolclass=sqlmodel.pool.StaticPool,
+        )
+
+    def create_session(self):
+        return sqlmodel.Session(
+            self.db_engine,
+            expire_on_commit=False,
+        )
+
+    def query(self, entity_type: Type[sqlmodel.SQLModel]) -> List:
+        """Queries the database for all instances of the given entity type"""
+        logger.debug(f"querying {entity_type}")
+        entities = self.create_session().exec(sqlmodel.select(entity_type)).all()
+        if len(entities) == 0:
+            logger.warning(f"No instances of {entity_type} found")
+        else:
+            logger.info(f"Found {len(entities)} instances of {entity_type}")
+        return entities

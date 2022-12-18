@@ -1,12 +1,15 @@
 from typing import List
 
+from pathlib import Path
 import faker
 import random
 import datetime
 from sqlmodel import Field, SQLModel, create_engine, Session, select
 import sqlalchemy
+from loguru import logger
 
 from tuttle.model import Address, Contact, Client, Project, Contract, TimeUnit, Cycle
+
 
 def create_fake_contact(
     fake: faker.Faker,
@@ -31,6 +34,7 @@ def create_fake_contact(
         address=a,
     )
     return contact
+
 
 def create_fake_client(
     invoicing_contact: Contact,
@@ -66,14 +70,15 @@ def create_fake_contract(
         billing_cycle=random.choice(list(Cycle)),
     )
 
+
 def create_fake_project(
     contract: Contract,
-    fake: faker.Faker, 
+    fake: faker.Faker,
 ):
     project_title = fake.bs()
     project = Project(
         title=project_title,
-        tag=project_title.replace(' ', '-').lower(),
+        tag=project_title.replace(" ", "-").lower(),
         description=fake.paragraph(nb_sentences=2),
         unique_tag=project_title.split(" ")[0].lower(),
         is_completed=fake.pybool(),
@@ -82,7 +87,6 @@ def create_fake_project(
         contract=contract,
     )
     return project
-
 
 
 def create_fake_data(
@@ -97,19 +101,19 @@ def create_fake_data(
     return projects
 
 
-
-
 def install_demo_data(
     n: int,
 ):
+    db_path = f"sqlite:///{Path('app/tmp/db.sqlite').resolve()}"
+    logger.info(f"Installing demo data in {db_path}...")
     projects = create_fake_data(n)
-    db_engine = create_engine("sqlite:///")
+    db_engine = create_engine(db_path)
     SQLModel.metadata.create_all(db_engine)
     with Session(db_engine) as session:
         for project in projects:
             session.add(project)
             session.commit()
-
+    logger.info("Demo data installed.")
 
 
 if __name__ == "__main__":

@@ -124,6 +124,7 @@ def get_empty_address() -> Address:
     return Address(id=None, street="", number="", city="", postal_code="", country="")
 
 
+# TODO: should this class be here?
 class IntentResult:
     """Wraps the result of a view's intent
 

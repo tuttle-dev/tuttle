@@ -8,7 +8,7 @@ from .data_source import ContactDataSource
 
 class ContactsIntent:
     def __init__(self, local_storage: ClientStorage):
-        self.data_source = ContactDataSource()
+        self.data_source = ContactDataSource(db_path="sqlite:///")
         self.local_storage = local_storage
 
     def get_all_contacts_as_map(self) -> Mapping[int, Contact]:
