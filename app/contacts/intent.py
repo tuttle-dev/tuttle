@@ -6,7 +6,7 @@ from .model import Contact
 from .data_source import ContactDataSource
 
 
-class ContactsIntentImpl:
+class ContactsIntent:
     def __init__(self, local_storage: ClientStorage):
         self.data_source = ContactDataSource()
         self.local_storage = local_storage

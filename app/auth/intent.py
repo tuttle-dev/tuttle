@@ -4,7 +4,7 @@ from core.models import IntentResult
 from .model import User
 
 
-class AuthIntentImpl:
+class AuthIntent:
     def __init__(self, local_storage: ClientStorage):
         self.data_source = UserDataSource()
         self.local_storage = local_storage

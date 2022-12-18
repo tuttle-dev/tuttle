@@ -54,7 +54,7 @@ from core.views import (
     smSpace,
     update_dropdown_items,
 )
-from projects.intent import ProjectsIntentImpl
+from projects.intent import ProjectsIntent
 from projects.model import Project
 from res import colors, dimens, fonts
 from res.colors import ERROR_COLOR, GRAY_COLOR, PRIMARY_COLOR
@@ -286,7 +286,7 @@ class ViewProjectScreen(TuttleView, UserControl):
             dialog_controller=dialog_controller,
             on_navigate_back=on_navigate_back,
         )
-        self.intent_handler = ProjectsIntentImpl(local_storage=local_storage)
+        self.intent_handler = ProjectsIntent(local_storage=local_storage)
         self.project_id = project_id
         self.loading_indicator = horizontal_progress
         self.project: Optional[Project] = None
@@ -568,7 +568,7 @@ class ProjectsListView(TuttleView, UserControl):
             show_snack=show_snack,
             dialog_controller=dialog_controller,
         )
-        self.intent_handler = ProjectsIntentImpl(local_storage=local_storage)
+        self.intent_handler = ProjectsIntent(local_storage=local_storage)
         self.loading_indicator = horizontal_progress
         self.no_projects_control = Text(
             value="You have not added any projects yet.",
@@ -675,7 +675,7 @@ class EditProjectScreen(TuttleView, UserControl):
             on_navigate_back=on_navigate_back,
             horizontal_alignment_in_parent=CENTER_ALIGNMENT,
         )
-        self.intent_handler = ProjectsIntentImpl(local_storage=local_storage)
+        self.intent_handler = ProjectsIntent(local_storage=local_storage)
 
         self.contracts_map = {}
         self.loading_indicator = horizontal_progress
@@ -889,7 +889,7 @@ class CreateProjectScreen(TuttleView, UserControl):
             on_navigate_back=on_navigate_back,
             horizontal_alignment_in_parent=CENTER_ALIGNMENT,
         )
-        self.intent_handler = ProjectsIntentImpl(local_storage=local_storage)
+        self.intent_handler = ProjectsIntent(local_storage=local_storage)
 
         self.contracts_map = {}
         self.loading_indicator = horizontal_progress

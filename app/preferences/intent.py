@@ -4,7 +4,7 @@ from core.models import IntentResult
 from res.theme import THEME_MODES, get_theme_mode_from_value
 
 
-class PreferencesIntentImpl:
+class PreferencesIntent:
     def __init__(self, client_storage: ClientStorage):
         self.client_storage = client_storage
 

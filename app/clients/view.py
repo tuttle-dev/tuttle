@@ -18,7 +18,7 @@ from flet import (
 )
 
 from clients.model import Client, get_empty_client
-from clients.intent import ClientsIntentImpl
+from clients.intent import ClientsIntent
 from contacts.model import Contact, get_empty_contact
 from core.abstractions import DialogHandler, TuttleView
 from core.constants_and_enums import (
@@ -423,7 +423,7 @@ class ClientsListView(TuttleView, UserControl):
             show_snack=show_snack,
             dialog_controller=dialog_controller,
         )
-        self.intent_handler = ClientsIntentImpl(local_storage=local_storage)
+        self.intent_handler = ClientsIntent(local_storage=local_storage)
         self.loading_indicator = horizontal_progress
         self.no_clients_control = Text(
             value="You have not added any clients yet.",

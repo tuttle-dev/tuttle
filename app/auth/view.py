@@ -17,7 +17,7 @@ from flet import (
     padding,
 )
 
-from auth.intent import AuthIntentImpl
+from auth.intent import AuthIntent
 from auth.model import User
 from core.abstractions import ClientStorage, TuttleView
 from core.constants_and_enums import (
@@ -50,7 +50,7 @@ from res.fonts import HEADLINE_3_SIZE, HEADLINE_4_SIZE
 from res.image_paths import splashImgPath
 from res.utils import HOME_SCREEN_ROUTE
 
-from .intent import AuthIntentImpl
+from .intent import AuthIntent
 
 
 class LoginForm(UserControl):
@@ -287,7 +287,7 @@ class ProfileScreen(TuttleView, UserControl):
             on_navigate_back=on_navigate_back,
             horizontal_alignment_in_parent=CENTER_ALIGNMENT,
         )
-        self.intent_handler = AuthIntentImpl(local_storage=local_storage)
+        self.intent_handler = AuthIntent(local_storage=local_storage)
         self.name = ""
         self.email = ""
         self.phone = ""
@@ -597,7 +597,7 @@ class SplashScreen(TuttleView, UserControl):
             dialog_controller,
             keep_back_stack=False,
         )
-        self.intent_handler = AuthIntentImpl(local_storage=local_storage)
+        self.intent_handler = AuthIntent(local_storage=local_storage)
 
     def on_save_user(
         self,

@@ -12,7 +12,7 @@ from clients.data_source import ClientDataSource
 from contracts.data_source import ContractDataSource
 
 
-class ProjectsIntentImpl:
+class ProjectsIntent:
     def __init__(self, local_storage: ClientStorage):
         self.local_storage = local_storage
         self.data_source = ProjectDataSource()
