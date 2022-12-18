@@ -9,7 +9,9 @@ repos:
     rev: 22.6.0
     hooks:
     -   id: black
--   repo: https://github.com/pycqa/pydocstyle
-    rev: 4.0.0
-    hooks:
-    -   id: pydocstyle
+# -   repo: https://github.com/pycqa/pydocstyle
+#     rev: 4.0.0
+#     hooks:
+#     -   id: pydocstyle
+#         args:
+#         - --ignore=D107

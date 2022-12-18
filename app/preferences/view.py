@@ -14,7 +14,7 @@ from flet import (
 from core.models import IntentResult
 from core.abstractions import TuttleView
 from core.views import get_dropdown, horizontal_progress, mdSpace, START_ALIGNMENT
-from preferences.intent import PreferencesIntentImpl
+from preferences.intent import PreferencesIntent
 from preferences.model import Preferences
 from res.dimens import SPACE_MD, SPACE_STD, SPACE_XS, MIN_WINDOW_WIDTH
 from res.theme import THEME_MODES, get_theme_mode_from_value
@@ -36,7 +36,7 @@ class PreferencesScreen(TuttleView, UserControl):
             dialog_controller=dialog_controller,
             on_navigate_back=on_navigate_back,
         )
-        self.intent_handler = PreferencesIntentImpl(client_storage=local_storage)
+        self.intent_handler = PreferencesIntent(client_storage=local_storage)
         self.on_theme_changed_callback = on_theme_changed
         self.preferences: Optional[Preferences] = None
 

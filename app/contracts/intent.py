@@ -15,7 +15,7 @@ from contacts.data_source import ContactDataSource
 from contacts.model import Contact
 
 
-class ContractsIntentImpl:
+class ContractsIntent:
     def __init__(self, local_storage: ClientStorage):
         self.clients_data_source = ClientDataSource()
         self.contacts_data_source = ContactDataSource()

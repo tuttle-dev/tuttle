@@ -20,7 +20,7 @@ from flet import (
 )
 
 from contacts.model import Contact, get_empty_contact
-from contacts.intent import ContactsIntentImpl
+from contacts.intent import ContactsIntent
 from core.abstractions import DialogHandler, TuttleView
 from core.constants_and_enums import (
     ALWAYS_SCROLL,
@@ -320,7 +320,7 @@ class ContactsListView(TuttleView, UserControl):
             show_snack=show_snack,
             dialog_controller=dialog_controller,
         )
-        self.intent_handler = ContactsIntentImpl(local_storage=local_storage)
+        self.intent_handler = ContactsIntent(local_storage=local_storage)
         self.loading_indicator = horizontal_progress
         self.no_contacts_control = Text(
             value="You have not added any contacts yet",

@@ -19,7 +19,7 @@ from flet import (
 )
 
 from contracts.model import Contract
-from contracts.intent import ContractsIntentImpl
+from contracts.intent import ContractsIntent
 from core.abstractions import ClientStorage, TuttleView
 from core.constants_and_enums import (
     CENTER_ALIGNMENT,
@@ -56,7 +56,7 @@ from flet import (
 
 from clients.model import Client
 from contracts.model import Contract
-from contracts.intent import ContractsIntentImpl
+from contracts.intent import ContractsIntent
 from core.abstractions import ClientStorage, TuttleView
 from core.constants_and_enums import (
     ALWAYS_SCROLL,
@@ -120,7 +120,7 @@ from flet import (
 
 from clients.model import Client
 from contracts.model import Contract
-from contracts.intent import ContractsIntentImpl
+from contracts.intent import ContractsIntent
 from core.abstractions import DialogHandler, TuttleView
 from core.constants_and_enums import (
     CENTER_ALIGNMENT,
@@ -295,7 +295,7 @@ class ContractEditorScreen(TuttleView, UserControl):
             on_navigate_back=on_navigate_back,
             horizontal_alignment_in_parent=CENTER_ALIGNMENT,
         )
-        self.intent_handler = ContractsIntentImpl(local_storage=local_storage)
+        self.intent_handler = ContractsIntent(local_storage=local_storage)
 
         self.loading_indicator = horizontal_progress
         self.new_client_pop_up = None
@@ -791,7 +791,7 @@ class CreateContractScreen(TuttleView, UserControl):
             on_navigate_back=on_navigate_back,
             horizontal_alignment_in_parent=CENTER_ALIGNMENT,
         )
-        self.intent_handler = ContractsIntentImpl(local_storage=local_storage)
+        self.intent_handler = ContractsIntent(local_storage=local_storage)
 
         self.loading_indicator = horizontal_progress
         self.new_client_pop_up: Optional[DialogHandler] = None
@@ -1167,7 +1167,7 @@ class ContractsListView(TuttleView, UserControl):
             show_snack=show_snack,
             dialog_controller=dialog_controller,
         )
-        self.intent_handler = ContractsIntentImpl(local_storage=local_storage)
+        self.intent_handler = ContractsIntent(local_storage=local_storage)
         self.loading_indicator = horizontal_progress
         self.no_contracts_control = Text(
             value="You have not added any contracts yet",
@@ -1275,7 +1275,7 @@ class ViewContractScreen(TuttleView, UserControl):
             dialog_controller=dialog_controller,
             on_navigate_back=on_navigate_back,
         )
-        self.intent_handler = ContractsIntentImpl(local_storage=local_storage)
+        self.intent_handler = ContractsIntent(local_storage=local_storage)
         self.contract_id = contract_id
         self.loading_indicator = horizontal_progress
         self.contract: Optional[Contract] = None
