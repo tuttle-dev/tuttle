@@ -1,9 +1,12 @@
 import re
 from typing import Callable, Optional
 
+from loguru import logger
+
 import flet
 from flet import Page, AlertDialog, SnackBar, TemplateRoute, Text, View
 
+import demo
 from auth.view import ProfileScreen, SplashScreen
 from contracts.view import (
     ContractEditorScreen,
@@ -299,6 +302,14 @@ class TuttleRoutes:
 def main(page: Page):
     """Entry point of the app"""
     app = TuttleApp(page)
+    # install demo data
+    try:
+        demo.install_demo_data(
+            n=10,
+        )
+    except Exception as ex:
+        logger.exception(ex)
+        logger.error("Failed to install demo data")
     app.build()
 
 if __name__ == "__main__":
