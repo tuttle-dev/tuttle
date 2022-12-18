@@ -80,7 +80,7 @@ local development.
     Now you can make your changes locally.
 
 
-    Install the pre-commit hooks before making your first commit to ensure that you match the code style:
+    **Install the pre-commit hooks before making your first commit to ensure that you match the code style**:
 
     ``` shell
     $ pre-commit install
