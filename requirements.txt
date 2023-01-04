@@ -10,4 +10,4 @@ pandera
 weasyprint
 
 flet
-pyicloud
+icloudpy
