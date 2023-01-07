@@ -4,29 +4,78 @@ orbs:
   python: circleci/python@1.5.0
 
 jobs:
-  build-and-test:
-    working_directory: ~/repo
+  build-x86-macos:
+    machine:
+      architecture: x86_64
+      image: macos-latest
     docker:
       - image: cimg/python:3.10.2
-    environment:
-      PYTHONPATH: /app
-    matrix:
-      os:
-        - x86-macos
-        - arm-macos
-        - linux
-        - windows
     steps:
       - checkout
       - python/install-packages:
           pkg-manager: pip
-          # app-dir: ~/project/package-directory/  # If you're requirements.txt isn't in the root directory.
-          # pip-dependency-file: test-requirements.txt  # if you have a different name for your requirements file, maybe one that combines your runtime and test requirements.
       - run:
           name: Run build script
-          command: python scripts/build_app.py
+          command: python scripts/build_app.py --one-file
+      - uses: actions/upload-artifact@v3
+        with:
+          name: Tuttle-${{ github.sha }}-${{ matrix.os }}-x86
+          path: dist/
+
+  build-arm-macos:
+    machine:
+      architecture: arm64
+      image: macos-latest
+    docker:
+      - image: cimg/python:3.10.2
+    steps:
+      - checkout
+      - python/install-packages:
+          pkg-manager: pip
+      - run:
+          name: Run build script
+          command: python scripts/build_app.py --one-file
+      - uses: actions/upload-artifact@v3
+        with:
+          name: Tuttle-${{ github.sha }}-${{ matrix.os }}-arm
+          path: dist/
+
+  build-linux:
+    machine:
+      image: ubuntu-latest
+    docker:
+      - image: cimg/python:3.10.2
+    steps:
+      - checkout
+      - python/install-packages:
+          pkg-manager: pip
+      - run:
+          name: Run build script
+          command: python scripts/build_app.py --one-file
+      - uses: actions/upload-artifact@v3
+        with:
+          name: Tuttle-${{ github.sha }}-${{ matrix.os }}-x86
+          path: dist/
+
+  build-windows:
+    machine:
+      image: windows-latest
+    docker:
+      - image: cimg/python:3.10.2
+    steps:
+      - checkout
+      - python/install-packages:
+          pkg-manager: pip
+      - run:
+          name: Run build script
+          command: python scripts/build_app.py --one-file
+      - uses: actions/upload-artifact@v3
+        with:
+          name: Tuttle-${{ github.sha }}-${{ matrix.os }}-x86
+          path: dist/
 
 workflows:
   build-and-test-workflow:
     jobs:
-      - build-and-test
+      - build-x86-macos
+      - build-arm-macos
