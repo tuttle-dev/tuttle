@@ -10,6 +10,12 @@ jobs:
       - image: cimg/python:3.10.2
     environment:
       PYTHONPATH: /app
+    matrix:
+      os:
+        - x86-macos
+        - arm-macos
+        - linux
+        - windows
     steps:
       - checkout
       - python/install-packages:
@@ -19,27 +25,8 @@ jobs:
       - run:
           name: Run build script
           command: python scripts/build_app.py
-    strategy:
-      matrix:
-        x86-macos:
-          macos:
-            xcode: "11.7"
-        arm-macos:
-          macos:
-            xcode: "12.0"
-            environment:
-              - GOARCH: arm64
-              - GOOS: darwin
-        linux:
-          machine:
-            type: p3.2xlarge
-          os: ubuntu-latest
-        windows:
-          machine:
-            type: windows
-          os: windows-latest
 
 workflows:
-  sample:
+  build-and-test-workflow:
     jobs:
       - build-and-test
