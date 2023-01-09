@@ -16,7 +16,7 @@ from flet import (
     icons,
     padding,
 )
-
+from tuttle.model import Address
 from clients.model import Client, get_empty_client
 from clients.intent import ClientsIntent
 from contacts.model import Contact, get_empty_contact
@@ -145,7 +145,7 @@ class ClientEditorPopUp(DialogHandler, UserControl):
         self.address = (
             self.invoicing_contact.address
             if self.invoicing_contact.address is not None
-            else get_empty_address()
+            else Address()
         )
         self.contacts_as_map = contacts_map
         self.contact_options = self.get_contacts_as_list()

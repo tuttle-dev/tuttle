@@ -347,11 +347,7 @@ def ensure_app_dir() -> Path:
     return app_dir
 
 
-def main(page: Page):
-    """Entry point of the app"""
-    app = TuttleApp(page)
-
-    # install demo data
+def install_demo_data():
     try:
         app_dir = ensure_app_dir()
         demo.install_demo_data(
@@ -361,6 +357,14 @@ def main(page: Page):
     except Exception as ex:
         logger.exception(ex)
         logger.error("Failed to install demo data")
+
+
+def main(page: Page):
+    """Entry point of the app"""
+    app = TuttleApp(page)
+
+    # install demo data
+    # TODO fix errors self.install_demo_data()
     app.build()
 
 

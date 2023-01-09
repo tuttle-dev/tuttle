@@ -2,7 +2,7 @@ import datetime
 import typing
 from typing import Callable, List, Optional
 from .abstractions import DialogHandler
-from .utils import AlertDialogControls
+from .utils import AlertDialogControls, KEYBOARD_PASSWORD
 from flet import (
     AlertDialog,
     Column,
@@ -110,6 +110,7 @@ def get_std_txt_field(
         focused_border_width=1,
         on_focus=on_focus,
         on_change=on_change,
+        password=keyboard_type == KEYBOARD_PASSWORD,
         expand=expand,
         width=width,
         text_size=fonts.BODY_1_SIZE,
