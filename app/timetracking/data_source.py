@@ -2,8 +2,6 @@ from core.abstractions import ClientStorage, SQLModelDataSourceMixin
 
 from core.models import IntentResult
 
-from tuttle.model import Address, User
-
 
 class TimeTrackingDataSource(SQLModelDataSourceMixin):
     def __init__(self):
