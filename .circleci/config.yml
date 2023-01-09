@@ -1,0 +1,81 @@
+version: 2.1
+
+orbs:
+  python: circleci/python@1.5.0
+
+jobs:
+  build-x86-macos:
+    machine:
+      architecture: x86_64
+      image: macos-latest
+    docker:
+      - image: cimg/python:3.10.2
+    steps:
+      - checkout
+      - python/install-packages:
+          pkg-manager: pip
+      - run:
+          name: Run build script
+          command: python scripts/build_app.py --one-file
+      - uses: actions/upload-artifact@v3
+        with:
+          name: Tuttle-${{ github.sha }}-${{ matrix.os }}-x86
+          path: dist/
+
+  build-arm-macos:
+    machine:
+      architecture: arm64
+      image: macos-latest
+    docker:
+      - image: cimg/python:3.10.2
+    steps:
+      - checkout
+      - python/install-packages:
+          pkg-manager: pip
+      - run:
+          name: Run build script
+          command: python scripts/build_app.py --one-file
+      - uses: actions/upload-artifact@v3
+        with:
+          name: Tuttle-${{ github.sha }}-${{ matrix.os }}-arm
+          path: dist/
+
+  build-linux:
+    machine:
+      image: ubuntu-latest
+    docker:
+      - image: cimg/python:3.10.2
+    steps:
+      - checkout
+      - python/install-packages:
+          pkg-manager: pip
+      - run:
+          name: Run build script
+          command: python scripts/build_app.py --one-file
+      - uses: actions/upload-artifact@v3
+        with:
+          name: Tuttle-${{ github.sha }}-${{ matrix.os }}-x86
+          path: dist/
+
+  build-windows:
+    machine:
+      image: windows-latest
+    docker:
+      - image: cimg/python:3.10.2
+    steps:
+      - checkout
+      - python/install-packages:
+          pkg-manager: pip
+      - run:
+          name: Run build script
+          command: python scripts/build_app.py --one-file
+      - uses: actions/upload-artifact@v3
+        with:
+          name: Tuttle-${{ github.sha }}-${{ matrix.os }}-x86
+          path: dist/
+
+workflows:
+  build-and-test-workflow:
+    jobs:
+      - build-x86-macos
+      - build-arm-macos

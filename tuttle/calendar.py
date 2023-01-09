@@ -4,7 +4,7 @@ from pathlib import Path
 import io
 
 import ics
-import pyicloud
+import icloudpy
 import getpass
 import pandas
 import datetime
@@ -104,7 +104,7 @@ class ICloudCalendar(CloudCalendar):
 
     def __init__(
         self,
-        icloud: pyicloud.PyiCloudService,
+        icloud: icloudpy.ICloudPyService,
         name: str,
     ):
         super().__init__(name)
