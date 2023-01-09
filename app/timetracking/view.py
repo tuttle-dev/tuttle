@@ -8,6 +8,7 @@ from flet import (
     FilePickerUploadEvent,
     Text,
     UserControl,
+    ProgressRing,
 )
 from .model import ICloudCalendarInfo
 from .intent import TimeTrackingIntent
@@ -179,7 +180,10 @@ class TimetracksView(TuttleView, UserControl):
 
         self.upload_file_callback = upload_file_callback
         self.pick_file_callback = pick_file_callback
-        self.loading_indicator = horizontal_progress
+        self.loading_indicator = ProgressRing(
+            width=32,
+            height=32,
+        )
         self.no_timetrack_control = Text(
             value="You have not logged any work progress yet.",
             color=ERROR_COLOR,
