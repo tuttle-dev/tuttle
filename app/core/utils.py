@@ -62,3 +62,7 @@ FOCUSED = "focused"
 SELECTED = "selected"
 PRESSED = "pressed"
 OTHER_CONTROL_STATES = ""
+
+
+def is_empty_str(txt: str) -> bool:
+    return len(txt.strip()) == 0

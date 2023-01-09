@@ -23,7 +23,7 @@ from contracts.view import (
     ViewContractScreen,
 )
 from core.abstractions import TuttleView
-from core.constants_and_enums import AlertDialogControls
+from core.utils import AlertDialogControls
 from core.local_storage_impl import ClientStorageImpl
 from core.models import RouteView
 from error_views.page_not_found_screen import Error404Screen

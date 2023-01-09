@@ -12,7 +12,7 @@ from flet import (
 
 
 from core.abstractions import DialogHandler, TuttleView
-from core.constants_and_enums import (
+from core.utils import (
     AUTO_SCROLL,
     AlertDialogControls,
 )

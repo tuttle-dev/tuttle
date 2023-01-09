@@ -21,7 +21,7 @@ from clients.model import Client, get_empty_client
 from clients.intent import ClientsIntent
 from contacts.model import Contact, get_empty_contact
 from core.abstractions import DialogHandler, TuttleView
-from core.constants_and_enums import (
+from core.utils import (
     ALWAYS_SCROLL,
     AUTO_SCROLL,
     CENTER_ALIGNMENT,

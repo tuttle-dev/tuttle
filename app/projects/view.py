@@ -24,7 +24,7 @@ from flet import (
 from contracts.model import Contract
 from core.abstractions import TuttleView
 from core.charts import BarChart
-from core.constants_and_enums import (
+from core.utils import (
     ALWAYS_SCROLL,
     CENTER_ALIGNMENT,
     END_ALIGNMENT,

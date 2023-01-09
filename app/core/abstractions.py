@@ -6,7 +6,7 @@ import sqlmodel
 from pathlib import Path
 
 from .models import IntentResult
-from .constants_and_enums import AlertDialogControls, START_ALIGNMENT, AUTO_SCROLL
+from .utils import AlertDialogControls, START_ALIGNMENT, AUTO_SCROLL
 
 
 class ClientStorage(ABC):

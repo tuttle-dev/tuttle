@@ -1,7 +1,7 @@
 from core.abstractions import TuttleView
 from typing import Callable
 from flet import UserControl, Column, Container, padding
-from core.constants_and_enums import CENTER_ALIGNMENT
+from core.utils import CENTER_ALIGNMENT
 from core.views import get_error_txt, get_primary_btn
 
 from res.dimens import SPACE_MD, SPACE_STD

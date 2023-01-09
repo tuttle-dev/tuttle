@@ -22,7 +22,7 @@ from flet import (
 from contacts.model import Contact, get_empty_contact
 from contacts.intent import ContactsIntent
 from core.abstractions import DialogHandler, TuttleView
-from core.constants_and_enums import (
+from core.utils import (
     ALWAYS_SCROLL,
     AUTO_SCROLL,
     CENTER_ALIGNMENT,

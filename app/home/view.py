@@ -21,7 +21,7 @@ from flet import (
 )
 from core.views import get_body_txt, get_headline_with_subtitle
 from core.abstractions import DialogHandler, TuttleView
-from core.constants_and_enums import (
+from core.utils import (
     COMPACT_RAIL_WIDTH,
     SPACE_BETWEEN_ALIGNMENT,
     START_ALIGNMENT,
@@ -69,7 +69,7 @@ from flet import (
     ElevatedButton,
 )
 
-from core.constants_and_enums import SPACE_BETWEEN_ALIGNMENT, CENTER_ALIGNMENT
+from core.utils import SPACE_BETWEEN_ALIGNMENT, CENTER_ALIGNMENT
 from core.views import get_app_logo, get_std_txt_field
 from res.colors import BLACK_COLOR, WHITE_COLOR, PRIMARY_COLOR
 from res.dimens import SPACE_MD, TOOLBAR_HEIGHT

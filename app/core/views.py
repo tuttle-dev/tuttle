@@ -2,7 +2,7 @@ import datetime
 import typing
 from typing import Callable, List, Optional
 from .abstractions import DialogHandler
-from .constants_and_enums import AlertDialogControls
+from .utils import AlertDialogControls
 from flet import (
     AlertDialog,
     Column,
@@ -25,7 +25,7 @@ from flet import (
 from res import colors, dimens, fonts, image_paths
 
 
-from .constants_and_enums import (
+from .utils import (
     AUTO_SCROLL,
     CONTAIN,
     KEYBOARD_MULTILINE,

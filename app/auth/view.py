@@ -21,7 +21,7 @@ from tuttle.model import User
 
 from auth.intent import AuthIntent
 from core.abstractions import ClientStorage, TuttleView
-from core.constants_and_enums import (
+from core.utils import (
     CENTER_ALIGNMENT,
     KEYBOARD_EMAIL,
     KEYBOARD_NAME,
@@ -30,6 +30,7 @@ from core.constants_and_enums import (
     KEYBOARD_TEXT,
     START_ALIGNMENT,
     TXT_ALIGN_CENTER,
+    is_empty_str,
 )
 from core.models import IntentResult
 from core import views
@@ -100,22 +101,33 @@ class LoginForm(UserControl):
         self.submit_btn.disabled = True
 
         # hide any errors
+        self.login_err_txt.value = ""
         self.login_err_txt.visible = False
         self.form_error = ""
 
         missingRequiredDataErr = ""
-        if len(self.name.strip()) == 0:
+        if is_empty_str(self.name):
             missingRequiredDataErr = "Your name is required."
             self.name_field.error_text = missingRequiredDataErr
-        elif len(self.email.strip()) == 0:
+        elif is_empty_str(self.email):
             missingRequiredDataErr = "Your email is required."
             self.email_field.error_text = missingRequiredDataErr
-        elif len(self.phone.strip()) == 0:
+        elif is_empty_str(self.phone):
             missingRequiredDataErr = "Your phone number is required."
             self.phone_field.error_text = missingRequiredDataErr
-        elif len(self.title.strip()) == 0:
-            missingRequiredDataErr = "Please specify a title. e.g. freelancer"
+        elif is_empty_str(self.title):
+            missingRequiredDataErr = "Please specify your job title. e.g. freelancer"
             self.title_field.error_text = missingRequiredDataErr
+
+        elif (
+            is_empty_str(self.street)
+            or is_empty_str(self.street_number)
+            or is_empty_str(self.postal_code)
+            or is_empty_str(self.country)
+            or is_empty_str(self.city)
+        ):
+            missingRequiredDataErr = "Please provide your full address"
+            self.login_err_txt.value = missingRequiredDataErr
 
         if not missingRequiredDataErr:
             # save user
@@ -172,7 +184,7 @@ class LoginForm(UserControl):
         )
         self.title_field = views.get_std_txt_field(
             self.on_change_title,
-            "Title",
+            "Job Title",
             "your work title",
             on_focus=self.on_field_focus,
             keyboard_type=KEYBOARD_TEXT,
@@ -331,16 +343,16 @@ class ProfileScreen(TuttleView, UserControl):
             self.update()
 
         missingRequiredDataErr = ""
-        if len(self.name.strip()) == 0:
+        if is_empty_str(self.name):
             missingRequiredDataErr = "Your name is required."
             self.name_field.error_text = missingRequiredDataErr
-        elif len(self.email.strip()) == 0:
+        elif is_empty_str(self.email):
             missingRequiredDataErr = "Your email address is required."
             self.email_field.error_text = missingRequiredDataErr
-        elif len(self.phone.strip()) == 0:
+        elif is_empty_str(self.phone):
             missingRequiredDataErr = "Your phone number is required."
             self.phone_field.error_text = missingRequiredDataErr
-        elif len(self.title.strip()) == 0:
+        elif is_empty_str(self.title):
             missingRequiredDataErr = "Please specify your title. e.g. freelancer"
             self.title_field.error_text = missingRequiredDataErr
 

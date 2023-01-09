@@ -21,7 +21,7 @@ from flet import (
 from contracts.model import Contract
 from contracts.intent import ContractsIntent
 from core.abstractions import ClientStorage, TuttleView
-from core.constants_and_enums import (
+from core.utils import (
     CENTER_ALIGNMENT,
     SPACE_BETWEEN_ALIGNMENT,
     START_ALIGNMENT,
@@ -58,7 +58,7 @@ from clients.model import Client
 from contracts.model import Contract
 from contracts.intent import ContractsIntent
 from core.abstractions import ClientStorage, TuttleView
-from core.constants_and_enums import (
+from core.utils import (
     ALWAYS_SCROLL,
     CENTER_ALIGNMENT,
     END_ALIGNMENT,
@@ -122,7 +122,7 @@ from clients.model import Client
 from contracts.model import Contract
 from contracts.intent import ContractsIntent
 from core.abstractions import DialogHandler, TuttleView
-from core.constants_and_enums import (
+from core.utils import (
     CENTER_ALIGNMENT,
     KEYBOARD_NUMBER,
     SPACE_BETWEEN_ALIGNMENT,
