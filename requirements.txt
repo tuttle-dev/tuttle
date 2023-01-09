@@ -11,7 +11,8 @@ pandera
 weasyprint
 matplotlib
 faker
-
+flet
+icloudpy
 
 flet
 icloudpy

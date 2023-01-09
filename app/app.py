@@ -348,12 +348,6 @@ def main(page: Page):
     except Exception as ex:
         logger.exception(ex)
         logger.error("Failed to install demo data")
-
-
-def main(page: Page):
-    """Entry point of the app"""
-    app = TuttleApp(page)
-    # install_demo_data()
     app.build()
 
 
