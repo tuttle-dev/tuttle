@@ -1,7 +1,10 @@
 from dataclasses import dataclass
 from pathlib import Path
 
+from tuttle.dev import deprecated
 
+
+@deprecated("Use model class Settings instead")
 @dataclass
 class Preferences:
     """Settings for the application."""

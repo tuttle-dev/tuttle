@@ -447,3 +447,7 @@ class TimelineItem(SQLModel, table=True):
         )
     )
     content: str
+
+
+class Settings(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
