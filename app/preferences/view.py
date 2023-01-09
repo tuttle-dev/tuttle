@@ -1,6 +1,8 @@
 from typing import Callable, Optional
 
 from flet import (
+    Tabs,
+    Tab,
     Column,
     Container,
     Icon,
@@ -10,6 +12,7 @@ from flet import (
     Row,
     UserControl,
     padding,
+    margin,
 )
 from core.models import IntentResult
 from core.abstractions import TuttleView
@@ -18,11 +21,20 @@ from core.views import (
     get_std_txt_field,
     horizontal_progress,
     mdSpace,
+    smSpace,
     START_ALIGNMENT,
+    CENTER_ALIGNMENT,
 )
 from preferences.intent import PreferencesIntent
 from preferences.model import Preferences
-from res.dimens import SPACE_MD, SPACE_STD, SPACE_XS, MIN_WINDOW_WIDTH
+from res.dimens import (
+    SPACE_XL,
+    SPACE_MD,
+    SPACE_STD,
+    SPACE_XS,
+    MIN_WINDOW_WIDTH,
+    MIN_WINDOW_HEIGHT,
+)
 from res.theme import THEME_MODES, get_theme_mode_from_value
 
 
@@ -68,12 +80,22 @@ class PreferencesScreen(TuttleView, UserControl):
             if self.mounted:
                 self.update()
 
-    def build(self):
+    def on_window_resized(self, width, height):
+        super().on_window_resized(width, height)
+        self.body_width = width - self.sideBar.width - SPACE_MD * 2
+        self.body.width = self.body_width
+        self.tabs.width = self.body_width - SPACE_MD
+        self.tabs.height = height - SPACE_MD * 2
+        if self.mounted:
+            self.update()
 
+    def build(self):
+        side_bar_width = int(MIN_WINDOW_WIDTH * 0.3)
+        self.body_width = int(MIN_WINDOW_WIDTH * 0.7)
         self.loading_indicator = horizontal_progress
         self.sideBar = Container(
             padding=padding.all(SPACE_STD),
-            width=int(MIN_WINDOW_WIDTH * 0.3),
+            width=side_bar_width,
             content=Column(
                 controls=[
                     IconButton(
@@ -95,9 +117,51 @@ class PreferencesScreen(TuttleView, UserControl):
             hint="to load time tracking info from calendar",
             on_change=self.on_icloud_acc_changed,
         )
+        self.tabs = Tabs(
+            selected_index=1,
+            animation_duration=300,
+            width=self.body_width - SPACE_MD,
+            height=MIN_WINDOW_HEIGHT,
+            tabs=[
+                Tab(
+                    tab_content=Column(
+                        alignment=CENTER_ALIGNMENT,
+                        horizontal_alignment=CENTER_ALIGNMENT,
+                        controls=[
+                            Icon(icons.DARK_MODE_OUTLINED, size=24),
+                            smSpace,
+                            Text("General"),
+                            mdSpace,
+                        ],
+                    ),
+                    content=Container(
+                        content=self.theme_control,
+                        padding=padding.symmetric(vertical=SPACE_XL),
+                        margin=margin.symmetric(vertical=SPACE_MD),
+                    ),
+                ),
+                Tab(
+                    tab_content=Column(
+                        alignment=CENTER_ALIGNMENT,
+                        horizontal_alignment=CENTER_ALIGNMENT,
+                        controls=[
+                            Icon(icons.CLOUD_OUTLINED, size=24),
+                            smSpace,
+                            Text("iCloud"),
+                            mdSpace,
+                        ],
+                    ),
+                    content=Container(
+                        self.icloud_acc_id_control,
+                        padding=padding.symmetric(vertical=SPACE_XL),
+                        margin=margin.symmetric(vertical=SPACE_MD),
+                    ),
+                ),
+            ],
+        )
         self.body = Container(
             padding=padding.all(SPACE_MD),
-            width=int(MIN_WINDOW_WIDTH * 0.7),
+            width=self.body_width,
             content=Column(
                 controls=[
                     Row(
@@ -110,9 +174,7 @@ class PreferencesScreen(TuttleView, UserControl):
                     ),
                     self.loading_indicator,
                     mdSpace,
-                    self.theme_control,
-                    mdSpace,
-                    self.icloud_acc_id_control,
+                    self.tabs,
                 ],
             ),
         )
