@@ -2,6 +2,7 @@ import re
 from typing import Callable, Optional
 
 from loguru import logger
+from pathlib import Path
 
 import flet
 from flet import (
@@ -329,16 +330,20 @@ class TuttleRoutes:
                 show_snack=self.app.show_snack,
                 dialog_controller=self.app.control_alert_dialog,
                 on_navigate_back=self.app.on_view_pop,
-                local_storage=self.app.local_storage,
             )
 
         return self.get_page_route_view(routePath.route, view=screen)
 
 
-def install_demo_data():
+def main(page: Page):
+    """Entry point of the app"""
+    app = TuttleApp(page)
+    # install demo data
     try:
+        app_dir = ensure_app_dir()
         demo.install_demo_data(
             n=10,
+            db_path=app_dir / "tuttle.db",
         )
     except Exception as ex:
         logger.exception(ex)

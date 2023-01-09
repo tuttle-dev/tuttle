@@ -103,12 +103,17 @@ def create_fake_data(
 
 def install_demo_data(
     n: int,
+    db_path: str,
 ):
-    db_path = f"sqlite:///{Path('app/tmp/db.sqlite').resolve()}"
+    db_path = f"""sqlite:///{db_path}"""
     logger.info(f"Installing demo data in {db_path}...")
+    logger.info(f"Creating {n} fake projects...")
     projects = create_fake_data(n)
+    logger.info(f"Creating database engine at: {db_path}...")
     db_engine = create_engine(db_path)
+    logger.info("Creating database tables...")
     SQLModel.metadata.create_all(db_engine)
+    logger.info("Adding demo data to database...")
     with Session(db_engine) as session:
         for project in projects:
             session.add(project)
