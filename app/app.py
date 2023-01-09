@@ -364,7 +364,7 @@ def main(page: Page):
     app = TuttleApp(page)
 
     # install demo data
-    # TODO fix errors self.install_demo_data()
+    install_demo_data()
     app.build()
 
 

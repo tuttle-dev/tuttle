@@ -28,6 +28,9 @@ class TimeTrackingIntent:
         )
 
     def configure_icloud_and_load_calendar(
-        self, info: ICloudCalendarInfo
+        self, info: ICloudCalendarInfo, save_as_preferred
     ) -> IntentResult:
-        return self.data_source.configure_icloud_and_load_calendar(info)
+        result = self.data_source.configure_icloud_and_load_calendar(info)
+        if result.was_intent_successful and save_as_preferred:
+            self.set_preferred_icloud_account(info.account)
+        return result

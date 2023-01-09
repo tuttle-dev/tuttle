@@ -282,7 +282,10 @@ class TimetracksView(TuttleView, UserControl):
 
         self.set_progress_hint(f"Loading data from your calendar...")
 
-        result = self.intent_handler.configure_icloud_and_load_calendar(info)
+        save_icloud_acc_as_preferred = is_empty_str(self.preferred_icloud_acc)
+        result = self.intent_handler.configure_icloud_and_load_calendar(
+            info, save_icloud_acc_as_preferred
+        )
         msg = (
             "Processed your calendar info"
             if result.was_intent_successful
