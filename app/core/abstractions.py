@@ -131,7 +131,10 @@ class SQLModelDataSourceMixin:
         entities = self.query(entity_type)
         if len(entities) > 1:
             raise Exception(f"More than one {entity_type} found")
-        return entities[0]
+        elif len(entities) == 1:
+            return entities[0]
+        else:
+            return None
 
     def store(self, entity: sqlmodel.SQLModel):
         """Stores the given entity in the database"""
