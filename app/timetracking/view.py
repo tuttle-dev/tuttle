@@ -10,7 +10,7 @@ from flet import (
     UserControl,
 )
 
-
+from .intent import TimeTrackingIntent
 from core.abstractions import DialogHandler, TuttleView
 from core.utils import (
     AUTO_SCROLL,
@@ -31,7 +31,7 @@ from res.utils import NEW_TIME_TRACK_INTENT
 
 
 class NewTimeTrackPopUp(DialogHandler):
-    """Used to request a timetrack sheet or calendar file or cloud calendar"""
+    """Prompts user to request a timetrack sheet or calendar file or cloud calendar"""
 
     def __init__(
         self,
@@ -70,6 +70,8 @@ class NewTimeTrackPopUp(DialogHandler):
 
 
 class TimetracksView(TuttleView, UserControl):
+    """Time tracking view on home page"""
+
     def __init__(
         self,
         navigate_to_route,
@@ -84,7 +86,8 @@ class TimetracksView(TuttleView, UserControl):
             show_snack=show_snack,
             dialog_controller=dialog_controller,
         )
-        self.intent_handler = None  # TODO
+        self.intent_handler = TimeTrackingIntent(local_storage=local_storage)
+
         self.upload_file_callback = upload_file_callback
         self.pick_file_callback = pick_file_callback
         self.loading_indicator = horizontal_progress
@@ -145,15 +148,6 @@ class TimetracksView(TuttleView, UserControl):
                 self.loading_indicator.visible = False
                 self.update()
 
-        """result: IntentResult = None  # TODO
-        if not result.was_intent_successful:
-            self.show_snack(result.error_msg, True)
-        else:
-            savedTimetrack = result.data
-            # TODO refresh list
-            self.show_snack("Recorded new work progress!", False)
-        self.loading_indicator.visible = False """
-
     def on_file_picker_result(self, e: ft.FilePickerResultEvent):
         if e.files and len(e.files) > 0:
             file = e.files[0]
@@ -165,7 +159,17 @@ class TimetracksView(TuttleView, UserControl):
     def on_upload_progress(self, e: FilePickerUploadEvent):
         if e.progress == 1.0:
             self.uploading_file_hint.value = f"Upload complete, processing file..."
-            # TODO self.intent_handler.process_file(e.file_name)
+            result = self.intent_handler.process_timetracking_file(e.file_name)
+            msg = (
+                "New work progress recorded."
+                if result.was_intent_successful
+                else result.error_msg
+            )
+            is_error = not result.was_intent_successful
+            self.show_snack(msg, is_error)
+            self.loading_indicator.visible = False
+            self.uploading_file_hint.value = ""
+            self.uploading_file_hint.visible = False
             self.update()
 
     def load_recorded_timetracks(self):
