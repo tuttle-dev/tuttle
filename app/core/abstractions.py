@@ -126,6 +126,13 @@ class SQLModelDataSourceMixin:
             logger.info(f"Found {len(entities)} instances of {entity_type}")
         return entities
 
+    def query_the_only(self, entity_type: Type[sqlmodel.SQLModel]) -> sqlmodel.SQLModel:
+        """Queries the database for the only instance of the given entity type. Raises an error if there are more than one"""
+        entities = self.query(entity_type)
+        if len(entities) > 1:
+            raise Exception(f"More than one {entity_type} found")
+        return entities[0]
+
     def store(self, entity: sqlmodel.SQLModel):
         """Stores the given entity in the database"""
         logger.debug(f"storing {entity}")

@@ -4,19 +4,14 @@ from core.models import IntentResult
 
 from tuttle.model import Address, User
 
-# TODO implement
+
 class UserDataSource(SQLModelDataSourceMixin):
     def __init__(self):
         super().__init__()
         self._dummy_user = None
 
     def get_user(self) -> IntentResult:
-        users = self.query(User)
-        assert len(users) <= 1
-
-        user = None
-        if len(users) == 1:
-            user = users[0]
+        user = self.query_the_only(User)
 
         return IntentResult(
             was_intent_successful=True,
