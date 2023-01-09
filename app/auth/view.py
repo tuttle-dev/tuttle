@@ -66,6 +66,8 @@ class LoginForm(UserControl):
         self.email_field.error_text = ""
         self.phone_field.error_text = ""
         self.title_field.error_text = ""
+        self.login_err_txt.value = ""
+        self.login_err_txt.visible = False
         if self.mounted:
             self.update()
 
@@ -97,6 +99,7 @@ class LoginForm(UserControl):
         self.country = e.control.value
 
     def on_submit_btn_clicked(self, e):
+
         # prevent multiple clicking
         self.submit_btn.disabled = True
 
@@ -126,8 +129,10 @@ class LoginForm(UserControl):
             or is_empty_str(self.country)
             or is_empty_str(self.city)
         ):
+
             missingRequiredDataErr = "Please provide your full address"
             self.login_err_txt.value = missingRequiredDataErr
+            self.login_err_txt.visible = True
 
         if not missingRequiredDataErr:
             # save user
