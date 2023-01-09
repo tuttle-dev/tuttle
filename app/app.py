@@ -59,6 +59,8 @@ class TuttleApp:
         self.page.theme_mode = THEME_MODES.dark.value
         self.page.window_min_width = MIN_WINDOW_WIDTH
         self.page.window_min_height = MIN_WINDOW_HEIGHT
+        self.page.window_width = MIN_WINDOW_WIDTH * 2
+        self.page.window_height = MIN_WINDOW_HEIGHT * 2
         self.file_picker = flet.FilePicker()
         self.page.overlay.append(self.file_picker)
 
@@ -350,6 +352,7 @@ def ensure_app_dir() -> str:
 def main(page: Page):
     """Entry point of the app"""
     app = TuttleApp(page)
+
     # install demo data
     try:
         app_dir = ensure_app_dir()
