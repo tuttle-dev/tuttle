@@ -17,9 +17,10 @@ class ContactDataSource(SQLModelDataSourceMixin):
 
     def get_all_contacts_as_map(self) -> IntentResult:
         contacts = self.query(Contact)
+        result = {contact.id: contact for contact in contacts}
         return IntentResult(
             was_intent_successful=True,
-            data={contact.id: contact for contact in contacts},
+            data=result,
         )
 
     def get_contact_by_id(self, contactId) -> IntentResult:
