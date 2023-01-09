@@ -40,7 +40,8 @@ from res.utils import (
 
 
 class TuttleApp:
-    """ The main application class"""
+    """The main application class"""
+
     def __init__(self, page: Page) -> None:
         self.page = page
         self.page.title = "Tuttle"
@@ -167,11 +168,9 @@ class TuttleApp:
         self.page.go(self.page.route)
 
 
-
-
-
 class TuttleRoutes:
     """Utility class for parsing of routes to destination views"""
+
     def __init__(self, app: TuttleApp):
         self.app = app
 
@@ -290,13 +289,9 @@ class TuttleRoutes:
                 show_snack=self.app.show_snack,
                 dialog_controller=self.app.control_alert_dialog,
                 on_navigate_back=self.app.on_view_pop,
-                local_storage=self.app.local_storage,
             )
 
         return self.get_page_route_view(routePath.route, view=screen)
-
-
-
 
 
 def main(page: Page):
@@ -311,6 +306,7 @@ def main(page: Page):
         logger.exception(ex)
         logger.error("Failed to install demo data")
     app.build()
+
 
 if __name__ == "__main__":
     flet.app(
