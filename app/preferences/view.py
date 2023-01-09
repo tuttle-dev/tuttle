@@ -84,8 +84,6 @@ class PreferencesScreen(TuttleView, UserControl):
         super().on_window_resized(width, height)
         self.body_width = width - self.sideBar.width - SPACE_MD * 2
         self.body.width = self.body_width
-        self.tabs.width = self.body_width - SPACE_MD
-        self.tabs.height = height - SPACE_MD * 2
         if self.mounted:
             self.update()
 
@@ -117,48 +115,6 @@ class PreferencesScreen(TuttleView, UserControl):
             hint="to load time tracking info from calendar",
             on_change=self.on_icloud_acc_changed,
         )
-        self.tabs = Tabs(
-            selected_index=1,
-            animation_duration=300,
-            width=self.body_width - SPACE_MD,
-            height=MIN_WINDOW_HEIGHT,
-            tabs=[
-                Tab(
-                    tab_content=Column(
-                        alignment=CENTER_ALIGNMENT,
-                        horizontal_alignment=CENTER_ALIGNMENT,
-                        controls=[
-                            Icon(icons.DARK_MODE_OUTLINED, size=24),
-                            smSpace,
-                            Text("General"),
-                            mdSpace,
-                        ],
-                    ),
-                    content=Container(
-                        content=self.theme_control,
-                        padding=padding.symmetric(vertical=SPACE_XL),
-                        margin=margin.symmetric(vertical=SPACE_MD),
-                    ),
-                ),
-                Tab(
-                    tab_content=Column(
-                        alignment=CENTER_ALIGNMENT,
-                        horizontal_alignment=CENTER_ALIGNMENT,
-                        controls=[
-                            Icon(icons.CLOUD_OUTLINED, size=24),
-                            smSpace,
-                            Text("iCloud"),
-                            mdSpace,
-                        ],
-                    ),
-                    content=Container(
-                        self.icloud_acc_id_control,
-                        padding=padding.symmetric(vertical=SPACE_XL),
-                        margin=margin.symmetric(vertical=SPACE_MD),
-                    ),
-                ),
-            ],
-        )
         self.body = Container(
             padding=padding.all(SPACE_MD),
             width=self.body_width,
@@ -174,7 +130,9 @@ class PreferencesScreen(TuttleView, UserControl):
                     ),
                     self.loading_indicator,
                     mdSpace,
-                    self.tabs,
+                    self.theme_control,
+                    mdSpace,
+                    self.icloud_acc_id_control,
                 ],
             ),
         )

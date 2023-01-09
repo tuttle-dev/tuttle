@@ -48,6 +48,23 @@ class PreferencesIntent:
                 log_message=f"an exception was raised @PreferencesIntent.set_preferences {e}",
             )
 
+    def get_preferred_theme(self):
+        try:
+            preferred_theme = self.client_storage.get_value(
+                key=PreferencesStorageKeys.theme_mode_key.value
+            )
+            if preferred_theme is None:
+                preferred_theme = THEME_MODES.system
+            else:
+                preferred_theme = get_theme_mode_from_value(preferred_theme)
+            return IntentResult(was_intent_successful=True, data=preferred_theme)
+        except Exception as e:
+            return IntentResult(
+                was_intent_successful=False,
+                data=None,
+                error_msg_if_err=f"Exception raised PreferencesIntent@get_preferred_theme {e}",
+            )
+
     def get_icloud_account(self):
         """if successful, returns user's preferred icloud account as data"""
         try:

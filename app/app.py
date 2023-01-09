@@ -22,6 +22,7 @@ from contracts.view import (
     CreateContractScreen,
     ViewContractScreen,
 )
+from preferences.intent import PreferencesIntent
 from core.abstractions import TuttleView
 from core.utils import AlertDialogControls
 from core.local_storage_impl import ClientStorageImpl
@@ -56,8 +57,15 @@ class TuttleApp:
         self.page.title = "Tuttle"
         self.page.fonts = APP_FONTS
         self.page.theme = APP_THEME
-        # TODO load the theme mode from preferences
-        self.page.theme_mode = THEME_MODES.dark.value
+        self.local_storage = ClientStorageImpl(page=self.page)
+        preferences = PreferencesIntent(self.local_storage)
+        preferences_result = preferences.get_preferred_theme()
+        theme = (
+            preferences_result.data.value
+            if preferences_result.was_intent_successful
+            else THEME_MODES.dark.value
+        )
+        self.page.theme_mode = theme
         self.page.window_min_width = MIN_WINDOW_WIDTH
         self.page.window_min_height = MIN_WINDOW_HEIGHT
         self.page.window_width = MIN_WINDOW_WIDTH * 2
@@ -68,8 +76,6 @@ class TuttleApp:
         """holds the RouteView object associated with a route
         used in on route change"""
         self.route_to_route_view_cache = {}
-
-        self.local_storage = ClientStorageImpl(page=self.page)
         self.page.on_route_change = self.on_route_change
         self.page.on_view_pop = self.on_view_pop
         self.route_parser = TuttleRoutes(self)
