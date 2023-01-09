@@ -72,7 +72,7 @@ class TuttleApp:
         self.local_storage = ClientStorageImpl(page=self.page)
         self.page.on_route_change = self.on_route_change
         self.page.on_view_pop = self.on_view_pop
-        self.routeParser = TuttleRoutes(self)
+        self.route_parser = TuttleRoutes(self)
         self.current_route_view: Optional[RouteView] = None
         self.page.on_resize = self.page_resize
 
@@ -191,7 +191,7 @@ class TuttleApp:
 
         # get a new view if no view found in stack
         if not view_for_route:
-            route_view_wrapper = self.routeParser.parse_route(pageRoute=route.route)
+            route_view_wrapper = self.route_parser.parse_route(pageRoute=route.route)
             if not route_view_wrapper.keep_back_stack:
                 """clear previous views"""
                 self.route_to_route_view_cache.clear()
