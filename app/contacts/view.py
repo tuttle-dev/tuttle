@@ -30,7 +30,7 @@ from core.constants_and_enums import (
     START_ALIGNMENT,
     AlertDialogControls,
 )
-from core.models import Address, IntentResult
+from core.models import IntentResult
 from core.views import (
     CENTER_ALIGNMENT,
     get_headline_txt,
@@ -46,6 +46,10 @@ from res.dimens import MIN_WINDOW_WIDTH, SPACE_MD, SPACE_STD, SPACE_XS
 from res.fonts import BODY_2_SIZE, HEADLINE_4_SIZE
 
 from res.utils import ADD_CONTACT_INTENT
+
+from tuttle.model import (
+    Address,
+)
 
 
 class ContactCard(UserControl):

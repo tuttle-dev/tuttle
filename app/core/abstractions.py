@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from flet import AlertDialog
 from loguru import logger
 import sqlmodel
+from pathlib import Path
 
 from .models import IntentResult
 from .constants_and_enums import AlertDialogControls, START_ALIGNMENT, AUTO_SCROLL
@@ -98,8 +99,9 @@ class SQLModelDataSourceMixin:
 
     def __init__(
         self,
-        db_path: str,
     ):
+        db_path = Path.home() / ".tuttle" / "tuttle.db"
+        db_path = f"sqlite:///{db_path}"
         logger.info(f"Creating {self.__class__.__name__} with db_path: {db_path}")
         self.db_engine = sqlmodel.create_engine(
             db_path,
@@ -123,3 +125,10 @@ class SQLModelDataSourceMixin:
         else:
             logger.info(f"Found {len(entities)} instances of {entity_type}")
         return entities
+
+    def store(self, entity: sqlmodel.SQLModel):
+        """Stores the given entity in the database"""
+        logger.debug(f"storing {entity}")
+        with self.create_session() as session:
+            session.add(entity)
+            session.commit()

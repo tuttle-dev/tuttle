@@ -337,12 +337,9 @@ class TuttleRoutes:
         return self.get_page_route_view(routePath.route, view=screen)
 
 
-def ensure_app_dir() -> str:
+def ensure_app_dir() -> Path:
     """Ensures that the user directory exists"""
     # use pathlib
-    user_dir = Path.home() / ".tuttle"
-    if not user_dir.exists():
-        user_dir.mkdir(parents=True)
     app_dir = Path.home() / ".tuttle"
     if not app_dir.exists():
         app_dir.mkdir(parents=True)
@@ -367,4 +364,9 @@ def main(page: Page):
 
 
 if __name__ == "__main__":
-    flet.app(name="Tuttle", target=main, assets_dir="assets", upload_dir="uploads")
+    flet.app(
+        name="Tuttle",
+        target=main,
+        assets_dir="assets",
+        upload_dir=ensure_app_dir() / "uploads",
+    )

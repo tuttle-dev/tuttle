@@ -1,14 +1,18 @@
 from typing import Optional, Mapping
 
 from core.abstractions import ClientStorage
-from core.models import Address, IntentResult
+from core.models import IntentResult
 from .model import Contact
 from .data_source import ContactDataSource
+
+from tuttle.model import (
+    Address,
+)
 
 
 class ContactsIntent:
     def __init__(self, local_storage: ClientStorage):
-        self.data_source = ContactDataSource(db_path="sqlite:///")
+        self.data_source = ContactDataSource()
         self.local_storage = local_storage
 
     def get_all_contacts_as_map(self) -> Mapping[int, Contact]:

@@ -28,7 +28,7 @@ from core.constants_and_enums import (
     END_ALIGNMENT,
     AlertDialogControls,
 )
-from core.models import IntentResult, get_empty_address
+from core.models import IntentResult
 from core.views import (
     CENTER_ALIGNMENT,
     get_dropdown,

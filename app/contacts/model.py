@@ -7,13 +7,12 @@ from tuttle.model import (
     Contact,
 )
 
-from core.models import get_empty_address
 
 # TODO: make this a class method of Contact
 def get_empty_contact():
     """helper function, returns an empty contact for an editor"""
     # TODO: make this a class method of Address
-    address = get_empty_address()
+    address = Address()
     contact = Contact(
         id=None,
         first_name="",

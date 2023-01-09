@@ -64,11 +64,11 @@ class Address(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     # name: str
-    street: str
-    number: str
-    city: str
-    postal_code: str
-    country: str
+    street: str = Field(default="")
+    number: str = Field(default="")
+    city: str = Field(default="")
+    postal_code: str = Field(default="")
+    country: str = Field(default="")
     users: List["User"] = Relationship(back_populates="address")
     contacts: List["Contact"] = Relationship(back_populates="address")
 
@@ -99,7 +99,7 @@ class User(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
     subtitle: str
-    website: str
+    website: Optional[str]
     email: str
     phone_number: str
     address_id: Optional[int] = Field(default=None, foreign_key="address.id")
@@ -201,6 +201,7 @@ class Contact(SQLModel, table=True):
         {self.address.country}
         """
         )
+
 
 class Client(SQLModel, table=True):
     """A client the freelancer has contracted with."""

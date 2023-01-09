@@ -1,8 +1,12 @@
 from typing import Optional
 import faker
-from core.models import IntentResult, Address
+from core.models import IntentResult
 from .model import Client
 from contacts.model import Contact
+
+from tuttle.model import (
+    Address,
+)
 
 
 class ClientDataSource:

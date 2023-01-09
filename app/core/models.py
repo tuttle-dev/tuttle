@@ -76,54 +76,6 @@ def get_time_unit_from_value(value: str) -> Optional[TimeUnit]:
         return None
 
 
-@dataclass
-class Address:
-    """Postal address."""
-
-    id: Optional[int]
-    street: str
-    number: str
-    city: str
-    postal_code: str
-    country: str
-
-    @property
-    def printed(self):
-        """Print address in common format."""
-        return textwrap.dedent(
-            f"""
-        {self.street} {self.number}
-        {self.postal_code} {self.city}
-        {self.country}
-        """
-        )
-
-    @property
-    def html(self):
-        """Print address in common format."""
-        return textwrap.dedent(
-            f"""
-        {self.street} {self.number}<br>
-        {self.postal_code} {self.city}<br>
-        {self.country}
-        """
-        )
-
-    def is_empty(self):
-        return (
-            not self.street
-            and not self.number
-            and not self.postal_code
-            and not self.city
-            and not self.country
-        )
-
-
-def get_empty_address() -> Address:
-    """ "Returns an empty address used as a default"""
-    return Address(id=None, street="", number="", city="", postal_code="", country="")
-
-
 # TODO: should this class be here?
 class IntentResult:
     """Wraps the result of a view's intent

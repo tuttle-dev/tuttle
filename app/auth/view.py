@@ -17,8 +17,9 @@ from flet import (
     padding,
 )
 
+from tuttle.model import User
+
 from auth.intent import AuthIntent
-from auth.model import User
 from core.abstractions import ClientStorage, TuttleView
 from core.constants_and_enums import (
     CENTER_ALIGNMENT,

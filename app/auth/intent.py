@@ -1,7 +1,8 @@
 from .data_source import UserDataSource
 from core.abstractions import ClientStorage
 from core.models import IntentResult
-from .model import User
+
+from tuttle.model import User
 
 
 class AuthIntent:

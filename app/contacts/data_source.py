@@ -2,17 +2,18 @@ from typing import Optional
 from pathlib import Path
 import faker
 
-from core.models import Address, IntentResult
+from core.models import IntentResult
 from core.abstractions import SQLModelDataSourceMixin
 from .model import Contact
+
+from tuttle.model import Address
 
 
 class ContactDataSource(SQLModelDataSourceMixin):
     def __init__(
         self,
-        db_path: str = f"sqlite:///{Path('app/tmp/db.sqlite').resolve()}",
     ):
-        super().__init__(db_path=db_path)
+        super().__init__()
 
     def get_all_contacts_as_map(self) -> IntentResult:
         contacts = self.query(Contact)
