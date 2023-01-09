@@ -56,6 +56,7 @@ class TuttleApp:
         self.page.title = "Tuttle"
         self.page.fonts = APP_FONTS
         self.page.theme = APP_THEME
+        # TODO load the theme mode from preferences
         self.page.theme_mode = THEME_MODES.dark.value
         self.page.window_min_width = MIN_WINDOW_WIDTH
         self.page.window_min_height = MIN_WINDOW_HEIGHT
@@ -299,7 +300,7 @@ class TuttleRoutes:
                 show_snack=self.app.show_snack,
                 dialog_controller=self.app.control_alert_dialog,
                 on_navigate_back=self.app.on_view_pop,
-                on_theme_changed=self.app.on_theme_changed,
+                on_theme_changed=self.app.on_theme_mode_changed,
                 local_storage=self.app.local_storage,
             )
         elif routePath.match(PROJECT_CREATOR_SCREEN_ROUTE):
