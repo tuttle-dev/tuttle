@@ -1,5 +1,6 @@
 pytest
 pandas
+matplotlib
 altair
 pydantic
 sqlmodel
@@ -10,7 +11,5 @@ pandera
 weasyprint
 matplotlib
 faker
-
-
 flet
 icloudpy
