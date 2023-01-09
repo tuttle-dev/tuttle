@@ -16,6 +16,7 @@ from . import (
     time,
     rendering,
     os_functions,
+    mail,
 )
 
 
