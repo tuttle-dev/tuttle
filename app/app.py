@@ -2,6 +2,7 @@ import re
 from typing import Callable, Optional
 
 from loguru import logger
+from pathlib import Path
 
 import flet
 from flet import Page, AlertDialog, SnackBar, TemplateRoute, Text, View
@@ -294,13 +295,23 @@ class TuttleRoutes:
         return self.get_page_route_view(routePath.route, view=screen)
 
 
+def ensure_user_dir():
+    """Ensures that the user directory exists"""
+    # use pathlib
+    user_dir = Path.home() / ".tuttle"
+    if not user_dir.exists():
+        user_dir.mkdir(parents=True)
+
+
 def main(page: Page):
     """Entry point of the app"""
     app = TuttleApp(page)
     # install demo data
     try:
+        ensure_user_dir()
         demo.install_demo_data(
             n=10,
+            db_path=Path.home() / ".tuttle" / "tuttle.db",
         )
     except Exception as ex:
         logger.exception(ex)

@@ -103,8 +103,9 @@ def create_fake_data(
 
 def install_demo_data(
     n: int,
+    db_path: str,
 ):
-    db_path = f"sqlite:///{Path('app/tmp/db.sqlite').resolve()}"
+    db_path = f"""sqlite:///{db_path}"""
     logger.info(f"Installing demo data in {db_path}...")
     logger.info(f"Creating {n} fake projects...")
     projects = create_fake_data(n)
