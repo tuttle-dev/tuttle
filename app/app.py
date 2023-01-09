@@ -335,6 +335,18 @@ class TuttleRoutes:
         return self.get_page_route_view(routePath.route, view=screen)
 
 
+def ensure_app_dir() -> str:
+    """Ensures that the user directory exists"""
+    # use pathlib
+    user_dir = Path.home() / ".tuttle"
+    if not user_dir.exists():
+        user_dir.mkdir(parents=True)
+    app_dir = Path.home() / ".tuttle"
+    if not app_dir.exists():
+        app_dir.mkdir(parents=True)
+    return app_dir
+
+
 def main(page: Page):
     """Entry point of the app"""
     app = TuttleApp(page)
