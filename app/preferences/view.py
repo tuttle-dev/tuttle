@@ -13,7 +13,13 @@ from flet import (
 )
 from core.models import IntentResult
 from core.abstractions import TuttleView
-from core.views import get_dropdown, horizontal_progress, mdSpace, START_ALIGNMENT
+from core.views import (
+    get_dropdown,
+    get_std_txt_field,
+    horizontal_progress,
+    mdSpace,
+    START_ALIGNMENT,
+)
 from preferences.intent import PreferencesIntent
 from preferences.model import Preferences
 from res.dimens import SPACE_MD, SPACE_STD, SPACE_XS, MIN_WINDOW_WIDTH
@@ -40,10 +46,15 @@ class PreferencesScreen(TuttleView, UserControl):
         self.on_theme_changed_callback = on_theme_changed
         self.preferences: Optional[Preferences] = None
 
+    def on_icloud_acc_changed(self, e):
+        self.preferences.icloud_acc_id = e.control.value
+        self.intent_handler.set_preferences(self.preferences)
+
     def refresh_preferences(self):
         if self.preferences is None:
             return
         self.theme_control.value = self.preferences.theme_mode.value
+        self.icloud_acc_id_control.value = self.preferences.icloud_acc_id
 
     def on_theme_changed(self, e):
         if not self.preferences:
@@ -79,6 +90,11 @@ class PreferencesScreen(TuttleView, UserControl):
             lbl="Appearance",
             hint="",
         )
+        self.icloud_acc_id_control = get_std_txt_field(
+            lbl="ICloud Account Id",
+            hint="to load time tracking info from calendar",
+            on_change=self.on_icloud_acc_changed,
+        )
         self.body = Container(
             padding=padding.all(SPACE_MD),
             width=int(MIN_WINDOW_WIDTH * 0.7),
@@ -95,6 +111,8 @@ class PreferencesScreen(TuttleView, UserControl):
                     self.loading_indicator,
                     mdSpace,
                     self.theme_control,
+                    mdSpace,
+                    self.icloud_acc_id_control,
                 ],
             ),
         )
