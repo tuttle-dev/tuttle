@@ -83,6 +83,7 @@ from res.utils import (
     ADD_CLIENT_INTENT,
     ADD_CONTACT_INTENT,
     CONTRACT_CREATOR_SCREEN_ROUTE,
+    NEW_TIME_TRACK_INTENT,
 )
 from core.abstractions import TuttleView
 from typing import Optional
@@ -90,6 +91,7 @@ from clients.view import ClientsListView
 from contacts.view import ContactsListView
 from contracts.view import ContractsListView
 from projects.view import ProjectsListView
+from timetracking.view import TimetracksView
 from flet import icons, Container
 
 
@@ -321,17 +323,28 @@ class SecondaryMenuHandler:
         show_snack,
         dialog_controller,
         local_storage,
+        upload_file_callback,
+        pick_file_callback,
     ):
         super().__init__()
         self.menu_title = "Workflows"
+        self.timetrack_view = TimetracksView(
+            show_snack=show_snack,
+            dialog_controller=dialog_controller,
+            navigate_to_route=navigate_to_route,
+            local_storage=local_storage,
+            upload_file_callback=upload_file_callback,
+            pick_file_callback=pick_file_callback,
+        )
         self.items = [
             MenuItem(
                 0,
                 "Time Tracking",
                 icons.TIMER_OUTLINED,
                 icons.TIMER_ROUNDED,
-                Container(),
-                "/404",
+                self.timetrack_view,
+                on_new_screen_route=None,
+                on_new_intent=NEW_TIME_TRACK_INTENT,
             ),
             MenuItem(
                 0,
@@ -360,6 +373,8 @@ class HomeScreen(TuttleView, UserControl):
         dialog_controller,
         on_navigate_back,
         local_storage,
+        upload_file_callback,
+        pick_file_callback,
     ):
         super().__init__(
             navigate_to_route=navigate_to_route,
@@ -380,6 +395,8 @@ class HomeScreen(TuttleView, UserControl):
             show_snack=show_snack,
             dialog_controller=dialog_controller,
             local_storage=local_storage,
+            upload_file_callback=upload_file_callback,
+            pick_file_callback=pick_file_callback,
         )
 
         self.selected_tab = NO_MENU_ITEM_INDEX
@@ -453,7 +470,6 @@ class HomeScreen(TuttleView, UserControl):
                 self.secondary_menu.selected_index = None
             else:
                 self.main_menu.selected_index = None
-                self.show_snack("not implemented yet")
             self.update()
 
     # ACTION BUTTONS
@@ -462,17 +478,10 @@ class HomeScreen(TuttleView, UserControl):
             return
         """determine the item user wishes to create"""
         item = self.current_menu_handler.items[self.selected_tab]
-        routeOrIntent = (
-            item.on_new_screen_route if item.on_new_screen_route else item.on_new_intent
-        )
-
-        if routeOrIntent == ADD_CLIENT_INTENT:
-            self.pass_intent_to_destination(ADD_CLIENT_INTENT, "")
-        elif routeOrIntent == ADD_CONTACT_INTENT:
-            # show pop up for creating contact
-            self.pass_intent_to_destination(ADD_CONTACT_INTENT, "")
+        if item.on_new_intent:
+            self.pass_intent_to_destination(item.on_new_intent, "")
         else:
-            self.navigate_to_route(routeOrIntent)
+            self.navigate_to_route(item.on_new_screen_route)
 
     def pass_intent_to_destination(self, intent: str, data: str):
         """forwards an intent to a child destination view"""

@@ -53,8 +53,3 @@ class AuthIntent:
             city,
             country,
         )
-
-    # to delete -  just test on boarding
-    def get_user_test_login(self) -> IntentResult:
-        # returns no data
-        return IntentResult(was_intent_successful=True, data=None)

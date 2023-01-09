@@ -4,7 +4,15 @@ from typing import Callable, Optional
 from loguru import logger
 
 import flet
-from flet import Page, AlertDialog, SnackBar, TemplateRoute, Text, View
+from flet import (
+    Page,
+    FilePickerUploadFile,
+    AlertDialog,
+    SnackBar,
+    TemplateRoute,
+    Text,
+    View,
+)
 
 import demo
 from auth.view import ProfileScreen, SplashScreen
@@ -40,7 +48,8 @@ from res.utils import (
 
 
 class TuttleApp:
-    """ The main application class"""
+    """The main application class"""
+
     def __init__(self, page: Page) -> None:
         self.page = page
         self.page.title = "Tuttle"
@@ -49,6 +58,8 @@ class TuttleApp:
         self.page.theme_mode = THEME_MODES.dark.value
         self.page.window_min_width = MIN_WINDOW_WIDTH
         self.page.window_min_height = MIN_WINDOW_HEIGHT
+        self.file_picker = flet.FilePicker()
+        self.page.overlay.append(self.file_picker)
 
         """holds the RouteView object associated with a route
         used in on route change"""
@@ -66,6 +77,34 @@ class TuttleApp:
             self.current_route_view.on_window_resized(
                 self.page.window_width, self.page.window_height
             )
+
+    def pick_file_callback(
+        self,
+        on_file_picker_result,
+        on_upload_progress,
+        allowed_extensions,
+        dialog_title,
+        file_type,
+    ):
+        # used by views to request a file upload
+        self.file_picker.on_result = on_file_picker_result
+        self.file_picker.on_upload = on_upload_progress
+        self.file_picker.pick_files(
+            allow_multiple=False,
+            allowed_extensions=allowed_extensions,
+            dialog_title=dialog_title,
+            file_type=file_type,
+        )
+
+    def upload_file_callback(self, file):
+        try:
+            upload_item = FilePickerUploadFile(
+                file.name,
+                upload_url=self.page.get_upload_url(file.name, 600),
+            )
+            self.file_picker.upload([upload_item])
+        except Exception as e:
+            print(f"Exception @app.upload_file_callback raised during file upload {e}")
 
     def on_theme_mode_changed(self, theme_mode: THEME_MODES):
         """callback function used by views for changing app theme mode"""
@@ -167,11 +206,9 @@ class TuttleApp:
         self.page.go(self.page.route)
 
 
-
-
-
 class TuttleRoutes:
     """Utility class for parsing of routes to destination views"""
+
     def __init__(self, app: TuttleApp):
         self.app = app
 
@@ -218,6 +255,8 @@ class TuttleRoutes:
                 dialog_controller=self.app.control_alert_dialog,
                 on_navigate_back=self.app.on_view_pop,
                 local_storage=self.app.local_storage,
+                upload_file_callback=self.app.upload_file_callback,
+                pick_file_callback=self.app.pick_file_callback,
             )
         elif routePath.match(PROFILE_SCREEN_ROUTE):
             screen = ProfileScreen(
@@ -296,13 +335,7 @@ class TuttleRoutes:
         return self.get_page_route_view(routePath.route, view=screen)
 
 
-
-
-
-def main(page: Page):
-    """Entry point of the app"""
-    app = TuttleApp(page)
-    # install demo data
+def install_demo_data():
     try:
         demo.install_demo_data(
             n=10,
@@ -310,11 +343,14 @@ def main(page: Page):
     except Exception as ex:
         logger.exception(ex)
         logger.error("Failed to install demo data")
+
+
+def main(page: Page):
+    """Entry point of the app"""
+    app = TuttleApp(page)
+    # install_demo_data()
     app.build()
 
+
 if __name__ == "__main__":
-    flet.app(
-        name="Tuttle",
-        target=main,
-        assets_dir="assets",
-    )
+    flet.app(name="Tuttle", target=main, assets_dir="assets", upload_dir="uploads")

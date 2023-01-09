@@ -1,0 +1,71 @@
+BEGIN:VCALENDAR
+PRODID:-//Mozilla.org/NONSGML Mozilla Calendar V1.1//EN
+VERSION:2.0
+BEGIN:VTIMEZONE
+TZID:Europe/Berlin
+X-LIC-LOCATION:Europe/Berlin
+BEGIN:DAYLIGHT
+TZOFFSETFROM:+0100
+TZOFFSETTO:+0200
+TZNAME:CEST
+DTSTART:19700329T020000
+RRULE:FREQ=YEARLY;BYDAY=-1SU;BYMONTH=3
+END:DAYLIGHT
+BEGIN:STANDARD
+TZOFFSETFROM:+0200
+TZOFFSETTO:+0100
+TZNAME:CET
+DTSTART:19701025T030000
+RRULE:FREQ=YEARLY;BYDAY=-1SU;BYMONTH=10
+END:STANDARD
+END:VTIMEZONE
+BEGIN:VEVENT
+CREATED:20140107T092011Z
+LAST-MODIFIED:20140107T121503Z
+DTSTAMP:20140107T121503Z
+UID:20f78720-d755-4de7-92e5-e41af487e4db
+SUMMARY:Just a Test
+DTSTART;TZID=Europe/Berlin:20140102T110000
+DTEND;TZID=Europe/Berlin:20140102T120000
+X-MOZ-GENERATION:4
+DESCRIPTION:Here is a new Class:\n\n<?php\n\n/**\n * This is iCalParse\n *
+ \n * @category Parser\n * @author   Timo Henke <phpstuff@thenke.de>\n * @l
+ icense  http://www.opensource.org/licenses/mit-license.php  MIT License\n 
+ */\n\n\tclass iCalParse\n\t{\n\t\tconst VERSION = "1.0"\;\n\n\t\tpublic fu
+ nction doParse( $data )\n\t\t{\n\t\t\t$lines = preg_split('/\\r?\\n/'\,$da
+ ta\,-1\, PREG_SPLIT_NO_EMPTY)\;\n    \t\tif( preg_match('/^BEGIN:VCALENDAR
+ /i'\,$lines[0]) && preg_match('/^END:VCALENDAR/i'\,$lines[sizeof($lines)-1
+ ]) )\n    \t\t{\n\t\t\t\t$res = array()\;\n\t\t\t\t$addTo = array()\;\n\t\
+ t\t\t$addToElement = ''\;\n\t\t\t\tforeach ($lines as $line)\n\t\t\t\t{\n\
+ t\t\t\t\tif( preg_match('/^(BEGIN|END):(VTODO|VEVENT|VCALENDAR|DAYLIGHT|VT
+ IMEZONE|STANDARD)/s'\,$line\,$m) )\n\t\t\t\t\t{\n\t\t\t\t\t\tswitch( $m[1]
+  )\n\t\t\t\t\t\t{\n\t\t\t\t\t\t\tcase 'BEGIN' :\n\t\t\t\t\t\t\t\t$addTo[] 
+ = trim( (sizeof($addTo) > 0 ? $addTo[sizeof($addTo)-1] : '') . '/' . $m[2]
+ \,'/')\;\n\t\t\t\t\t\t\t\tbreak\;\n\t\t\t\t\t\t\tcase 'END' :\n\t\t\t\t\t\
+ t\t\tarray_pop($addTo)\;\n\t\t\t\t\t\t\t\tbreak\;\n\t\t\t\t\t\t}\n\t\t\t\t
+ \t\tif( sizeof($addTo) > 0 )\n\t\t\t\t\t\t{\n\t\t\t\t\t\t\t$addToElement =
+  $addTo[sizeof($addTo)-1]\;\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t\telse\n\
+ t\t\t\t\t{\n\t\t\t\t\t\tif( substr($line\,0\,1) != ' ' )\n\t\t\t\t\t\t{\n\
+ t\t\t                list($lastkey\,$value) = $this->splitKeyValue($line)\
+ ;\n\t\t\t\t\t\t\t$this->arrayPathSet($res\,$addToElement.'/'.$lastkey\,$va
+ lue)\;\n\n\t\t\t\t\t\t}\n\t\t\t\t\t\telse\n\t\t\t\t\t\t{\n\t\t\t\t\t\t\t$t
+ his->arrayPathSet($res\,$addToElement.'/'.$lastkey\,$this->arrayPathGet($r
+ es\,$addToElement.'/'.$lastkey) . substr($line\,1))\;\n\t\t\t\t\t\t}\n\t\t
+ \t\t\t}\n\t\t\t\t}\n   \t\t\t}\n   \t\t\treturn $res\;\n\t\t}\n\n\t\tfunct
+ ion arrayPathSet(&$a\, $path\, $value)\n\t\t{\n\t\t\t$p = explode('/'\,$pa
+ th)\;\n\t\t\t$key = array_shift($p)\;\n\t\t\tif (empty($p))\n\t\t\t{\n\t\t
+ \t\t$a[$key] = $value\;\n\t\t\t}\n\t\t\telse\n\t\t\t{\n\t\t\t\tif (!isset(
+ $a[$key]) || !is_array($a[$key]))\n\t\t\t\t{\n\t\t\t\t\t$a[$key] = array()
+ \;\n\t\t\t\t}\n\t\t\t\t$this->arrayPathSet($a[$key]\, implode('/'\,$p)\, $
+ value)\;\n\t\t\t}\n\t\t}\n\n\t\tfunction arrayPathGet($data\, $path)\n\t\t
+ {\n\t\t\t$found = true\;\n\t\t\t$path = explode("/"\, trim($path\,'/'))\;\
+ n\t\t\t$r = count($path)\;\n\t\t\tfor( $x = 0\; ($x < $r && $found)\; $x++
+  )\n\t\t\t{\n\t\t\t\t$key = $path[$x]\;\n\t\t\t\tif (isset($data[$key]))\n
+ \t\t\t\t{\n\t\t\t\t\t$data = $data[$key]\;\n\t\t\t\t}\n\t\t\t\telse\n\t\t\
+ t\t{\n\t\t\t\t\t$found = false\;\n\t\t\t\t}\n\t\t\t}\n\t\t\treturn $found 
+ ? $data : false\;\n\t\t}\n\n\t\tpublic function splitKeyValue( $row )\n\t\
+ t{\n\t\t\tpreg_match("/([^:]+)[:]([\\w\\W]*)/"\, $row\, $matches)\;\n\t\t\
+ treturn (sizeof($matches) == 0) ? false : array_splice($matches\, 1\, 2)\;
+ \n\t\t}\n\n\t}\n
+END:VEVENT
+END:VCALENDAR

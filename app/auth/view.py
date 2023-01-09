@@ -31,24 +31,8 @@ from core.constants_and_enums import (
     TXT_ALIGN_CENTER,
 )
 from core.models import IntentResult
-from core.views import (
-    get_error_txt,
-    get_headline_txt,
-    get_headline_with_subtitle,
-    get_image,
-    get_labelled_logo,
-    get_primary_btn,
-    get_std_txt_field,
-    get_secondary_btn,
-    horizontal_progress,
-    mdSpace,
-    stdSpace,
-)
-from res import dimens
-from res.dimens import SPACE_XL, SPACE_XS
-from res.fonts import HEADLINE_3_SIZE, HEADLINE_4_SIZE
-from res.image_paths import splashImgPath
-from res.utils import HOME_SCREEN_ROUTE
+from core import views
+from res import dimens, fonts, image_paths, utils
 
 from .intent import AuthIntent
 
@@ -76,9 +60,6 @@ class LoginForm(UserControl):
         self.on_logged_in = on_logged_in
 
     def on_field_focus(self, e):
-        """Called when a field receives focus
-        Clears error messages
-        """
         self.name_field.error_text = ""
         self.email_field.error_text = ""
         self.phone_field.error_text = ""
@@ -167,70 +148,70 @@ class LoginForm(UserControl):
 
     def build(self):
         """Called when form is built"""
-        self.name_field = get_std_txt_field(
+        self.name_field = views.get_std_txt_field(
             self.on_change_name,
             "Name",
             "your name",
             on_focus=self.on_field_focus,
             keyboard_type=KEYBOARD_NAME,
         )
-        self.email_field = get_std_txt_field(
+        self.email_field = views.get_std_txt_field(
             self.on_change_email,
             "Email",
             "your email address",
             on_focus=self.on_field_focus,
             keyboard_type=KEYBOARD_EMAIL,
         )
-        self.phone_field = get_std_txt_field(
+        self.phone_field = views.get_std_txt_field(
             self.on_change_phone,
             "Phone",
             "your phone number",
             on_focus=self.on_field_focus,
             keyboard_type=KEYBOARD_PHONE,
         )
-        self.title_field = get_std_txt_field(
+        self.title_field = views.get_std_txt_field(
             self.on_change_title,
             "Title",
             "your work title",
             on_focus=self.on_field_focus,
             keyboard_type=KEYBOARD_TEXT,
         )
-        self.street_field = get_std_txt_field(
+        self.street_field = views.get_std_txt_field(
             on_change=self.on_street_changed,
             lbl="Street Name",
             keyboard_type=KEYBOARD_TEXT,
             expand=1,
         )
-        self.street_number_field = get_std_txt_field(
+        self.street_number_field = views.get_std_txt_field(
             on_change=self.on_street_num_changed,
             lbl="Street Number",
             keyboard_type=KEYBOARD_NUMBER,
             expand=1,
         )
-        self.postal_code_field = get_std_txt_field(
+        self.postal_code_field = views.get_std_txt_field(
             on_change=self.on_postal_code_changed,
             lbl="Postal Code",
             keyboard_type=KEYBOARD_NUMBER,
             expand=1,
         )
 
-        self.city_field = get_std_txt_field(
+        self.city_field = views.get_std_txt_field(
             on_change=self.on_city_changed,
             lbl="City",
             keyboard_type=KEYBOARD_TEXT,
             expand=1,
         )
-        self.country_field = get_std_txt_field(
+        self.country_field = views.get_std_txt_field(
             on_change=self.on_country_changed,
             lbl="Country",
             keyboard_type=KEYBOARD_TEXT,
         )
-        self.login_err_txt = get_error_txt(self.form_error)
-        self.submit_btn = get_primary_btn(
+        self.login_err_txt = views.get_error_txt(self.form_error)
+        self.submit_btn = views.get_primary_btn(
             on_click=self.on_submit_btn_clicked,
             label="Get Started",
         )
-        self.skip_btn = get_secondary_btn(
+        self.skip_btn = views.get_secondary_btn(
             on_click=self.on_skip_clicked,
             label="Skip",
         )
@@ -389,67 +370,67 @@ class ProfileScreen(TuttleView, UserControl):
         self.update()
 
     def set_profile_form(self):
-        self.name_field = get_std_txt_field(
+        self.name_field = views.get_std_txt_field(
             self.on_change_name,
             "Name",
             "your name",
             on_focus=self.on_field_focus,
             keyboard_type=KEYBOARD_NAME,
         )
-        self.email_field = get_std_txt_field(
+        self.email_field = views.get_std_txt_field(
             self.on_change_email,
             "Email",
             "your email address",
             on_focus=self.on_field_focus,
             keyboard_type=KEYBOARD_EMAIL,
         )
-        self.phone_field = get_std_txt_field(
+        self.phone_field = views.get_std_txt_field(
             self.on_change_phone,
             "Phone",
             "Your phone number",
             on_focus=self.on_field_focus,
             keyboard_type=KEYBOARD_PHONE,
         )
-        self.title_field = get_std_txt_field(
+        self.title_field = views.get_std_txt_field(
             self.on_change_title,
             "Title",
             "your work title",
             on_focus=self.on_field_focus,
             keyboard_type=KEYBOARD_TEXT,
         )
-        self.street_field = get_std_txt_field(
+        self.street_field = views.get_std_txt_field(
             on_change=self.on_street_changed,
             lbl="Street Name",
             keyboard_type=KEYBOARD_TEXT,
             expand=1,
         )
-        self.street_number_field = get_std_txt_field(
+        self.street_number_field = views.get_std_txt_field(
             on_change=self.on_street_num_changed,
             lbl="Street Number",
             keyboard_type=KEYBOARD_NUMBER,
             expand=1,
         )
-        self.postal_code_field = get_std_txt_field(
+        self.postal_code_field = views.get_std_txt_field(
             on_change=self.on_postal_code_changed,
             lbl="Postal Code",
             keyboard_type=KEYBOARD_NUMBER,
             expand=1,
         )
 
-        self.city_field = get_std_txt_field(
+        self.city_field = views.get_std_txt_field(
             on_change=self.on_city_changed,
             lbl="City",
             keyboard_type=KEYBOARD_TEXT,
             expand=1,
         )
 
-        self.country_field = get_std_txt_field(
+        self.country_field = views.get_std_txt_field(
             on_change=self.on_country_changed,
             lbl="Country",
             keyboard_type=KEYBOARD_TEXT,
         )
 
-        self.update_btn = get_primary_btn(
+        self.update_btn = views.get_primary_btn(
             on_click=self.on_update_btn_clicked,
             label="Update Profile",
         )
@@ -521,7 +502,7 @@ class ProfileScreen(TuttleView, UserControl):
         self.country_field.value = self.country
 
     def build(self):
-        self.progressBar = horizontal_progress
+        self.progressBar = views.horizontal_progress
         self.progressBar.visible = False
         self.set_profile_form()
         self.form_container = Column(
@@ -537,7 +518,7 @@ class ProfileScreen(TuttleView, UserControl):
                             icon=icons.KEYBOARD_ARROW_LEFT,
                             on_click=self.on_navigate_back,
                         ),
-                        get_headline_txt("Profile", size=HEADLINE_4_SIZE),
+                        views.get_headline_txt("Profile", size=fonts.HEADLINE_4_SIZE),
                     ],
                 ),
                 Container(
@@ -567,15 +548,17 @@ class SplashView(UserControl):
             horizontal_alignment=CENTER_ALIGNMENT,
             expand=True,
             controls=[
-                mdSpace,
-                get_image(splashImgPath, "welcome screen image", width=300),
-                get_headline_with_subtitle(
+                views.mdSpace,
+                views.get_image(
+                    image_paths.splashImgPath, "welcome screen image", width=300
+                ),
+                views.get_headline_with_subtitle(
                     "Tuttle",
                     "Time and money management for freelancers",
                     alignmentInContainer=CENTER_ALIGNMENT,
                     txtAlignment=TXT_ALIGN_CENTER,
-                    titleSize=HEADLINE_3_SIZE,
-                    subtitleSize=HEADLINE_4_SIZE,
+                    titleSize=fonts.HEADLINE_3_SIZE,
+                    subtitleSize=fonts.HEADLINE_4_SIZE,
                 ),
             ],
         )
@@ -624,7 +607,7 @@ class SplashScreen(TuttleView, UserControl):
         )
 
     def on_logged_in(self):
-        self.navigate_to_route(HOME_SCREEN_ROUTE)
+        self.navigate_to_route(utils.HOME_SCREEN_ROUTE)
 
     def check_auth_status(self):
         """checks if user is already created
@@ -632,7 +615,7 @@ class SplashScreen(TuttleView, UserControl):
         if created, re routes to home
         else shows login form
         """
-        result = self.intent_handler.get_user_test_login()
+        result = self.intent_handler.get_user()
         if result.was_intent_successful:
             if result.data is not None:
                 self.on_logged_in()
@@ -663,15 +646,15 @@ class SplashScreen(TuttleView, UserControl):
 
     def build(self):
         """Called when page is built"""
-        self.loading_indicator = horizontal_progress
+        self.loading_indicator = views.horizontal_progress
         self.form_container = Column(
             controls=[
-                get_labelled_logo(),
-                get_headline_with_subtitle(
+                views.get_labelled_logo(),
+                views.get_headline_with_subtitle(
                     "Hi, Welcome to Tuttle.", "Let's get you started"
                 ),
                 self.loading_indicator,
-                stdSpace,
+                views.stdSpace,
             ]
         )
         page_view = ResponsiveRow(
@@ -682,12 +665,12 @@ class SplashScreen(TuttleView, UserControl):
             controls=[
                 Container(
                     col={"xs": 12, "sm": 5},
-                    padding=padding.all(SPACE_XS),
+                    padding=padding.all(dimens.SPACE_XS),
                     content=SplashView(),
                 ),
                 Container(
                     col={"xs": 12, "sm": 7},
-                    padding=padding.all(SPACE_XL),
+                    padding=padding.all(dimens.SPACE_XL),
                     content=self.form_container,
                 ),
             ],
