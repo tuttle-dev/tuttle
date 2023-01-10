@@ -12,6 +12,7 @@ weasyprint
 matplotlib
 faker
 flet
+pycountry
 icloudpy
 
 flet

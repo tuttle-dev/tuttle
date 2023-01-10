@@ -22,6 +22,7 @@ from contracts.view import (
     CreateContractScreen,
     ViewContractScreen,
 )
+from preferences.model import PreferencesStorageKeys
 from preferences.intent import PreferencesIntent
 from core.abstractions import TuttleView
 from core.utils import AlertDialogControls
@@ -34,7 +35,7 @@ from projects.view import CreateProjectScreen, EditProjectScreen, ViewProjectScr
 from res.colors import BLACK_COLOR_ALT, ERROR_COLOR, PRIMARY_COLOR, WHITE_COLOR
 from res.dimens import MIN_WINDOW_HEIGHT, MIN_WINDOW_WIDTH
 from res.fonts import APP_FONTS, HEADLINE_4_SIZE, HEADLINE_FONT
-from res.theme import APP_THEME, THEME_MODES
+from res.theme import APP_THEME, THEME_MODES, get_theme_mode_from_value
 from res.utils import (
     CONTRACT_CREATOR_SCREEN_ROUTE,
     CONTRACT_DETAILS_SCREEN_ROUTE,
@@ -59,9 +60,11 @@ class TuttleApp:
         self.page.theme = APP_THEME
         self.local_storage = ClientStorageImpl(page=self.page)
         preferences = PreferencesIntent(self.local_storage)
-        preferences_result = preferences.get_preferred_theme()
+        preferences_result = preferences.get_preference(
+            PreferencesStorageKeys.theme_mode_key
+        )
         theme = (
-            preferences_result.data.value
+            preferences_result.data
             if preferences_result.was_intent_successful
             else THEME_MODES.dark.value
         )
@@ -116,9 +119,10 @@ class TuttleApp:
         except Exception as e:
             print(f"Exception @app.upload_file_callback raised during file upload {e}")
 
-    def on_theme_mode_changed(self, theme_mode: THEME_MODES):
+    def on_theme_mode_changed(self, selected_theme: str):
         """callback function used by views for changing app theme mode"""
-        self.page.theme_mode = theme_mode.value
+        mode = get_theme_mode_from_value(selected_theme)
+        self.page.theme_mode = mode.value
         self.page.update()
 
     def show_snack(

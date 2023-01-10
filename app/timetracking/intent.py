@@ -1,6 +1,7 @@
 from .data_source import TimeTrackingDataSource
 from core.abstractions import ClientStorage
 from core.models import IntentResult
+from preferences.model import PreferencesStorageKeys
 from preferences.intent import PreferencesIntent
 from .model import ICloudCalendarInfo
 
@@ -20,11 +21,13 @@ class TimeTrackingIntent:
         return result
 
     def get_preferred_icloud_account(self):
-        return self.preferences_intent.get_icloud_account()
+        return self.preferences_intent.get_preference(
+            PreferencesStorageKeys.icloud_acc_id_key
+        )
 
     def set_preferred_icloud_account(self, icloud_acc):
-        return self.preferences_intent.set_preferred_icloud_account(
-            icloud_acc_id=icloud_acc
+        return self.preferences_intent.set_preference(
+            PreferencesStorageKeys.icloud_acc_id_key, icloud_acc
         )
 
     def configure_icloud_and_load_calendar(

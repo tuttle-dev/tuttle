@@ -1,12 +1,12 @@
 from dataclasses import dataclass
-from res.theme import THEME_MODES
 from enum import Enum
 
 
 @dataclass
 class Preferences:
-    theme_mode: THEME_MODES = THEME_MODES.dark
+    theme_mode: str = ""
     icloud_acc_id: str = ""
+    default_currency: str = ""
 
 
 class PreferencesStorageKeys(Enum):
@@ -14,6 +14,7 @@ class PreferencesStorageKeys(Enum):
 
     theme_mode_key = "preferred_theme_mode"
     icloud_acc_id_key = "preferred_icloud_acc_id"
+    default_currency_key = "preferred_default_currency"
 
     def __str__(self) -> str:
         return str(self.value)
