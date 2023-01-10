@@ -163,11 +163,25 @@ class PreferencesScreen(TuttleView, UserControl):
             tabs=[
                 self.get_tab_item(
                     "General",
-                    icons.DARK_MODE_OUTLINED,
-                    [self.theme_control, self.currencies_control],
+                    icons.SETTINGS_OUTLINED,
+                    [
+                        self.theme_control,
+                        self.currencies_control,
+                    ],
                 ),
                 self.get_tab_item(
-                    "Accounts", icons.CLOUD_OUTLINED, [self.icloud_acc_id_control]
+                    "Accounts",
+                    icons.CLOUD_OUTLINED,
+                    [
+                        self.icloud_acc_id_control,
+                    ],
+                ),
+                self.get_tab_item(
+                    "Locale",
+                    icons.LANGUAGE_OUTLINED,
+                    [
+                        Text("ToDo"),
+                    ],
                 ),
             ],
         )
