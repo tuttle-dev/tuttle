@@ -349,6 +349,17 @@ class Project(SQLModel, table=True):
         today = datetime.date.today()
         return self.start_date > today
 
+    def get_status(self) -> str:
+        if self.is_active():
+            return "Active"
+        elif self.is_upcoming():
+            return "Upcoming"
+        elif self.is_completed:
+            return "Completed"
+        else:
+            # default
+            return "All"
+
 
 class TimeTrackingItem(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)

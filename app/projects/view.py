@@ -293,7 +293,7 @@ class ViewProjectScreen(TuttleView, UserControl):
 
     def display_project_data(self):
         self.project_title_control.value = self.project.title
-        self.client_control.value = self.project.contract.client.title
+        self.client_control.value = self.project.contract.client.name
         self.contract_control.value = self.project.contract.title
         self.project_description_control.value = self.project.description
         self.project_start_date_control.value = f"Start Date: {self.project.start_date}"
@@ -347,8 +347,8 @@ class ViewProjectScreen(TuttleView, UserControl):
             self.dialog.close_dialog()
         self.dialog = AlertDisplayPopUp(
             dialog_controller=self.dialog_controller,
-            title="Un Implemented Error",
-            description="This feature is coming soon!",
+            title="Not Implemented",
+            description="This feature is coming soon",
         )
         self.dialog.open_dialog()
 
