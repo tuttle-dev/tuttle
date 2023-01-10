@@ -123,7 +123,7 @@ class TuttleApp:
                 upload_url=tmp_upload_url,
             )
             self.file_picker.upload([upload_item])
-            return f"{get_uploads_url(full_path = False)}/{file.name}"
+            return f"{get_uploads_path(full_path = False)}/{file.name}"
         except Exception as e:
             print(f"Exception @app.upload_file_callback raised during file upload {e}")
             return None
@@ -262,6 +262,12 @@ class TuttleApp:
             app_dir.mkdir(parents=True)
         return app_dir
 
+    def ensure_uploads_dir() -> Path:
+        uploads_dir = self.app_dir / "uploads"
+        if not uploads_dir.exists():
+            uploads_dir.mkdir(parents=True)
+        return uploads_dir
+
     def build(self):
         self.page.go(self.page.route)
 
@@ -352,10 +358,6 @@ class TuttleRoutes:
         return self.get_page_route_view(routePath.route, view=screen)
 
 
-def get_uploads_url(full_path: bool = True):
-    return "assets/uploads" if full_path else "/uploads"
-
-
 def main(page: Page):
     """Entry point of the app"""
     app = TuttleApp(page)
@@ -370,5 +372,7 @@ if __name__ == "__main__":
         name="Tuttle",
         target=main,
         assets_dir="assets",
-        upload_dir=get_uploads_url(),
+        upload_dir=Path.home()
+        / ".tuttle"
+        / "uploads",  # TODO: get path from central location
     )
