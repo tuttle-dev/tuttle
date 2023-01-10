@@ -95,6 +95,11 @@ class PreferencesScreen(TuttleView, UserControl):
         if self.mounted:
             self.update()
 
+    def on_language_selected(self, e):
+        if not self.preferences:
+            return
+        self.preferences.language = e.control.value
+
     def get_tab_item(self, lbl, icon, content_controls):
         return Tab(
             tab_content=Column(
@@ -147,6 +152,13 @@ class PreferencesScreen(TuttleView, UserControl):
             on_change=self.on_currency_selected,
             items=self.currencies,
         )
+        self.languages_control = get_dropdown(
+            lbl="Language",
+            on_change=self.on_language_selected,
+            items=[
+                "English",
+            ],
+        )
         self.tabs = Tabs(
             selected_index=0,
             animation_duration=300,
@@ -158,7 +170,6 @@ class PreferencesScreen(TuttleView, UserControl):
                     icons.SETTINGS_OUTLINED,
                     [
                         self.theme_control,
-                        self.currencies_control,
                     ],
                 ),
                 self.get_tab_item(
@@ -172,7 +183,8 @@ class PreferencesScreen(TuttleView, UserControl):
                     "Locale",
                     icons.LANGUAGE_OUTLINED,
                     [
-                        Text("ToDo"),
+                        self.languages_control,
+                        self.currencies_control,
                     ],
                 ),
             ],
