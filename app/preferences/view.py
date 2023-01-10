@@ -13,6 +13,7 @@ from flet import (
     UserControl,
     padding,
     margin,
+    dropdown,
 )
 from core.models import IntentResult
 from core.abstractions import TuttleView
@@ -64,16 +65,19 @@ class PreferencesScreen(TuttleView, UserControl):
             return
         self.preferences.default_currency = e.control.value
 
-    def on_icloud_acc_changed(self, e):
+    def on_cloud_account_name_changed(self, e):
         if not self.preferences:
             return
         self.preferences.icloud_acc_id = e.control.value
+
+    def on_cloud_provider_selected(self, e):
+        raise NotImplementedError("ToDo")
 
     def refresh_preferences_items(self):
         if self.preferences is None:
             return
         self.theme_control.value = self.preferences.theme_mode
-        self.icloud_acc_id_control.value = self.preferences.icloud_acc_id
+        self.cloud_account_name_control.value = self.preferences.icloud_acc_id
         self.currencies_control.value = self.preferences.default_currency
 
     def on_theme_changed(self, e):
@@ -142,10 +146,15 @@ class PreferencesScreen(TuttleView, UserControl):
             lbl="Appearance",
             hint="",
         )
-        self.icloud_acc_id_control = get_std_txt_field(
-            lbl="ICloud Account Id",
+        self.cloud_provider_control = get_dropdown(
+            lbl="Cloud Provider",
+            on_change=self.on_cloud_provider_selected,
+            items=["iCloud", "Google Calendar"],
+        )
+        self.cloud_account_name_control = get_std_txt_field(
+            lbl="Cloud Account Name",
             hint="to load time tracking info from calendar",
-            on_change=self.on_icloud_acc_changed,
+            on_change=self.on_cloud_account_name_changed,
         )
         self.currencies_control = get_dropdown(
             lbl="Default Currency",
@@ -173,10 +182,11 @@ class PreferencesScreen(TuttleView, UserControl):
                     ],
                 ),
                 self.get_tab_item(
-                    "Accounts",
+                    "Cloud",
                     icons.CLOUD_OUTLINED,
                     [
-                        self.icloud_acc_id_control,
+                        self.cloud_provider_control,
+                        self.cloud_account_name_control,
                     ],
                 ),
                 self.get_tab_item(
