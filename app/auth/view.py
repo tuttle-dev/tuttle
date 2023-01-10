@@ -557,7 +557,14 @@ class ProfileScreen(TuttleView, UserControl):
             self.toggle_progress_bar(f"Upload complete, processing file...")
             if self.uploaded_photo_url:
                 result = self.intent_handler.update_user_photo(self.uploaded_photo_url)
-
+                msg = "Failed to update photo"
+                is_err = True
+                if result.was_intent_successful:
+                    self.profile_photo_control.src = self.uploaded_photo_url
+                    msg = "Profile photo updated"
+                    is_err = False
+                self.show_snack(msg, is_err)
+                self.uploaded_photo_url = None  # clear
             self.toggle_progress_bar(hide_progress=True)
 
     def toggle_progress_bar(self, msg: str = "", hide_progress: bool = False):
@@ -574,6 +581,7 @@ class ProfileScreen(TuttleView, UserControl):
         self.email = self.user.email
         self.phone = self.user.phone_number
         self.title = self.user.subtitle
+        self.profile_pic_url = self.user.profile_photo
         if self.user.address:
             self.street = self.user.address.street
             self.street_number = self.user.address.number
@@ -596,9 +604,9 @@ class ProfileScreen(TuttleView, UserControl):
             src=self.profile_pic_url
             if self.profile_pic_url
             else image_paths.default_avatar,
-            width=56,
-            height=56,
-            border_radius=border_radius.all(12),
+            width=72,
+            height=72,
+            border_radius=border_radius.all(36),
             fit=CONTAIN,
         )
         self.name_field = views.get_std_txt_field(
@@ -728,6 +736,7 @@ class ProfileScreen(TuttleView, UserControl):
         view = Card(
             Container(
                 padding=padding.all(dimens.SPACE_MD),
+                margin=margin.symmetric(vertical=dimens.SPACE_LG),
                 content=self.form_container,
             ),
             width=dimens.MIN_WINDOW_WIDTH,
