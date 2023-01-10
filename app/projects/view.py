@@ -373,7 +373,7 @@ class ViewProjectScreen(TuttleView, UserControl):
     def on_delete_confirmed(
         self,
     ):
-        self.show_snack("Un Implemented feature!", True)
+        self.show_snack("Not implemented", True)
 
     def on_window_resized(self, desired_width, height):
         super().on_window_resized(desired_width, height)
