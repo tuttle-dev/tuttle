@@ -2,7 +2,7 @@ import typing
 from enum import Enum
 from typing import Callable, Optional
 from clients.view import ClientEditorPopUp
-from res.utils import CONTRACT_EDITOR_SCREEN_ROUTE
+from res.res_utils import CONTRACT_EDITOR_SCREEN_ROUTE
 from flet import (
     Card,
     Column,
@@ -98,7 +98,7 @@ from res.dimens import (
 )
 from res.fonts import BODY_2_SIZE, HEADLINE_4_SIZE, SUBTITLE_1_SIZE
 
-from res.utils import CONTRACT_DETAILS_SCREEN_ROUTE
+from res.res_utils import CONTRACT_DETAILS_SCREEN_ROUTE
 
 LABEL_WIDTH = 80
 

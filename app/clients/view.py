@@ -55,7 +55,7 @@ from res.fonts import (
     SUBTITLE_2_SIZE,
 )
 
-from res.utils import ADD_CLIENT_INTENT
+from res.res_utils import ADD_CLIENT_INTENT
 
 
 class ClientCard(UserControl):

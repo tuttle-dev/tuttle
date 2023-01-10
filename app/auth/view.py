@@ -1,8 +1,7 @@
 from typing import Callable
-
-
 from flet import (
-    CircleAvatar,
+    border_radius,
+    Image,
     Column,
     Container,
     Row,
@@ -39,10 +38,11 @@ from core.utils import (
     START_ALIGNMENT,
     TXT_ALIGN_CENTER,
     is_empty_str,
+    CONTAIN,
 )
 from core.models import IntentResult
 from core import views
-from res import dimens, colors, fonts, image_paths, utils
+from res import dimens, colors, fonts, image_paths, res_utils
 
 from .intent import AuthIntent
 
@@ -344,7 +344,7 @@ class SplashScreen(TuttleView, UserControl):
         )
 
     def on_logged_in(self):
-        self.navigate_to_route(utils.HOME_SCREEN_ROUTE)
+        self.navigate_to_route(res_utils.HOME_SCREEN_ROUTE)
 
     def check_auth_status(self):
         """checks if user is already created
@@ -556,7 +556,8 @@ class ProfileScreen(TuttleView, UserControl):
         if e.progress == 1.0:
             self.toggle_progress_bar(f"Upload complete, processing file...")
             if self.uploaded_photo_url:
-                print(f"{e.file_name} uploaded to {self.uploaded_photo_url} ")
+                result = self.intent_handler.update_user_photo(self.uploaded_photo_url)
+
             self.toggle_progress_bar(hide_progress=True)
 
     def toggle_progress_bar(self, msg: str = "", hide_progress: bool = False):
@@ -570,10 +571,6 @@ class ProfileScreen(TuttleView, UserControl):
         if self.user is None:
             return
         self.name = self.user.name
-        if len(self.name) > 0:
-            self.profile_photo_control.content = views.get_headline_txt(
-                self.name[0], size=56
-            )
         self.email = self.user.email
         self.phone = self.user.phone_number
         self.title = self.user.subtitle
@@ -595,9 +592,14 @@ class ProfileScreen(TuttleView, UserControl):
         self.country_field.value = self.country
 
     def set_profile_form(self):
-        self.profile_photo_control = CircleAvatar(
-            foreground_image_url=self.profile_pic_url,
-            radius=48,
+        self.profile_photo_control = Image(
+            src=self.profile_pic_url
+            if self.profile_pic_url
+            else image_paths.default_avatar,
+            width=56,
+            height=56,
+            border_radius=border_radius.all(12),
+            fit=CONTAIN,
         )
         self.name_field = views.get_std_txt_field(
             self.on_change_name,

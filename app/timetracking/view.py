@@ -27,7 +27,7 @@ from core.views import (
 from res.colors import ERROR_COLOR
 from res.dimens import MIN_WINDOW_WIDTH
 from res.fonts import HEADLINE_4_SIZE
-from res.utils import NEW_TIME_TRACK_INTENT
+from res.res_utils import NEW_TIME_TRACK_INTENT
 
 
 class TimeTrackFromIcloudPopUp(DialogHandler):
@@ -251,13 +251,17 @@ class TimetracksView(TuttleView, UserControl):
         if e.files and len(e.files) > 0:
             file = e.files[0]
             self.set_progress_hint(f"Uploading file {file.name}")
-            self.upload_file_callback(file)
+            upload_url = self.upload_file_callback(file)
+            if upload_url:
+                self.uploaded_file_url = upload_url
 
     def on_upload_progress(self, e: FilePickerUploadEvent):
 
         if e.progress == 1.0:
             self.set_progress_hint(f"Upload complete, processing file...")
-            result = self.intent_handler.process_timetracking_file(e.file_name)
+            result = self.intent_handler.process_timetracking_file(
+                self.uploaded_file_url, e.file_name
+            )
             msg = (
                 "New work progress recorded."
                 if result.was_intent_successful

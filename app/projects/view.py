@@ -67,7 +67,7 @@ from res.dimens import (
 )
 from res.fonts import BODY_1_SIZE, BODY_2_SIZE, HEADLINE_4_SIZE
 
-from res.utils import (
+from res.res_utils import (
     CONTRACT_CREATOR_SCREEN_ROUTE,
     PROJECT_DETAILS_SCREEN_ROUTE,
     PROJECT_EDITOR_SCREEN_ROUTE,

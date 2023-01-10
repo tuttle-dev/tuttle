@@ -54,3 +54,6 @@ class AuthIntent:
             city,
             country,
         )
+
+    def update_user_photo(self, upload_url):
+        return self.data_source.update_user_photo_url(upload_url)

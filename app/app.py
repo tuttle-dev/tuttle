@@ -36,7 +36,7 @@ from res.colors import BLACK_COLOR_ALT, ERROR_COLOR, PRIMARY_COLOR, WHITE_COLOR
 from res.dimens import MIN_WINDOW_HEIGHT, MIN_WINDOW_WIDTH
 from res.fonts import APP_FONTS, HEADLINE_4_SIZE, HEADLINE_FONT
 from res.theme import APP_THEME, THEME_MODES, get_theme_mode_from_value
-from res.utils import (
+from res.res_utils import (
     CONTRACT_CREATOR_SCREEN_ROUTE,
     CONTRACT_DETAILS_SCREEN_ROUTE,
     CONTRACT_EDITOR_SCREEN_ROUTE,
@@ -111,13 +111,13 @@ class TuttleApp:
 
     def upload_file_callback(self, file):
         try:
-            upload_url = self.page.get_upload_url(file.name, 600)
+
             upload_item = FilePickerUploadFile(
                 file.name,
-                upload_url=upload_url,
+                upload_url=self.page.get_upload_url(file.name, 600),
             )
             self.file_picker.upload([upload_item])
-            return upload_url
+            return f"{get_uploads_url()}/{file.name}"
         except Exception as e:
             print(f"Exception @app.upload_file_callback raised during file upload {e}")
             return None
@@ -374,6 +374,10 @@ def install_demo_data():
         logger.error("Failed to install demo data")
 
 
+def get_uploads_url():
+    return ensure_app_dir() / "uploads"
+
+
 def main(page: Page):
     """Entry point of the app"""
     app = TuttleApp(page)
@@ -388,5 +392,5 @@ if __name__ == "__main__":
         name="Tuttle",
         target=main,
         assets_dir="assets",
-        upload_dir=ensure_app_dir() / "uploads",
+        upload_dir=get_uploads_url(),
     )
