@@ -35,7 +35,7 @@ class ContactsIntent:
                 error_msg_if_err="Failed to save contact. A name is required.",
                 data=None,
             )
-        if contact.address.is_empty():
+        if contact.address.is_empty:
             return IntentResult(
                 was_intent_successful=False,
                 error_msg_if_err="Failed to save contact. Please specify the address.",

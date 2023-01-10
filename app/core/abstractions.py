@@ -119,7 +119,8 @@ class SQLModelDataSourceMixin:
     def query(self, entity_type: Type[sqlmodel.SQLModel]) -> List:
         """Queries the database for all instances of the given entity type"""
         logger.debug(f"querying {entity_type}")
-        entities = self.create_session().exec(sqlmodel.select(entity_type)).all()
+        with self.create_session() as session:
+            entities = session.exec(sqlmodel.select(entity_type)).all()
         if len(entities) == 0:
             logger.warning(f"No instances of {entity_type} found")
         else:

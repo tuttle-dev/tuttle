@@ -1,12 +1,14 @@
 from typing import Optional
 from pathlib import Path
 import faker
+from loguru import logger
 
 from core.models import IntentResult
 from core.abstractions import SQLModelDataSourceMixin
 from .model import Contact
 
 from tuttle.model import Address
+from tuttle.dev import deprecated
 
 
 class ContactDataSource(SQLModelDataSourceMixin):
@@ -23,20 +25,13 @@ class ContactDataSource(SQLModelDataSourceMixin):
             data=result,
         )
 
+    @deprecated
     def get_contact_by_id(self, contactId) -> IntentResult:
-        fake = faker.Faker(["de_DE", "en_US", "es_ES", "fr_FR", "it_IT", "sv_SE"])
-        c = self._get_fake_contact(fake, contactId)
-        return IntentResult(
-            was_intent_successful=True,
-            data=c,
-        )
+        raise NotImplementedError("This method is deprecated.")
 
     def save_contact(self, contact: Contact) -> IntentResult:
-        if contact.id is None:
-            # then create a new contact and set ids
-            contact.id = 1
-            contact.address_id = 1
-            contact.address.id = 1
+        self.store(contact)
+        logger.info(f"Saved contact: {contact}")
         return IntentResult(
             was_intent_successful=True,
             data=contact,

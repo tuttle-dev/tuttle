@@ -94,6 +94,19 @@ class Address(SQLModel, table=True):
         """
         )
 
+    @property
+    def is_empty(self) -> bool:
+        """True if all fields are empty."""
+        return all(
+            [
+                not self.street,
+                not self.number,
+                not self.city,
+                not self.postal_code,
+                not self.country,
+            ]
+        )
+
 
 class User(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -160,7 +173,9 @@ class Contact(SQLModel, table=True):
     company: Optional[str]
     email: Optional[str]
     address_id: Optional[int] = Field(default=None, foreign_key="address.id")
-    address: Optional[Address] = Relationship(back_populates="contacts")
+    address: Optional[Address] = Relationship(
+        back_populates="contacts", sa_relationship_kwargs={"lazy": "subquery"}
+    )
     invoicing_contact_of: List["Client"] = Relationship(
         back_populates="invoicing_contact"
     )
