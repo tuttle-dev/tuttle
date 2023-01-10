@@ -8,7 +8,17 @@ from sqlmodel import Field, SQLModel, create_engine, Session, select
 import sqlalchemy
 from loguru import logger
 
-from tuttle.model import Address, Contact, Client, Project, Contract, TimeUnit, Cycle
+from tuttle.model import (
+    Address,
+    Contact,
+    Client,
+    Project,
+    Contract,
+    TimeUnit,
+    Cycle,
+    User,
+    BankAccount,
+)
 
 
 def create_fake_contact(
@@ -101,6 +111,31 @@ def create_fake_data(
     return projects
 
 
+def create_demo_user() -> User:
+    user = User(
+        name="Harry Tuttle",
+        subtitle="Heating Engineer",
+        website="https://tuttle-dev.github.io/tuttle/",
+        email="mail@tuttle.com",
+        phone_number="+55555555555",
+        VAT_number="27B-6",
+        address=Address(
+            name="Harry Tuttle",
+            street="Main Street",
+            number="450",
+            city="Somewhere",
+            postal_code="555555",
+            country="Brazil",
+        ),
+        bank_account=BankAccount(
+            name="Giro",
+            IBAN="BZ99830994950003161565",
+            BIC="BANKINFO101",
+        ),
+    )
+    return user
+
+
 def install_demo_data(
     n: int,
     db_path: str,
@@ -113,6 +148,13 @@ def install_demo_data(
     db_engine = create_engine(db_path)
     logger.info("Creating database tables...")
     SQLModel.metadata.create_all(db_engine)
+
+    logger.info("Creating demo user...")
+    with Session(db_engine) as session:
+        user = create_demo_user()
+        session.add(user)
+        session.commit()
+
     logger.info("Adding demo data to database...")
     with Session(db_engine) as session:
         for project in projects:
