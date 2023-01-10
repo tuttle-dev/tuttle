@@ -1,34 +1,21 @@
-from typing import Callable
 from flet import (
-    border_radius,
-    Image,
     Column,
     Container,
     Row,
     UserControl,
-    padding,
-)
-from core.abstractions import TuttleViewParams
-
-from typing import Callable
-
-from flet import (
     Card,
-    Column,
-    Container,
     IconButton,
     ResponsiveRow,
-    Row,
-    UserControl,
     icons,
     margin,
     padding,
 )
+from core.abstractions import TuttleViewParams
 
 from tuttle.model import User
 
 from auth.intent import AuthIntent
-from core.abstractions import ClientStorage, TuttleView
+from core.abstractions import TuttleView
 from core.utils import (
     CENTER_ALIGNMENT,
     KEYBOARD_EMAIL,
@@ -39,25 +26,19 @@ from core.utils import (
     START_ALIGNMENT,
     TXT_ALIGN_CENTER,
     is_empty_str,
-    CONTAIN,
 )
 from core.models import IntentResult
 from core import views
-from res import dimens, colors, fonts, image_paths, res_utils
+from res import dimens, fonts, image_paths, res_utils
 
 from .intent import AuthIntent
 
 
-class LoginForm(UserControl):
-    """Login form to set required user info"""
+class UserDataForm(UserControl):
+    """Form used to set required user info"""
 
-    def __init__(
-        self,
-        on_logged_in,
-        on_save_user_callback,
-    ):
+    def __init__(self, on_submit_success, on_form_submit, submit_btn_lbl):
         super().__init__()
-        self.form_error = ""
         self.name = ""
         self.email = ""
         self.phone = ""
@@ -67,12 +48,13 @@ class LoginForm(UserControl):
         self.postal_code = ""
         self.city = ""
         self.country = ""
-        self.on_save_user = on_save_user_callback
-        self.on_logged_in = on_logged_in
+        self.on_form_submit = on_form_submit
+        self.on_submit_success = on_submit_success
+        self.submit_btn_lbl = submit_btn_lbl
 
-    def set_login_err(self, err: str = ""):
-        self.login_err_txt.value = err
-        self.login_err_txt.visible = err != ""
+    def set_form_err(self, err: str = ""):
+        self.form_err_txt.value = err
+        self.form_err_txt.visible = err != ""
 
     def on_field_focus(self, e):
         for field in [
@@ -82,7 +64,7 @@ class LoginForm(UserControl):
             self.title_field,
         ]:
             field.error_text = ""
-        self.set_login_err()
+        self.set_form_err()
         if self.mounted:
             self.update()
 
@@ -95,23 +77,21 @@ class LoginForm(UserControl):
         self.submit_btn.disabled = True
 
         # hide any errors
-        self.login_err_txt.value = ""
-        self.login_err_txt.visible = False
-        self.form_error = ""
+        self.set_form_err()
 
-        missingRequiredDataErr = ""
+        missing_required_data_err = ""
         if is_empty_str(self.name):
-            missingRequiredDataErr = "Your name is required."
-            self.name_field.error_text = missingRequiredDataErr
+            missing_required_data_err = "Your name is required."
+            self.name_field.error_text = missing_required_data_err
         elif is_empty_str(self.email):
-            missingRequiredDataErr = "Your email is required."
-            self.email_field.error_text = missingRequiredDataErr
+            missing_required_data_err = "Your email is required."
+            self.email_field.error_text = missing_required_data_err
         elif is_empty_str(self.phone):
-            missingRequiredDataErr = "Your phone number is required."
-            self.phone_field.error_text = missingRequiredDataErr
+            missing_required_data_err = "Your phone number is required."
+            self.phone_field.error_text = missing_required_data_err
         elif is_empty_str(self.title):
-            missingRequiredDataErr = "Please specify your job title. e.g. freelancer"
-            self.title_field.error_text = missingRequiredDataErr
+            missing_required_data_err = "Please specify your job title. e.g. freelancer"
+            self.title_field.error_text = missing_required_data_err
 
         elif (
             is_empty_str(self.street)
@@ -121,12 +101,12 @@ class LoginForm(UserControl):
             or is_empty_str(self.city)
         ):
 
-            missingRequiredDataErr = "Please provide your full address"
-            self.set_login_err(missingRequiredDataErr)
+            missing_required_data_err = "Please provide your full address"
+            self.set_form_err(missing_required_data_err)
 
-        if not missingRequiredDataErr:
+        if not missing_required_data_err:
             # save user
-            result: IntentResult = self.on_save_user(
+            result: IntentResult = self.on_form_submit(
                 title=self.title,
                 name=self.name,
                 email=self.email,
@@ -138,17 +118,14 @@ class LoginForm(UserControl):
                 country=self.country,
             )
             if not result.was_intent_successful:
-                self.form_error = result.error_msg
-                self.set_login_err(self.form_error)
-                self.submit_btn.disabled = False
+                self.set_form_err(result.error_msg)
                 self.update()
             else:
                 # user is authenticated
-                self.on_logged_in()
-        else:
-            self.submit_btn.disabled = False
-            if self.mounted:
-                self.update()
+                self.on_submit_success(result.data)
+        self.submit_btn.disabled = False
+        if self.mounted:
+            self.update()
 
     def build(self):
         """Called when form is built"""
@@ -210,10 +187,10 @@ class LoginForm(UserControl):
             lbl="Country",
             keyboard_type=KEYBOARD_TEXT,
         )
-        self.login_err_txt = views.get_error_txt(self.form_error)
+        self.form_err_txt = views.get_error_txt("")
         self.submit_btn = views.get_primary_btn(
             on_click=self.on_submit_btn_clicked,
-            label="Get Started",
+            label=self.submit_btn_lbl,
         )
         self.form = Column(
             spacing=dimens.SPACE_MD,
@@ -237,12 +214,26 @@ class LoginForm(UserControl):
                     ],
                 ),
                 self.country_field,
-                self.login_err_txt,
+                self.form_err_txt,
                 self.submit_btn,
             ],
         )
 
         return self.form
+
+    def refresh_user_info(self, user: User):
+        if user is None:
+            return
+        self.name_field.value = self.name = user.name
+        self.email_field.value = self.email = user.email
+        self.phone_field.value = self.phone = user.phone_number
+        self.title_field.value = self.title = user.subtitle
+        self.street_field.value = self.street = user.address.street
+        self.postal_code_field.value = self.postal_code = user.address.postal_code
+        self.street_number_field.value = self.street_number = user.address.number
+        self.city_field.value = self.city = user.address.city
+        self.country_field.value = self.country = user.address.country
+        self.update()
 
     def did_mount(self):
         self.mounted = True
@@ -257,52 +248,33 @@ class SplashScreen(TuttleView, UserControl):
         self.keep_back_stack = False
         self.intent_handler = AuthIntent()
 
-    def on_save_user(
-        self,
-        title: str,
-        name: str,
-        email: str,
-        phone: str,
-        street: str,
-        street_num: str,
-        postal_code: str,
-        city: str,
-        country: str,
-    ):
-        return self.intent_handler.create_user(
-            title=title,
-            name=name,
-            email=email,
-            phone=phone,
-            street=street,
-            street_num=street_num,
-            postal_code=postal_code,
-            city=city,
-            country=country,
-        )
-
-    def on_logged_in(self):
-        self.navigate_to_route(res_utils.HOME_SCREEN_ROUTE)
-
-    def check_auth_status(self):
-        """checks if user is already created
-
-        if created, re routes to home
-        else shows login form
-        """
+    def show_login_if_signed_out_else_redirect(self):
         result = self.intent_handler.get_user()
         if result.was_intent_successful:
             if result.data is not None:
-                self.on_logged_in()
+                self.navigate_to_route(res_utils.HOME_SCREEN_ROUTE)
             else:
-                self.show_login_form()
+                self.set_login_form()
         else:
             self.show_snack(result.error_msg)
 
-    def show_login_form(self):
-        form = LoginForm(
-            on_logged_in=self.on_logged_in,
-            on_save_user_callback=self.on_save_user,
+    def set_login_form(self):
+        form = UserDataForm(
+            on_submit_success=lambda _: self.navigate_to_route(
+                res_utils.HOME_SCREEN_ROUTE
+            ),
+            on_form_submit=lambda title, name, email, phone, street, street_num, postal_code, city, country: self.intent_handler.create_user(
+                title=title,
+                name=name,
+                email=email,
+                phone=phone,
+                street=street,
+                street_num=street_num,
+                postal_code=postal_code,
+                city=city,
+                country=country,
+            ),
+            submit_btn_lbl="Get Started",
         )
         self.form_container.controls.remove(self.loading_indicator)
         self.form_container.controls.append(form)
@@ -312,7 +284,7 @@ class SplashScreen(TuttleView, UserControl):
     def did_mount(self):
         try:
             self.mounted = True
-            self.check_auth_status()
+            self.show_login_if_signed_out_else_redirect()
         except Exception as e:
             self.mounted = False
             print(f"exception raised @splash_screen.did_mount {e}")
@@ -379,101 +351,10 @@ class ProfileScreen(TuttleView, UserControl):
         super().__init__(params=params)
         self.horizontal_alignment_in_parent = CENTER_ALIGNMENT
         self.intent_handler = AuthIntent()
-        self.name = ""
-        self.email = ""
-        self.phone = ""
-        self.title = ""
-        self.street = ""
-        self.street_number = ""
-        self.postal_code = ""
-        self.city = ""
-        self.country = ""
-        self.profile_pic_url = ""
 
-    def on_field_focus(self, e):
-        """Called when a field receives focus
-        Clears error messages
-        """
-        self.name_field.error_text = ""
-        self.email_field.error_text = ""
-        self.phone_field.error_text = ""
-        self.title_field.error_text = ""
-        if self.mounted:
-            self.update()
-
-    def on_change_name(self, e):
-        self.name = e.control.value
-
-    def on_change_email(self, e):
-        self.email = e.control.value
-
-    def on_change_title(self, e):
-        self.title = e.control.value
-
-    def on_change_phone(self, e):
-        self.phone = e.control.value
-
-    def on_street_changed(self, e):
-        self.street = e.control.value
-
-    def on_street_num_changed(self, e):
-        self.street_number = e.control.value
-
-    def on_postal_code_changed(self, e):
-        self.postal_code = e.control.value
-
-    def on_city_changed(self, e):
-        self.city = e.control.value
-
-    def on_country_changed(self, e):
-        self.country = e.control.value
-
-    def on_update_btn_clicked(self, e):
-
-        if self.user is None:
-            # user is not loaded yet
-            return
-
-        # prevent multiple submissions
-        self.toggle_progress_bar()
-
-        missingRequiredDataErr = ""
-        if is_empty_str(self.name):
-            missingRequiredDataErr = "Your name is required."
-            self.name_field.error_text = missingRequiredDataErr
-        elif is_empty_str(self.email):
-            missingRequiredDataErr = "Your email address is required."
-            self.email_field.error_text = missingRequiredDataErr
-        elif is_empty_str(self.phone):
-            missingRequiredDataErr = "Your phone number is required."
-            self.phone_field.error_text = missingRequiredDataErr
-        elif is_empty_str(self.title):
-            missingRequiredDataErr = "Please specify your title. e.g. freelancer"
-            self.title_field.error_text = missingRequiredDataErr
-
-        if missingRequiredDataErr:
-            self.show_snack(missingRequiredDataErr, True)
-        else:
-            # save user
-            result: IntentResult = self.intent_handler.update_user(
-                user=self.user,
-                title=self.title,
-                name=self.name,
-                email=self.email,
-                phone=self.phone,
-                street=self.street,
-                street_num=self.street_number,
-                postal_code=self.postal_code,
-                city=self.city,
-                country=self.country,
-            )
-            if not result.was_intent_successful:
-                self.show_snack(result.error_msg, True)
-            else:
-                self.show_snack("Your profile has been updated", False)
-                self.user: User = result.data
-                self.refresh_user_info()
-        self.toggle_progress_bar(hide_progress=True)
+    def on_profile_updated(self, data):
+        self.show_snack("Your profile has been updated", False)
+        self.user: User = data
 
     def on_update_photo_clicked(self, e):
         self.pick_file_callback(
@@ -509,179 +390,75 @@ class ProfileScreen(TuttleView, UserControl):
 
     def toggle_progress_bar(self, msg: str = "", hide_progress: bool = False):
         self.progressBar.visible = not hide_progress
-        self.update_btn.disabled = not hide_progress
         self.ongoing_action_hint.value = msg
         self.ongoing_action_hint.visible = msg != ""
         self.update()
-
-    def refresh_user_info(self):
-        if self.user is None:
-            return
-        self.name = self.user.name
-        self.email = self.user.email
-        self.phone = self.user.phone_number
-        self.title = self.user.subtitle
-        self.profile_pic_url = self.user.profile_photo
-        if self.user.address:
-            self.street = self.user.address.street
-            self.street_number = self.user.address.number
-            self.postal_code = self.user.address.postal_code
-            self.city = self.user.address.city
-            self.country = self.user.address.country
-        self.name_field.value = self.name
-        self.email_field.value = self.email
-        self.phone_field.value = self.phone
-        self.title_field.value = self.title
-        self.street_field.value = self.street
-        self.street_number_field.value = self.street
-        self.postal_code_field.value = self.postal_code
-        self.street_number_field.value = self.street_number
-        self.city_field.value = self.city
-        self.country_field.value = self.country
-
-    def set_profile_form(self):
-        self.profile_photo_control = Image(
-            src=self.profile_pic_url
-            if self.profile_pic_url
-            else image_paths.default_avatar,
-            width=72,
-            height=72,
-            border_radius=border_radius.all(36),
-            fit=CONTAIN,
-        )
-        self.name_field = views.get_std_txt_field(
-            self.on_change_name,
-            "Name",
-            "your name",
-            on_focus=self.on_field_focus,
-            keyboard_type=KEYBOARD_NAME,
-        )
-        self.email_field = views.get_std_txt_field(
-            self.on_change_email,
-            "Email",
-            "your email address",
-            on_focus=self.on_field_focus,
-            keyboard_type=KEYBOARD_EMAIL,
-        )
-        self.phone_field = views.get_std_txt_field(
-            self.on_change_phone,
-            "Phone",
-            "Your phone number",
-            on_focus=self.on_field_focus,
-            keyboard_type=KEYBOARD_PHONE,
-        )
-        self.title_field = views.get_std_txt_field(
-            self.on_change_title,
-            "Title",
-            "your work title",
-            on_focus=self.on_field_focus,
-            keyboard_type=KEYBOARD_TEXT,
-        )
-        self.street_field = views.get_std_txt_field(
-            on_change=self.on_street_changed,
-            lbl="Street Name",
-            keyboard_type=KEYBOARD_TEXT,
-            expand=1,
-        )
-        self.street_number_field = views.get_std_txt_field(
-            on_change=self.on_street_num_changed,
-            lbl="Street Number",
-            keyboard_type=KEYBOARD_NUMBER,
-            expand=1,
-        )
-        self.postal_code_field = views.get_std_txt_field(
-            on_change=self.on_postal_code_changed,
-            lbl="Postal Code",
-            keyboard_type=KEYBOARD_NUMBER,
-            expand=1,
-        )
-
-        self.city_field = views.get_std_txt_field(
-            on_change=self.on_city_changed,
-            lbl="City",
-            keyboard_type=KEYBOARD_TEXT,
-            expand=1,
-        )
-
-        self.country_field = views.get_std_txt_field(
-            on_change=self.on_country_changed,
-            lbl="Country",
-            keyboard_type=KEYBOARD_TEXT,
-        )
-
-        self.update_photo_btn = views.get_secondary_btn(
-            label="Update photo", on_click=self.on_update_photo_clicked
-        )
-        self.update_btn = views.get_primary_btn(
-            on_click=self.on_update_btn_clicked,
-            label="Update Profile",
-        )
-        self.profile_form = Column(
-            spacing=dimens.SPACE_MD,
-            controls=[
-                self.profile_photo_control,
-                self.update_photo_btn,
-                self.title_field,
-                self.name_field,
-                self.email_field,
-                self.phone_field,
-                Row(
-                    vertical_alignment=CENTER_ALIGNMENT,
-                    controls=[
-                        self.street_field,
-                        self.street_number_field,
-                    ],
-                ),
-                Row(
-                    vertical_alignment=CENTER_ALIGNMENT,
-                    controls=[
-                        self.postal_code_field,
-                        self.city_field,
-                    ],
-                ),
-                self.country_field,
-                self.update_btn,
-            ],
-        )
 
     def build(self):
         self.progressBar = views.horizontal_progress
         self.progressBar.visible = False
         self.ongoing_action_hint = views.get_body_txt(txt="")
-        self.set_profile_form()
-        self.form_container = Column(
-            spacing=dimens.SPACE_STD,
-            run_spacing=0,
-            controls=[
-                Row(
-                    spacing=dimens.SPACE_STD,
-                    run_spacing=0,
-                    vertical_alignment=CENTER_ALIGNMENT,
-                    controls=[
-                        IconButton(
-                            icon=icons.KEYBOARD_ARROW_LEFT,
-                            on_click=self.on_navigate_back,
-                        ),
-                        views.get_headline_txt("Profile", size=fonts.HEADLINE_4_SIZE),
-                    ],
-                ),
-                Container(
-                    self.progressBar,
-                    margin=margin.symmetric(horizontal=dimens.SPACE_MD),
-                ),
-                self.ongoing_action_hint,
-                self.profile_form,
-            ],
+        self.profile_photo_control = views.get_profile_photo_img()
+        self.update_photo_btn = views.get_secondary_btn(
+            label="Update photo", on_click=self.on_update_photo_clicked
         )
-        view = Card(
+        self.user_data_form = UserDataForm(
+            on_form_submit=lambda title, name, email, phone, street, street_num, postal_code, city, country: self.intent_handler.update_user(
+                title=title,
+                name=name,
+                email=email,
+                phone=phone,
+                street=street,
+                street_num=street_num,
+                postal_code=postal_code,
+                city=city,
+                country=country,
+                user=self.user,
+            ),
+            on_submit_success=self.on_profile_updated,
+            submit_btn_lbl="Update Profile",
+        )
+
+        return Card(
             Container(
                 padding=padding.all(dimens.SPACE_MD),
                 margin=margin.symmetric(vertical=dimens.SPACE_LG),
-                content=self.form_container,
+                content=Column(
+                    spacing=dimens.SPACE_STD,
+                    run_spacing=0,
+                    controls=[
+                        Row(
+                            spacing=dimens.SPACE_STD,
+                            run_spacing=0,
+                            vertical_alignment=CENTER_ALIGNMENT,
+                            controls=[
+                                IconButton(
+                                    icon=icons.KEYBOARD_ARROW_LEFT,
+                                    on_click=self.on_navigate_back,
+                                ),
+                                views.get_headline_txt(
+                                    "Profile", size=fonts.HEADLINE_4_SIZE
+                                ),
+                            ],
+                        ),
+                        Container(
+                            self.progressBar,
+                            margin=margin.symmetric(horizontal=dimens.SPACE_MD),
+                        ),
+                        self.ongoing_action_hint,
+                        Column(
+                            spacing=dimens.SPACE_MD,
+                            controls=[
+                                self.profile_photo_control,
+                                self.update_photo_btn,
+                                self.user_data_form,
+                            ],
+                        ),
+                    ],
+                ),
             ),
             width=dimens.MIN_WINDOW_WIDTH,
         )
-        return view
 
     def did_mount(self):
         try:
@@ -692,7 +469,9 @@ class ProfileScreen(TuttleView, UserControl):
                 self.show_snack(result.error_msg, True)
             else:
                 self.user: User = result.data
-                self.refresh_user_info()
+                self.user_data_form.refresh_user_info(self.user)
+                if self.user.profile_photo:
+                    self.profile_photo_control.src = self.user.profile_photo
             self.toggle_progress_bar(hide_progress=True)
         except Exception as e:
             # log error

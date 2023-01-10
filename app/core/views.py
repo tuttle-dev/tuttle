@@ -12,6 +12,7 @@ from flet import (
     FilledButton,
     Image,
     ProgressBar,
+    border_radius,
     Row,
     Text,
     TextField,
@@ -186,6 +187,17 @@ def get_secondary_btn(
         label,
         width=width,
         on_click=on_click,
+    )
+
+
+def get_profile_photo_img(pic_src: str = image_paths.default_avatar):
+    print(pic_src)
+    return Image(
+        src=pic_src,
+        width=72,
+        height=72,
+        border_radius=border_radius.all(36),
+        fit=CONTAIN,
     )
 
 
