@@ -55,3 +55,6 @@ class Contract:
         else:
             # default
             return "All"
+
+    def strftime(self, time_format: str):
+        return ""  # TODO?

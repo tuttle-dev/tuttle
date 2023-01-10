@@ -146,6 +146,7 @@ class ContactEditorPopUp(DialogHandler):
         if not self.contact:
             # user is creating a new contact
             self.contact = Contact()
+            self.contact.address = Address()
         self.address = self.contact.address
 
         title = "Edit contact" if contact is not None else "Add contact"

@@ -327,8 +327,8 @@ class SecondaryMenuHandler:
 class HomeScreen(TuttleView, UserControl):
     def __init__(self, params: TuttleViewParams):
         super().__init__(params)
-        self.keep_back_stack = (False,)
-        self.page_scroll_type = (None,)
+        self.keep_back_stack = False
+        self.page_scroll_type = None
         self.main_menu_handler = MainMenuItemsHandler(params)
         self.secondary_menu_handler = SecondaryMenuHandler(params)
 

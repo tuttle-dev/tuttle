@@ -245,7 +245,6 @@ class TuttleRoutes:
         view: TuttleView,
     ) -> RouteView:
         """Constructs the view with a given route"""
-        print(f"page scroll type {view.page_scroll_type}")
         view_container = View(
             padding=0,
             spacing=0,
@@ -308,7 +307,6 @@ class TuttleRoutes:
         else:
             screen = Error404Screen(params=self.tuttle_view_params)
 
-        print(f"screen has {screen.page_scroll_type}")
         return self.get_page_route_view(routePath.route, view=screen)
 
 

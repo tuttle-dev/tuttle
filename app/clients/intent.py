@@ -43,7 +43,7 @@ class ClientsIntent:
                 error_msg_if_err="A contact name is required.",
                 data=None,
             )
-        if client.invoicing_contact.address.is_empty():
+        if client.invoicing_contact.address.is_empty:
             return IntentResult(
                 was_intent_successful=False,
                 error_msg_if_err="Please specify the contact address.",

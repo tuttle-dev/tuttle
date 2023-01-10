@@ -149,6 +149,8 @@ class ClientEditorPopUp(DialogHandler, UserControl):
             if self.invoicing_contact.address is not None
             else Address()
         )
+        if not self.invoicing_contact.address:
+            self.invoicing_contact.address = self.address
         self.contacts_as_map = contacts_map
         self.contact_options = self.get_contacts_as_list()
 
