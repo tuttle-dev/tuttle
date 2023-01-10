@@ -2,7 +2,6 @@ import datetime
 
 import faker
 
-from contracts.model import Contract
 from core.models import Cycle, IntentResult, TimeUnit
 from typing import Optional
 

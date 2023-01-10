@@ -115,9 +115,11 @@ class User(SQLModel, table=True):
     website: Optional[str]
     email: str
     phone_number: str
-    profile_photo : Optional[str] = Field(default=None)
+    profile_photo: Optional[str] = Field(default=None)
     address_id: Optional[int] = Field(default=None, foreign_key="address.id")
-    address: Optional[Address] = Relationship(back_populates="users", sa_relationship_kwargs={"lazy": "subquery"})
+    address: Optional[Address] = Relationship(
+        back_populates="users", sa_relationship_kwargs={"lazy": "subquery"}
+    )
     VAT_number: Optional[str]
     # User 1:1* ICloudAccount
     icloud_account_id: Optional[int] = Field(
@@ -288,6 +290,25 @@ class Contract(SQLModel, table=True):
     @property
     def volume_as_time(self):
         return self.volume * self.unit.to_timedelta()
+
+    def is_active(self) -> bool:
+        today = datetime.date.today()
+        return self.end_date > today
+
+    def is_upcoming(self) -> bool:
+        today = datetime.date.today()
+        return self.start_date > today
+
+    def get_status(self) -> str:
+        if self.is_active():
+            return "Active"
+        elif self.is_upcoming():
+            return "Upcoming"
+        elif self.is_completed:
+            return "Completed"
+        else:
+            # default
+            return "All"
 
 
 class Project(SQLModel, table=True):

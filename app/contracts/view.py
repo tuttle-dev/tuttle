@@ -18,7 +18,6 @@ from flet import (
     padding,
 )
 
-from contracts.model import Contract
 from contracts.intent import ContractsIntent
 from core.abstractions import ClientStorage, TuttleView
 from core.utils import (
@@ -54,7 +53,6 @@ from flet import (
     padding,
 )
 
-from contracts.model import Contract
 from contracts.intent import ContractsIntent
 from core.abstractions import ClientStorage, TuttleView
 from core.utils import (
@@ -168,42 +166,6 @@ class ContractCard(UserControl):
             ResponsiveRow(
                 controls=[
                     Text(
-                        "Id",
-                        color=GRAY_COLOR,
-                        size=BODY_2_SIZE,
-                        col={"xs": "12", "sm": "5", "md": "3"},
-                    ),
-                    Text(
-                        self.contract.id,
-                        size=BODY_2_SIZE,
-                        col={"xs": "12", "sm": "7", "md": "9"},
-                    ),
-                ],
-                spacing=SPACE_XS,
-                run_spacing=0,
-                vertical_alignment=CENTER_ALIGNMENT,
-            ),
-            ResponsiveRow(
-                controls=[
-                    Text(
-                        "Client Id",
-                        color=GRAY_COLOR,
-                        size=BODY_2_SIZE,
-                        col={"xs": "12", "sm": "5", "md": "3"},
-                    ),
-                    Text(
-                        self.contract.client_id,
-                        size=BODY_2_SIZE,
-                        col={"xs": "12", "sm": "7", "md": "9"},
-                    ),
-                ],
-                spacing=SPACE_XS,
-                run_spacing=0,
-                vertical_alignment=CENTER_ALIGNMENT,
-            ),
-            ResponsiveRow(
-                controls=[
-                    Text(
                         "Billing Cycle",
                         color=GRAY_COLOR,
                         size=BODY_2_SIZE,
@@ -228,7 +190,9 @@ class ContractCard(UserControl):
                         col={"xs": "12", "sm": "5", "md": "3"},
                     ),
                     Text(
-                        self.contract.strftime("%d/%m/%Y"),
+                        self.contract.start_date.strftime("%d/%m/%Y")
+                        if self.contract.start_date
+                        else "",
                         size=BODY_2_SIZE,
                         col={"xs": "12", "sm": "7", "md": "9"},
                     ),
@@ -246,7 +210,9 @@ class ContractCard(UserControl):
                         col={"xs": "12", "sm": "5", "md": "3"},
                     ),
                     Text(
-                        self.contract.get_end_date_as_str(),
+                        self.contract.end_date.strftime("%d/%m/%Y")
+                        if self.contract.end_date
+                        else "",
                         size=BODY_2_SIZE,
                         color=ERROR_COLOR,
                         col={"xs": "12", "sm": "7", "md": "9"},

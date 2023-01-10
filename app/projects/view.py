@@ -22,7 +22,6 @@ from flet import (
     padding,
 )
 
-from contracts.model import Contract
 from core.abstractions import TuttleView
 from core.charts import BarChart
 from core.utils import (
@@ -56,7 +55,6 @@ from core.views import (
     update_dropdown_items,
 )
 from projects.intent import ProjectsIntent
-from projects.model import Project
 from res import colors, dimens, fonts
 from res.colors import ERROR_COLOR, GRAY_COLOR, PRIMARY_COLOR
 from res.dimens import (
@@ -72,6 +70,12 @@ from res.res_utils import (
     CONTRACT_CREATOR_SCREEN_ROUTE,
     PROJECT_DETAILS_SCREEN_ROUTE,
     PROJECT_EDITOR_SCREEN_ROUTE,
+)
+
+from tuttle.model import (
+    Client,
+    Contract,
+    Project,
 )
 
 
@@ -119,7 +123,7 @@ class ProjectCard(UserControl):
                         col={"xs": "12", "sm": "5", "md": "3"},
                     ),
                     Text(
-                        self.project.contract.client.title,
+                        self.project.contract.client.name,
                         size=BODY_2_SIZE,
                         col={"xs": "12", "sm": "7", "md": "9"},
                     ),
@@ -155,7 +159,9 @@ class ProjectCard(UserControl):
                         col={"xs": "12", "sm": "5", "md": "3"},
                     ),
                     Text(
-                        self.project.get_end_date_as_str(),
+                        self.project.end_date.strftime("%d/%m/%Y")
+                        if self.project.end_date
+                        else "",
                         size=BODY_2_SIZE,
                         color=ERROR_COLOR,
                         col={"xs": "12", "sm": "7", "md": "9"},
@@ -174,7 +180,7 @@ class ProjectCard(UserControl):
                         spacing=0,
                         controls=[
                             Text(f"#", color=PRIMARY_COLOR),
-                            Text(f"{self.project.unique_tag}", color=GRAY_COLOR),
+                            Text(f"{self.project.tag}", color=GRAY_COLOR),
                         ],
                     ),
                     ElevatedButton(
@@ -293,7 +299,7 @@ class ViewProjectScreen(TuttleView, UserControl):
         self.project_start_date_control.value = f"Start Date: {self.project.start_date}"
         self.project_end_date_control.value = f"End Date: {self.project.end_date}"
         self.project_status_control.value = f"Status {self.project.get_status()}"
-        self.project_tagline_control.value = f"#{self.project.unique_tag}"
+        self.project_tagline_control.value = f"#{self.project.tag}"
         self.set_chart()
 
     def set_chart(self):
@@ -720,12 +726,12 @@ class EditProjectScreen(TuttleView, UserControl):
         self.title_field.value = self.title
         self.description = self.project.description
         self.description_field.value = self.description
-        self.tag = self.project.unique_tag
+        self.tag = self.project.tag
         self.tag_field.value = self.tag
         self.start_date_field.set_date(self.project.start_date)
         self.end_date_field.set_date(self.project.end_date)
         self.contract_title_view.value = f"Contract {self.project.contract.title}"
-        self.client_title_view.value = f"Client {self.project.contract.client.title}"
+        self.client_title_view.value = f"Client {self.project.contract.client.name}"
 
     def on_save(self, e):
         if not self.title:

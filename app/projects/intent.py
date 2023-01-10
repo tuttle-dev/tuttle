@@ -2,8 +2,6 @@ from typing import List, Optional, Mapping
 import datetime
 from core.abstractions import ClientStorage
 from core.models import IntentResult
-from .model import Project
-from contracts.model import Contract
 from .data_source import ProjectDataSource
 
 

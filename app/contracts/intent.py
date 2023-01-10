@@ -7,7 +7,6 @@ from core.models import Cycle, TimeUnit
 from core.abstractions import ClientStorage
 from core.models import IntentResult
 
-from .model import Contract
 from .data_source import ContractDataSource
 from clients.data_source import ClientDataSource
 from contacts.data_source import ContactDataSource
