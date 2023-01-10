@@ -13,7 +13,7 @@ class TimeTrackingIntent:
         self.data_source = TimeTrackingDataSource()
         self.preferences_intent = PreferencesIntent(local_storage)
 
-    def process_timetracking_file(self, file_name):
+    def process_timetracking_file(self, upload_url, file_name):
         """processes a time tracking spreadsheet or ics file in the uploads folder"""
         result = self.data_source.process_timetracking_file(file_name)
         if not result.was_intent_successful:

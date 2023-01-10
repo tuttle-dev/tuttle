@@ -45,7 +45,7 @@ from res.colors import ERROR_COLOR, GRAY_COLOR
 from res.dimens import MIN_WINDOW_WIDTH, SPACE_MD, SPACE_STD, SPACE_XS
 from res.fonts import BODY_2_SIZE, HEADLINE_4_SIZE
 
-from res.utils import ADD_CONTACT_INTENT
+from res.res_utils import ADD_CONTACT_INTENT
 
 from tuttle.model import (
     Address,

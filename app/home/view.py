@@ -49,7 +49,7 @@ from res.fonts import (
     SUBTITLE_1_SIZE,
 )
 
-from res.utils import (
+from res.res_utils import (
     ADD_CLIENT_INTENT,
     ADD_CONTACT_INTENT,
     PREFERENCES_SCREEN_ROUTE,
@@ -78,7 +78,7 @@ from res.fonts import HEADLINE_4_SIZE, HEADLINE_FONT
 from dataclasses import dataclass
 
 
-from res.utils import (
+from res.res_utils import (
     PROJECT_CREATOR_SCREEN_ROUTE,
     ADD_CLIENT_INTENT,
     ADD_CONTACT_INTENT,

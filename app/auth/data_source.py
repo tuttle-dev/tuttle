@@ -85,3 +85,7 @@ class UserDataSource(SQLModelDataSourceMixin):
         )
         self._dummy_user = user
         return IntentResult(was_intent_successful=True, data=self._dummy_user)
+
+    def update_user_photo_url(self, url):
+        """saves the path of the new uploaded profile photo"""
+        return IntentResult(was_intent_successful=True, data=None)
