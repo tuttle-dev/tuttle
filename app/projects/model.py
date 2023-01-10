@@ -3,7 +3,6 @@ import datetime
 
 from typing import Optional
 from contracts.model import Contract
-from clients.model import Client
 
 
 @dataclass

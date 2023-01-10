@@ -54,7 +54,6 @@ from flet import (
     padding,
 )
 
-from clients.model import Client
 from contracts.model import Contract
 from contracts.intent import ContractsIntent
 from core.abstractions import ClientStorage, TuttleView
@@ -118,8 +117,6 @@ from flet import (
     padding,
 )
 
-from clients.model import Client
-from contracts.model import Contract
 from contracts.intent import ContractsIntent
 from core.abstractions import DialogHandler, TuttleView
 from core.utils import (
@@ -146,6 +143,11 @@ from core.views import (
 )
 from res import dimens
 from res.dimens import MIN_WINDOW_WIDTH
+
+from tuttle.model import (
+    Contract,
+    Client,
+)
 
 LABEL_WIDTH = 80
 
@@ -225,7 +227,7 @@ class ContractCard(UserControl):
                         col={"xs": "12", "sm": "5", "md": "3"},
                     ),
                     Text(
-                        self.contract.get_start_date_as_str(),
+                        self.contract.strftime("%d/%m/%Y"),
                         size=BODY_2_SIZE,
                         col={"xs": "12", "sm": "7", "md": "9"},
                     ),
@@ -1282,7 +1284,7 @@ class ViewContractScreen(TuttleView, UserControl):
 
     def display_contract_data(self):
         self.contract_title_control.value = self.contract.title
-        self.client_control.value = self.contract.client.title
+        self.client_control.value = self.contract.client.name
         self.contract_title_control.value = self.contract.title
         self.start_date_control.value = self.contract.start_date
         self.end_date_control.value = self.contract.end_date

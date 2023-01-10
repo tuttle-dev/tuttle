@@ -136,7 +136,7 @@ class ProjectCard(UserControl):
                         col={"xs": "12", "sm": "5", "md": "3"},
                     ),
                     Text(
-                        self.project.get_start_date_as_str(),
+                        self.project.start_date.strftime("%d/%m/%Y"),
                         size=BODY_2_SIZE,
                         col={"xs": "12", "sm": "7", "md": "9"},
                     ),

@@ -4,7 +4,6 @@ from typing import Optional, Mapping
 from core.models import Cycle, TimeUnit
 
 
-from clients.model import Client
 from core.abstractions import ClientStorage
 from core.models import IntentResult
 
@@ -12,7 +11,12 @@ from .model import Contract
 from .data_source import ContractDataSource
 from clients.data_source import ClientDataSource
 from contacts.data_source import ContactDataSource
-from contacts.model import Contact
+
+from tuttle.model import (
+    Client,
+    Contract,
+    Contact,
+)
 
 
 class ContractsIntent:

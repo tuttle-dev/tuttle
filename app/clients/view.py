@@ -17,9 +17,7 @@ from flet import (
     padding,
 )
 from tuttle.model import Address
-from clients.model import Client, get_empty_client
 from clients.intent import ClientsIntent
-from contacts.model import Contact, get_empty_contact
 from core.abstractions import DialogHandler, TuttleView
 from core.utils import (
     ALWAYS_SCROLL,
@@ -54,8 +52,12 @@ from res.fonts import (
     SUBTITLE_1_SIZE,
     SUBTITLE_2_SIZE,
 )
-
 from res.res_utils import ADD_CLIENT_INTENT
+
+from tuttle.model import (
+    Client,
+    Contact,
+)
 
 
 class ClientCard(UserControl):
@@ -74,7 +76,7 @@ class ClientCard(UserControl):
             invoicing_contact_info = "*not specified"
         self.product_info_container.controls = [
             get_headline_txt(
-                txt=self.client.title,
+                txt=self.client.name,
                 size=SUBTITLE_1_SIZE,
             ),
             ResponsiveRow(
@@ -136,11 +138,11 @@ class ClientEditorPopUp(DialogHandler, UserControl):
         self.half_of_dialog_width = int(MIN_WINDOW_WIDTH * 0.35)
 
         # initialize the data
-        self.client = client if client is not None else get_empty_client()
+        self.client = client if client is not None else Client()
         self.invoicing_contact = (
             self.client.invoicing_contact
             if self.client.invoicing_contact is not None
-            else get_empty_contact()
+            else Contact()
         )
         self.address = (
             self.invoicing_contact.address
@@ -228,8 +230,8 @@ class ClientEditorPopUp(DialogHandler, UserControl):
                         get_std_txt_field(
                             on_change=self.on_title_changed,
                             lbl="Client's title",
-                            hint=self.client.title,
-                            initial_value=self.client.title,
+                            hint=self.client.name,
+                            initial_value=self.client.name,
                         ),
                         xsSpace,
                         get_headline_txt(
@@ -354,8 +356,8 @@ class ClientEditorPopUp(DialogHandler, UserControl):
         self.country = e.control.value
 
     def on_submit_btn_clicked(self, e):
-        self.client.title = (
-            self.title.strip() if self.title.strip() else self.client.title
+        self.client.name = (
+            self.title.strip() if self.title.strip() else self.client.name
         )
         self.invoicing_contact.first_name = (
             self.fname.strip()

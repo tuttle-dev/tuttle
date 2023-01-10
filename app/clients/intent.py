@@ -2,10 +2,11 @@ from typing import Optional, Mapping
 
 from core.abstractions import ClientStorage
 from core.models import IntentResult
-from .model import Client
-from contacts.model import Contact
 from .data_source import ClientDataSource
 from contacts.data_source import ContactDataSource
+from tuttle.model import (
+    Client,
+)
 
 
 class ClientsIntent:
@@ -28,7 +29,7 @@ class ClientsIntent:
         self,
         client: Client = None,
     ) -> IntentResult:
-        if not client.title:
+        if not client.name:
             return IntentResult(
                 was_intent_successful=False,
                 error_msg_if_err="Please provide the client's title",

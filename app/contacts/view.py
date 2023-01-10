@@ -19,7 +19,6 @@ from flet import (
     ListTile,
 )
 
-from contacts.model import Contact, get_empty_contact
 from contacts.intent import ContactsIntent
 from core.abstractions import DialogHandler, TuttleView
 from core.utils import (
@@ -49,6 +48,7 @@ from res.res_utils import ADD_CONTACT_INTENT
 
 from tuttle.model import (
     Address,
+    Contact,
 )
 
 
@@ -146,7 +146,7 @@ class ContactEditorPopUp(DialogHandler):
         self.contact = contact
         if not self.contact:
             # user is creating a new contact
-            self.contact = get_empty_contact()
+            self.contact = Contact()
         self.address = self.contact.address
 
         title = "Edit contact" if contact is not None else "Add contact"

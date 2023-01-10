@@ -5,7 +5,9 @@ from pydantic import condecimal
 from decimal import Decimal
 from core.models import Cycle, TimeUnit
 
-from clients.model import Client
+from tuttle.model import (
+    Client,
+)
 
 
 @dataclass
