@@ -19,7 +19,7 @@ from flet import (
     ListTile,
 )
 from contacts.intent import ContactsIntent
-from core.abstractions import DialogHandler, TuttleView
+from core.abstractions import DialogHandler, TuttleView, TuttleViewParams
 from core.utils import (
     ALWAYS_SCROLL,
     AUTO_SCROLL,
