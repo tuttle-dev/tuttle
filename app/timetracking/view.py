@@ -254,6 +254,7 @@ class TimetracksView(TuttleView, UserControl):
             self.upload_file_callback(file)
 
     def on_upload_progress(self, e: FilePickerUploadEvent):
+
         if e.progress == 1.0:
             self.set_progress_hint(f"Upload complete, processing file...")
             result = self.intent_handler.process_timetracking_file(e.file_name)

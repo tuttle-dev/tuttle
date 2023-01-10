@@ -1,6 +1,14 @@
 from typing import Callable
 
-from flet import Column, Container, Row, UserControl, padding
+
+from flet import (
+    CircleAvatar,
+    Column,
+    Container,
+    Row,
+    UserControl,
+    padding,
+)
 
 from typing import Callable
 
@@ -34,7 +42,7 @@ from core.utils import (
 )
 from core.models import IntentResult
 from core import views
-from res import dimens, fonts, image_paths, utils
+from res import dimens, colors, fonts, image_paths, utils
 
 from .intent import AuthIntent
 
@@ -270,295 +278,6 @@ class LoginForm(UserControl):
         self.mounted = False
 
 
-class ProfileScreen(TuttleView, UserControl):
-    def __init__(
-        self,
-        navigate_to_route,
-        show_snack,
-        dialog_controller,
-        on_navigate_back,
-        local_storage,
-    ):
-        super().__init__(
-            navigate_to_route=navigate_to_route,
-            show_snack=show_snack,
-            dialog_controller=dialog_controller,
-            on_navigate_back=on_navigate_back,
-            horizontal_alignment_in_parent=CENTER_ALIGNMENT,
-        )
-        self.intent_handler = AuthIntent(local_storage=local_storage)
-        self.name = ""
-        self.email = ""
-        self.phone = ""
-        self.title = ""
-        self.street = ""
-        self.street_number = ""
-        self.postal_code = ""
-        self.city = ""
-        self.country = ""
-
-    def on_field_focus(self, e):
-        """Called when a field receives focus
-        Clears error messages
-        """
-        self.name_field.error_text = ""
-        self.email_field.error_text = ""
-        self.phone_field.error_text = ""
-        self.title_field.error_text = ""
-        if self.mounted:
-            self.update()
-
-    def on_change_name(self, e):
-        self.name = e.control.value
-
-    def on_change_email(self, e):
-        self.email = e.control.value
-
-    def on_change_title(self, e):
-        self.title = e.control.value
-
-    def on_change_phone(self, e):
-        self.phone = e.control.value
-
-    def on_street_changed(self, e):
-        self.street = e.control.value
-
-    def on_street_num_changed(self, e):
-        self.street_number = e.control.value
-
-    def on_postal_code_changed(self, e):
-        self.postal_code = e.control.value
-
-    def on_city_changed(self, e):
-        self.city = e.control.value
-
-    def on_country_changed(self, e):
-        self.country = e.control.value
-
-    def on_update_btn_clicked(self, e):
-
-        if self.user is None:
-            # user is not loaded yet
-            return
-
-        # prevent multiple submissions
-        self.update_btn.disabled = True
-        self.progressBar.visible = True
-        if self.mounted:
-            self.update()
-
-        missingRequiredDataErr = ""
-        if is_empty_str(self.name):
-            missingRequiredDataErr = "Your name is required."
-            self.name_field.error_text = missingRequiredDataErr
-        elif is_empty_str(self.email):
-            missingRequiredDataErr = "Your email address is required."
-            self.email_field.error_text = missingRequiredDataErr
-        elif is_empty_str(self.phone):
-            missingRequiredDataErr = "Your phone number is required."
-            self.phone_field.error_text = missingRequiredDataErr
-        elif is_empty_str(self.title):
-            missingRequiredDataErr = "Please specify your title. e.g. freelancer"
-            self.title_field.error_text = missingRequiredDataErr
-
-        if missingRequiredDataErr:
-            self.show_snack(missingRequiredDataErr, True)
-        else:
-            # save user
-            result: IntentResult = self.intent_handler.update_user(
-                user=self.user,
-                title=self.title,
-                name=self.name,
-                email=self.email,
-                phone=self.phone,
-                street=self.street,
-                street_num=self.street_number,
-                postal_code=self.postal_code,
-                city=self.city,
-                country=self.country,
-            )
-            if not result.was_intent_successful:
-                self.show_snack(result.error_msg, True)
-            else:
-                self.show_snack("Your profile has been updated", False)
-                self.user: User = result.data
-                self.refresh_user_info()
-        self.update_btn.disabled = False
-        self.progressBar.visible = False
-        self.update()
-
-    def set_profile_form(self):
-        self.name_field = views.get_std_txt_field(
-            self.on_change_name,
-            "Name",
-            "your name",
-            on_focus=self.on_field_focus,
-            keyboard_type=KEYBOARD_NAME,
-        )
-        self.email_field = views.get_std_txt_field(
-            self.on_change_email,
-            "Email",
-            "your email address",
-            on_focus=self.on_field_focus,
-            keyboard_type=KEYBOARD_EMAIL,
-        )
-        self.phone_field = views.get_std_txt_field(
-            self.on_change_phone,
-            "Phone",
-            "Your phone number",
-            on_focus=self.on_field_focus,
-            keyboard_type=KEYBOARD_PHONE,
-        )
-        self.title_field = views.get_std_txt_field(
-            self.on_change_title,
-            "Title",
-            "your work title",
-            on_focus=self.on_field_focus,
-            keyboard_type=KEYBOARD_TEXT,
-        )
-        self.street_field = views.get_std_txt_field(
-            on_change=self.on_street_changed,
-            lbl="Street Name",
-            keyboard_type=KEYBOARD_TEXT,
-            expand=1,
-        )
-        self.street_number_field = views.get_std_txt_field(
-            on_change=self.on_street_num_changed,
-            lbl="Street Number",
-            keyboard_type=KEYBOARD_NUMBER,
-            expand=1,
-        )
-        self.postal_code_field = views.get_std_txt_field(
-            on_change=self.on_postal_code_changed,
-            lbl="Postal Code",
-            keyboard_type=KEYBOARD_NUMBER,
-            expand=1,
-        )
-
-        self.city_field = views.get_std_txt_field(
-            on_change=self.on_city_changed,
-            lbl="City",
-            keyboard_type=KEYBOARD_TEXT,
-            expand=1,
-        )
-
-        self.country_field = views.get_std_txt_field(
-            on_change=self.on_country_changed,
-            lbl="Country",
-            keyboard_type=KEYBOARD_TEXT,
-        )
-
-        self.update_btn = views.get_primary_btn(
-            on_click=self.on_update_btn_clicked,
-            label="Update Profile",
-        )
-        self.profile_form = Column(
-            spacing=dimens.SPACE_MD,
-            controls=[
-                self.title_field,
-                self.name_field,
-                self.email_field,
-                self.phone_field,
-                Row(
-                    vertical_alignment=CENTER_ALIGNMENT,
-                    controls=[
-                        self.street_field,
-                        self.street_number_field,
-                    ],
-                ),
-                Row(
-                    vertical_alignment=CENTER_ALIGNMENT,
-                    controls=[
-                        self.postal_code_field,
-                        self.city_field,
-                    ],
-                ),
-                self.country_field,
-                self.update_btn,
-            ],
-        )
-
-    def did_mount(self):
-        try:
-            self.mounted = True
-            self.progressBar.visible = True
-            self.update()
-            result: IntentResult = self.intent_handler.get_user()
-            if not result.was_intent_successful:
-                self.show_snack(result.error_msg, True)
-            else:
-                self.user: User = result.data
-                self.refresh_user_info()
-            self.progressBar.visible = False
-            self.update()
-        except Exception as e:
-            # log error
-            print(f"exception raised @profile_screen.did_mount {e}")
-
-    def refresh_user_info(self):
-        if self.user is None:
-            return
-        self.name = self.user.name
-        self.email = self.user.email
-        self.phone = self.user.phone_number
-        self.title = self.user.subtitle
-        if self.user.address:
-            self.street = self.user.address.street
-            self.street_number = self.user.address.number
-            self.postal_code = self.user.address.postal_code
-            self.city = self.user.address.city
-            self.country = self.user.address.country
-        self.name_field.value = self.name
-        self.email_field.value = self.email
-        self.phone_field.value = self.phone
-        self.title_field.value = self.title
-        self.street_field.value = self.street
-        self.street_number_field.value = self.street
-        self.postal_code_field.value = self.postal_code
-        self.street_number_field.value = self.street_number
-        self.city_field.value = self.city
-        self.country_field.value = self.country
-
-    def build(self):
-        self.progressBar = views.horizontal_progress
-        self.progressBar.visible = False
-        self.set_profile_form()
-        self.form_container = Column(
-            spacing=dimens.SPACE_STD,
-            run_spacing=0,
-            controls=[
-                Row(
-                    spacing=dimens.SPACE_STD,
-                    run_spacing=0,
-                    vertical_alignment=CENTER_ALIGNMENT,
-                    controls=[
-                        IconButton(
-                            icon=icons.KEYBOARD_ARROW_LEFT,
-                            on_click=self.on_navigate_back,
-                        ),
-                        views.get_headline_txt("Profile", size=fonts.HEADLINE_4_SIZE),
-                    ],
-                ),
-                Container(
-                    self.progressBar,
-                    margin=margin.symmetric(horizontal=dimens.SPACE_MD),
-                ),
-                self.profile_form,
-            ],
-        )
-        view = Card(
-            Container(
-                padding=padding.all(dimens.SPACE_MD),
-                content=self.form_container,
-            ),
-            width=dimens.MIN_WINDOW_WIDTH,
-        )
-        return view
-
-    def will_unmount(self):
-        self.mounted = False
-
-
 class SplashView(UserControl):
     def build(self):
         view = Column(
@@ -694,6 +413,339 @@ class SplashScreen(TuttleView, UserControl):
             ],
         )
         return page_view
+
+    def will_unmount(self):
+        self.mounted = False
+
+
+class ProfileScreen(TuttleView, UserControl):
+    def __init__(
+        self,
+        navigate_to_route,
+        show_snack,
+        dialog_controller,
+        on_navigate_back,
+        local_storage,
+        upload_file_callback,
+        pick_file_callback,
+    ):
+        super().__init__(
+            navigate_to_route=navigate_to_route,
+            show_snack=show_snack,
+            dialog_controller=dialog_controller,
+            on_navigate_back=on_navigate_back,
+            horizontal_alignment_in_parent=CENTER_ALIGNMENT,
+        )
+        self.intent_handler = AuthIntent(local_storage=local_storage)
+        self.name = ""
+        self.email = ""
+        self.phone = ""
+        self.title = ""
+        self.street = ""
+        self.street_number = ""
+        self.postal_code = ""
+        self.city = ""
+        self.country = ""
+        self.profile_pic_url = ""
+        self.upload_file_callback = upload_file_callback
+        self.pick_file_callback = pick_file_callback
+
+    def on_field_focus(self, e):
+        """Called when a field receives focus
+        Clears error messages
+        """
+        self.name_field.error_text = ""
+        self.email_field.error_text = ""
+        self.phone_field.error_text = ""
+        self.title_field.error_text = ""
+        if self.mounted:
+            self.update()
+
+    def on_change_name(self, e):
+        self.name = e.control.value
+
+    def on_change_email(self, e):
+        self.email = e.control.value
+
+    def on_change_title(self, e):
+        self.title = e.control.value
+
+    def on_change_phone(self, e):
+        self.phone = e.control.value
+
+    def on_street_changed(self, e):
+        self.street = e.control.value
+
+    def on_street_num_changed(self, e):
+        self.street_number = e.control.value
+
+    def on_postal_code_changed(self, e):
+        self.postal_code = e.control.value
+
+    def on_city_changed(self, e):
+        self.city = e.control.value
+
+    def on_country_changed(self, e):
+        self.country = e.control.value
+
+    def on_update_btn_clicked(self, e):
+
+        if self.user is None:
+            # user is not loaded yet
+            return
+
+        # prevent multiple submissions
+        self.toggle_progress_bar()
+
+        missingRequiredDataErr = ""
+        if is_empty_str(self.name):
+            missingRequiredDataErr = "Your name is required."
+            self.name_field.error_text = missingRequiredDataErr
+        elif is_empty_str(self.email):
+            missingRequiredDataErr = "Your email address is required."
+            self.email_field.error_text = missingRequiredDataErr
+        elif is_empty_str(self.phone):
+            missingRequiredDataErr = "Your phone number is required."
+            self.phone_field.error_text = missingRequiredDataErr
+        elif is_empty_str(self.title):
+            missingRequiredDataErr = "Please specify your title. e.g. freelancer"
+            self.title_field.error_text = missingRequiredDataErr
+
+        if missingRequiredDataErr:
+            self.show_snack(missingRequiredDataErr, True)
+        else:
+            # save user
+            result: IntentResult = self.intent_handler.update_user(
+                user=self.user,
+                title=self.title,
+                name=self.name,
+                email=self.email,
+                phone=self.phone,
+                street=self.street,
+                street_num=self.street_number,
+                postal_code=self.postal_code,
+                city=self.city,
+                country=self.country,
+            )
+            if not result.was_intent_successful:
+                self.show_snack(result.error_msg, True)
+            else:
+                self.show_snack("Your profile has been updated", False)
+                self.user: User = result.data
+                self.refresh_user_info()
+        self.toggle_progress_bar(hide_progress=True)
+
+    def on_update_photo_clicked(self, e):
+        self.pick_file_callback(
+            on_file_picker_result=self.on_profile_photo_picked,
+            on_upload_progress=self.on_upload_profile_pic_progress,
+            allowed_extensions=["png", "jpeg", "jpg"],
+            dialog_title="Tuttle profile photo",
+            file_type="custom",
+        )
+
+    def on_profile_photo_picked(self, e):
+        if e.files and len(e.files) > 0:
+            file = e.files[0]
+            self.toggle_progress_bar(f"Uploading file {file.name}")
+            upload_url = self.upload_file_callback(file)
+            if upload_url:
+                self.uploaded_photo_url = upload_url
+
+    def on_upload_profile_pic_progress(self, e):
+        if e.progress == 1.0:
+            self.toggle_progress_bar(f"Upload complete, processing file...")
+            if self.uploaded_photo_url:
+                print(f"{e.file_name} uploaded to {self.uploaded_photo_url} ")
+            self.toggle_progress_bar(hide_progress=True)
+
+    def toggle_progress_bar(self, msg: str = "", hide_progress: bool = False):
+        self.progressBar.visible = not hide_progress
+        self.update_btn.disabled = not hide_progress
+        self.ongoing_action_hint.value = msg
+        self.ongoing_action_hint.visible = msg != ""
+        self.update()
+
+    def refresh_user_info(self):
+        if self.user is None:
+            return
+        self.name = self.user.name
+        if len(self.name) > 0:
+            self.profile_photo_control.content = views.get_headline_txt(
+                self.name[0], size=56
+            )
+        self.email = self.user.email
+        self.phone = self.user.phone_number
+        self.title = self.user.subtitle
+        if self.user.address:
+            self.street = self.user.address.street
+            self.street_number = self.user.address.number
+            self.postal_code = self.user.address.postal_code
+            self.city = self.user.address.city
+            self.country = self.user.address.country
+        self.name_field.value = self.name
+        self.email_field.value = self.email
+        self.phone_field.value = self.phone
+        self.title_field.value = self.title
+        self.street_field.value = self.street
+        self.street_number_field.value = self.street
+        self.postal_code_field.value = self.postal_code
+        self.street_number_field.value = self.street_number
+        self.city_field.value = self.city
+        self.country_field.value = self.country
+
+    def set_profile_form(self):
+        self.profile_photo_control = CircleAvatar(
+            foreground_image_url=self.profile_pic_url,
+            radius=48,
+        )
+        self.name_field = views.get_std_txt_field(
+            self.on_change_name,
+            "Name",
+            "your name",
+            on_focus=self.on_field_focus,
+            keyboard_type=KEYBOARD_NAME,
+        )
+        self.email_field = views.get_std_txt_field(
+            self.on_change_email,
+            "Email",
+            "your email address",
+            on_focus=self.on_field_focus,
+            keyboard_type=KEYBOARD_EMAIL,
+        )
+        self.phone_field = views.get_std_txt_field(
+            self.on_change_phone,
+            "Phone",
+            "Your phone number",
+            on_focus=self.on_field_focus,
+            keyboard_type=KEYBOARD_PHONE,
+        )
+        self.title_field = views.get_std_txt_field(
+            self.on_change_title,
+            "Title",
+            "your work title",
+            on_focus=self.on_field_focus,
+            keyboard_type=KEYBOARD_TEXT,
+        )
+        self.street_field = views.get_std_txt_field(
+            on_change=self.on_street_changed,
+            lbl="Street Name",
+            keyboard_type=KEYBOARD_TEXT,
+            expand=1,
+        )
+        self.street_number_field = views.get_std_txt_field(
+            on_change=self.on_street_num_changed,
+            lbl="Street Number",
+            keyboard_type=KEYBOARD_NUMBER,
+            expand=1,
+        )
+        self.postal_code_field = views.get_std_txt_field(
+            on_change=self.on_postal_code_changed,
+            lbl="Postal Code",
+            keyboard_type=KEYBOARD_NUMBER,
+            expand=1,
+        )
+
+        self.city_field = views.get_std_txt_field(
+            on_change=self.on_city_changed,
+            lbl="City",
+            keyboard_type=KEYBOARD_TEXT,
+            expand=1,
+        )
+
+        self.country_field = views.get_std_txt_field(
+            on_change=self.on_country_changed,
+            lbl="Country",
+            keyboard_type=KEYBOARD_TEXT,
+        )
+
+        self.update_photo_btn = views.get_secondary_btn(
+            label="Update photo", on_click=self.on_update_photo_clicked
+        )
+        self.update_btn = views.get_primary_btn(
+            on_click=self.on_update_btn_clicked,
+            label="Update Profile",
+        )
+        self.profile_form = Column(
+            spacing=dimens.SPACE_MD,
+            controls=[
+                self.profile_photo_control,
+                self.update_photo_btn,
+                self.title_field,
+                self.name_field,
+                self.email_field,
+                self.phone_field,
+                Row(
+                    vertical_alignment=CENTER_ALIGNMENT,
+                    controls=[
+                        self.street_field,
+                        self.street_number_field,
+                    ],
+                ),
+                Row(
+                    vertical_alignment=CENTER_ALIGNMENT,
+                    controls=[
+                        self.postal_code_field,
+                        self.city_field,
+                    ],
+                ),
+                self.country_field,
+                self.update_btn,
+            ],
+        )
+
+    def build(self):
+        self.progressBar = views.horizontal_progress
+        self.progressBar.visible = False
+        self.ongoing_action_hint = views.get_body_txt(txt="")
+        self.set_profile_form()
+        self.form_container = Column(
+            spacing=dimens.SPACE_STD,
+            run_spacing=0,
+            controls=[
+                Row(
+                    spacing=dimens.SPACE_STD,
+                    run_spacing=0,
+                    vertical_alignment=CENTER_ALIGNMENT,
+                    controls=[
+                        IconButton(
+                            icon=icons.KEYBOARD_ARROW_LEFT,
+                            on_click=self.on_navigate_back,
+                        ),
+                        views.get_headline_txt("Profile", size=fonts.HEADLINE_4_SIZE),
+                    ],
+                ),
+                Container(
+                    self.progressBar,
+                    margin=margin.symmetric(horizontal=dimens.SPACE_MD),
+                ),
+                self.ongoing_action_hint,
+                self.profile_form,
+            ],
+        )
+        view = Card(
+            Container(
+                padding=padding.all(dimens.SPACE_MD),
+                content=self.form_container,
+            ),
+            width=dimens.MIN_WINDOW_WIDTH,
+        )
+        return view
+
+    def did_mount(self):
+        try:
+            self.mounted = True
+            self.toggle_progress_bar()
+            result: IntentResult = self.intent_handler.get_user()
+            if not result.was_intent_successful:
+                self.show_snack(result.error_msg, True)
+            else:
+                self.user: User = result.data
+                self.refresh_user_info()
+            self.toggle_progress_bar(hide_progress=True)
+        except Exception as e:
+            # log error
+            print(f"exception raised @profile_screen.did_mount {e}")
 
     def will_unmount(self):
         self.mounted = False
