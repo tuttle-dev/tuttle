@@ -16,11 +16,12 @@ from contacts.model import Contact
 
 
 class ContractsIntent:
-    def __init__(self, local_storage: ClientStorage):
+    def __init__(
+        self,
+    ):
         self.clients_data_source = ClientDataSource()
         self.contacts_data_source = ContactDataSource()
         self.data_source = ContractDataSource()
-        self.local_storage = local_storage
 
         self.all_contracts_cache: Mapping[str, Contract] = None
         self.completed_conracts_cache: Mapping[str, Contract] = None

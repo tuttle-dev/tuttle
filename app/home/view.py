@@ -20,7 +20,7 @@ from flet import (
     border,
 )
 from core.views import get_body_txt, get_headline_with_subtitle
-from core.abstractions import DialogHandler, TuttleView
+from core.abstractions import DialogHandler, TuttleView, TuttleViewParams
 from core.utils import (
     COMPACT_RAIL_WIDTH,
     SPACE_BETWEEN_ALIGNMENT,
@@ -233,39 +233,13 @@ class MenuItem:
 class MainMenuItemsHandler:
     """Manages home's main-menu items"""
 
-    def __init__(
-        self,
-        navigate_to_route,
-        show_snack,
-        dialog_controller,
-        local_storage,
-    ):
+    def __init__(self, params: TuttleViewParams):
         super().__init__()
         self.menu_title = "My Business"
-        self.projects_view = ProjectsListView(
-            show_snack=show_snack,
-            dialog_controller=dialog_controller,
-            navigate_to_route=navigate_to_route,
-            local_storage=local_storage,
-        )
-        self.contacts_view = ContactsListView(
-            show_snack=show_snack,
-            dialog_controller=dialog_controller,
-            navigate_to_route=navigate_to_route,
-            local_storage=local_storage,
-        )
-        self.clients_view = ClientsListView(
-            show_snack=show_snack,
-            dialog_controller=dialog_controller,
-            navigate_to_route=navigate_to_route,
-            local_storage=local_storage,
-        )
-        self.contracts_view = ContractsListView(
-            show_snack=show_snack,
-            dialog_controller=dialog_controller,
-            navigate_to_route=navigate_to_route,
-            local_storage=local_storage,
-        )
+        self.projects_view = ProjectsListView(params)
+        self.contacts_view = ContactsListView(params)
+        self.clients_view = ClientsListView(params)
+        self.contracts_view = ContractsListView(params)
         self.items = [
             MenuItem(
                 0,
@@ -317,25 +291,10 @@ class MainMenuItemsHandler:
 class SecondaryMenuHandler:
     """Manages home's secondary side-menu items"""
 
-    def __init__(
-        self,
-        navigate_to_route,
-        show_snack,
-        dialog_controller,
-        local_storage,
-        upload_file_callback,
-        pick_file_callback,
-    ):
+    def __init__(self, params: TuttleViewParams):
         super().__init__()
         self.menu_title = "Workflows"
-        self.timetrack_view = TimetracksView(
-            show_snack=show_snack,
-            dialog_controller=dialog_controller,
-            navigate_to_route=navigate_to_route,
-            local_storage=local_storage,
-            upload_file_callback=upload_file_callback,
-            pick_file_callback=pick_file_callback,
-        )
+        self.timetrack_view = TimetracksView(params)
         self.items = [
             MenuItem(
                 0,
@@ -366,38 +325,12 @@ class SecondaryMenuHandler:
 
 
 class HomeScreen(TuttleView, UserControl):
-    def __init__(
-        self,
-        navigate_to_route,
-        show_snack,
-        dialog_controller,
-        on_navigate_back,
-        local_storage,
-        upload_file_callback,
-        pick_file_callback,
-    ):
-        super().__init__(
-            navigate_to_route=navigate_to_route,
-            show_snack=show_snack,
-            dialog_controller=dialog_controller,
-            keep_back_stack=False,
-            on_navigate_back=on_navigate_back,
-            page_scroll_type=None,
-        )
-        self.main_menu_handler = MainMenuItemsHandler(
-            navigate_to_route=navigate_to_route,
-            show_snack=show_snack,
-            dialog_controller=dialog_controller,
-            local_storage=local_storage,
-        )
-        self.secondary_menu_handler = SecondaryMenuHandler(
-            navigate_to_route=navigate_to_route,
-            show_snack=show_snack,
-            dialog_controller=dialog_controller,
-            local_storage=local_storage,
-            upload_file_callback=upload_file_callback,
-            pick_file_callback=pick_file_callback,
-        )
+    def __init__(self, params: TuttleViewParams):
+        super().__init__(params)
+        self.keep_back_stack = (False,)
+        self.page_scroll_type = (None,)
+        self.main_menu_handler = MainMenuItemsHandler(params)
+        self.secondary_menu_handler = SecondaryMenuHandler(params)
 
         self.selected_tab = NO_MENU_ITEM_INDEX
 

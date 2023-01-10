@@ -69,6 +69,7 @@ from core.utils import (
     SELECTED,
     SPACE_BETWEEN_ALIGNMENT,
 )
+from core.abstractions import TuttleViewParams
 from core.models import (
     IntentResult,
     get_cycle_from_value,
@@ -281,21 +282,14 @@ class ContractCard(UserControl):
 class ContractEditorScreen(TuttleView, UserControl):
     def __init__(
         self,
-        navigate_to_route,
-        show_snack,
-        dialog_controller,
-        on_navigate_back,
-        local_storage,
+        params: TuttleViewParams,
         contract_id: str,
     ):
         super().__init__(
-            navigate_to_route=navigate_to_route,
-            show_snack=show_snack,
-            dialog_controller=dialog_controller,
-            on_navigate_back=on_navigate_back,
-            horizontal_alignment_in_parent=CENTER_ALIGNMENT,
+            params,
         )
-        self.intent_handler = ContractsIntent(local_storage=local_storage)
+        self.horizontal_alignment_in_parent = CENTER_ALIGNMENT
+        self.intent_handler = ContractsIntent()
 
         self.loading_indicator = horizontal_progress
         self.new_client_pop_up = None
@@ -776,22 +770,10 @@ class ContractFiltersView(UserControl):
 
 
 class CreateContractScreen(TuttleView, UserControl):
-    def __init__(
-        self,
-        navigate_to_route,
-        show_snack,
-        dialog_controller,
-        on_navigate_back,
-        local_storage,
-    ):
-        super().__init__(
-            navigate_to_route=navigate_to_route,
-            show_snack=show_snack,
-            dialog_controller=dialog_controller,
-            on_navigate_back=on_navigate_back,
-            horizontal_alignment_in_parent=CENTER_ALIGNMENT,
-        )
-        self.intent_handler = ContractsIntent(local_storage=local_storage)
+    def __init__(self, params):
+        super().__init__(params=params)
+        self.horizontal_alignment_in_parent = CENTER_ALIGNMENT
+        self.intent_handler = ContractsIntent()
 
         self.loading_indicator = horizontal_progress
         self.new_client_pop_up: Optional[DialogHandler] = None
@@ -1161,13 +1143,9 @@ class CreateContractScreen(TuttleView, UserControl):
 
 
 class ContractsListView(TuttleView, UserControl):
-    def __init__(self, navigate_to_route, show_snack, dialog_controller, local_storage):
-        super().__init__(
-            navigate_to_route=navigate_to_route,
-            show_snack=show_snack,
-            dialog_controller=dialog_controller,
-        )
-        self.intent_handler = ContractsIntent(local_storage=local_storage)
+    def __init__(self, params: TuttleViewParams):
+        super().__init__(params)
+        self.intent_handler = ContractsIntent()
         self.loading_indicator = horizontal_progress
         self.no_contracts_control = Text(
             value="You have not added any contracts yet",
@@ -1262,20 +1240,11 @@ class ContractsListView(TuttleView, UserControl):
 class ViewContractScreen(TuttleView, UserControl):
     def __init__(
         self,
-        navigate_to_route,
-        show_snack,
-        dialog_controller,
-        on_navigate_back,
-        local_storage,
+        params: TuttleViewParams,
         contract_id: str,
     ):
-        super().__init__(
-            navigate_to_route=navigate_to_route,
-            show_snack=show_snack,
-            dialog_controller=dialog_controller,
-            on_navigate_back=on_navigate_back,
-        )
-        self.intent_handler = ContractsIntent(local_storage=local_storage)
+        super().__init__(params)
+        self.intent_handler = ContractsIntent()
         self.contract_id = contract_id
         self.loading_indicator = horizontal_progress
         self.contract: Optional[Contract] = None

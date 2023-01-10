@@ -1,5 +1,6 @@
 from enum import Enum
 from typing import Callable, Optional
+from core.abstractions import TuttleViewParams
 
 from flet import (
     ButtonStyle,
@@ -273,20 +274,11 @@ class ProjectFiltersView(UserControl):
 class ViewProjectScreen(TuttleView, UserControl):
     def __init__(
         self,
-        navigate_to_route,
-        show_snack,
-        dialog_controller,
-        on_navigate_back,
-        local_storage,
+        params: TuttleViewParams,
         project_id: str,
     ):
-        super().__init__(
-            navigate_to_route=navigate_to_route,
-            show_snack=show_snack,
-            dialog_controller=dialog_controller,
-            on_navigate_back=on_navigate_back,
-        )
-        self.intent_handler = ProjectsIntent(local_storage=local_storage)
+        super().__init__(params)
+        self.intent_handler = ProjectsIntent()
         self.project_id = project_id
         self.loading_indicator = horizontal_progress
         self.project: Optional[Project] = None
@@ -562,13 +554,9 @@ class ViewProjectScreen(TuttleView, UserControl):
 
 
 class ProjectsListView(TuttleView, UserControl):
-    def __init__(self, navigate_to_route, show_snack, dialog_controller, local_storage):
-        super().__init__(
-            navigate_to_route=navigate_to_route,
-            show_snack=show_snack,
-            dialog_controller=dialog_controller,
-        )
-        self.intent_handler = ProjectsIntent(local_storage=local_storage)
+    def __init__(self, params):
+        super().__init__(params)
+        self.intent_handler = ProjectsIntent()
         self.loading_indicator = horizontal_progress
         self.no_projects_control = Text(
             value="You have not added any projects yet.",
@@ -661,21 +649,14 @@ class ProjectsListView(TuttleView, UserControl):
 class EditProjectScreen(TuttleView, UserControl):
     def __init__(
         self,
-        navigate_to_route,
-        show_snack,
-        dialog_controller,
-        on_navigate_back,
-        local_storage,
+        params,
         project_id: str,
     ):
         super().__init__(
-            navigate_to_route=navigate_to_route,
-            show_snack=show_snack,
-            dialog_controller=dialog_controller,
-            on_navigate_back=on_navigate_back,
-            horizontal_alignment_in_parent=CENTER_ALIGNMENT,
+            params,
         )
-        self.intent_handler = ProjectsIntent(local_storage=local_storage)
+        self.horizontal_alignment_in_parent = CENTER_ALIGNMENT
+        self.intent_handler = ProjectsIntent()
 
         self.contracts_map = {}
         self.loading_indicator = horizontal_progress
@@ -874,22 +855,10 @@ class EditProjectScreen(TuttleView, UserControl):
 
 
 class CreateProjectScreen(TuttleView, UserControl):
-    def __init__(
-        self,
-        navigate_to_route,
-        show_snack,
-        dialog_controller,
-        on_navigate_back,
-        local_storage,
-    ):
-        super().__init__(
-            navigate_to_route=navigate_to_route,
-            show_snack=show_snack,
-            dialog_controller=dialog_controller,
-            on_navigate_back=on_navigate_back,
-            horizontal_alignment_in_parent=CENTER_ALIGNMENT,
-        )
-        self.intent_handler = ProjectsIntent(local_storage=local_storage)
+    def __init__(self, params):
+        super().__init__(params)
+        self.horizontal_alignment_in_parent = CENTER_ALIGNMENT
+        self.intent_handler = ProjectsIntent()
 
         self.contracts_map = {}
         self.loading_indicator = horizontal_progress

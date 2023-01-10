@@ -9,9 +9,8 @@ from contacts.data_source import ContactDataSource
 
 
 class ClientsIntent:
-    def __init__(self, local_storage: ClientStorage):
+    def __init__(self):
         self.contacts_data_source = ContactDataSource()
-        self.local_storage = local_storage
         self.data_source = ClientDataSource()
 
     def get_all_clients_as_map(self) -> Mapping[int, Client]:

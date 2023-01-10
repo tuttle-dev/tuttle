@@ -48,6 +48,7 @@ from res.res_utils import (
     PROJECT_EDITOR_SCREEN_ROUTE,
     SPLASH_SCREEN_ROUTE,
 )
+from core.abstractions import TuttleViewParams
 
 
 class TuttleApp:
@@ -227,7 +228,16 @@ class TuttleRoutes:
     """Utility class for parsing of routes to destination views"""
 
     def __init__(self, app: TuttleApp):
-        self.app = app
+        self.on_theme_changed = app.on_theme_mode_changed
+        self.tuttle_view_params = TuttleViewParams(
+            navigate_to_route=app.change_route,
+            show_snack=app.show_snack,
+            dialog_controller=app.control_alert_dialog,
+            on_navigate_back=app.on_view_pop,
+            local_storage=app.local_storage,
+            upload_file_callback=app.upload_file_callback,
+            pick_file_callback=app.pick_file_callback,
+        )
 
     def get_page_route_view(
         self,
@@ -235,7 +245,7 @@ class TuttleRoutes:
         view: TuttleView,
     ) -> RouteView:
         """Constructs the view with a given route"""
-
+        print(f"page scroll type {view.page_scroll_type}")
         view_container = View(
             padding=0,
             spacing=0,
@@ -258,98 +268,47 @@ class TuttleRoutes:
         routePath = TemplateRoute(pageRoute)
         screen = None
         if routePath.match(SPLASH_SCREEN_ROUTE):
-            screen = SplashScreen(
-                # TODO: pass app directly?
-                navigate_to_route=self.app.change_route,
-                show_snack=self.app.show_snack,
-                dialog_controller=self.app.control_alert_dialog,
-                local_storage=self.app.local_storage,
-            )
+            screen = SplashScreen(params=self.tuttle_view_params)
         elif routePath.match(HOME_SCREEN_ROUTE):
-            screen = HomeScreen(
-                navigate_to_route=self.app.change_route,
-                show_snack=self.app.show_snack,
-                dialog_controller=self.app.control_alert_dialog,
-                on_navigate_back=self.app.on_view_pop,
-                local_storage=self.app.local_storage,
-                upload_file_callback=self.app.upload_file_callback,
-                pick_file_callback=self.app.pick_file_callback,
-            )
+            screen = HomeScreen(params=self.tuttle_view_params)
         elif routePath.match(PROFILE_SCREEN_ROUTE):
-            screen = ProfileScreen(
-                navigate_to_route=self.app.change_route,
-                show_snack=self.app.show_snack,
-                dialog_controller=self.app.control_alert_dialog,
-                on_navigate_back=self.app.on_view_pop,
-                local_storage=self.app.local_storage,
-                upload_file_callback=self.app.upload_file_callback,
-                pick_file_callback=self.app.pick_file_callback,
-            )
+            screen = ProfileScreen(params=self.tuttle_view_params)
         elif routePath.match(CONTRACT_CREATOR_SCREEN_ROUTE):
-            screen = CreateContractScreen(
-                navigate_to_route=self.app.change_route,
-                show_snack=self.app.show_snack,
-                dialog_controller=self.app.control_alert_dialog,
-                on_navigate_back=self.app.on_view_pop,
-                local_storage=self.app.local_storage,
-            )
-        elif routePath.match(CONTRACT_DETAILS_SCREEN_ROUTE):
+            screen = CreateContractScreen(params=self.tuttle_view_params)
+        elif routePath.match(f"{CONTRACT_DETAILS_SCREEN_ROUTE}/:contractId"):
             screen = ViewContractScreen(
-                navigate_to_route=self.app.change_route,
-                show_snack=self.app.show_snack,
-                dialog_controller=self.app.control_alert_dialog,
-                on_navigate_back=self.app.on_view_pop,
-                local_storage=self.app.local_storage,
+                params=self.tuttle_view_params, contract_id=routePath.contractId
             )
-        elif routePath.match(CONTRACT_EDITOR_SCREEN_ROUTE):
+        elif routePath.match(f"{CONTRACT_EDITOR_SCREEN_ROUTE}/:contractId"):
+            contractId = None
+            if hasattr(routePath, "contractId"):
+                contractId = routePath.contractId
             screen = ContractEditorScreen(
-                navigate_to_route=self.app.change_route,
-                show_snack=self.app.show_snack,
-                dialog_controller=self.app.control_alert_dialog,
-                on_navigate_back=self.app.on_view_pop,
-                local_storage=self.app.local_storage,
+                params=self.tuttle_view_params, contract_id=contractId
             )
         elif routePath.match(PREFERENCES_SCREEN_ROUTE):
             screen = PreferencesScreen(
-                navigate_to_route=self.app.change_route,
-                show_snack=self.app.show_snack,
-                dialog_controller=self.app.control_alert_dialog,
-                on_navigate_back=self.app.on_view_pop,
-                on_theme_changed=self.app.on_theme_mode_changed,
-                local_storage=self.app.local_storage,
+                params=self.tuttle_view_params, on_theme_changed=self.on_theme_changed
             )
         elif routePath.match(PROJECT_CREATOR_SCREEN_ROUTE):
-            screen = CreateProjectScreen(
-                navigate_to_route=self.app.change_route,
-                show_snack=self.app.show_snack,
-                dialog_controller=self.app.control_alert_dialog,
-                on_navigate_back=self.app.on_view_pop,
-                local_storage=self.app.local_storage,
-            )
-        elif routePath.match(PROJECT_DETAILS_SCREEN_ROUTE):
+            screen = CreateProjectScreen(params=self.tuttle_view_params)
+        elif routePath.match(f"{PROJECT_DETAILS_SCREEN_ROUTE}/:projectId"):
             screen = ViewProjectScreen(
-                navigate_to_route=self.app.change_route,
-                show_snack=self.app.show_snack,
-                dialog_controller=self.app.control_alert_dialog,
-                on_navigate_back=self.app.on_view_pop,
-                local_storage=self.app.local_storage,
+                params=self.tuttle_view_params, project_id=routePath.projectId
             )
-        elif routePath.match(PROJECT_EDITOR_SCREEN_ROUTE):
+        elif routePath.match(PROJECT_EDITOR_SCREEN_ROUTE) or routePath.match(
+            f"{PROJECT_EDITOR_SCREEN_ROUTE}/:projectId"
+        ):
+            projectId = None
+            if hasattr(routePath, "projectId"):
+                projectId = routePath.projectId
             screen = EditProjectScreen(
-                navigate_to_route=self.app.change_route,
-                show_snack=self.app.show_snack,
-                dialog_controller=self.app.control_alert_dialog,
-                on_navigate_back=self.app.on_view_pop,
-                local_storage=self.app.local_storage,
+                params=self.tuttle_view_params, project_id=projectId
             )
         else:
-            screen = Error404Screen(
-                navigate_to_route=self.app.change_route,
-                show_snack=self.app.show_snack,
-                dialog_controller=self.app.control_alert_dialog,
-                on_navigate_back=self.app.on_view_pop,
-            )
+            screen = Error404Screen(params=self.tuttle_view_params)
 
+        print(f"screen has {screen.page_scroll_type}")
         return self.get_page_route_view(routePath.route, view=screen)
 
 

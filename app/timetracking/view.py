@@ -162,24 +162,9 @@ class NewTimeTrackPopUp(DialogHandler):
 class TimetracksView(TuttleView, UserControl):
     """Time tracking view on home page"""
 
-    def __init__(
-        self,
-        navigate_to_route,
-        show_snack,
-        dialog_controller,
-        local_storage,
-        upload_file_callback: Callable,
-        pick_file_callback: Callable,
-    ):
-        super().__init__(
-            navigate_to_route=navigate_to_route,
-            show_snack=show_snack,
-            dialog_controller=dialog_controller,
-        )
-        self.intent_handler = TimeTrackingIntent(local_storage=local_storage)
-
-        self.upload_file_callback = upload_file_callback
-        self.pick_file_callback = pick_file_callback
+    def __init__(self, params):
+        super().__init__(params)
+        self.intent_handler = TimeTrackingIntent(local_storage=params.local_storage)
         self.loading_indicator = ProgressRing(
             width=32,
             height=32,

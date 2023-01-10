@@ -6,9 +6,8 @@ from tuttle.model import User
 
 
 class AuthIntent:
-    def __init__(self, local_storage: ClientStorage):
+    def __init__(self):
         self.data_source = UserDataSource()
-        self.local_storage = local_storage
 
     def create_user(
         self,

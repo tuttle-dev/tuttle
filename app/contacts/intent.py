@@ -11,9 +11,10 @@ from tuttle.model import (
 
 
 class ContactsIntent:
-    def __init__(self, local_storage: ClientStorage):
+    def __init__(
+        self,
+    ):
         self.data_source = ContactDataSource()
-        self.local_storage = local_storage
 
     def get_all_contacts_as_map(self) -> Mapping[int, Contact]:
         result = self.data_source.get_all_contacts_as_map()

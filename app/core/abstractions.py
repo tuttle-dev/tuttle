@@ -4,7 +4,7 @@ from flet import AlertDialog
 from loguru import logger
 import sqlmodel
 from pathlib import Path
-
+from dataclasses import dataclass
 from .models import IntentResult
 from .utils import AlertDialogControls, START_ALIGNMENT, AUTO_SCROLL
 
@@ -36,29 +36,36 @@ class ClientStorage(ABC):
         pass
 
 
+@dataclass
+class TuttleViewParams:
+    navigate_to_route: Callable
+    show_snack: Callable
+    dialog_controller: Callable
+    upload_file_callback: Callable
+    pick_file_callback: Callable
+    local_storage: Optional[ClientStorage] = None
+    vertical_alignment_in_parent: str = START_ALIGNMENT
+    horizontal_alignment_in_parent: str = START_ALIGNMENT
+    keep_back_stack = True
+    on_navigate_back: Optional[Callable] = None
+    page_scroll_type: Optional[str] = AUTO_SCROLL
+
+
 class TuttleView(ABC):
     """Abstract class for all UI screens"""
 
-    def __init__(
-        self,
-        navigate_to_route: Callable,
-        show_snack: Callable,
-        dialog_controller: Callable,
-        vertical_alignment_in_parent: str = START_ALIGNMENT,
-        horizontal_alignment_in_parent: str = START_ALIGNMENT,
-        keep_back_stack=True,
-        on_navigate_back: Optional[Callable] = None,
-        page_scroll_type: Optional[str] = AUTO_SCROLL,
-    ):
+    def __init__(self, params: TuttleViewParams):
         super().__init__()
-        self.navigate_to_route = navigate_to_route
-        self.show_snack = show_snack
-        self.dialog_controller = dialog_controller
-        self.vertical_alignment_in_parent = vertical_alignment_in_parent
-        self.horizontal_alignment_in_parent = horizontal_alignment_in_parent
-        self.keep_back_stack = keep_back_stack
-        self.on_navigate_back = on_navigate_back
-        self.page_scroll_type = page_scroll_type
+        self.navigate_to_route = params.navigate_to_route
+        self.show_snack = params.show_snack
+        self.dialog_controller = params.dialog_controller
+        self.vertical_alignment_in_parent = params.vertical_alignment_in_parent
+        self.horizontal_alignment_in_parent = params.horizontal_alignment_in_parent
+        self.keep_back_stack = params.keep_back_stack
+        self.on_navigate_back = params.on_navigate_back
+        self.page_scroll_type = params.page_scroll_type
+        self.upload_file_callback = params.upload_file_callback
+        self.pick_file_callback = params.pick_file_callback
         self.mounted = False
 
     def parent_intent_listener(self, intent: str, data: any):

@@ -37,25 +37,17 @@ from res.dimens import (
     MIN_WINDOW_HEIGHT,
 )
 from res.theme import THEME_MODES
+from core.abstractions import TuttleViewParams
 
 
 class PreferencesScreen(TuttleView, UserControl):
     def __init__(
         self,
-        navigate_to_route,
-        show_snack,
-        dialog_controller,
-        on_navigate_back,
-        local_storage,
+        params: TuttleViewParams,
         on_theme_changed,
     ):
-        super().__init__(
-            navigate_to_route=navigate_to_route,
-            show_snack=show_snack,
-            dialog_controller=dialog_controller,
-            on_navigate_back=on_navigate_back,
-        )
-        self.intent_handler = PreferencesIntent(client_storage=local_storage)
+        super().__init__(params=params)
+        self.intent_handler = PreferencesIntent(client_storage=params.local_storage)
         self.on_theme_changed_callback = on_theme_changed
         self.preferences: Optional[Preferences] = None
         self.currencies = []

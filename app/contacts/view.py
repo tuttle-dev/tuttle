@@ -18,7 +18,7 @@ from flet import (
     padding,
     ListTile,
 )
-
+from core.abstractions import TuttleViewParams
 from contacts.model import Contact, get_empty_contact
 from contacts.intent import ContactsIntent
 from core.abstractions import DialogHandler, TuttleView
@@ -318,13 +318,9 @@ class ContactEditorPopUp(DialogHandler):
 
 
 class ContactsListView(TuttleView, UserControl):
-    def __init__(self, navigate_to_route, show_snack, dialog_controller, local_storage):
-        super().__init__(
-            navigate_to_route=navigate_to_route,
-            show_snack=show_snack,
-            dialog_controller=dialog_controller,
-        )
-        self.intent_handler = ContactsIntent(local_storage=local_storage)
+    def __init__(self, params: TuttleViewParams):
+        super().__init__(params)
+        self.intent_handler = ContactsIntent()
         self.loading_indicator = horizontal_progress
         self.no_contacts_control = Text(
             value="You have not added any contacts yet",

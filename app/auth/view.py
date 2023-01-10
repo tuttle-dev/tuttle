@@ -8,6 +8,7 @@ from flet import (
     UserControl,
     padding,
 )
+from core.abstractions import TuttleViewParams
 
 from typing import Callable
 
@@ -304,20 +305,10 @@ class SplashView(UserControl):
 
 
 class SplashScreen(TuttleView, UserControl):
-    def __init__(
-        self,
-        navigate_to_route: Callable,
-        show_snack: Callable,
-        dialog_controller: Callable,
-        local_storage: ClientStorage,
-    ):
-        super().__init__(
-            navigate_to_route,
-            show_snack,
-            dialog_controller,
-            keep_back_stack=False,
-        )
-        self.intent_handler = AuthIntent(local_storage=local_storage)
+    def __init__(self, params: TuttleViewParams):
+        super().__init__(params=params)
+        self.keep_back_stack = False
+        self.intent_handler = AuthIntent()
 
     def on_save_user(
         self,
@@ -419,24 +410,10 @@ class SplashScreen(TuttleView, UserControl):
 
 
 class ProfileScreen(TuttleView, UserControl):
-    def __init__(
-        self,
-        navigate_to_route,
-        show_snack,
-        dialog_controller,
-        on_navigate_back,
-        local_storage,
-        upload_file_callback,
-        pick_file_callback,
-    ):
-        super().__init__(
-            navigate_to_route=navigate_to_route,
-            show_snack=show_snack,
-            dialog_controller=dialog_controller,
-            on_navigate_back=on_navigate_back,
-            horizontal_alignment_in_parent=CENTER_ALIGNMENT,
-        )
-        self.intent_handler = AuthIntent(local_storage=local_storage)
+    def __init__(self, params: TuttleViewParams):
+        super().__init__(params=params)
+        self.horizontal_alignment_in_parent = CENTER_ALIGNMENT
+        self.intent_handler = AuthIntent()
         self.name = ""
         self.email = ""
         self.phone = ""
@@ -447,8 +424,6 @@ class ProfileScreen(TuttleView, UserControl):
         self.city = ""
         self.country = ""
         self.profile_pic_url = ""
-        self.upload_file_callback = upload_file_callback
-        self.pick_file_callback = pick_file_callback
 
     def on_field_focus(self, e):
         """Called when a field receives focus
