@@ -3,6 +3,7 @@ from typing import Callable, Optional
 
 from loguru import logger
 from pathlib import Path
+import sqlmodel
 
 import flet
 from flet import (
@@ -85,6 +86,10 @@ class TuttleApp:
         self.route_parser = TuttleRoutes(self)
         self.current_route_view: Optional[RouteView] = None
         self.page.on_resize = self.page_resize
+
+        # database config
+        self.app_dir = self.ensure_app_dir()
+        self.db_path = self.app_dir / "tuttle.db"
 
     def page_resize(self, e):
         if self.current_route_view:
@@ -222,6 +227,41 @@ class TuttleApp:
             self.page.window_width, self.page.window_height
         )
 
+    def create_model(self):
+        logger.info("Creating database model")
+        sqlmodel.SQLModel.metadata.create_all(self.db_engine, checkfirst=True)
+
+    def clear_database(self):
+        """
+        Delete the database and rebuild database model.
+        """
+        logger.info("Clearing database")
+        try:
+            self.db_path.unlink()
+        except FileNotFoundError:
+            logger.info("Database file not found, skipping delete")
+        self.db_engine = sqlmodel.create_engine(f"sqlite:///{self.db_path}", echo=True)
+        self.create_model()
+
+    def install_demo_data(self):
+        """Install demo data into the database."""
+        self.clear_database()
+        try:
+            demo.install_demo_data(
+                n=10,
+                db_path=self.db_path,
+            )
+        except Exception as ex:
+            logger.exception(ex)
+            logger.error("Failed to install demo data")
+
+    def ensure_app_dir(self) -> Path:
+        """Ensures that the user directory exists"""
+        app_dir = Path.home() / ".tuttle"
+        if not app_dir.exists():
+            app_dir.mkdir(parents=True)
+        return app_dir
+
     def build(self):
         self.page.go(self.page.route)
 
@@ -312,27 +352,6 @@ class TuttleRoutes:
         return self.get_page_route_view(routePath.route, view=screen)
 
 
-def ensure_app_dir() -> Path:
-    """Ensures that the user directory exists"""
-    # use pathlib
-    app_dir = Path.home() / ".tuttle"
-    if not app_dir.exists():
-        app_dir.mkdir(parents=True)
-    return app_dir
-
-
-def install_demo_data():
-    try:
-        app_dir = ensure_app_dir()
-        demo.install_demo_data(
-            n=10,
-            db_path=app_dir / "tuttle.db",
-        )
-    except Exception as ex:
-        logger.exception(ex)
-        logger.error("Failed to install demo data")
-
-
 def get_uploads_url(full_path: bool = True):
     return "assets/uploads" if full_path else "/uploads"
 
@@ -342,7 +361,7 @@ def main(page: Page):
     app = TuttleApp(page)
 
     # install demo data
-    install_demo_data()
+    app.install_demo_data()
     app.build()
 
 
