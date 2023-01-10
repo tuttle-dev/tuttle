@@ -6,10 +6,12 @@ from decimal import Decimal
 from core.models import Cycle, TimeUnit
 
 import faker
-from clients.model import Client
 from core.models import IntentResult
 
-from .model import Contract
+from tuttle.model import (
+    Client,
+    Contract,
+)
 
 
 class ContractDataSource:

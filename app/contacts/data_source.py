@@ -1,14 +1,12 @@
 from typing import Optional
 from pathlib import Path
-import faker
 from loguru import logger
 
 from core.models import IntentResult
 from core.abstractions import SQLModelDataSourceMixin
-from .model import Contact
 
-from tuttle.model import Address
 from tuttle.dev import deprecated
+from tuttle.model import Contact
 
 
 class ContactDataSource(SQLModelDataSourceMixin):

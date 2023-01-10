@@ -223,10 +223,13 @@ class Client(SQLModel, table=True):
     """A client the freelancer has contracted with."""
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    name: str
+    name: str = Field(default="")
     # Client 1:1 invoicing Contact
     invoicing_contact_id: int = Field(default=None, foreign_key="contact.id")
-    invoicing_contact: Contact = Relationship(back_populates="invoicing_contact_of")
+    invoicing_contact: Contact = Relationship(
+        back_populates="invoicing_contact_of",
+        sa_relationship_kwargs={"lazy": "subquery"},
+    )
     contracts: List["Contract"] = Relationship(back_populates="client")
     # non-invoice related contact person?
 
@@ -292,7 +295,10 @@ class Project(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     title: str = Field(
-        description="A short, unique description", sa_column_kwargs={"unique": True}
+        description="A short, unique title", sa_column_kwargs={"unique": True}
+    )
+    description: str = Field(
+        description="A longer description of the project", default=""
     )
     # TODO: tag: constr(regex=r"#\S+")
     tag: str = Field(description="A unique tag", sa_column_kwargs={"unique": True})
@@ -307,6 +313,20 @@ class Project(SQLModel, table=True):
     @property
     def client(self):
         return self.contract.client
+
+    def get_brief_description(self):
+        if len(self.description) <= 108:
+            return self.description
+        else:
+            return f"{self.description[0:108]}..."
+
+    def is_active(self) -> bool:
+        today = datetime.date.today()
+        return self.end_date > today
+
+    def is_upcoming(self) -> bool:
+        today = datetime.date.today()
+        return self.start_date > today
 
 
 class TimeTrackingItem(SQLModel, table=True):

@@ -2,11 +2,11 @@ from typing import Optional, Mapping
 
 from core.abstractions import ClientStorage
 from core.models import IntentResult
-from .model import Contact
 from .data_source import ContactDataSource
 
 from tuttle.model import (
     Address,
+    Contact,
 )
 
 

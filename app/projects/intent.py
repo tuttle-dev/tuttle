@@ -3,13 +3,18 @@ import datetime
 from core.abstractions import ClientStorage
 from core.models import IntentResult
 from .model import Project
-from clients.model import Client
 from contracts.model import Contract
 from .data_source import ProjectDataSource
 
 
 from clients.data_source import ClientDataSource
 from contracts.data_source import ContractDataSource
+
+from tuttle.model import (
+    Client,
+    Project,
+    Contract,
+)
 
 
 class ProjectsIntent:

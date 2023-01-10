@@ -2,11 +2,16 @@ import datetime
 
 import faker
 
-from clients.model import Client
 from contracts.model import Contract
 from core.models import Cycle, IntentResult, TimeUnit
 from typing import Optional
-from .model import Project
+
+from tuttle.model import (
+    Client,
+    Contract,
+    Contact,
+    Project,
+)
 
 
 class ProjectDataSource:
