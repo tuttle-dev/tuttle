@@ -442,6 +442,10 @@ class ContactsListView(TuttleView, UserControl):
                 self.update()
         except Exception as e:
             print(f"exception raised @contacts.did_mount {e}")
+            self.show_snack("Loading contacts failed.")
+            self.loading_indicator.visible = False
+            if self.mounted:
+                self.update()
 
     def build(self):
         view = Column(

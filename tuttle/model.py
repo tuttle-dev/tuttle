@@ -115,8 +115,9 @@ class User(SQLModel, table=True):
     website: Optional[str]
     email: str
     phone_number: str
+    profile_photo : Optional[str] = Field(default=None)
     address_id: Optional[int] = Field(default=None, foreign_key="address.id")
-    address: Optional[Address] = Relationship(back_populates="users")
+    address: Optional[Address] = Relationship(back_populates="users", sa_relationship_kwargs={"lazy": "subquery"})
     VAT_number: Optional[str]
     # User 1:1* ICloudAccount
     icloud_account_id: Optional[int] = Field(

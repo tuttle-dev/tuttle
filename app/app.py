@@ -111,13 +111,13 @@ class TuttleApp:
 
     def upload_file_callback(self, file):
         try:
-
+            upload_url = self.page.get_upload_url(file.name, 600)
             upload_item = FilePickerUploadFile(
                 file.name,
-                upload_url=self.page.get_upload_url(file.name, 600),
+                upload_url=upload_url,
             )
             self.file_picker.upload([upload_item])
-            return f"{get_uploads_url()}/{file.name}"
+            return upload_url  # f"{get_uploads_url()}/{file.name}"
         except Exception as e:
             print(f"Exception @app.upload_file_callback raised during file upload {e}")
             return None
