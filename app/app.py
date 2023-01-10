@@ -165,14 +165,16 @@ class TuttleApp:
             if self.page.dialog:
                 # make sure no two dialogs attempt to open at once
                 self.page.dialog.open = False
+                self.page.update()
             if dialog:
                 self.page.dialog = dialog
                 dialog.open = True
+                self.page.update()
 
         if control.value == AlertDialogControls.CLOSE.value:
             if self.page.dialog:
                 dialog.open = False
-        self.page.update()
+                self.page.update()
 
     def change_route(self, to_route: str, data: Optional[any] = None):
         """navigates to a new route"""

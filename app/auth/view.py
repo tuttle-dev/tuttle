@@ -54,7 +54,7 @@ class LoginForm(UserControl):
     def __init__(
         self,
         on_logged_in,
-        on_save_user,
+        on_save_user_callback,
     ):
         super().__init__()
         self.form_error = ""
@@ -67,45 +67,27 @@ class LoginForm(UserControl):
         self.postal_code = ""
         self.city = ""
         self.country = ""
-        self.on_save_user = on_save_user
+        self.on_save_user = on_save_user_callback
         self.on_logged_in = on_logged_in
 
+    def set_login_err(self, err: str = ""):
+        self.login_err_txt.value = err
+        self.login_err_txt.visible = err != ""
+
     def on_field_focus(self, e):
-        self.name_field.error_text = ""
-        self.email_field.error_text = ""
-        self.phone_field.error_text = ""
-        self.title_field.error_text = ""
-        self.login_err_txt.value = ""
-        self.login_err_txt.visible = False
+        for field in [
+            self.name_field,
+            self.email_field,
+            self.phone_field,
+            self.title_field,
+        ]:
+            field.error_text = ""
+        self.set_login_err()
         if self.mounted:
             self.update()
 
-    def on_change_name(self, e):
-        self.name = e.control.value
-
-    def on_change_email(self, e):
-        self.email = e.control.value
-
-    def on_change_title(self, e):
-        self.title = e.control.value
-
-    def on_change_phone(self, e):
-        self.phone = e.control.value
-
-    def on_street_changed(self, e):
-        self.street = e.control.value
-
-    def on_street_num_changed(self, e):
-        self.street_number = e.control.value
-
-    def on_postal_code_changed(self, e):
-        self.postal_code = e.control.value
-
-    def on_city_changed(self, e):
-        self.city = e.control.value
-
-    def on_country_changed(self, e):
-        self.country = e.control.value
+    def on_change_value(self, form_property, e):
+        setattr(self, form_property, e.control.value)
 
     def on_submit_btn_clicked(self, e):
 
@@ -140,8 +122,7 @@ class LoginForm(UserControl):
         ):
 
             missingRequiredDataErr = "Please provide your full address"
-            self.login_err_txt.value = missingRequiredDataErr
-            self.login_err_txt.visible = True
+            self.set_login_err(missingRequiredDataErr)
 
         if not missingRequiredDataErr:
             # save user
@@ -158,8 +139,7 @@ class LoginForm(UserControl):
             )
             if not result.was_intent_successful:
                 self.form_error = result.error_msg
-                self.login_err_txt.value = self.form_error
-                self.login_err_txt.visible = True
+                self.set_login_err(self.form_error)
                 self.submit_btn.disabled = False
                 self.update()
             else:
@@ -170,66 +150,63 @@ class LoginForm(UserControl):
             if self.mounted:
                 self.update()
 
-    def on_skip_clicked(self, e):
-        self.on_logged_in()
-
     def build(self):
         """Called when form is built"""
         self.name_field = views.get_std_txt_field(
-            self.on_change_name,
+            lambda e: self.on_change_value("name", e),
             "Name",
             "your name",
             on_focus=self.on_field_focus,
             keyboard_type=KEYBOARD_NAME,
         )
         self.email_field = views.get_std_txt_field(
-            self.on_change_email,
+            lambda e: self.on_change_value("email", e),
             "Email",
             "your email address",
             on_focus=self.on_field_focus,
             keyboard_type=KEYBOARD_EMAIL,
         )
         self.phone_field = views.get_std_txt_field(
-            self.on_change_phone,
+            lambda e: self.on_change_value("phone", e),
             "Phone",
             "your phone number",
             on_focus=self.on_field_focus,
             keyboard_type=KEYBOARD_PHONE,
         )
         self.title_field = views.get_std_txt_field(
-            self.on_change_title,
+            lambda e: self.on_change_value("title", e),
             "Job Title",
             "your work title",
             on_focus=self.on_field_focus,
             keyboard_type=KEYBOARD_TEXT,
         )
         self.street_field = views.get_std_txt_field(
-            on_change=self.on_street_changed,
+            lambda e: self.on_change_value("street", e),
             lbl="Street Name",
             keyboard_type=KEYBOARD_TEXT,
             expand=1,
         )
         self.street_number_field = views.get_std_txt_field(
-            on_change=self.on_street_num_changed,
+            lambda e: self.on_change_value("street_number", e),
             lbl="Street Number",
             keyboard_type=KEYBOARD_NUMBER,
             expand=1,
         )
         self.postal_code_field = views.get_std_txt_field(
-            on_change=self.on_postal_code_changed,
+            lambda e: self.on_change_value("postal_code", e),
             lbl="Postal Code",
             keyboard_type=KEYBOARD_NUMBER,
             expand=1,
         )
 
         self.city_field = views.get_std_txt_field(
-            on_change=self.on_city_changed,
+            lambda e: self.on_change_value("city", e),
             lbl="City",
             keyboard_type=KEYBOARD_TEXT,
             expand=1,
         )
         self.country_field = views.get_std_txt_field(
-            on_change=self.on_country_changed,
+            lambda e: self.on_change_value("country", e),
             lbl="Country",
             keyboard_type=KEYBOARD_TEXT,
         )
@@ -237,10 +214,6 @@ class LoginForm(UserControl):
         self.submit_btn = views.get_primary_btn(
             on_click=self.on_submit_btn_clicked,
             label="Get Started",
-        )
-        self.skip_btn = views.get_secondary_btn(
-            on_click=self.on_skip_clicked,
-            label="Skip",
         )
         self.form = Column(
             spacing=dimens.SPACE_MD,
@@ -266,7 +239,6 @@ class LoginForm(UserControl):
                 self.country_field,
                 self.login_err_txt,
                 self.submit_btn,
-                self.skip_btn,
             ],
         )
 
@@ -277,31 +249,6 @@ class LoginForm(UserControl):
 
     def will_unmount(self):
         self.mounted = False
-
-
-class SplashView(UserControl):
-    def build(self):
-        view = Column(
-            alignment=START_ALIGNMENT,
-            horizontal_alignment=CENTER_ALIGNMENT,
-            expand=True,
-            controls=[
-                views.mdSpace,
-                views.get_image(
-                    image_paths.splashImgPath, "welcome screen image", width=300
-                ),
-                views.get_headline_with_subtitle(
-                    "Tuttle",
-                    "Time and money management for freelancers",
-                    alignmentInContainer=CENTER_ALIGNMENT,
-                    txtAlignment=TXT_ALIGN_CENTER,
-                    titleSize=fonts.HEADLINE_3_SIZE,
-                    subtitleSize=fonts.HEADLINE_4_SIZE,
-                ),
-            ],
-        )
-
-        return view
 
 
 class SplashScreen(TuttleView, UserControl):
@@ -355,7 +302,7 @@ class SplashScreen(TuttleView, UserControl):
     def show_login_form(self):
         form = LoginForm(
             on_logged_in=self.on_logged_in,
-            on_save_user=self.on_save_user,
+            on_save_user_callback=self.on_save_user,
         )
         self.form_container.controls.remove(self.loading_indicator)
         self.form_container.controls.append(form)
@@ -366,9 +313,7 @@ class SplashScreen(TuttleView, UserControl):
         try:
             self.mounted = True
             self.check_auth_status()
-            # uncomment to skip login screen self.on_logged_in()
         except Exception as e:
-            # log
             self.mounted = False
             print(f"exception raised @splash_screen.did_mount {e}")
 
@@ -394,7 +339,27 @@ class SplashScreen(TuttleView, UserControl):
                 Container(
                     col={"xs": 12, "sm": 5},
                     padding=padding.all(dimens.SPACE_XS),
-                    content=SplashView(),
+                    content=Column(
+                        alignment=START_ALIGNMENT,
+                        horizontal_alignment=CENTER_ALIGNMENT,
+                        expand=True,
+                        controls=[
+                            views.mdSpace,
+                            views.get_image(
+                                image_paths.splashImgPath,
+                                "welcome screen image",
+                                width=300,
+                            ),
+                            views.get_headline_with_subtitle(
+                                "Tuttle",
+                                "Time and money management for freelancers",
+                                alignmentInContainer=CENTER_ALIGNMENT,
+                                txtAlignment=TXT_ALIGN_CENTER,
+                                titleSize=fonts.HEADLINE_3_SIZE,
+                                subtitleSize=fonts.HEADLINE_4_SIZE,
+                            ),
+                        ],
+                    ),
                 ),
                 Container(
                     col={"xs": 12, "sm": 7},
