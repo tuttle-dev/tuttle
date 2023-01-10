@@ -563,7 +563,6 @@ class ProfileScreen(TuttleView, UserControl):
                     self.profile_photo_control.src = self.uploaded_photo_url
                     msg = "Profile photo updated"
                     is_err = False
-                print(self.uploaded_photo_url)
                 self.show_snack(msg, is_err)
                 self.uploaded_photo_url = None  # clear
             self.toggle_progress_bar(hide_progress=True)
@@ -605,9 +604,9 @@ class ProfileScreen(TuttleView, UserControl):
             src=self.profile_pic_url
             if self.profile_pic_url
             else image_paths.default_avatar,
-            width=56,
-            height=56,
-            border_radius=border_radius.all(12),
+            width=72,
+            height=72,
+            border_radius=border_radius.all(36),
             fit=CONTAIN,
         )
         self.name_field = views.get_std_txt_field(

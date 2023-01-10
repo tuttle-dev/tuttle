@@ -111,13 +111,13 @@ class TuttleApp:
 
     def upload_file_callback(self, file):
         try:
-            upload_url = self.page.get_upload_url(file.name, 600)
+            tmp_upload_url = self.page.get_upload_url(file.name, 600)
             upload_item = FilePickerUploadFile(
                 file.name,
-                upload_url=upload_url,
+                upload_url=tmp_upload_url,
             )
             self.file_picker.upload([upload_item])
-            return upload_url  # f"{get_uploads_url()}/{file.name}"
+            return f"{get_uploads_url(full_path = False)}/{file.name}"
         except Exception as e:
             print(f"Exception @app.upload_file_callback raised during file upload {e}")
             return None
@@ -374,8 +374,8 @@ def install_demo_data():
         logger.error("Failed to install demo data")
 
 
-def get_uploads_url():
-    return ensure_app_dir() / "uploads"
+def get_uploads_url(full_path: bool = True):
+    return "assets/uploads" if full_path else "/uploads"
 
 
 def main(page: Page):
