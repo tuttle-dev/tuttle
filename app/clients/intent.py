@@ -2,16 +2,16 @@ from typing import Optional, Mapping
 
 from core.abstractions import ClientStorage
 from core.models import IntentResult
-from .model import Client
-from contacts.model import Contact
 from .data_source import ClientDataSource
 from contacts.data_source import ContactDataSource
+from tuttle.model import (
+    Client,
+)
 
 
 class ClientsIntent:
-    def __init__(self, local_storage: ClientStorage):
+    def __init__(self):
         self.contacts_data_source = ContactDataSource()
-        self.local_storage = local_storage
         self.data_source = ClientDataSource()
 
     def get_all_clients_as_map(self) -> Mapping[int, Client]:
@@ -28,7 +28,7 @@ class ClientsIntent:
         self,
         client: Client = None,
     ) -> IntentResult:
-        if not client.title:
+        if not client.name:
             return IntentResult(
                 was_intent_successful=False,
                 error_msg_if_err="Please provide the client's title",
@@ -43,7 +43,7 @@ class ClientsIntent:
                 error_msg_if_err="A contact name is required.",
                 data=None,
             )
-        if client.invoicing_contact.address.is_empty():
+        if client.invoicing_contact.address.is_empty:
             return IntentResult(
                 was_intent_successful=False,
                 error_msg_if_err="Please specify the contact address.",

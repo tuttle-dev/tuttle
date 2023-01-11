@@ -2,19 +2,23 @@ from typing import List, Optional, Mapping
 import datetime
 from core.abstractions import ClientStorage
 from core.models import IntentResult
-from .model import Project
-from clients.model import Client
-from contracts.model import Contract
 from .data_source import ProjectDataSource
 
 
 from clients.data_source import ClientDataSource
 from contracts.data_source import ContractDataSource
 
+from tuttle.model import (
+    Client,
+    Project,
+    Contract,
+)
+
 
 class ProjectsIntent:
-    def __init__(self, local_storage: ClientStorage):
-        self.local_storage = local_storage
+    def __init__(
+        self,
+    ):
         self.data_source = ProjectDataSource()
         self.clients_data_source = ClientDataSource()
         self.contracts_data_source = ContractDataSource()
@@ -55,7 +59,8 @@ class ProjectsIntent:
     def get_project_by_id(self, projectId) -> IntentResult:
         result = self.data_source.get_project_by_id(projectId=projectId)
         if not result.was_intent_successful:
-            result.error_msg = "-TODO- error message"
+            result.error_msg = "Something went wrong, failed to load the project"
+            print(result.log_message)
         return result
 
     def get_all_clients_as_map(self) -> Mapping[int, Client]:
@@ -85,7 +90,7 @@ class ProjectsIntent:
         if not self.completed_projects_cache:
             self.completed_projects_cache = {}
             for key in self.all_projects_cache:
-                p = self.all_projects_cache[key]
+                p: Project = self.all_projects_cache[key]
                 if p.is_completed:
                     self.completed_projects_cache[key] = p
         return self.completed_projects_cache

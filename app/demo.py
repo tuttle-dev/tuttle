@@ -1,14 +1,29 @@
 from typing import List
 
+from pathlib import Path
 import faker
 import random
 import datetime
 from sqlmodel import Field, SQLModel, create_engine, Session, select
+import sqlalchemy
+from loguru import logger
 
-from tuttle.model import Address, Contact, Client, Project, Contract, TimeUnit, Cycle
+from tuttle.model import (
+    Address,
+    Contact,
+    Client,
+    Project,
+    Contract,
+    TimeUnit,
+    Cycle,
+    User,
+    BankAccount,
+)
 
-def create_fake_contact():
-    fake = faker.Faker()
+
+def create_fake_contact(
+    fake: faker.Faker,
+):
     street_line, city_line = fake.address().splitlines()
     a = Address(
         id=id,
@@ -30,10 +45,11 @@ def create_fake_contact():
     )
     return contact
 
+
 def create_fake_client(
     invoicing_contact: Contact,
+    fake: faker.Faker,
 ):
-    fake = faker.Faker()
     client = Client(
         id=id,
         name=fake.company(),
@@ -44,11 +60,11 @@ def create_fake_client(
 
 def create_fake_contract(
     client: Client,
+    fake: faker.Faker,
 ) -> Contract:
     """
     Create a fake contract for the given client.
     """
-    fake = faker.Faker()
     return Contract(
         title=fake.sentence(),
         client=client,
@@ -64,14 +80,15 @@ def create_fake_contract(
         billing_cycle=random.choice(list(Cycle)),
     )
 
+
 def create_fake_project(
     contract: Contract,
+    fake: faker.Faker,
 ):
-    fake = faker.Faker()
     project_title = fake.bs()
     project = Project(
         title=project_title,
-        tag=project_title.split(" ")[0].lower(),
+        tag=project_title.replace(" ", "-").lower(),
         description=fake.paragraph(nb_sentences=2),
         unique_tag=project_title.split(" ")[0].lower(),
         is_completed=fake.pybool(),
@@ -82,28 +99,68 @@ def create_fake_project(
     return project
 
 
-
 def create_fake_data(
     n: int = 10,
 ):
-    contacts = [create_fake_contact() for _ in range(n)]
-    clients = [create_fake_client(contact) for contact in contacts]
-    contracts = [create_fake_contract(client) for client in clients]
-    projects = [create_fake_project(contract) for contract in contracts]
+    locales = ["de_DE", "en_US", "es_ES", "fr_FR", "it_IT", "sv_SE"]
+    fake = faker.Faker()
+    contacts = [create_fake_contact(fake) for _ in range(n)]
+    clients = [create_fake_client(contact, fake) for contact in contacts]
+    contracts = [create_fake_contract(client, fake) for client in clients]
+    projects = [create_fake_project(contract, fake) for contract in contracts]
     return projects
 
 
+def create_demo_user() -> User:
+    user = User(
+        name="Harry Tuttle",
+        subtitle="Heating Engineer",
+        website="https://tuttle-dev.github.io/tuttle/",
+        email="mail@tuttle.com",
+        phone_number="+55555555555",
+        VAT_number="27B-6",
+        address=Address(
+            name="Harry Tuttle",
+            street="Main Street",
+            number="450",
+            city="Somewhere",
+            postal_code="555555",
+            country="Brazil",
+        ),
+        bank_account=BankAccount(
+            name="Giro",
+            IBAN="BZ99830994950003161565",
+            BIC="BANKINFO101",
+        ),
+    )
+    return user
 
 
 def install_demo_data(
     n: int,
+    db_path: str,
 ):
+    db_path = f"""sqlite:///{db_path}"""
+    logger.info(f"Installing demo data in {db_path}...")
+    logger.info(f"Creating {n} fake projects...")
     projects = create_fake_data(n)
-    db_engine = create_engine("sqlite:///")
+    logger.info(f"Creating database engine at: {db_path}...")
+    db_engine = create_engine(db_path)
+    logger.info("Creating database tables...")
     SQLModel.metadata.create_all(db_engine)
+
+    logger.info("Creating demo user...")
     with Session(db_engine) as session:
-        session.add_all(projects)
+        user = create_demo_user()
+        session.add(user)
         session.commit()
+
+    logger.info("Adding demo data to database...")
+    with Session(db_engine) as session:
+        for project in projects:
+            session.add(project)
+            session.commit()
+    logger.info("Demo data installed.")
 
 
 if __name__ == "__main__":

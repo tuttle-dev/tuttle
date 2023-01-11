@@ -20,8 +20,8 @@ from flet import (
     border,
 )
 from core.views import get_body_txt, get_headline_with_subtitle
-from core.abstractions import DialogHandler, TuttleView
-from core.constants_and_enums import (
+from core.abstractions import DialogHandler, TuttleView, TuttleViewParams
+from core.utils import (
     COMPACT_RAIL_WIDTH,
     SPACE_BETWEEN_ALIGNMENT,
     START_ALIGNMENT,
@@ -49,7 +49,7 @@ from res.fonts import (
     SUBTITLE_1_SIZE,
 )
 
-from res.utils import (
+from res.res_utils import (
     ADD_CLIENT_INTENT,
     ADD_CONTACT_INTENT,
     PREFERENCES_SCREEN_ROUTE,
@@ -69,7 +69,7 @@ from flet import (
     ElevatedButton,
 )
 
-from core.constants_and_enums import SPACE_BETWEEN_ALIGNMENT, CENTER_ALIGNMENT
+from core.utils import SPACE_BETWEEN_ALIGNMENT, CENTER_ALIGNMENT
 from core.views import get_app_logo, get_std_txt_field
 from res.colors import BLACK_COLOR, WHITE_COLOR, PRIMARY_COLOR
 from res.dimens import SPACE_MD, TOOLBAR_HEIGHT
@@ -78,11 +78,12 @@ from res.fonts import HEADLINE_4_SIZE, HEADLINE_FONT
 from dataclasses import dataclass
 
 
-from res.utils import (
+from res.res_utils import (
     PROJECT_CREATOR_SCREEN_ROUTE,
     ADD_CLIENT_INTENT,
     ADD_CONTACT_INTENT,
     CONTRACT_CREATOR_SCREEN_ROUTE,
+    NEW_TIME_TRACK_INTENT,
 )
 from core.abstractions import TuttleView
 from typing import Optional
@@ -90,6 +91,7 @@ from clients.view import ClientsListView
 from contacts.view import ContactsListView
 from contracts.view import ContractsListView
 from projects.view import ProjectsListView
+from timetracking.view import TimetracksView
 from flet import icons, Container
 
 
@@ -231,39 +233,13 @@ class MenuItem:
 class MainMenuItemsHandler:
     """Manages home's main-menu items"""
 
-    def __init__(
-        self,
-        navigate_to_route,
-        show_snack,
-        dialog_controller,
-        local_storage,
-    ):
+    def __init__(self, params: TuttleViewParams):
         super().__init__()
         self.menu_title = "My Business"
-        self.projects_view = ProjectsListView(
-            show_snack=show_snack,
-            dialog_controller=dialog_controller,
-            navigate_to_route=navigate_to_route,
-            local_storage=local_storage,
-        )
-        self.contacts_view = ContactsListView(
-            show_snack=show_snack,
-            dialog_controller=dialog_controller,
-            navigate_to_route=navigate_to_route,
-            local_storage=local_storage,
-        )
-        self.clients_view = ClientsListView(
-            show_snack=show_snack,
-            dialog_controller=dialog_controller,
-            navigate_to_route=navigate_to_route,
-            local_storage=local_storage,
-        )
-        self.contracts_view = ContractsListView(
-            show_snack=show_snack,
-            dialog_controller=dialog_controller,
-            navigate_to_route=navigate_to_route,
-            local_storage=local_storage,
-        )
+        self.projects_view = ProjectsListView(params)
+        self.contacts_view = ContactsListView(params)
+        self.clients_view = ClientsListView(params)
+        self.contracts_view = ContractsListView(params)
         self.items = [
             MenuItem(
                 0,
@@ -315,23 +291,19 @@ class MainMenuItemsHandler:
 class SecondaryMenuHandler:
     """Manages home's secondary side-menu items"""
 
-    def __init__(
-        self,
-        navigate_to_route,
-        show_snack,
-        dialog_controller,
-        local_storage,
-    ):
+    def __init__(self, params: TuttleViewParams):
         super().__init__()
         self.menu_title = "Workflows"
+        self.timetrack_view = TimetracksView(params)
         self.items = [
             MenuItem(
                 0,
                 "Time Tracking",
                 icons.TIMER_OUTLINED,
                 icons.TIMER_ROUNDED,
-                Container(),
-                "/404",
+                self.timetrack_view,
+                on_new_screen_route=None,
+                on_new_intent=NEW_TIME_TRACK_INTENT,
             ),
             MenuItem(
                 0,
@@ -353,34 +325,12 @@ class SecondaryMenuHandler:
 
 
 class HomeScreen(TuttleView, UserControl):
-    def __init__(
-        self,
-        navigate_to_route,
-        show_snack,
-        dialog_controller,
-        on_navigate_back,
-        local_storage,
-    ):
-        super().__init__(
-            navigate_to_route=navigate_to_route,
-            show_snack=show_snack,
-            dialog_controller=dialog_controller,
-            keep_back_stack=False,
-            on_navigate_back=on_navigate_back,
-            page_scroll_type=None,
-        )
-        self.main_menu_handler = MainMenuItemsHandler(
-            navigate_to_route=navigate_to_route,
-            show_snack=show_snack,
-            dialog_controller=dialog_controller,
-            local_storage=local_storage,
-        )
-        self.secondary_menu_handler = SecondaryMenuHandler(
-            navigate_to_route=navigate_to_route,
-            show_snack=show_snack,
-            dialog_controller=dialog_controller,
-            local_storage=local_storage,
-        )
+    def __init__(self, params: TuttleViewParams):
+        super().__init__(params)
+        self.keep_back_stack = False
+        self.page_scroll_type = None
+        self.main_menu_handler = MainMenuItemsHandler(params)
+        self.secondary_menu_handler = SecondaryMenuHandler(params)
 
         self.selected_tab = NO_MENU_ITEM_INDEX
 
@@ -453,7 +403,6 @@ class HomeScreen(TuttleView, UserControl):
                 self.secondary_menu.selected_index = None
             else:
                 self.main_menu.selected_index = None
-                self.show_snack("not implemented yet")
             self.update()
 
     # ACTION BUTTONS
@@ -462,17 +411,10 @@ class HomeScreen(TuttleView, UserControl):
             return
         """determine the item user wishes to create"""
         item = self.current_menu_handler.items[self.selected_tab]
-        routeOrIntent = (
-            item.on_new_screen_route if item.on_new_screen_route else item.on_new_intent
-        )
-
-        if routeOrIntent == ADD_CLIENT_INTENT:
-            self.pass_intent_to_destination(ADD_CLIENT_INTENT, "")
-        elif routeOrIntent == ADD_CONTACT_INTENT:
-            # show pop up for creating contact
-            self.pass_intent_to_destination(ADD_CONTACT_INTENT, "")
+        if item.on_new_intent:
+            self.pass_intent_to_destination(item.on_new_intent, "")
         else:
-            self.navigate_to_route(routeOrIntent)
+            self.navigate_to_route(item.on_new_screen_route)
 
     def pass_intent_to_destination(self, intent: str, data: str):
         """forwards an intent to a child destination view"""

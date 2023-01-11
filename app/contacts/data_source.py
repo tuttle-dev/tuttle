@@ -1,60 +1,57 @@
-import faker
-
 from typing import Optional
+from pathlib import Path
+from loguru import logger
 
-from core.models import Address, IntentResult
-from .model import Contact
+from core.models import IntentResult
+from core.abstractions import SQLModelDataSourceMixin
+
+from tuttle.dev import deprecated
+from tuttle.model import Contact
 
 
-class ContactDataSource:
+class ContactDataSource(SQLModelDataSourceMixin):
+    """This class provides the data source for the Contact model"""
+
     def __init__(self):
-        self.contacts = {}
+        """Initialize the ContactDataSource object"""
+        super().__init__()
 
     def get_all_contacts_as_map(self) -> IntentResult:
-        self._set_dummy_contacts()
-        return IntentResult(was_intent_successful=True, data=self.contacts)
+        """Retrieve all contacts and return them as a map with the contact's id as the key.
 
+        Returns:
+            IntentResult : A IntentResult object representing the outcome of the operation
+        """
+        contacts = self.query(Contact)
+        result = {contact.id: contact for contact in contacts}
+        return IntentResult(
+            was_intent_successful=True,
+            data=result,
+        )
+
+    @deprecated
     def get_contact_by_id(self, contactId) -> IntentResult:
-        fake = faker.Faker(["de_DE", "en_US", "es_ES", "fr_FR", "it_IT", "sv_SE"])
-        c = self._get_fake_contact(fake, contactId)
-        return IntentResult(was_intent_successful=True, data=c)
+        """Retrieve a contact by their id.
+
+        This method is deprecated.
+
+        Returns:
+            IntentResult : A IntentResult object representing the outcome of the operation
+        """
+        raise NotImplementedError("This method is deprecated.")
 
     def save_contact(self, contact: Contact) -> IntentResult:
-        if contact.id is None:
-            # then create a new contact and set ids
-            contact.id = 1
-            contact.address_id = 1
-            contact.address.id = 1
-        return IntentResult(was_intent_successful=True, data=contact)
+        """Store a contact in the data source.
 
-    """DUMMY CONTENT BELOW ---  DELETE ALL"""
+        Args:
+            contact (Contact): The contact to be stored.
 
-    def _set_dummy_contacts(self):
-        fake = faker.Faker(["de_DE", "en_US", "es_ES", "fr_FR", "it_IT", "sv_SE"])
-        self.contacts.clear()
-        total = 12
-        for i in range(total):
-            c = self._get_fake_contact(fake, i)
-            self.contacts[c.id] = c
-
-    def _get_fake_contact(self, fake, id: int):
-        street_line, city_line = fake.address().splitlines()
-        a = Address(
-            id=id,
-            street=street_line.split(" ")[0],
-            number=street_line.split(" ")[1],
-            city=city_line.split(" ")[1],
-            postal_code=city_line.split(" ")[0],
-            country=fake.country(),
+        Returns:
+            IntentResult : A IntentResult object representing the outcome of the operation
+        """
+        self.store(contact)
+        logger.info(f"Saved contact: {contact}")
+        return IntentResult(
+            was_intent_successful=True,
+            data=contact,
         )
-        first_name, last_name = fake.name().split(" ", 1)
-        c = Contact(
-            id=id,
-            first_name=first_name,
-            last_name=last_name,
-            email=fake.email(),
-            company=fake.company(),
-            address_id=a.id,
-            address=a,
-        )
-        return c

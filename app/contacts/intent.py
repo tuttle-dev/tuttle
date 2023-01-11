@@ -1,15 +1,20 @@
 from typing import Optional, Mapping
 
 from core.abstractions import ClientStorage
-from core.models import Address, IntentResult
-from .model import Contact
+from core.models import IntentResult
 from .data_source import ContactDataSource
+
+from tuttle.model import (
+    Address,
+    Contact,
+)
 
 
 class ContactsIntent:
-    def __init__(self, local_storage: ClientStorage):
+    def __init__(
+        self,
+    ):
         self.data_source = ContactDataSource()
-        self.local_storage = local_storage
 
     def get_all_contacts_as_map(self) -> Mapping[int, Contact]:
         result = self.data_source.get_all_contacts_as_map()
@@ -31,7 +36,7 @@ class ContactsIntent:
                 error_msg_if_err="Failed to save contact. A name is required.",
                 data=None,
             )
-        if contact.address.is_empty():
+        if contact.address.is_empty:
             return IntentResult(
                 was_intent_successful=False,
                 error_msg_if_err="Failed to save contact. Please specify the address.",

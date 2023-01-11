@@ -1,17 +1,32 @@
 import re
 from typing import Callable, Optional
 
-import flet
-from flet import Page, AlertDialog, SnackBar, TemplateRoute, Text, View
+from loguru import logger
+from pathlib import Path
+import sqlmodel
 
+import flet
+from flet import (
+    Page,
+    FilePickerUploadFile,
+    AlertDialog,
+    SnackBar,
+    TemplateRoute,
+    Text,
+    View,
+)
+
+import demo
 from auth.view import ProfileScreen, SplashScreen
 from contracts.view import (
     ContractEditorScreen,
     CreateContractScreen,
     ViewContractScreen,
 )
+from preferences.model import PreferencesStorageKeys
+from preferences.intent import PreferencesIntent
 from core.abstractions import TuttleView
-from core.constants_and_enums import AlertDialogControls
+from core.utils import AlertDialogControls
 from core.local_storage_impl import ClientStorageImpl
 from core.models import RouteView
 from error_views.page_not_found_screen import Error404Screen
@@ -21,8 +36,8 @@ from projects.view import CreateProjectScreen, EditProjectScreen, ViewProjectScr
 from res.colors import BLACK_COLOR_ALT, ERROR_COLOR, PRIMARY_COLOR, WHITE_COLOR
 from res.dimens import MIN_WINDOW_HEIGHT, MIN_WINDOW_WIDTH
 from res.fonts import APP_FONTS, HEADLINE_4_SIZE, HEADLINE_FONT
-from res.theme import APP_THEME, THEME_MODES
-from res.utils import (
+from res.theme import APP_THEME, THEME_MODES, get_theme_mode_from_value
+from res.res_utils import (
     CONTRACT_CREATOR_SCREEN_ROUTE,
     CONTRACT_DETAILS_SCREEN_ROUTE,
     CONTRACT_EDITOR_SCREEN_ROUTE,
@@ -34,6 +49,7 @@ from res.utils import (
     PROJECT_EDITOR_SCREEN_ROUTE,
     SPLASH_SCREEN_ROUTE,
 )
+from core.abstractions import TuttleViewParams
 
 
 class TuttleApp:
@@ -44,20 +60,36 @@ class TuttleApp:
         self.page.title = "Tuttle"
         self.page.fonts = APP_FONTS
         self.page.theme = APP_THEME
-        self.page.theme_mode = THEME_MODES.dark.value
+        self.local_storage = ClientStorageImpl(page=self.page)
+        preferences = PreferencesIntent(self.local_storage)
+        preferences_result = preferences.get_preference(
+            PreferencesStorageKeys.theme_mode_key
+        )
+        theme = (
+            preferences_result.data
+            if preferences_result.was_intent_successful
+            else THEME_MODES.dark.value
+        )
+        self.page.theme_mode = theme
         self.page.window_min_width = MIN_WINDOW_WIDTH
         self.page.window_min_height = MIN_WINDOW_HEIGHT
+        self.page.window_width = MIN_WINDOW_WIDTH * 2
+        self.page.window_height = MIN_WINDOW_HEIGHT * 2
+        self.file_picker = flet.FilePicker()
+        self.page.overlay.append(self.file_picker)
 
         """holds the RouteView object associated with a route
         used in on route change"""
         self.route_to_route_view_cache = {}
-
-        self.local_storage = ClientStorageImpl(page=self.page)
         self.page.on_route_change = self.on_route_change
         self.page.on_view_pop = self.on_view_pop
-        self.routeParser = TuttleRoutes(self)
+        self.route_parser = TuttleRoutes(self)
         self.current_route_view: Optional[RouteView] = None
         self.page.on_resize = self.page_resize
+
+        # database config
+        self.app_dir = self.ensure_app_dir()
+        self.db_path = self.app_dir / "tuttle.db"
 
     def page_resize(self, e):
         if self.current_route_view:
@@ -65,9 +97,41 @@ class TuttleApp:
                 self.page.window_width, self.page.window_height
             )
 
-    def on_theme_mode_changed(self, theme_mode: THEME_MODES):
+    def pick_file_callback(
+        self,
+        on_file_picker_result,
+        on_upload_progress,
+        allowed_extensions,
+        dialog_title,
+        file_type,
+    ):
+        # used by views to request a file upload
+        self.file_picker.on_result = on_file_picker_result
+        self.file_picker.on_upload = on_upload_progress
+        self.file_picker.pick_files(
+            allow_multiple=False,
+            allowed_extensions=allowed_extensions,
+            dialog_title=dialog_title,
+            file_type=file_type,
+        )
+
+    def upload_file_callback(self, file):
+        try:
+            tmp_upload_url = self.page.get_upload_url(file.name, 600)
+            upload_item = FilePickerUploadFile(
+                file.name,
+                upload_url=tmp_upload_url,
+            )
+            self.file_picker.upload([upload_item])
+            return f"{get_uploads_url(full_path = False)}/{file.name}"
+        except Exception as e:
+            print(f"Exception @app.upload_file_callback raised during file upload {e}")
+            return None
+
+    def on_theme_mode_changed(self, selected_theme: str):
         """callback function used by views for changing app theme mode"""
-        self.page.theme_mode = theme_mode.value
+        mode = get_theme_mode_from_value(selected_theme)
+        self.page.theme_mode = mode.value
         self.page.update()
 
     def show_snack(
@@ -106,14 +170,16 @@ class TuttleApp:
             if self.page.dialog:
                 # make sure no two dialogs attempt to open at once
                 self.page.dialog.open = False
+                self.page.update()
             if dialog:
                 self.page.dialog = dialog
                 dialog.open = True
+                self.page.update()
 
         if control.value == AlertDialogControls.CLOSE.value:
             if self.page.dialog:
                 dialog.open = False
-        self.page.update()
+                self.page.update()
 
     def change_route(self, to_route: str, data: Optional[any] = None):
         """navigates to a new route"""
@@ -146,7 +212,7 @@ class TuttleApp:
 
         # get a new view if no view found in stack
         if not view_for_route:
-            route_view_wrapper = self.routeParser.parse_route(pageRoute=route.route)
+            route_view_wrapper = self.route_parser.parse_route(pageRoute=route.route)
             if not route_view_wrapper.keep_back_stack:
                 """clear previous views"""
                 self.route_to_route_view_cache.clear()
@@ -161,6 +227,47 @@ class TuttleApp:
             self.page.window_width, self.page.window_height
         )
 
+    def create_model(self):
+        logger.info("Creating database model")
+        sqlmodel.SQLModel.metadata.create_all(self.db_engine, checkfirst=True)
+
+    def clear_database(self):
+        """
+        Delete the database and rebuild database model.
+        """
+        logger.info("Clearing database")
+        try:
+            self.db_path.unlink()
+        except FileNotFoundError:
+            logger.info("Database file not found, skipping delete")
+        self.db_engine = sqlmodel.create_engine(f"sqlite:///{self.db_path}", echo=True)
+        self.create_model()
+
+    def install_demo_data(self):
+        """Install demo data into the database."""
+        self.clear_database()
+        try:
+            demo.install_demo_data(
+                n=10,
+                db_path=self.db_path,
+            )
+        except Exception as ex:
+            logger.exception(ex)
+            logger.error("Failed to install demo data")
+
+    def ensure_app_dir(self) -> Path:
+        """Ensures that the user directory exists"""
+        app_dir = Path.home() / ".tuttle"
+        if not app_dir.exists():
+            app_dir.mkdir(parents=True)
+        return app_dir
+
+    def ensure_uploads_dir(self) -> Path:
+        uploads_dir = self.app_dir / "uploads"
+        if not uploads_dir.exists():
+            uploads_dir.mkdir(parents=True)
+        return uploads_dir
+
     def build(self):
         self.page.go(self.page.route)
 
@@ -169,7 +276,16 @@ class TuttleRoutes:
     """Utility class for parsing of routes to destination views"""
 
     def __init__(self, app: TuttleApp):
-        self.app = app
+        self.on_theme_changed = app.on_theme_mode_changed
+        self.tuttle_view_params = TuttleViewParams(
+            navigate_to_route=app.change_route,
+            show_snack=app.show_snack,
+            dialog_controller=app.control_alert_dialog,
+            on_navigate_back=app.on_view_pop,
+            local_storage=app.local_storage,
+            upload_file_callback=app.upload_file_callback,
+            pick_file_callback=app.pick_file_callback,
+        )
 
     def get_page_route_view(
         self,
@@ -177,7 +293,6 @@ class TuttleRoutes:
         view: TuttleView,
     ) -> RouteView:
         """Constructs the view with a given route"""
-
         view_container = View(
             padding=0,
             spacing=0,
@@ -200,106 +315,63 @@ class TuttleRoutes:
         routePath = TemplateRoute(pageRoute)
         screen = None
         if routePath.match(SPLASH_SCREEN_ROUTE):
-            screen = SplashScreen(
-                # TODO: pass app directly?
-                navigate_to_route=self.app.change_route,
-                show_snack=self.app.show_snack,
-                dialog_controller=self.app.control_alert_dialog,
-                local_storage=self.app.local_storage,
-            )
+            screen = SplashScreen(params=self.tuttle_view_params)
         elif routePath.match(HOME_SCREEN_ROUTE):
-            screen = HomeScreen(
-                navigate_to_route=self.app.change_route,
-                show_snack=self.app.show_snack,
-                dialog_controller=self.app.control_alert_dialog,
-                on_navigate_back=self.app.on_view_pop,
-                local_storage=self.app.local_storage,
-            )
+            screen = HomeScreen(params=self.tuttle_view_params)
         elif routePath.match(PROFILE_SCREEN_ROUTE):
-            screen = ProfileScreen(
-                navigate_to_route=self.app.change_route,
-                show_snack=self.app.show_snack,
-                dialog_controller=self.app.control_alert_dialog,
-                on_navigate_back=self.app.on_view_pop,
-                local_storage=self.app.local_storage,
-            )
+            screen = ProfileScreen(params=self.tuttle_view_params)
         elif routePath.match(CONTRACT_CREATOR_SCREEN_ROUTE):
-            screen = CreateContractScreen(
-                navigate_to_route=self.app.change_route,
-                show_snack=self.app.show_snack,
-                dialog_controller=self.app.control_alert_dialog,
-                on_navigate_back=self.app.on_view_pop,
-                local_storage=self.app.local_storage,
-            )
-        elif routePath.match(CONTRACT_DETAILS_SCREEN_ROUTE):
+            screen = CreateContractScreen(params=self.tuttle_view_params)
+        elif routePath.match(f"{CONTRACT_DETAILS_SCREEN_ROUTE}/:contractId"):
             screen = ViewContractScreen(
-                navigate_to_route=self.app.change_route,
-                show_snack=self.app.show_snack,
-                dialog_controller=self.app.control_alert_dialog,
-                on_navigate_back=self.app.on_view_pop,
-                local_storage=self.app.local_storage,
+                params=self.tuttle_view_params, contract_id=routePath.contractId
             )
-        elif routePath.match(CONTRACT_EDITOR_SCREEN_ROUTE):
+        elif routePath.match(f"{CONTRACT_EDITOR_SCREEN_ROUTE}/:contractId"):
+            contractId = None
+            if hasattr(routePath, "contractId"):
+                contractId = routePath.contractId
             screen = ContractEditorScreen(
-                navigate_to_route=self.app.change_route,
-                show_snack=self.app.show_snack,
-                dialog_controller=self.app.control_alert_dialog,
-                on_navigate_back=self.app.on_view_pop,
-                local_storage=self.app.local_storage,
+                params=self.tuttle_view_params, contract_id=contractId
             )
         elif routePath.match(PREFERENCES_SCREEN_ROUTE):
             screen = PreferencesScreen(
-                navigate_to_route=self.app.change_route,
-                show_snack=self.app.show_snack,
-                dialog_controller=self.app.control_alert_dialog,
-                on_navigate_back=self.app.on_view_pop,
-                on_theme_changed=self.app.on_theme_changed,
-                local_storage=self.app.local_storage,
+                params=self.tuttle_view_params, on_theme_changed=self.on_theme_changed
             )
         elif routePath.match(PROJECT_CREATOR_SCREEN_ROUTE):
-            screen = CreateProjectScreen(
-                navigate_to_route=self.app.change_route,
-                show_snack=self.app.show_snack,
-                dialog_controller=self.app.control_alert_dialog,
-                on_navigate_back=self.app.on_view_pop,
-                local_storage=self.app.local_storage,
-            )
-        elif routePath.match(PROJECT_DETAILS_SCREEN_ROUTE):
+            screen = CreateProjectScreen(params=self.tuttle_view_params)
+        elif routePath.match(f"{PROJECT_DETAILS_SCREEN_ROUTE}/:projectId"):
             screen = ViewProjectScreen(
-                navigate_to_route=self.app.change_route,
-                show_snack=self.app.show_snack,
-                dialog_controller=self.app.control_alert_dialog,
-                on_navigate_back=self.app.on_view_pop,
-                local_storage=self.app.local_storage,
+                params=self.tuttle_view_params, project_id=routePath.projectId
             )
-        elif routePath.match(PROJECT_EDITOR_SCREEN_ROUTE):
+        elif routePath.match(PROJECT_EDITOR_SCREEN_ROUTE) or routePath.match(
+            f"{PROJECT_EDITOR_SCREEN_ROUTE}/:projectId"
+        ):
+            projectId = None
+            if hasattr(routePath, "projectId"):
+                projectId = routePath.projectId
             screen = EditProjectScreen(
-                navigate_to_route=self.app.change_route,
-                show_snack=self.app.show_snack,
-                dialog_controller=self.app.control_alert_dialog,
-                on_navigate_back=self.app.on_view_pop,
-                local_storage=self.app.local_storage,
+                params=self.tuttle_view_params, project_id=projectId
             )
         else:
-            screen = Error404Screen(
-                navigate_to_route=self.app.change_route,
-                show_snack=self.app.show_snack,
-                dialog_controller=self.app.control_alert_dialog,
-                on_navigate_back=self.app.on_view_pop,
-            )
+            screen = Error404Screen(params=self.tuttle_view_params)
 
         return self.get_page_route_view(routePath.route, view=screen)
+
+
+def get_uploads_url(full_path: bool = True):
+    return "assets/uploads" if full_path else "/uploads"
 
 
 def main(page: Page):
     """Entry point of the app"""
     app = TuttleApp(page)
+
+    # install demo data
+    app.install_demo_data()
     app.build()
 
 
 if __name__ == "__main__":
     flet.app(
-        name="Tuttle",
-        target=main,
-        assets_dir="assets",
+        name="Tuttle", target=main, assets_dir="assets", upload_dir=get_uploads_url()
     )

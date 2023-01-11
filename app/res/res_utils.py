@@ -19,3 +19,4 @@ PREFERENCES_SCREEN_ROUTE = "/preferences"
 # intents
 ADD_CLIENT_INTENT = "/new_client"
 ADD_CONTACT_INTENT = "/new_contact"
+NEW_TIME_TRACK_INTENT = "/new_timetrack"

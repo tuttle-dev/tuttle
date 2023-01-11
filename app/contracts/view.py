@@ -1,80 +1,12 @@
-import typing
 from enum import Enum
 from typing import Callable, Optional
 from clients.view import ClientEditorPopUp
-from res.utils import CONTRACT_EDITOR_SCREEN_ROUTE
-from flet import (
-    Card,
-    Column,
-    Container,
-    Icon,
-    IconButton,
-    ResponsiveRow,
-    Row,
-    Text,
-    TextButton,
-    UserControl,
-    icons,
-    padding,
-)
-
-from contracts.model import Contract
+import flet as ft
 from contracts.intent import ContractsIntent
-from core.abstractions import ClientStorage, TuttleView
-from core.constants_and_enums import (
-    CENTER_ALIGNMENT,
-    SPACE_BETWEEN_ALIGNMENT,
-    START_ALIGNMENT,
-    TXT_ALIGN_JUSTIFY,
-    AlertDialogControls,
-)
-from core.models import IntentResult
-from core.views import horizontal_progress, mdSpace
-from res import colors, dimens, fonts
-from res.dimens import MIN_WINDOW_WIDTH
-
-
-LABEL_WIDTH = 80
-
-from flet import (
-    ButtonStyle,
-    Card,
-    Column,
-    Container,
-    ElevatedButton,
-    GridView,
-    IconButton,
-    ResponsiveRow,
-    Row,
-    Text,
-    UserControl,
-    border_radius,
-    icons,
-    margin,
-    padding,
-)
-
-from clients.model import Client
-from contracts.model import Contract
+from core.abstractions import TuttleView, DialogHandler, TuttleViewParams
+from res import colors, dimens, fonts, res_utils
 from contracts.intent import ContractsIntent
-from core.abstractions import ClientStorage, TuttleView
-from core.constants_and_enums import (
-    ALWAYS_SCROLL,
-    CENTER_ALIGNMENT,
-    END_ALIGNMENT,
-    HOVERED,
-    KEYBOARD_NUMBER,
-    OTHER_CONTROL_STATES,
-    PRESSED,
-    SELECTED,
-    SPACE_BETWEEN_ALIGNMENT,
-)
-from core.models import (
-    IntentResult,
-    get_cycle_from_value,
-    get_cycle_values_as_list,
-    get_time_unit_values_as_list,
-)
+from core import utils
 from core.views import (
     DateSelector,
     get_dropdown,
@@ -87,215 +19,127 @@ from core.views import (
     smSpace,
     update_dropdown_items,
 )
-from res import dimens
-from res.colors import ERROR_COLOR, GRAY_COLOR, PRIMARY_COLOR
-from res.dimens import (
-    CLICKABLE_PILL_HEIGHT,
-    MIN_WINDOW_WIDTH,
-    SPACE_MD,
-    SPACE_STD,
-    SPACE_XS,
-)
-from res.fonts import BODY_2_SIZE, HEADLINE_4_SIZE, SUBTITLE_1_SIZE
 
-from res.utils import CONTRACT_DETAILS_SCREEN_ROUTE
-
-LABEL_WIDTH = 80
-
-
-from typing import Optional
-
-from flet import (
-    Card,
-    Column,
-    Container,
-    IconButton,
-    ResponsiveRow,
-    Row,
-    UserControl,
-    icons,
-    margin,
-    padding,
-)
-
-from clients.model import Client
-from contracts.model import Contract
-from contracts.intent import ContractsIntent
-from core.abstractions import DialogHandler, TuttleView
-from core.constants_and_enums import (
-    CENTER_ALIGNMENT,
-    KEYBOARD_NUMBER,
-    SPACE_BETWEEN_ALIGNMENT,
-)
 from core.models import (
     IntentResult,
     get_cycle_from_value,
     get_cycle_values_as_list,
     get_time_unit_values_as_list,
 )
-from core.views import (
-    DateSelector,
-    get_dropdown,
-    get_headline_with_subtitle,
-    get_primary_btn,
-    get_std_txt_field,
-    horizontal_progress,
-    mdSpace,
-    smSpace,
-    update_dropdown_items,
+from tuttle.model import (
+    Contract,
+    Client,
 )
-from res import dimens
-from res.dimens import MIN_WINDOW_WIDTH
 
 LABEL_WIDTH = 80
 
 
-class ContractCard(UserControl):
-    """Formats a single contract info into a card ui display"""
+class ContractCard(ft.UserControl):
+    """Formats a single contract info into a ft.Card ui display"""
 
     def __init__(self, contract: Contract, on_click_view: Callable[[str], None]):
         super().__init__()
         self.contract = contract
-        self.product_info_container = Column()
+        self.product_info_container = ft.Column()
         self.on_click_view = on_click_view
 
     def build(self):
         self.product_info_container.controls = [
-            get_headline_txt(txt=self.contract.title, size=SUBTITLE_1_SIZE),
-            ResponsiveRow(
+            get_headline_txt(txt=self.contract.title, size=fonts.SUBTITLE_1_SIZE),
+            ft.ResponsiveRow(
                 controls=[
-                    Text(
-                        "Id",
-                        color=GRAY_COLOR,
-                        size=BODY_2_SIZE,
-                        col={"xs": "12", "sm": "5", "md": "3"},
-                    ),
-                    Text(
-                        self.contract.id,
-                        size=BODY_2_SIZE,
-                        col={"xs": "12", "sm": "7", "md": "9"},
-                    ),
-                ],
-                spacing=SPACE_XS,
-                run_spacing=0,
-                vertical_alignment=CENTER_ALIGNMENT,
-            ),
-            ResponsiveRow(
-                controls=[
-                    Text(
-                        "Client Id",
-                        color=GRAY_COLOR,
-                        size=BODY_2_SIZE,
-                        col={"xs": "12", "sm": "5", "md": "3"},
-                    ),
-                    Text(
-                        self.contract.client_id,
-                        size=BODY_2_SIZE,
-                        col={"xs": "12", "sm": "7", "md": "9"},
-                    ),
-                ],
-                spacing=SPACE_XS,
-                run_spacing=0,
-                vertical_alignment=CENTER_ALIGNMENT,
-            ),
-            ResponsiveRow(
-                controls=[
-                    Text(
+                    ft.Text(
                         "Billing Cycle",
-                        color=GRAY_COLOR,
-                        size=BODY_2_SIZE,
+                        color=colors.GRAY_COLOR,
+                        size=fonts.BODY_2_SIZE,
                         col={"xs": "12", "sm": "5", "md": "3"},
                     ),
-                    Text(
+                    ft.Text(
                         self.contract.billing_cycle,
-                        size=BODY_2_SIZE,
+                        size=fonts.BODY_2_SIZE,
                         col={"xs": "12", "sm": "7", "md": "9"},
                     ),
                 ],
-                spacing=SPACE_XS,
+                spacing=dimens.SPACE_XS,
                 run_spacing=0,
-                vertical_alignment=CENTER_ALIGNMENT,
+                vertical_alignment=utils.CENTER_ALIGNMENT,
             ),
-            ResponsiveRow(
+            ft.ResponsiveRow(
                 controls=[
-                    Text(
+                    ft.Text(
                         "Start date",
-                        color=GRAY_COLOR,
-                        size=BODY_2_SIZE,
+                        color=colors.GRAY_COLOR,
+                        size=fonts.BODY_2_SIZE,
                         col={"xs": "12", "sm": "5", "md": "3"},
                     ),
-                    Text(
-                        self.contract.get_start_date_as_str(),
-                        size=BODY_2_SIZE,
+                    ft.Text(
+                        self.contract.start_date.strftime("%d/%m/%Y")
+                        if self.contract.start_date
+                        else "",
+                        size=fonts.BODY_2_SIZE,
                         col={"xs": "12", "sm": "7", "md": "9"},
                     ),
                 ],
-                spacing=SPACE_XS,
+                spacing=dimens.SPACE_XS,
                 run_spacing=0,
-                vertical_alignment=CENTER_ALIGNMENT,
+                vertical_alignment=utils.CENTER_ALIGNMENT,
             ),
-            ResponsiveRow(
+            ft.ResponsiveRow(
                 controls=[
-                    Text(
+                    ft.Text(
                         "End date",
-                        color=GRAY_COLOR,
-                        size=BODY_2_SIZE,
+                        color=colors.GRAY_COLOR,
+                        size=fonts.BODY_2_SIZE,
                         col={"xs": "12", "sm": "5", "md": "3"},
                     ),
-                    Text(
-                        self.contract.get_end_date_as_str(),
-                        size=BODY_2_SIZE,
-                        color=ERROR_COLOR,
+                    ft.Text(
+                        self.contract.end_date.strftime("%d/%m/%Y")
+                        if self.contract.end_date
+                        else "",
+                        size=fonts.BODY_2_SIZE,
+                        color=colors.ERROR_COLOR,
                         col={"xs": "12", "sm": "7", "md": "9"},
                     ),
                 ],
-                spacing=SPACE_XS,
+                spacing=dimens.SPACE_XS,
                 run_spacing=0,
-                vertical_alignment=CENTER_ALIGNMENT,
+                vertical_alignment=utils.CENTER_ALIGNMENT,
             ),
-            Row(
-                alignment=END_ALIGNMENT,
-                vertical_alignment=END_ALIGNMENT,
+            ft.Row(
+                alignment=utils.END_ALIGNMENT,
+                vertical_alignment=utils.END_ALIGNMENT,
                 expand=True,
                 controls=[
-                    ElevatedButton(
+                    ft.ElevatedButton(
                         text="View",
                         on_click=lambda e: self.on_click_view(self.contract.id),
                     ),
                 ],
             ),
         ]
-        card = Card(
+        return ft.Card(
             elevation=2,
             expand=True,
-            content=Container(
+            content=ft.Container(
                 expand=True,
-                padding=padding.all(SPACE_STD),
-                border_radius=border_radius.all(12),
+                padding=ft.padding.all(dimens.SPACE_STD),
+                border_radius=ft.border_radius.all(12),
                 content=self.product_info_container,
             ),
         )
-        return card
 
 
-class ContractEditorScreen(TuttleView, UserControl):
+class ContractEditorScreen(TuttleView, ft.UserControl):
     def __init__(
         self,
-        navigate_to_route,
-        show_snack,
-        dialog_controller,
-        on_navigate_back,
-        local_storage,
+        params: TuttleViewParams,
         contract_id: str,
     ):
         super().__init__(
-            navigate_to_route=navigate_to_route,
-            show_snack=show_snack,
-            dialog_controller=dialog_controller,
-            on_navigate_back=on_navigate_back,
-            horizontal_alignment_in_parent=CENTER_ALIGNMENT,
+            params,
         )
-        self.intent_handler = ContractsIntent(local_storage=local_storage)
+        self.horizontal_alignment_in_parent = utils.CENTER_ALIGNMENT
+        self.intent_handler = ContractsIntent()
 
         self.loading_indicator = horizontal_progress
         self.new_client_pop_up = None
@@ -560,7 +404,7 @@ class ContractEditorScreen(TuttleView, UserControl):
             hint="Contract's rate",
             on_change=self.on_rate_changed,
             on_focus=self.clear_rate_error,
-            keyboard_type=KEYBOARD_NUMBER,
+            keyboard_type=utils.KEYBOARD_NUMBER,
         )
 
         self.currency_field = get_std_txt_field(
@@ -575,7 +419,7 @@ class ContractEditorScreen(TuttleView, UserControl):
             hint="Vat rate",
             on_change=self.on_vat_rate_changed,
             on_focus=self.clear_vat_rate_error,
-            keyboard_type=KEYBOARD_NUMBER,
+            keyboard_type=utils.KEYBOARD_NUMBER,
         )
 
         self.unitPW_field = get_std_txt_field(
@@ -583,7 +427,7 @@ class ContractEditorScreen(TuttleView, UserControl):
             hint="",
             on_change=self.on_upw_changed,
             on_focus=self.clear_upw_error,
-            keyboard_type=KEYBOARD_NUMBER,
+            keyboard_type=utils.KEYBOARD_NUMBER,
         )
 
         self.volume_field = get_std_txt_field(
@@ -591,7 +435,7 @@ class ContractEditorScreen(TuttleView, UserControl):
             hint="",
             on_change=self.on_volume_changed,
             on_focus=self.clear_volume_error,
-            keyboard_type=KEYBOARD_NUMBER,
+            keyboard_type=utils.KEYBOARD_NUMBER,
         )
 
         self.termOfPayment_field = get_std_txt_field(
@@ -599,7 +443,7 @@ class ContractEditorScreen(TuttleView, UserControl):
             hint="",
             on_change=self.on_top_changed,
             on_focus=self.clear_top_error,
-            keyboard_type=KEYBOARD_NUMBER,
+            keyboard_type=utils.KEYBOARD_NUMBER,
         )
 
         self.clients_field = get_dropdown(
@@ -625,20 +469,20 @@ class ContractEditorScreen(TuttleView, UserControl):
         self.submit_btn = get_primary_btn(
             label="Create Contract", on_click=self.on_save
         )
-        view = Container(
+        view = ft.Container(
             expand=True,
-            padding=padding.all(dimens.SPACE_MD),
-            margin=margin.symmetric(vertical=dimens.SPACE_MD),
-            content=Card(
+            padding=ft.padding.all(dimens.SPACE_MD),
+            margin=ft.margin.symmetric(vertical=dimens.SPACE_MD),
+            content=ft.Card(
                 expand=True,
-                content=Container(
-                    Column(
+                content=ft.Container(
+                    ft.Column(
                         expand=True,
                         controls=[
-                            Row(
+                            ft.Row(
                                 controls=[
-                                    IconButton(
-                                        icon=icons.CHEVRON_LEFT_ROUNDED,
+                                    ft.IconButton(
+                                        icon=ft.icons.CHEVRON_LEFT_ROUNDED,
                                         on_click=self.on_navigate_back,
                                     ),
                                     get_headline_with_subtitle(
@@ -658,14 +502,14 @@ class ContractEditorScreen(TuttleView, UserControl):
                             self.vatRate_field,
                             self.volume_field,
                             smSpace,
-                            Row(
-                                alignment=SPACE_BETWEEN_ALIGNMENT,
-                                vertical_alignment=CENTER_ALIGNMENT,
+                            ft.Row(
+                                alignment=utils.SPACE_BETWEEN_ALIGNMENT,
+                                vertical_alignment=utils.CENTER_ALIGNMENT,
                                 spacing=dimens.SPACE_STD,
                                 controls=[
                                     self.clients_field,
-                                    IconButton(
-                                        icon=icons.ADD_CIRCLE_OUTLINE,
+                                    ft.IconButton(
+                                        icon=ft.icons.ADD_CIRCLE_OUTLINE,
                                         on_click=self.on_add_client_clicked,
                                     ),
                                 ],
@@ -684,8 +528,8 @@ class ContractEditorScreen(TuttleView, UserControl):
                             self.submit_btn,
                         ],
                     ),
-                    padding=padding.all(dimens.SPACE_MD),
-                    width=MIN_WINDOW_WIDTH,
+                    padding=ft.padding.all(dimens.SPACE_MD),
+                    width=dimens.MIN_WINDOW_WIDTH,
                 ),
             ),
         )
@@ -708,7 +552,7 @@ class ContractStates(Enum):
     UPCOMING = 4
 
 
-class ContractFiltersView(UserControl):
+class ContractFiltersView(ft.UserControl):
     """Create and Handles contracts view filtering buttons"""
 
     def __init__(self, onStateChanged: Callable[[ContractStates], None]):
@@ -720,18 +564,20 @@ class ContractFiltersView(UserControl):
     def filter_button(
         self, state: ContractStates, lbl: str, onClick: Callable[[ContractStates], None]
     ):
-        button = ElevatedButton(
+        button = ft.ElevatedButton(
             text=lbl,
             col={"xs": 6, "sm": 3, "lg": 2},
             on_click=lambda e: onClick(state),
-            height=CLICKABLE_PILL_HEIGHT,
-            color=PRIMARY_COLOR if state == self.currentState else GRAY_COLOR,
-            style=ButtonStyle(
+            height=dimens.CLICKABLE_PILL_HEIGHT,
+            color=colors.PRIMARY_COLOR
+            if state == self.currentState
+            else colors.GRAY_COLOR,
+            style=ft.ButtonStyle(
                 elevation={
-                    PRESSED: 3,
-                    SELECTED: 3,
-                    HOVERED: 4,
-                    OTHER_CONTROL_STATES: 2,
+                    utils.PRESSED: 3,
+                    utils.SELECTED: 3,
+                    utils.HOVERED: 4,
+                    utils.OTHER_CONTROL_STATES: 2,
                 },
             ),
         )
@@ -739,9 +585,9 @@ class ContractFiltersView(UserControl):
 
     def on_filter_button_clicked(self, state: ContractStates):
         """sets the new state and updates selected button"""
-        self.stateTofilterButtonsMap[self.currentState].color = GRAY_COLOR
+        self.stateTofilterButtonsMap[self.currentState].color = colors.GRAY_COLOR
         self.currentState = state
-        self.stateTofilterButtonsMap[self.currentState].color = PRIMARY_COLOR
+        self.stateTofilterButtonsMap[self.currentState].color = colors.PRIMARY_COLOR
         self.update()
         self.onStateChangedCallback(state)
 
@@ -769,29 +615,17 @@ class ContractFiltersView(UserControl):
             # set the buttons
             self.set_filter_buttons()
 
-        self.filters = ResponsiveRow(
+        self.filters = ft.ResponsiveRow(
             controls=list(self.stateTofilterButtonsMap.values())
         )
         return self.filters
 
 
-class CreateContractScreen(TuttleView, UserControl):
-    def __init__(
-        self,
-        navigate_to_route,
-        show_snack,
-        dialog_controller,
-        on_navigate_back,
-        local_storage,
-    ):
-        super().__init__(
-            navigate_to_route=navigate_to_route,
-            show_snack=show_snack,
-            dialog_controller=dialog_controller,
-            on_navigate_back=on_navigate_back,
-            horizontal_alignment_in_parent=CENTER_ALIGNMENT,
-        )
-        self.intent_handler = ContractsIntent(local_storage=local_storage)
+class CreateContractScreen(TuttleView, ft.UserControl):
+    def __init__(self, params):
+        super().__init__(params=params)
+        self.horizontal_alignment_in_parent = utils.CENTER_ALIGNMENT
+        self.intent_handler = ContractsIntent()
 
         self.loading_indicator = horizontal_progress
         self.new_client_pop_up: Optional[DialogHandler] = None
@@ -1028,7 +862,7 @@ class CreateContractScreen(TuttleView, UserControl):
             hint="Contract's rate",
             on_change=self.on_rate_changed,
             on_focus=self.clear_rate_error,
-            keyboard_type=KEYBOARD_NUMBER,
+            keyboard_type=utils.KEYBOARD_NUMBER,
         )
         self.currency_field = get_std_txt_field(
             lbl="Currency",
@@ -1041,28 +875,28 @@ class CreateContractScreen(TuttleView, UserControl):
             hint="Vat rate",
             on_change=self.on_vat_rate_changed,
             on_focus=self.clear_vat_rate_error,
-            keyboard_type=KEYBOARD_NUMBER,
+            keyboard_type=utils.KEYBOARD_NUMBER,
         )
         self.unit_PW_field = get_std_txt_field(
             lbl="Units per workday",
             hint="",
             on_change=self.on_upw_changed,
             on_focus=self.clear_upw_error,
-            keyboard_type=KEYBOARD_NUMBER,
+            keyboard_type=utils.KEYBOARD_NUMBER,
         )
         self.volume_field = get_std_txt_field(
             lbl="Volume (optional)",
             hint="",
             on_change=self.on_volume_changed,
             on_focus=self.clear_volume_error,
-            keyboard_type=KEYBOARD_NUMBER,
+            keyboard_type=utils.KEYBOARD_NUMBER,
         )
         self.term_of_payment_field = get_std_txt_field(
             lbl="Term of payment (optional)",
             hint="",
             on_change=self.on_top_changed,
             on_focus=self.clear_top_error,
-            keyboard_type=KEYBOARD_NUMBER,
+            keyboard_type=utils.KEYBOARD_NUMBER,
         )
         self.clients_field = get_dropdown(
             lbl="Client",
@@ -1085,20 +919,20 @@ class CreateContractScreen(TuttleView, UserControl):
         self.submit_btn = get_primary_btn(
             label="Create Contract", on_click=self.on_save
         )
-        view = Container(
+        view = ft.Container(
             expand=True,
-            padding=padding.all(dimens.SPACE_MD),
-            margin=margin.symmetric(vertical=dimens.SPACE_MD),
-            content=Card(
+            padding=ft.padding.all(dimens.SPACE_MD),
+            margin=ft.margin.symmetric(vertical=dimens.SPACE_MD),
+            content=ft.Card(
                 expand=True,
-                content=Container(
-                    Column(
+                content=ft.Container(
+                    ft.Column(
                         expand=True,
                         controls=[
-                            Row(
+                            ft.Row(
                                 controls=[
-                                    IconButton(
-                                        icon=icons.CHEVRON_LEFT_ROUNDED,
+                                    ft.IconButton(
+                                        icon=ft.icons.CHEVRON_LEFT_ROUNDED,
                                         on_click=self.on_navigate_back,
                                     ),
                                     get_headline_with_subtitle(
@@ -1118,14 +952,14 @@ class CreateContractScreen(TuttleView, UserControl):
                             self.vat_rate_field,
                             self.volume_field,
                             smSpace,
-                            Row(
-                                alignment=SPACE_BETWEEN_ALIGNMENT,
-                                vertical_alignment=CENTER_ALIGNMENT,
+                            ft.Row(
+                                alignment=utils.SPACE_BETWEEN_ALIGNMENT,
+                                vertical_alignment=utils.CENTER_ALIGNMENT,
                                 spacing=dimens.SPACE_STD,
                                 controls=[
                                     self.clients_field,
-                                    IconButton(
-                                        icon=icons.ADD_CIRCLE_OUTLINE,
+                                    ft.IconButton(
+                                        icon=ft.icons.ADD_CIRCLE_OUTLINE,
                                         on_click=self.on_add_client_clicked,
                                     ),
                                 ],
@@ -1144,8 +978,8 @@ class CreateContractScreen(TuttleView, UserControl):
                             self.submit_btn,
                         ],
                     ),
-                    padding=padding.all(dimens.SPACE_MD),
-                    width=MIN_WINDOW_WIDTH,
+                    padding=ft.padding.all(dimens.SPACE_MD),
+                    width=dimens.MIN_WINDOW_WIDTH,
                 ),
             ),
         )
@@ -1160,38 +994,36 @@ class CreateContractScreen(TuttleView, UserControl):
             print(e)
 
 
-class ContractsListView(TuttleView, UserControl):
-    def __init__(self, navigate_to_route, show_snack, dialog_controller, local_storage):
-        super().__init__(
-            navigate_to_route=navigate_to_route,
-            show_snack=show_snack,
-            dialog_controller=dialog_controller,
-        )
-        self.intent_handler = ContractsIntent(local_storage=local_storage)
+class ContractsListView(TuttleView, ft.UserControl):
+    def __init__(self, params: TuttleViewParams):
+        super().__init__(params)
+        self.intent_handler = ContractsIntent()
         self.loading_indicator = horizontal_progress
-        self.no_contracts_control = Text(
+        self.no_contracts_control = ft.Text(
             value="You have not added any contracts yet",
-            color=ERROR_COLOR,
+            color=colors.ERROR_COLOR,
             visible=False,
         )
-        self.title_control = ResponsiveRow(
+        self.title_control = ft.ResponsiveRow(
             controls=[
-                Column(
+                ft.Column(
                     col={"xs": 12},
                     controls=[
-                        get_headline_txt(txt="My Contracts", size=HEADLINE_4_SIZE),
+                        get_headline_txt(
+                            txt="My Contracts", size=fonts.HEADLINE_4_SIZE
+                        ),
                         self.loading_indicator,
                         self.no_contracts_control,
                     ],
                 )
             ]
         )
-        self.contracts_container = GridView(
+        self.contracts_container = ft.GridView(
             expand=False,
             max_extent=540,
             child_aspect_ratio=1.0,
-            spacing=SPACE_STD,
-            run_spacing=SPACE_MD,
+            spacing=dimens.SPACE_STD,
+            run_spacing=dimens.SPACE_MD,
         )
         self.contracts_to_display = {}
 
@@ -1208,7 +1040,7 @@ class ContractsListView(TuttleView, UserControl):
             self.contracts_container.controls.append(contractCard)
 
     def on_view_contract_clicked(self, contractId: str):
-        self.navigate_to_route(CONTRACT_DETAILS_SCREEN_ROUTE, contractId)
+        self.navigate_to_route(res_utils.CONTRACT_DETAILS_SCREEN_ROUTE, contractId)
 
     def on_filter_contracts(self, filterByState: ContractStates):
         if filterByState.value == ContractStates.ACTIVE.value:
@@ -1244,13 +1076,13 @@ class ContractsListView(TuttleView, UserControl):
             print(f"exception raised @contracts.did_mount {e}")
 
     def build(self):
-        view = Column(
+        view = ft.Column(
             controls=[
                 self.title_control,
                 mdSpace,
                 ContractFiltersView(onStateChanged=self.on_filter_contracts),
                 mdSpace,
-                Container(self.contracts_container, expand=True),
+                ft.Container(self.contracts_container, expand=True),
             ]
         )
         return view
@@ -1259,30 +1091,21 @@ class ContractsListView(TuttleView, UserControl):
         self.mounted = False
 
 
-class ViewContractScreen(TuttleView, UserControl):
+class ViewContractScreen(TuttleView, ft.UserControl):
     def __init__(
         self,
-        navigate_to_route,
-        show_snack,
-        dialog_controller,
-        on_navigate_back,
-        local_storage,
+        params: TuttleViewParams,
         contract_id: str,
     ):
-        super().__init__(
-            navigate_to_route=navigate_to_route,
-            show_snack=show_snack,
-            dialog_controller=dialog_controller,
-            on_navigate_back=on_navigate_back,
-        )
-        self.intent_handler = ContractsIntent(local_storage=local_storage)
+        super().__init__(params)
+        self.intent_handler = ContractsIntent()
         self.contract_id = contract_id
         self.loading_indicator = horizontal_progress
         self.contract: Optional[Contract] = None
 
     def display_contract_data(self):
         self.contract_title_control.value = self.contract.title
-        self.client_control.value = self.contract.client.title
+        self.client_control.value = self.contract.client.name
         self.contract_title_control.value = self.contract.title
         self.start_date_control.value = self.contract.start_date
         self.end_date_control.value = self.contract.end_date
@@ -1326,9 +1149,9 @@ class ViewContractScreen(TuttleView, UserControl):
         self.show_snack("Coming soon", False)
 
     def get_body_element(self, lbl, control):
-        return ResponsiveRow(
+        return ft.ResponsiveRow(
             controls=[
-                Text(
+                ft.Text(
                     lbl,
                     color=colors.GRAY_COLOR,
                     size=fonts.BODY_2_SIZE,
@@ -1340,95 +1163,97 @@ class ViewContractScreen(TuttleView, UserControl):
             ],
             spacing=dimens.SPACE_XS,
             run_spacing=0,
-            vertical_alignment=CENTER_ALIGNMENT,
+            vertical_alignment=utils.CENTER_ALIGNMENT,
         )
 
     def build(self):
         """Called when page is built"""
-        self.edit_contract_btn = IconButton(
-            icon=icons.EDIT_OUTLINED,
+        self.edit_contract_btn = ft.IconButton(
+            icon=ft.icons.EDIT_OUTLINED,
             tooltip="Edit contract",
             on_click=self.on_edit_clicked,
         )
-        self.mark_as_complete_btn = IconButton(
-            icon=icons.CHECK_CIRCLE_OUTLINE,
+        self.mark_as_complete_btn = ft.IconButton(
+            icon=ft.icons.CHECK_CIRCLE_OUTLINE,
             icon_color=colors.PRIMARY_COLOR,
             tooltip="Mark contract as completed",
             on_click=self.on_mark_as_complete_clicked,
         )
-        self.delete_contract_btn = IconButton(
-            icon=icons.DELETE_OUTLINE_ROUNDED,
+        self.delete_contract_btn = ft.IconButton(
+            icon=ft.icons.DELETE_OUTLINE_ROUNDED,
             icon_color=colors.ERROR_COLOR,
             tooltip="Delete contract",
             on_click=self.on_delete_clicked,
         )
 
-        self.client_control = Text(
+        self.client_control = ft.Text(
             size=fonts.SUBTITLE_2_SIZE,
         )
-        self.contract_title_control = Text(
+        self.contract_title_control = ft.Text(
             size=fonts.SUBTITLE_1_SIZE,
         )
-        self.billing_cycle_control = Text(
+        self.billing_cycle_control = ft.Text(
             size=fonts.BODY_1_SIZE,
-            text_align=TXT_ALIGN_JUSTIFY,
+            text_align=utils.TXT_ALIGN_JUSTIFY,
         )
-        self.rate_control = Text(
+        self.rate_control = ft.Text(
             size=fonts.BODY_1_SIZE,
-            text_align=TXT_ALIGN_JUSTIFY,
+            text_align=utils.TXT_ALIGN_JUSTIFY,
         )
-        self.currency_control = Text(
+        self.currency_control = ft.Text(
             size=fonts.BODY_1_SIZE,
-            text_align=TXT_ALIGN_JUSTIFY,
+            text_align=utils.TXT_ALIGN_JUSTIFY,
         )
-        self.vat_rate_control = Text(
+        self.vat_rate_control = ft.Text(
             size=fonts.BODY_1_SIZE,
-            text_align=TXT_ALIGN_JUSTIFY,
+            text_align=utils.TXT_ALIGN_JUSTIFY,
         )
-        self.unit_control = Text(
+        self.unit_control = ft.Text(
             size=fonts.BODY_1_SIZE,
-            text_align=TXT_ALIGN_JUSTIFY,
+            text_align=utils.TXT_ALIGN_JUSTIFY,
         )
-        self.units_per_workday_control = Text(
+        self.units_per_workday_control = ft.Text(
             size=fonts.BODY_1_SIZE,
-            text_align=TXT_ALIGN_JUSTIFY,
+            text_align=utils.TXT_ALIGN_JUSTIFY,
         )
-        self.volume_control = Text(
+        self.volume_control = ft.Text(
             size=fonts.BODY_1_SIZE,
-            text_align=TXT_ALIGN_JUSTIFY,
+            text_align=utils.TXT_ALIGN_JUSTIFY,
         )
-        self.term_of_payment_control = Text(
+        self.term_of_payment_control = ft.Text(
             size=fonts.BODY_1_SIZE,
-            text_align=TXT_ALIGN_JUSTIFY,
-        )
-
-        self.signature_date_control = Text(
-            size=fonts.BODY_1_SIZE,
-            text_align=TXT_ALIGN_JUSTIFY,
-        )
-        self.start_date_control = Text(
-            size=fonts.BODY_1_SIZE,
-            text_align=TXT_ALIGN_JUSTIFY,
-        )
-        self.end_date_control = Text(
-            size=fonts.BODY_1_SIZE,
-            text_align=TXT_ALIGN_JUSTIFY,
+            text_align=utils.TXT_ALIGN_JUSTIFY,
         )
 
-        self.status_control = Text(size=fonts.BUTTON_SIZE, color=colors.PRIMARY_COLOR)
+        self.signature_date_control = ft.Text(
+            size=fonts.BODY_1_SIZE,
+            text_align=utils.TXT_ALIGN_JUSTIFY,
+        )
+        self.start_date_control = ft.Text(
+            size=fonts.BODY_1_SIZE,
+            text_align=utils.TXT_ALIGN_JUSTIFY,
+        )
+        self.end_date_control = ft.Text(
+            size=fonts.BODY_1_SIZE,
+            text_align=utils.TXT_ALIGN_JUSTIFY,
+        )
 
-        page_view = Row(
+        self.status_control = ft.Text(
+            size=fonts.BUTTON_SIZE, color=colors.PRIMARY_COLOR
+        )
+
+        page_view = ft.Row(
             [
-                Container(
-                    padding=padding.all(dimens.SPACE_STD),
-                    width=int(MIN_WINDOW_WIDTH * 0.3),
-                    content=Column(
+                ft.Container(
+                    padding=ft.padding.all(dimens.SPACE_STD),
+                    width=int(dimens.MIN_WINDOW_WIDTH * 0.3),
+                    content=ft.Column(
                         controls=[
-                            IconButton(
-                                icon=icons.KEYBOARD_ARROW_LEFT,
+                            ft.IconButton(
+                                icon=ft.icons.KEYBOARD_ARROW_LEFT,
                                 on_click=self.on_navigate_back,
                             ),
-                            TextButton(
+                            ft.TextButton(
                                 "Client",
                                 tooltip="View contract's client",
                                 on_click=self.on_view_client_clicked,
@@ -1436,33 +1261,33 @@ class ViewContractScreen(TuttleView, UserControl):
                         ]
                     ),
                 ),
-                Container(
+                ft.Container(
                     expand=True,
-                    padding=padding.all(dimens.SPACE_MD),
-                    content=Column(
+                    padding=ft.padding.all(dimens.SPACE_MD),
+                    content=ft.Column(
                         controls=[
                             self.loading_indicator,
-                            Row(
+                            ft.Row(
                                 controls=[
-                                    Icon(icons.HANDSHAKE_ROUNDED),
-                                    Column(
+                                    ft.Icon(ft.icons.HANDSHAKE_ROUNDED),
+                                    ft.Column(
                                         expand=True,
                                         spacing=0,
                                         run_spacing=0,
                                         controls=[
-                                            Row(
-                                                vertical_alignment=CENTER_ALIGNMENT,
-                                                alignment=SPACE_BETWEEN_ALIGNMENT,
+                                            ft.Row(
+                                                vertical_alignment=utils.CENTER_ALIGNMENT,
+                                                alignment=utils.SPACE_BETWEEN_ALIGNMENT,
                                                 controls=[
-                                                    Text(
+                                                    ft.Text(
                                                         "Contract",
                                                         size=fonts.HEADLINE_4_SIZE,
                                                         font_family=fonts.HEADLINE_FONT,
                                                         color=colors.PRIMARY_COLOR,
                                                     ),
-                                                    Row(
-                                                        vertical_alignment=CENTER_ALIGNMENT,
-                                                        alignment=SPACE_BETWEEN_ALIGNMENT,
+                                                    ft.Row(
+                                                        vertical_alignment=utils.CENTER_ALIGNMENT,
+                                                        alignment=utils.SPACE_BETWEEN_ALIGNMENT,
                                                         spacing=dimens.SPACE_STD,
                                                         run_spacing=dimens.SPACE_STD,
                                                         controls=[
@@ -1508,16 +1333,16 @@ class ViewContractScreen(TuttleView, UserControl):
                             ),
                             self.get_body_element("End Date", self.end_date_control),
                             mdSpace,
-                            Row(
+                            ft.Row(
                                 spacing=dimens.SPACE_STD,
                                 run_spacing=dimens.SPACE_STD,
-                                alignment=START_ALIGNMENT,
-                                vertical_alignment=CENTER_ALIGNMENT,
+                                alignment=utils.START_ALIGNMENT,
+                                vertical_alignment=utils.CENTER_ALIGNMENT,
                                 controls=[
-                                    Card(
-                                        Container(
+                                    ft.Card(
+                                        ft.Container(
                                             self.status_control,
-                                            padding=padding.all(dimens.SPACE_SM),
+                                            padding=ft.padding.all(dimens.SPACE_SM),
                                         ),
                                         elevation=2,
                                     ),
@@ -1529,8 +1354,8 @@ class ViewContractScreen(TuttleView, UserControl):
             ],
             spacing=dimens.SPACE_XS,
             run_spacing=dimens.SPACE_MD,
-            alignment=START_ALIGNMENT,
-            vertical_alignment=START_ALIGNMENT,
+            alignment=utils.START_ALIGNMENT,
+            vertical_alignment=utils.START_ALIGNMENT,
             expand=True,
         )
         return page_view

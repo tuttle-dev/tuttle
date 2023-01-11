@@ -2,7 +2,7 @@ import datetime
 import typing
 from typing import Callable, List, Optional
 from .abstractions import DialogHandler
-from .constants_and_enums import AlertDialogControls
+from .utils import AlertDialogControls, KEYBOARD_PASSWORD
 from flet import (
     AlertDialog,
     Column,
@@ -12,6 +12,7 @@ from flet import (
     FilledButton,
     Image,
     ProgressBar,
+    border_radius,
     Row,
     Text,
     TextField,
@@ -25,7 +26,7 @@ from flet import (
 from res import colors, dimens, fonts, image_paths
 
 
-from .constants_and_enums import (
+from .utils import (
     AUTO_SCROLL,
     CONTAIN,
     KEYBOARD_MULTILINE,
@@ -110,6 +111,7 @@ def get_std_txt_field(
         focused_border_width=1,
         on_focus=on_focus,
         on_change=on_change,
+        password=keyboard_type == KEYBOARD_PASSWORD,
         expand=expand,
         width=width,
         text_size=fonts.BODY_1_SIZE,
@@ -185,6 +187,17 @@ def get_secondary_btn(
         label,
         width=width,
         on_click=on_click,
+    )
+
+
+def get_profile_photo_img(pic_src: str = image_paths.default_avatar):
+
+    return Image(
+        src=pic_src,
+        width=72,
+        height=72,
+        border_radius=border_radius.all(36),
+        fit=CONTAIN,
     )
 
 

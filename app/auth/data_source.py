@@ -1,35 +1,22 @@
-from core.abstractions import ClientStorage
-from .model import User
-from core.models import Address, IntentResult
-from faker import Faker
+from core.abstractions import ClientStorage, SQLModelDataSourceMixin
 
-# TODO implement
-class UserDataSource:
+from core.models import IntentResult
+
+from tuttle.model import Address, User
+
+
+class UserDataSource(SQLModelDataSourceMixin):
     def __init__(self):
         super().__init__()
         self._dummy_user = None
 
     def get_user(self) -> IntentResult:
-        fake = Faker()
-        user_name = fake.name()
-        user = User(
-            id=fake.random_number(digits=5),
-            name=user_name,
-            subtitle=fake.job(),
-            email=f"{user_name.lower().replace(' ', '')}@example.com",
-            phone_number=fake.phone_number(),
-            address_id=fake.random_number(digits=5),
-            address=Address(
-                id=fake.random_number(digits=5),
-                street=fake.street_name(),
-                number=fake.building_number(),
-                postal_code=fake.postalcode(),
-                city=fake.city(),
-                country=fake.country(),
-            ),
+        user = self.query_the_only(User)
+
+        return IntentResult(
+            was_intent_successful=True,
+            data=user,
         )
-        self._dummy_user = user
-        return IntentResult(was_intent_successful=True, data=self._dummy_user)
 
     def create_user(
         self,
@@ -43,8 +30,7 @@ class UserDataSource:
         city: str,
         country: str,
     ) -> IntentResult:
-        add = Address(
-            id=123,
+        adddress = Address(
             street=street,
             number=street_num,
             postal_code=postal_code,
@@ -52,16 +38,19 @@ class UserDataSource:
             country=country,
         )
         user = User(
-            id=456,
             name=name,
             subtitle=title,
             email=email,
             phone_number=phone,
-            address_id=add.id,
-            address=add,
+            address=adddress,
         )
-        self._dummy_user = user
-        return IntentResult(was_intent_successful=True, data=self._dummy_user)
+
+        self.store(user)
+
+        return IntentResult(
+            was_intent_successful=True,
+            data=user,
+        )
 
     def update_user(
         self,
@@ -93,6 +82,11 @@ class UserDataSource:
             phone_number=phone,
             address_id=add.id,
             address=add,
+            profile_photo=user.profile_photo,
         )
         self._dummy_user = user
         return IntentResult(was_intent_successful=True, data=self._dummy_user)
+
+    def update_user_photo_url(self, url):
+        """saves the path of the new uploaded profile photo"""
+        return IntentResult(was_intent_successful=True, data=None)

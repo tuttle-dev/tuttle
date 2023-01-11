@@ -18,11 +18,9 @@ from flet import (
     padding,
     ListTile,
 )
-
-from contacts.model import Contact, get_empty_contact
 from contacts.intent import ContactsIntent
-from core.abstractions import DialogHandler, TuttleView
-from core.constants_and_enums import (
+from core.abstractions import DialogHandler, TuttleView, TuttleViewParams
+from core.utils import (
     ALWAYS_SCROLL,
     AUTO_SCROLL,
     CENTER_ALIGNMENT,
@@ -30,7 +28,7 @@ from core.constants_and_enums import (
     START_ALIGNMENT,
     AlertDialogControls,
 )
-from core.models import Address, IntentResult
+from core.models import IntentResult
 from core.views import (
     CENTER_ALIGNMENT,
     get_headline_txt,
@@ -45,7 +43,12 @@ from res.colors import ERROR_COLOR, GRAY_COLOR
 from res.dimens import MIN_WINDOW_WIDTH, SPACE_MD, SPACE_STD, SPACE_XS
 from res.fonts import BODY_2_SIZE, HEADLINE_4_SIZE
 
-from res.utils import ADD_CONTACT_INTENT
+from res.res_utils import ADD_CONTACT_INTENT
+
+from tuttle.model import (
+    Address,
+    Contact,
+)
 
 
 class ContactCard(UserControl):
@@ -142,7 +145,8 @@ class ContactEditorPopUp(DialogHandler):
         self.contact = contact
         if not self.contact:
             # user is creating a new contact
-            self.contact = get_empty_contact()
+            self.contact = Contact()
+            self.contact.address = Address()
         self.address = self.contact.address
 
         title = "Edit contact" if contact is not None else "Add contact"
@@ -314,13 +318,9 @@ class ContactEditorPopUp(DialogHandler):
 
 
 class ContactsListView(TuttleView, UserControl):
-    def __init__(self, navigate_to_route, show_snack, dialog_controller, local_storage):
-        super().__init__(
-            navigate_to_route=navigate_to_route,
-            show_snack=show_snack,
-            dialog_controller=dialog_controller,
-        )
-        self.intent_handler = ContactsIntent(local_storage=local_storage)
+    def __init__(self, params: TuttleViewParams):
+        super().__init__(params)
+        self.intent_handler = ContactsIntent()
         self.loading_indicator = horizontal_progress
         self.no_contacts_control = Text(
             value="You have not added any contacts yet",
@@ -438,6 +438,10 @@ class ContactsListView(TuttleView, UserControl):
                 self.update()
         except Exception as e:
             print(f"exception raised @contacts.did_mount {e}")
+            self.show_snack("Loading contacts failed.")
+            self.loading_indicator.visible = False
+            if self.mounted:
+                self.update()
 
     def build(self):
         view = Column(

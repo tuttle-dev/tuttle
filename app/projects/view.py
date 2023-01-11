@@ -1,5 +1,6 @@
 from enum import Enum
 from typing import Callable, Optional
+from core.abstractions import TuttleViewParams
 
 from flet import (
     ButtonStyle,
@@ -21,10 +22,9 @@ from flet import (
     padding,
 )
 
-from contracts.model import Contract
 from core.abstractions import TuttleView
 from core.charts import BarChart
-from core.constants_and_enums import (
+from core.utils import (
     ALWAYS_SCROLL,
     CENTER_ALIGNMENT,
     END_ALIGNMENT,
@@ -55,7 +55,6 @@ from core.views import (
     update_dropdown_items,
 )
 from projects.intent import ProjectsIntent
-from projects.model import Project
 from res import colors, dimens, fonts
 from res.colors import ERROR_COLOR, GRAY_COLOR, PRIMARY_COLOR
 from res.dimens import (
@@ -67,10 +66,16 @@ from res.dimens import (
 )
 from res.fonts import BODY_1_SIZE, BODY_2_SIZE, HEADLINE_4_SIZE
 
-from res.utils import (
+from res.res_utils import (
     CONTRACT_CREATOR_SCREEN_ROUTE,
     PROJECT_DETAILS_SCREEN_ROUTE,
     PROJECT_EDITOR_SCREEN_ROUTE,
+)
+
+from tuttle.model import (
+    Client,
+    Contract,
+    Project,
 )
 
 
@@ -118,7 +123,7 @@ class ProjectCard(UserControl):
                         col={"xs": "12", "sm": "5", "md": "3"},
                     ),
                     Text(
-                        self.project.contract.client.title,
+                        self.project.contract.client.name,
                         size=BODY_2_SIZE,
                         col={"xs": "12", "sm": "7", "md": "9"},
                     ),
@@ -136,7 +141,7 @@ class ProjectCard(UserControl):
                         col={"xs": "12", "sm": "5", "md": "3"},
                     ),
                     Text(
-                        self.project.get_start_date_as_str(),
+                        self.project.start_date.strftime("%d/%m/%Y"),
                         size=BODY_2_SIZE,
                         col={"xs": "12", "sm": "7", "md": "9"},
                     ),
@@ -154,7 +159,9 @@ class ProjectCard(UserControl):
                         col={"xs": "12", "sm": "5", "md": "3"},
                     ),
                     Text(
-                        self.project.get_end_date_as_str(),
+                        self.project.end_date.strftime("%d/%m/%Y")
+                        if self.project.end_date
+                        else "",
                         size=BODY_2_SIZE,
                         color=ERROR_COLOR,
                         col={"xs": "12", "sm": "7", "md": "9"},
@@ -173,7 +180,7 @@ class ProjectCard(UserControl):
                         spacing=0,
                         controls=[
                             Text(f"#", color=PRIMARY_COLOR),
-                            Text(f"{self.project.unique_tag}", color=GRAY_COLOR),
+                            Text(f"{self.project.tag}", color=GRAY_COLOR),
                         ],
                     ),
                     ElevatedButton(
@@ -273,20 +280,11 @@ class ProjectFiltersView(UserControl):
 class ViewProjectScreen(TuttleView, UserControl):
     def __init__(
         self,
-        navigate_to_route,
-        show_snack,
-        dialog_controller,
-        on_navigate_back,
-        local_storage,
+        params: TuttleViewParams,
         project_id: str,
     ):
-        super().__init__(
-            navigate_to_route=navigate_to_route,
-            show_snack=show_snack,
-            dialog_controller=dialog_controller,
-            on_navigate_back=on_navigate_back,
-        )
-        self.intent_handler = ProjectsIntent(local_storage=local_storage)
+        super().__init__(params)
+        self.intent_handler = ProjectsIntent()
         self.project_id = project_id
         self.loading_indicator = horizontal_progress
         self.project: Optional[Project] = None
@@ -295,13 +293,13 @@ class ViewProjectScreen(TuttleView, UserControl):
 
     def display_project_data(self):
         self.project_title_control.value = self.project.title
-        self.client_control.value = self.project.contract.client.title
+        self.client_control.value = self.project.contract.client.name
         self.contract_control.value = self.project.contract.title
         self.project_description_control.value = self.project.description
         self.project_start_date_control.value = f"Start Date: {self.project.start_date}"
         self.project_end_date_control.value = f"End Date: {self.project.end_date}"
         self.project_status_control.value = f"Status {self.project.get_status()}"
-        self.project_tagline_control.value = f"#{self.project.unique_tag}"
+        self.project_tagline_control.value = f"#{self.project.tag}"
         self.set_chart()
 
     def set_chart(self):
@@ -349,8 +347,8 @@ class ViewProjectScreen(TuttleView, UserControl):
             self.dialog.close_dialog()
         self.dialog = AlertDisplayPopUp(
             dialog_controller=self.dialog_controller,
-            title="Un Implemented Error",
-            description="This feature is coming soon!",
+            title="Not Implemented",
+            description="This feature is coming soon",
         )
         self.dialog.open_dialog()
 
@@ -375,7 +373,7 @@ class ViewProjectScreen(TuttleView, UserControl):
     def on_delete_confirmed(
         self,
     ):
-        self.show_snack("Un Implemented feature!", True)
+        self.show_snack("Not implemented", True)
 
     def on_window_resized(self, desired_width, height):
         super().on_window_resized(desired_width, height)
@@ -562,13 +560,9 @@ class ViewProjectScreen(TuttleView, UserControl):
 
 
 class ProjectsListView(TuttleView, UserControl):
-    def __init__(self, navigate_to_route, show_snack, dialog_controller, local_storage):
-        super().__init__(
-            navigate_to_route=navigate_to_route,
-            show_snack=show_snack,
-            dialog_controller=dialog_controller,
-        )
-        self.intent_handler = ProjectsIntent(local_storage=local_storage)
+    def __init__(self, params):
+        super().__init__(params)
+        self.intent_handler = ProjectsIntent()
         self.loading_indicator = horizontal_progress
         self.no_projects_control = Text(
             value="You have not added any projects yet.",
@@ -661,21 +655,14 @@ class ProjectsListView(TuttleView, UserControl):
 class EditProjectScreen(TuttleView, UserControl):
     def __init__(
         self,
-        navigate_to_route,
-        show_snack,
-        dialog_controller,
-        on_navigate_back,
-        local_storage,
+        params,
         project_id: str,
     ):
         super().__init__(
-            navigate_to_route=navigate_to_route,
-            show_snack=show_snack,
-            dialog_controller=dialog_controller,
-            on_navigate_back=on_navigate_back,
-            horizontal_alignment_in_parent=CENTER_ALIGNMENT,
+            params,
         )
-        self.intent_handler = ProjectsIntent(local_storage=local_storage)
+        self.horizontal_alignment_in_parent = CENTER_ALIGNMENT
+        self.intent_handler = ProjectsIntent()
 
         self.contracts_map = {}
         self.loading_indicator = horizontal_progress
@@ -739,12 +726,12 @@ class EditProjectScreen(TuttleView, UserControl):
         self.title_field.value = self.title
         self.description = self.project.description
         self.description_field.value = self.description
-        self.tag = self.project.unique_tag
+        self.tag = self.project.tag
         self.tag_field.value = self.tag
         self.start_date_field.set_date(self.project.start_date)
         self.end_date_field.set_date(self.project.end_date)
         self.contract_title_view.value = f"Contract {self.project.contract.title}"
-        self.client_title_view.value = f"Client {self.project.contract.client.title}"
+        self.client_title_view.value = f"Client {self.project.contract.client.name}"
 
     def on_save(self, e):
         if not self.title:
@@ -874,22 +861,10 @@ class EditProjectScreen(TuttleView, UserControl):
 
 
 class CreateProjectScreen(TuttleView, UserControl):
-    def __init__(
-        self,
-        navigate_to_route,
-        show_snack,
-        dialog_controller,
-        on_navigate_back,
-        local_storage,
-    ):
-        super().__init__(
-            navigate_to_route=navigate_to_route,
-            show_snack=show_snack,
-            dialog_controller=dialog_controller,
-            on_navigate_back=on_navigate_back,
-            horizontal_alignment_in_parent=CENTER_ALIGNMENT,
-        )
-        self.intent_handler = ProjectsIntent(local_storage=local_storage)
+    def __init__(self, params):
+        super().__init__(params)
+        self.horizontal_alignment_in_parent = CENTER_ALIGNMENT
+        self.intent_handler = ProjectsIntent()
 
         self.contracts_map = {}
         self.loading_indicator = horizontal_progress

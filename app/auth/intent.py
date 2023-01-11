@@ -1,13 +1,13 @@
 from .data_source import UserDataSource
 from core.abstractions import ClientStorage
 from core.models import IntentResult
-from .model import User
+
+from tuttle.model import User
 
 
 class AuthIntent:
-    def __init__(self, local_storage: ClientStorage):
+    def __init__(self):
         self.data_source = UserDataSource()
-        self.local_storage = local_storage
 
     def create_user(
         self,
@@ -54,7 +54,5 @@ class AuthIntent:
             country,
         )
 
-    # to delete -  just test on boarding
-    def get_user_test_login(self) -> IntentResult:
-        # returns no data
-        return IntentResult(was_intent_successful=True, data=None)
+    def update_user_photo(self, upload_url):
+        return self.data_source.update_user_photo_url(upload_url)

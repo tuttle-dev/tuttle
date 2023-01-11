@@ -1,28 +1,17 @@
 from core.abstractions import TuttleView
 from typing import Callable
 from flet import UserControl, Column, Container, padding
-from core.constants_and_enums import CENTER_ALIGNMENT
+from core.utils import CENTER_ALIGNMENT
 from core.views import get_error_txt, get_primary_btn
-
+from core.abstractions import TuttleViewParams
 from res.dimens import SPACE_MD, SPACE_STD
 
 
 class Error404Screen(TuttleView, UserControl):
-    def __init__(
-        self,
-        navigate_to_route: Callable,
-        show_snack: Callable,
-        dialog_controller: Callable,
-        on_navigate_back: Callable,
-    ):
-        super().__init__(
-            navigate_to_route,
-            show_snack=show_snack,
-            dialog_controller=dialog_controller,
-            vertical_alignment_in_parent=CENTER_ALIGNMENT,
-            horizontal_alignment_in_parent=CENTER_ALIGNMENT,
-            on_navigate_back=on_navigate_back,
-        )
+    def __init__(self, params: TuttleViewParams):
+        super().__init__(params)
+        self.vertical_alignment_in_parent = CENTER_ALIGNMENT
+        self.horizontal_alignment_in_parent = CENTER_ALIGNMENT
 
     def build(self):
         view = Container(

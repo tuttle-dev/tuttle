@@ -1,23 +1,24 @@
 import datetime
 
-import faker
-
-from clients.model import Client
-from contracts.model import Contract
 from core.models import Cycle, IntentResult, TimeUnit
 from typing import Optional
-from .model import Project
+from core.abstractions import SQLModelDataSourceMixin
+from tuttle.model import (
+    Contract,
+    Project,
+)
 
 
-class ProjectDataSource:
+class ProjectDataSource(SQLModelDataSourceMixin):
     def __init__(self):
         super().__init__()
 
     def get_all_projects_as_map(
         self,
     ) -> IntentResult:
-        projects = self._get_dummy_projects()
-        return IntentResult(was_intent_successful=True, data=projects)
+        projects = self.query(Project)
+        result = {project.id: project for project in projects}
+        return IntentResult(was_intent_successful=True, data=result)
 
     def save_project(
         self,
@@ -30,69 +31,34 @@ class ProjectDataSource:
         is_completed: bool = False,
         project: Optional[Project] = None,
     ) -> IntentResult:
-        return IntentResult(was_intent_successful=True, data=project)
+        try:
+            if not project:
+                # create a project, this is not an update
+                project = Project()
+
+            project.title = title
+            project.description = description
+            project.tag = unique_tag
+            project.start_date = start_date
+            project.end_date = end_date
+            project.is_completed = is_completed
+            project.contract = contract
+            self.store(project)
+            return IntentResult(was_intent_successful=True, data=project)
+        except Exception as e:
+            return IntentResult(
+                was_intent_successful=False,
+                data=None,
+                log_message=f"Saving project failed with exception {e}",
+            )
 
     def get_project_by_id(self, projectId) -> IntentResult:
         try:
-            fake = faker.Faker()
-            p = self._get_fake_project(fake, int(projectId))
-            return IntentResult(was_intent_successful=True, data=p)
+            project = self.query(Project).where(id=int(projectId)).first()
+            return IntentResult(was_intent_successful=True, data=project)
         except Exception as e:
             return IntentResult(
                 was_intent_successful=False,
                 log_message=f"Exception raised @Projects.data_source_impl.get_project_by_id {e}",
                 data=None,
             )
-
-    """DUMMY CONTENT BELOW ---  DELETE ALL"""
-
-    def _get_dummy_projects(self):
-        fake = faker.Faker()
-        projects = {}
-        total = 10
-        for i in range(total):
-            p = self._get_fake_project(fake, i)
-            projects[p.id] = p
-        return projects
-
-    def _get_fake_project(self, fake, id):
-        project_title = fake.bs()
-        p = Project(
-            id=id,
-            contract_id=id * 2,
-            title=project_title,
-            description=fake.paragraph(nb_sentences=2),
-            unique_tag=project_title.split(" ")[0].lower(),
-            is_completed=True if id % 2 == 0 else False,
-            start_date=datetime.date.today(),
-            end_date=datetime.date.today() + datetime.timedelta((id + 1)),
-            contract=self._get_fake_contract(id * 2),
-        )
-        return p
-
-    def _get_fake_contract(self, i):
-        c = Contract(
-            id=i,
-            client_id=i * 3,
-            client=self._get_fake_client(i * 3),
-            title=f"Tuttle Ui Development Phase {i}",
-            rate=i * 2.2,
-            volume=int(i * 3.4),
-            currency="usd",
-            VAT_rate=i * 0.2,
-            billing_cycle=Cycle.hourly,
-            term_of_payment=12,
-            unit=TimeUnit.hour,
-            units_per_workday=i * 2.4,
-            is_completed=True if i % 2 == 0 else False,
-            signature_date=datetime.date.today(),
-            start_date=datetime.date.today(),
-            end_date=datetime.date.today() + datetime.timedelta((i + 1)),
-        )
-        return c
-
-    def _get_fake_client(self, id):
-        fake = faker.Faker(
-            ["fr_FR", "en_US", "de_DE", "es_ES", "it_IT", "sv_SE", "zh_CN"]
-        )
-        return Client(id=id, title=fake.company(), invoicing_contact_id=int(id * 3.142))

@@ -64,11 +64,11 @@ class Address(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     # name: str
-    street: str
-    number: str
-    city: str
-    postal_code: str
-    country: str
+    street: str = Field(default="")
+    number: str = Field(default="")
+    city: str = Field(default="")
+    postal_code: str = Field(default="")
+    country: str = Field(default="")
     users: List["User"] = Relationship(back_populates="address")
     contacts: List["Contact"] = Relationship(back_populates="address")
 
@@ -94,16 +94,32 @@ class Address(SQLModel, table=True):
         """
         )
 
+    @property
+    def is_empty(self) -> bool:
+        """True if all fields are empty."""
+        return all(
+            [
+                not self.street,
+                not self.number,
+                not self.city,
+                not self.postal_code,
+                not self.country,
+            ]
+        )
+
 
 class User(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
     subtitle: str
-    website: str
+    website: Optional[str]
     email: str
     phone_number: str
+    profile_photo: Optional[str] = Field(default=None)
     address_id: Optional[int] = Field(default=None, foreign_key="address.id")
-    address: Optional[Address] = Relationship(back_populates="users")
+    address: Optional[Address] = Relationship(
+        back_populates="users", sa_relationship_kwargs={"lazy": "subquery"}
+    )
     VAT_number: Optional[str]
     # User 1:1* ICloudAccount
     icloud_account_id: Optional[int] = Field(
@@ -160,9 +176,11 @@ class Contact(SQLModel, table=True):
     company: Optional[str]
     email: Optional[str]
     address_id: Optional[int] = Field(default=None, foreign_key="address.id")
-    address: Optional[Address] = Relationship(back_populates="contacts")
+    address: Optional[Address] = Relationship(
+        back_populates="contacts", sa_relationship_kwargs={"lazy": "subquery"}
+    )
     invoicing_contact_of: List["Client"] = Relationship(
-        back_populates="invoicing_contact"
+        back_populates="invoicing_contact", sa_relationship_kwargs={"lazy": "subquery"}
     )
     # post address
 
@@ -179,10 +197,19 @@ class Contact(SQLModel, table=True):
         else:
             return None
 
-    def print_address(self):
+    def print_address(self, onlyAddress: bool = False):
         """Print address in common format."""
         if self.address is None:
             return ""
+
+        if onlyAddress:
+            return textwrap.dedent(
+                f"""
+                {self.address.street} {self.address.number}
+                {self.address.postal_code} {self.address.city}
+                {self.address.country}"""
+            )
+
         return textwrap.dedent(
             f"""
         {self.name}
@@ -198,11 +225,16 @@ class Client(SQLModel, table=True):
     """A client the freelancer has contracted with."""
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    name: str
+    name: str = Field(default="")
     # Client 1:1 invoicing Contact
     invoicing_contact_id: int = Field(default=None, foreign_key="contact.id")
-    invoicing_contact: Contact = Relationship(back_populates="invoicing_contact_of")
-    contracts: List["Contract"] = Relationship(back_populates="client")
+    invoicing_contact: Contact = Relationship(
+        back_populates="invoicing_contact_of",
+        sa_relationship_kwargs={"lazy": "subquery"},
+    )
+    contracts: List["Contract"] = Relationship(
+        back_populates="client", sa_relationship_kwargs={"lazy": "subquery"}
+    )
     # non-invoice related contact person?
 
 
@@ -212,7 +244,7 @@ class Contract(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     title: str = Field(description="Short description of the contract.")
     client: Client = Relationship(
-        back_populates="contracts",
+        back_populates="contracts", sa_relationship_kwargs={"lazy": "subquery"}
     )
     signature_date: datetime.date = Field(
         description="Date on which the contract was signed",
@@ -253,13 +285,36 @@ class Contract(SQLModel, table=True):
         default=31,
     )
     billing_cycle: Cycle = Field(sa_column=sqlalchemy.Column(sqlalchemy.Enum(Cycle)))
-    projects: List["Project"] = Relationship(back_populates="contract")
-    invoices: List["Invoice"] = Relationship(back_populates="contract")
+    projects: List["Project"] = Relationship(
+        back_populates="contract", sa_relationship_kwargs={"lazy": "subquery"}
+    )
+    invoices: List["Invoice"] = Relationship(
+        back_populates="contract", sa_relationship_kwargs={"lazy": "subquery"}
+    )
     # TODO: model contractual promises like "at least 2 days per week"
 
     @property
     def volume_as_time(self):
         return self.volume * self.unit.to_timedelta()
+
+    def is_active(self) -> bool:
+        today = datetime.date.today()
+        return self.end_date > today
+
+    def is_upcoming(self) -> bool:
+        today = datetime.date.today()
+        return self.start_date > today
+
+    def get_status(self) -> str:
+        if self.is_active():
+            return "Active"
+        elif self.is_upcoming():
+            return "Upcoming"
+        elif self.is_completed:
+            return "Completed"
+        else:
+            # default
+            return "All"
 
 
 class Project(SQLModel, table=True):
@@ -267,21 +322,56 @@ class Project(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     title: str = Field(
-        description="A short, unique description", sa_column_kwargs={"unique": True}
+        description="A short, unique title", sa_column_kwargs={"unique": True}
+    )
+    description: str = Field(
+        description="A longer description of the project", default=""
     )
     # TODO: tag: constr(regex=r"#\S+")
     tag: str = Field(description="A unique tag", sa_column_kwargs={"unique": True})
     start_date: datetime.date
     end_date: datetime.date
+    is_completed: bool = Field(
+        default=False, description="marks if the project is completed"
+    )
     # Project m:n Contract
     contract_id: Optional[int] = Field(default=None, foreign_key="contract.id")
-    contract: Contract = Relationship(back_populates="projects")
+    contract: Contract = Relationship(
+        back_populates="projects", sa_relationship_kwargs={"lazy": "subquery"}
+    )
     # Project 1:n Timesheet
-    timesheets: List["Timesheet"] = Relationship(back_populates="project")
+    timesheets: List["Timesheet"] = Relationship(
+        back_populates="project", sa_relationship_kwargs={"lazy": "subquery"}
+    )
 
     @property
     def client(self):
         return self.contract.client
+
+    def get_brief_description(self):
+        if len(self.description) <= 108:
+            return self.description
+        else:
+            return f"{self.description[0:108]}..."
+
+    def is_active(self) -> bool:
+        today = datetime.date.today()
+        return self.end_date > today
+
+    def is_upcoming(self) -> bool:
+        today = datetime.date.today()
+        return self.start_date > today
+
+    def get_status(self) -> str:
+        if self.is_active():
+            return "Active"
+        elif self.is_upcoming():
+            return "Upcoming"
+        elif self.is_completed:
+            return "Completed"
+        else:
+            # default
+            return "All"
 
 
 class TimeTrackingItem(SQLModel, table=True):
