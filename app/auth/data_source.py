@@ -82,6 +82,7 @@ class UserDataSource(SQLModelDataSourceMixin):
             phone_number=phone,
             address_id=add.id,
             address=add,
+            profile_photo=user.profile_photo,
         )
         self._dummy_user = user
         return IntentResult(was_intent_successful=True, data=self._dummy_user)
