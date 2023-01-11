@@ -176,7 +176,7 @@ class NewTimeTrackPopUp(DialogHandler):
         )
 
 
-class TimetracksView(TuttleView, UserControl):
+class TimeTrackingView(TuttleView, UserControl):
     """Time tracking view on home page"""
 
     def __init__(self, params):

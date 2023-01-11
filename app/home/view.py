@@ -1,4 +1,5 @@
-from typing import Optional
+from typing import Optional, Callable
+
 import webbrowser
 from flet import (
     PopupMenuButton,
@@ -18,7 +19,17 @@ from flet import (
     ResponsiveRow,
     Icon,
     border,
+    icons,
+    Container,
+    Text,
+    padding,
+    Row,
+    icons,
+    alignment,
+    ElevatedButton,
 )
+
+
 from core.views import get_body_txt, get_headline_with_subtitle
 from core.abstractions import DialogHandler, TuttleView, TuttleViewParams
 from core.utils import (
@@ -56,7 +67,6 @@ from res.res_utils import (
     PROFILE_SCREEN_ROUTE,
 )
 from contacts.view import ContactEditorPopUp
-from typing import Callable
 
 from flet import (
     Container,
@@ -91,9 +101,8 @@ from clients.view import ClientsListView
 from contacts.view import ContactsListView
 from contracts.view import ContractsListView
 from projects.view import ProjectsListView
-from timetracking.view import TimetracksView
-from flet import icons, Container
-
+from timetracking.view import TimeTrackingView
+from invoicing.view import InvoicingView
 
 MIN_SIDE_BAR_WIDTH = int(MIN_WINDOW_WIDTH * 0.3)
 MIN_FOOTER_WIDTH = int(MIN_WINDOW_WIDTH * 0.7)
@@ -294,7 +303,10 @@ class SecondaryMenuHandler:
     def __init__(self, params: TuttleViewParams):
         super().__init__()
         self.menu_title = "Workflows"
-        self.timetrack_view = TimetracksView(params)
+
+        self.timetrack_view = TimeTrackingView(params)
+        self.invoicing_view = InvoicingView(params)
+
         self.items = [
             MenuItem(
                 0,
