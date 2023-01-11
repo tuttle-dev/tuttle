@@ -1,27 +1,24 @@
 import datetime
 
-import faker
-
 from core.models import Cycle, IntentResult, TimeUnit
 from typing import Optional
-
+from core.abstractions import SQLModelDataSourceMixin
 from tuttle.model import (
-    Client,
     Contract,
-    Contact,
     Project,
 )
 
 
-class ProjectDataSource:
+class ProjectDataSource(SQLModelDataSourceMixin):
     def __init__(self):
         super().__init__()
 
     def get_all_projects_as_map(
         self,
     ) -> IntentResult:
-        projects = self._get_dummy_projects()
-        return IntentResult(was_intent_successful=True, data=projects)
+        projects = self.query(Project)
+        result = {project.id: project for project in projects}
+        return IntentResult(was_intent_successful=True, data=result)
 
     def save_project(
         self,
@@ -34,13 +31,31 @@ class ProjectDataSource:
         is_completed: bool = False,
         project: Optional[Project] = None,
     ) -> IntentResult:
-        return IntentResult(was_intent_successful=True, data=project)
+        try:
+            if not project:
+                # create a project, this is not an update
+                project = Project()
+
+            project.title = title
+            project.description = description
+            project.tag = unique_tag
+            project.start_date = start_date
+            project.end_date = end_date
+            project.is_completed = is_completed
+            project.contract = contract
+            self.store(project)
+            return IntentResult(was_intent_successful=True, data=project)
+        except Exception as e:
+            return IntentResult(
+                was_intent_successful=False,
+                data=None,
+                log_message=f"Saving project failed with exception {e}",
+            )
 
     def get_project_by_id(self, projectId) -> IntentResult:
         try:
-            fake = faker.Faker()
-            p = self._get_fake_project(fake, int(projectId))
-            return IntentResult(was_intent_successful=True, data=p)
+            project = self.query(Project).where(id=int(projectId)).first()
+            return IntentResult(was_intent_successful=True, data=project)
         except Exception as e:
             return IntentResult(
                 was_intent_successful=False,

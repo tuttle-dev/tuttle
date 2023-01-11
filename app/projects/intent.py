@@ -89,7 +89,7 @@ class ProjectsIntent:
         if not self.completed_projects_cache:
             self.completed_projects_cache = {}
             for key in self.all_projects_cache:
-                p = self.all_projects_cache[key]
+                p: Project = self.all_projects_cache[key]
                 if p.is_completed:
                     self.completed_projects_cache[key] = p
         return self.completed_projects_cache

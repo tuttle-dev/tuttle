@@ -36,7 +36,7 @@ class TimeTrackingIntent:
                 was_intent_successful=False,
                 error_msg_if_err="Failed to load account preferences",
             )
-        print(f"{provider_result.data},  {acc_result.data}")
+
         return IntentResult(
             was_intent_successful=True, data=[provider_result.data, acc_result.data]
         )

@@ -180,7 +180,7 @@ class Contact(SQLModel, table=True):
         back_populates="contacts", sa_relationship_kwargs={"lazy": "subquery"}
     )
     invoicing_contact_of: List["Client"] = Relationship(
-        back_populates="invoicing_contact"
+        back_populates="invoicing_contact", sa_relationship_kwargs={"lazy": "subquery"}
     )
     # post address
 
@@ -232,7 +232,9 @@ class Client(SQLModel, table=True):
         back_populates="invoicing_contact_of",
         sa_relationship_kwargs={"lazy": "subquery"},
     )
-    contracts: List["Contract"] = Relationship(back_populates="client")
+    contracts: List["Contract"] = Relationship(
+        back_populates="client", sa_relationship_kwargs={"lazy": "subquery"}
+    )
     # non-invoice related contact person?
 
 
@@ -242,7 +244,7 @@ class Contract(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     title: str = Field(description="Short description of the contract.")
     client: Client = Relationship(
-        back_populates="contracts",
+        back_populates="contracts", sa_relationship_kwargs={"lazy": "subquery"}
     )
     signature_date: datetime.date = Field(
         description="Date on which the contract was signed",
@@ -283,8 +285,12 @@ class Contract(SQLModel, table=True):
         default=31,
     )
     billing_cycle: Cycle = Field(sa_column=sqlalchemy.Column(sqlalchemy.Enum(Cycle)))
-    projects: List["Project"] = Relationship(back_populates="contract")
-    invoices: List["Invoice"] = Relationship(back_populates="contract")
+    projects: List["Project"] = Relationship(
+        back_populates="contract", sa_relationship_kwargs={"lazy": "subquery"}
+    )
+    invoices: List["Invoice"] = Relationship(
+        back_populates="contract", sa_relationship_kwargs={"lazy": "subquery"}
+    )
     # TODO: model contractual promises like "at least 2 days per week"
 
     @property
@@ -325,11 +331,18 @@ class Project(SQLModel, table=True):
     tag: str = Field(description="A unique tag", sa_column_kwargs={"unique": True})
     start_date: datetime.date
     end_date: datetime.date
+    is_completed: bool = Field(
+        default=False, description="marks if the project is completed"
+    )
     # Project m:n Contract
     contract_id: Optional[int] = Field(default=None, foreign_key="contract.id")
-    contract: Contract = Relationship(back_populates="projects")
+    contract: Contract = Relationship(
+        back_populates="projects", sa_relationship_kwargs={"lazy": "subquery"}
+    )
     # Project 1:n Timesheet
-    timesheets: List["Timesheet"] = Relationship(back_populates="project")
+    timesheets: List["Timesheet"] = Relationship(
+        back_populates="project", sa_relationship_kwargs={"lazy": "subquery"}
+    )
 
     @property
     def client(self):
