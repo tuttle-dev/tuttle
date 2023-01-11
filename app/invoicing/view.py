@@ -6,6 +6,7 @@ from core.views import (
     mdSpace,
     StandardDropdown,
     get_headline_txt,
+    get_dropdown,
 )
 from core.abstractions import DialogHandler, TuttleView, TuttleViewParams
 from core.models import IntentResult
@@ -48,9 +49,15 @@ class InvoicingView(TuttleView, UserControl):
         ]
         logger.info(f"project_options: {project_options}")
 
-        self.project_selector = StandardDropdown(
+        # self.project_selector = StandardDropdown(
+        #     label="Project",
+        #     options=project_options,
+        #     initial_value="Select a project",
+        #     on_change=self.on_project_change,
+        # )
+        self.project_selector = get_dropdown(
             label="Project",
-            options=project_options,
+            items=project_options,
             initial_value="Select a project",
             on_change=self.on_project_change,
         )
