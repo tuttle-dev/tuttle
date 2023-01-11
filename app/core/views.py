@@ -1,6 +1,6 @@
 import datetime
 import typing
-from typing import Callable, List, Optional
+from typing import Callable, List, Optional, Union
 from .abstractions import DialogHandler
 from .utils import AlertDialogControls, KEYBOARD_PASSWORD
 from flet import (
@@ -90,7 +90,7 @@ def get_headline_with_subtitle(
 
 def get_std_txt_field(
     on_change,
-    lbl: str,
+    label: str,
     hint: str = "",
     keyboard_type: str = KEYBOARD_TEXT,
     on_focus: typing.Optional[Callable] = None,
@@ -102,7 +102,7 @@ def get_std_txt_field(
     txtFieldPad = padding.symmetric(horizontal=dimens.SPACE_XS)
 
     return TextField(
-        label=lbl,
+        label=label,
         keyboard_type=keyboard_type,
         content_padding=txtFieldPad,
         hint_text=hint,
@@ -122,7 +122,7 @@ def get_std_txt_field(
 
 def get_std_multiline_field(
     on_change,
-    lbl: str,
+    label: str,
     hint: str,
     on_focus: typing.Optional[Callable] = None,
     keyboardType: str = KEYBOARD_MULTILINE,
@@ -133,7 +133,7 @@ def get_std_multiline_field(
     txtFieldHintStyle = TextStyle(size=fonts.CAPTION_SIZE)
 
     return TextField(
-        label=lbl,
+        label=label,
         keyboard_type=keyboardType,
         hint_text=hint,
         hint_style=txtFieldHintStyle,
@@ -251,7 +251,7 @@ def update_dropdown_items(dropDown: Dropdown, items: List[str]):
 
 
 def get_dropdown(
-    lbl: str,
+    label: str,
     on_change: Callable,
     items: List[str],
     hint: Optional[str] = "",
@@ -266,7 +266,7 @@ def get_dropdown(
             )
         )
     return Dropdown(
-        label=lbl,
+        label=label,
         hint_text=hint,
         options=options,
         text_size=fonts.BODY_1_SIZE,
@@ -277,6 +277,71 @@ def get_dropdown(
         content_padding=padding.all(dimens.SPACE_XS),
         error_style=TextStyle(size=fonts.BODY_2_SIZE, color=colors.ERROR_COLOR),
     )
+
+
+class StandardDropdown(Dropdown):
+    """
+    A dropdown UI element that allows the user to select from a list of items.
+    It allows to pass list of items, hint, width and initial_value as optional parameters to configure the dropdown as per requirement.
+    """
+
+    def __init__(
+        self,
+        label: str,
+        on_change: Callable,
+        options: List[Union[str, dropdown.Option]],
+        hint: Optional[str] = "",
+        width: Optional[int] = None,
+        initial_value: Optional[str] = None,
+    ):
+        """
+        Parameters
+        ----------
+        label : str
+            Label to be displayed above the dropdown
+        on_change : Callable
+            A callback function that will be called when the user interacts with the dropdown
+        items : List[Union[str, dropdown.Option]]
+            list of items that the dropdown should have. Each item can be either a string or a dropdown.Option object
+        hint : Optional[str]
+            a hint that will be displayed when the user interacts with the dropdown
+        width : Optional[int]
+            Width of the dropdown element
+        initial_value : Optional[str]
+            Initial value of the dropdown element
+        """
+        options = []
+        for item in options:
+            if isinstance(item, str):
+                options.append(dropdown.Option(text=item))
+            elif isinstance(item, dropdown.Option):
+                options.append(item)
+            else:
+                raise TypeError("item must be of type 'str' or 'dropdown.Option'")
+
+        super().__init__(
+            label=label,
+            hint_text=hint,
+            options=options,
+            text_size=fonts.BODY_1_SIZE,
+            label_style=TextStyle(size=fonts.BODY_2_SIZE),
+            on_change=on_change,
+            width=width,
+            value=initial_value,
+            content_padding=padding.all(dimens.SPACE_XS),
+            error_style=TextStyle(size=fonts.BODY_2_SIZE, color=colors.ERROR_COLOR),
+        )
+
+    def update_items(self, items: List[str]):
+        """
+        Update the items of the dropdown
+        Parameters:
+        items: list of items to be set to the dropdown
+        """
+        options = []
+        for item in items:
+            options.append(dropdown.Option(text=item))
+        self.options = options
 
 
 class DateSelector(UserControl):
@@ -291,7 +356,7 @@ class DateSelector(UserControl):
         self.year = str(self.initialDate.year)
 
         self.day_dropdown = get_dropdown(
-            lbl="Day",
+            label="Day",
             hint="",
             on_change=self.on_date_set,
             items=[str(day) for day in range(1, 32)],
@@ -300,7 +365,7 @@ class DateSelector(UserControl):
         )
 
         self.month_dropdown = get_dropdown(
-            lbl="Month",
+            label="Month",
             on_change=self.on_month_set,
             items=[str(month) for month in range(1, 13)],
             width=50,
@@ -308,7 +373,7 @@ class DateSelector(UserControl):
         )
 
         self.year_dropdown = get_dropdown(
-            lbl="Year",
+            label="Year",
             on_change=self.on_year_set,
             items=[str(year) for year in range(2022, 2027)],
             width=100,
@@ -375,7 +440,7 @@ class AlertDisplayPopUp(DialogHandler):
         title: str,
         description: str,
         on_complete: Optional[Callable] = None,
-        button_lbl: str = "Got it",
+        button_label: str = "Got it",
         is_error: bool = True,
     ):
         self.dialog_height = 150
@@ -401,7 +466,7 @@ class AlertDisplayPopUp(DialogHandler):
             ),
             actions=[
                 get_primary_btn(
-                    label=button_lbl, on_click=self.on_complete_btn_clicked
+                    label=button_label, on_click=self.on_complete_btn_clicked
                 ),
             ],
         )
@@ -424,8 +489,8 @@ class ConfirmDisplayPopUp(DialogHandler):
         description: str,
         on_proceed: Callable,
         on_cancel: Optional[Callable] = None,
-        proceed_button_lbl: str = "Proceed",
-        cancel_button_lbl: str = "Cancel",
+        proceed_button_label: str = "Proceed",
+        cancel_button_label: str = "Cancel",
     ):
         self.dialog_height = 150
         self.dialog_width = int(dimens.MIN_WINDOW_WIDTH * 0.8)
@@ -449,10 +514,10 @@ class ConfirmDisplayPopUp(DialogHandler):
             ),
             actions=[
                 get_secondary_btn(
-                    label=cancel_button_lbl, on_click=self.on_cancel_btn_clicked
+                    label=cancel_button_label, on_click=self.on_cancel_btn_clicked
                 ),
                 get_primary_btn(
-                    label=proceed_button_lbl, on_click=self.on_proceed_btn_clicked
+                    label=proceed_button_label, on_click=self.on_proceed_btn_clicked
                 ),
             ],
         )

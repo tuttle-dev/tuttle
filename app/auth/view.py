@@ -37,7 +37,7 @@ from .intent import AuthIntent
 class UserDataForm(UserControl):
     """Form used to set required user info"""
 
-    def __init__(self, on_submit_success, on_form_submit, submit_btn_lbl):
+    def __init__(self, on_submit_success, on_form_submit, submit_btn_label):
         super().__init__()
         self.name = ""
         self.email = ""
@@ -50,7 +50,7 @@ class UserDataForm(UserControl):
         self.country = ""
         self.on_form_submit = on_form_submit
         self.on_submit_success = on_submit_success
-        self.submit_btn_lbl = submit_btn_lbl
+        self.submit_btn_label = submit_btn_label
 
     def set_form_err(self, err: str = ""):
         self.form_err_txt.value = err
@@ -159,38 +159,38 @@ class UserDataForm(UserControl):
         )
         self.street_field = views.get_std_txt_field(
             lambda e: self.on_change_value("street", e),
-            lbl="Street Name",
+            label="Street Name",
             keyboard_type=KEYBOARD_TEXT,
             expand=1,
         )
         self.street_number_field = views.get_std_txt_field(
             lambda e: self.on_change_value("street_number", e),
-            lbl="Street Number",
+            label="Street Number",
             keyboard_type=KEYBOARD_NUMBER,
             expand=1,
         )
         self.postal_code_field = views.get_std_txt_field(
             lambda e: self.on_change_value("postal_code", e),
-            lbl="Postal Code",
+            label="Postal Code",
             keyboard_type=KEYBOARD_NUMBER,
             expand=1,
         )
 
         self.city_field = views.get_std_txt_field(
             lambda e: self.on_change_value("city", e),
-            lbl="City",
+            label="City",
             keyboard_type=KEYBOARD_TEXT,
             expand=1,
         )
         self.country_field = views.get_std_txt_field(
             lambda e: self.on_change_value("country", e),
-            lbl="Country",
+            label="Country",
             keyboard_type=KEYBOARD_TEXT,
         )
         self.form_err_txt = views.get_error_txt("")
         self.submit_btn = views.get_primary_btn(
             on_click=self.on_submit_btn_clicked,
-            label=self.submit_btn_lbl,
+            label=self.submit_btn_label,
         )
         self.form = Column(
             spacing=dimens.SPACE_MD,
@@ -274,7 +274,7 @@ class SplashScreen(TuttleView, UserControl):
                 city=city,
                 country=country,
             ),
-            submit_btn_lbl="Get Started",
+            submit_btn_label="Get Started",
         )
         self.form_container.controls.remove(self.loading_indicator)
         self.form_container.controls.append(form)
@@ -417,7 +417,7 @@ class ProfileScreen(TuttleView, UserControl):
                 user=self.user,
             ),
             on_submit_success=self.on_profile_updated,
-            submit_btn_lbl="Update Profile",
+            submit_btn_label="Update Profile",
         )
 
         return Card(

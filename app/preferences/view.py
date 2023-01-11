@@ -108,7 +108,7 @@ class PreferencesScreen(TuttleView, UserControl):
             return
         self.preferences.language = e.control.value
 
-    def get_tab_item(self, lbl, icon, content_controls):
+    def get_tab_item(self, label, icon, content_controls):
         return Tab(
             tab_content=Column(
                 alignment=CENTER_ALIGNMENT,
@@ -116,7 +116,7 @@ class PreferencesScreen(TuttleView, UserControl):
                 controls=[
                     Icon(icon, size=24),
                     smSpace,
-                    Text(lbl),
+                    Text(label),
                     mdSpace,
                 ],
             ),
@@ -147,26 +147,26 @@ class PreferencesScreen(TuttleView, UserControl):
         self.theme_control = get_dropdown(
             items=[mode.value for mode in THEME_MODES],
             on_change=self.on_theme_changed,
-            lbl="Appearance",
+            label="Appearance",
             hint="",
         )
         self.cloud_provider_control = get_dropdown(
-            lbl="Cloud Provider",
+            label="Cloud Provider",
             on_change=self.on_cloud_provider_selected,
             items=[item.value for item in CloudAccounts],
         )
         self.cloud_account_id_control = get_std_txt_field(
-            lbl="Cloud Account Name",
+            label="Cloud Account Name",
             hint="to load time tracking info from calendar",
             on_change=self.on_cloud_account_id_changed,
         )
         self.currencies_control = get_dropdown(
-            lbl="Default Currency",
+            label="Default Currency",
             on_change=self.on_currency_selected,
             items=self.currencies,
         )
         self.languages_control = get_dropdown(
-            lbl="Language",
+            label="Language",
             on_change=self.on_language_selected,
             items=[
                 "English",

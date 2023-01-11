@@ -19,7 +19,7 @@ class BarChart(UserControl):
         self,
         x_items_labels: list,
         values: list,
-        y_lbl: str,
+        y_label: str,
         chart_title: str = "",
         x_label: str = "legend",
         legend: str = "",
@@ -44,7 +44,7 @@ class BarChart(UserControl):
             first_item = False
 
         self.axes.bar(x_items_labels, values, label=legends_per_item, color=bar_colors)
-        self.axes.set_ylabel(y_lbl)
+        self.axes.set_ylabel(y_label)
         self.axes.set_xlabel(x_label)
         self.axes.spines["top"].set_visible(False)
         self.axes.spines["right"].set_visible(False)

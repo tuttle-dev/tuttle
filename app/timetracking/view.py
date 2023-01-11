@@ -52,24 +52,25 @@ class TimeTrackFromCloudPopup(DialogHandler):
                         get_headline_txt(txt=title, size=HEADLINE_4_SIZE),
                         xsSpace,
                         get_dropdown(
-                            lbl="Cloud Provider",
+                            label="Cloud Provider",
                             items=[item.value for item in CloudAccounts],
                             initial_value=preferred_acc_provider,
                             on_change=self.on_cloud_provider_changed,
                         ),
                         xsSpace,
                         get_std_txt_field(
-                            lbl="Cloud Acc",
+                            label="Cloud Acc",
                             initial_value=preferred_cloud_acc,
                             on_change=self.on_cloud_acc_changed,
                         ),
                         xsSpace,
                         get_std_txt_field(
-                            lbl="Calendar Name", on_change=self.on_calendar_name_changed
+                            label="Calendar Name",
+                            on_change=self.on_calendar_name_changed,
                         ),
                         xsSpace,
                         get_std_txt_field(
-                            lbl="Cloud Password",
+                            label="Cloud Password",
                             keyboard_type=KEYBOARD_PASSWORD,
                             on_change=self.on_password_changed,
                         ),

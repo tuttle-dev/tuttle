@@ -220,10 +220,10 @@ class ProjectFiltersView(UserControl):
         self.onStateChangedCallback = onStateChanged
 
     def filter_button(
-        self, state: ProjectStates, lbl: str, onClick: Callable[[ProjectStates], None]
+        self, state: ProjectStates, label: str, onClick: Callable[[ProjectStates], None]
     ):
         button = ElevatedButton(
-            text=lbl,
+            text=label,
             col={"xs": 6, "sm": 3, "lg": 2},
             on_click=lambda e: onClick(state),
             height=CLICKABLE_PILL_HEIGHT,
@@ -247,7 +247,7 @@ class ProjectFiltersView(UserControl):
         self.update()
         self.onStateChangedCallback(state)
 
-    def get_filter_button_lbl(self, state: ProjectStates):
+    def get_filter_button_label(self, state: ProjectStates):
         if state.value == ProjectStates.ACTIVE.value:
             return "Active"
         elif state.value == ProjectStates.UPCOMING.value:
@@ -260,7 +260,7 @@ class ProjectFiltersView(UserControl):
     def set_filter_buttons(self):
         for state in ProjectStates:
             button = self.filter_button(
-                lbl=self.get_filter_button_lbl(state),
+                label=self.get_filter_button_label(state),
                 state=state,
                 onClick=self.on_filter_button_clicked,
             )
@@ -313,7 +313,7 @@ class ViewProjectScreen(TuttleView, UserControl):
             values=dummy_hours,
             chart_title="Hours logged last 7 days",
             x_label="Days",
-            y_lbl="Hours",
+            y_label="Hours",
             legend="hours per day",
         )
         self.chart_container.content = self.chart
@@ -366,7 +366,7 @@ class ViewProjectScreen(TuttleView, UserControl):
             title="Are You Sure?",
             description="Are you sure you wish to delete this project?",
             on_proceed=self.on_delete_confirmed,
-            proceed_button_lbl="Yes! Delete",
+            proceed_button_label="Yes! Delete",
         )
         self.dialog.open_dialog()
 
@@ -784,19 +784,19 @@ class EditProjectScreen(TuttleView, UserControl):
 
     def build(self):
         self.title_field = get_std_txt_field(
-            lbl="Title",
+            label="Title",
             hint="Project's title",
             on_change=self.on_title_changed,
             on_focus=self.clear_title_error,
         )
         self.description_field = get_std_multiline_field(
-            lbl="Description",
+            label="Description",
             hint="Project's description",
             on_change=self.on_description_changed,
             on_focus=self.clear_description_error,
         )
         self.tag_field = get_std_txt_field(
-            lbl="Tag",
+            label="Tag",
             hint="an optional tag",
             on_change=self.on_tag_changed,
         )
@@ -1010,25 +1010,25 @@ class CreateProjectScreen(TuttleView, UserControl):
 
     def build(self):
         self.title_field = get_std_txt_field(
-            lbl="Title",
+            label="Title",
             hint="Project's title",
             on_change=self.on_title_changed,
             on_focus=self.clear_title_error,
         )
         self.description_field = get_std_multiline_field(
-            lbl="Description",
+            label="Description",
             hint="Project's description",
             on_change=self.on_description_changed,
             on_focus=self.clear_description_error,
         )
         self.tag_field = get_std_txt_field(
-            lbl="Tag",
+            label="Tag",
             hint="an optional tag",
             on_change=self.on_tag_changed,
         )
 
         self.contracts_field = get_dropdown(
-            lbl="Contract",
+            label="Contract",
             on_change=self.on_contract_selected,
             items=self.get_contracts_as_list(),
         )

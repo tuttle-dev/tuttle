@@ -393,14 +393,14 @@ class ContractEditorScreen(TuttleView, ft.UserControl):
 
     def build(self):
         self.title_field = get_std_txt_field(
-            lbl="Title",
+            label="Title",
             hint="Contract's title",
             on_change=self.on_title_changed,
             on_focus=self.clear_title_error,
         )
 
         self.rate_field = get_std_txt_field(
-            lbl="Rate",
+            label="Rate",
             hint="Contract's rate",
             on_change=self.on_rate_changed,
             on_focus=self.clear_rate_error,
@@ -408,14 +408,14 @@ class ContractEditorScreen(TuttleView, ft.UserControl):
         )
 
         self.currency_field = get_std_txt_field(
-            lbl="Currency",
+            label="Currency",
             hint="Payment currency",
             on_change=self.on_currency_changed,
             on_focus=self.clear_currency_error,
         )
 
         self.vatRate_field = get_std_txt_field(
-            lbl="Vat",
+            label="Vat",
             hint="Vat rate",
             on_change=self.on_vat_rate_changed,
             on_focus=self.clear_vat_rate_error,
@@ -423,7 +423,7 @@ class ContractEditorScreen(TuttleView, ft.UserControl):
         )
 
         self.unitPW_field = get_std_txt_field(
-            lbl="Units per workday",
+            label="Units per workday",
             hint="",
             on_change=self.on_upw_changed,
             on_focus=self.clear_upw_error,
@@ -431,7 +431,7 @@ class ContractEditorScreen(TuttleView, ft.UserControl):
         )
 
         self.volume_field = get_std_txt_field(
-            lbl="Volume (optional)",
+            label="Volume (optional)",
             hint="",
             on_change=self.on_volume_changed,
             on_focus=self.clear_volume_error,
@@ -439,7 +439,7 @@ class ContractEditorScreen(TuttleView, ft.UserControl):
         )
 
         self.termOfPayment_field = get_std_txt_field(
-            lbl="Term of payment (optional)",
+            label="Term of payment (optional)",
             hint="",
             on_change=self.on_top_changed,
             on_focus=self.clear_top_error,
@@ -447,18 +447,18 @@ class ContractEditorScreen(TuttleView, ft.UserControl):
         )
 
         self.clients_field = get_dropdown(
-            lbl="Client",
+            label="Client",
             on_change=self.on_client_selected,
             items=self.get_clients_as_list(),
         )
         self.units_field = get_dropdown(
-            lbl="Time Unit",
+            label="Time Unit",
             on_change=self.on_unit_selected,
             items=get_time_unit_values_as_list(),
         )
 
         self.billingCycle_field = get_dropdown(
-            lbl="Billing Cycle",
+            label="Billing Cycle",
             on_change=self.on_billing_cycle_selected,
             items=get_cycle_values_as_list(),
         )
@@ -562,10 +562,13 @@ class ContractFiltersView(ft.UserControl):
         self.onStateChangedCallback = onStateChanged
 
     def filter_button(
-        self, state: ContractStates, lbl: str, onClick: Callable[[ContractStates], None]
+        self,
+        state: ContractStates,
+        label: str,
+        onClick: Callable[[ContractStates], None],
     ):
         button = ft.ElevatedButton(
-            text=lbl,
+            text=label,
             col={"xs": 6, "sm": 3, "lg": 2},
             on_click=lambda e: onClick(state),
             height=dimens.CLICKABLE_PILL_HEIGHT,
@@ -591,7 +594,7 @@ class ContractFiltersView(ft.UserControl):
         self.update()
         self.onStateChangedCallback(state)
 
-    def get_filter_button_lbl(self, state: ContractStates):
+    def get_filter_button_label(self, state: ContractStates):
         if state.value == ContractStates.ACTIVE.value:
             return "Active"
         elif state.value == ContractStates.UPCOMING.value:
@@ -604,7 +607,7 @@ class ContractFiltersView(ft.UserControl):
     def set_filter_buttons(self):
         for state in ContractStates:
             button = self.filter_button(
-                lbl=self.get_filter_button_lbl(state),
+                label=self.get_filter_button_label(state),
                 state=state,
                 onClick=self.on_filter_button_clicked,
             )
@@ -852,64 +855,64 @@ class CreateContractScreen(TuttleView, ft.UserControl):
 
     def build(self):
         self.title_field = get_std_txt_field(
-            lbl="Title",
+            label="Title",
             hint="Contract's title",
             on_change=self.on_title_changed,
             on_focus=self.clear_title_error,
         )
         self.rate_field = get_std_txt_field(
-            lbl="Rate",
+            label="Rate",
             hint="Contract's rate",
             on_change=self.on_rate_changed,
             on_focus=self.clear_rate_error,
             keyboard_type=utils.KEYBOARD_NUMBER,
         )
         self.currency_field = get_std_txt_field(
-            lbl="Currency",
+            label="Currency",
             hint="Payment currency",
             on_change=self.on_currency_changed,
             on_focus=self.clear_currency_error,
         )
         self.vat_rate_field = get_std_txt_field(
-            lbl="Vat",
+            label="Vat",
             hint="Vat rate",
             on_change=self.on_vat_rate_changed,
             on_focus=self.clear_vat_rate_error,
             keyboard_type=utils.KEYBOARD_NUMBER,
         )
         self.unit_PW_field = get_std_txt_field(
-            lbl="Units per workday",
+            label="Units per workday",
             hint="",
             on_change=self.on_upw_changed,
             on_focus=self.clear_upw_error,
             keyboard_type=utils.KEYBOARD_NUMBER,
         )
         self.volume_field = get_std_txt_field(
-            lbl="Volume (optional)",
+            label="Volume (optional)",
             hint="",
             on_change=self.on_volume_changed,
             on_focus=self.clear_volume_error,
             keyboard_type=utils.KEYBOARD_NUMBER,
         )
         self.term_of_payment_field = get_std_txt_field(
-            lbl="Term of payment (optional)",
+            label="Term of payment (optional)",
             hint="",
             on_change=self.on_top_changed,
             on_focus=self.clear_top_error,
             keyboard_type=utils.KEYBOARD_NUMBER,
         )
         self.clients_field = get_dropdown(
-            lbl="Client",
+            label="Client",
             on_change=self.on_client_selected,
             items=self.get_clients_as_list(),
         )
         self.units_field = get_dropdown(
-            lbl="Time Unit",
+            label="Time Unit",
             on_change=self.on_unit_selected,
             items=get_time_unit_values_as_list(),
         )
         self.billing_cycle_field = get_dropdown(
-            lbl="Billing Cycle",
+            label="Billing Cycle",
             on_change=self.on_billing_cycle_selected,
             items=get_cycle_values_as_list(),
         )
@@ -1148,11 +1151,11 @@ class ViewContractScreen(TuttleView, ft.UserControl):
     def on_delete_clicked(self, e):
         self.show_snack("Coming soon", False)
 
-    def get_body_element(self, lbl, control):
+    def get_body_element(self, label, control):
         return ft.ResponsiveRow(
             controls=[
                 ft.Text(
-                    lbl,
+                    label,
                     color=colors.GRAY_COLOR,
                     size=fonts.BODY_2_SIZE,
                     col={

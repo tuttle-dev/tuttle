@@ -162,61 +162,61 @@ class ClientEditorPopUp(DialogHandler, UserControl):
 
         self.first_name_field = get_std_txt_field(
             on_change=self.on_fname_changed,
-            lbl="First Name",
+            label="First Name",
             hint=self.invoicing_contact.first_name,
             initial_value=self.invoicing_contact.first_name,
         )
 
         self.last_name_field = get_std_txt_field(
             on_change=self.on_lname_changed,
-            lbl="Last Name",
+            label="Last Name",
             hint=self.invoicing_contact.last_name,
             initial_value=self.invoicing_contact.last_name,
         )
         self.company_field = get_std_txt_field(
             on_change=self.on_company_changed,
-            lbl="Company",
+            label="Company",
             hint=self.invoicing_contact.company,
             initial_value=self.invoicing_contact.company,
         )
         self.email_field = get_std_txt_field(
             on_change=self.on_email_changed,
-            lbl="Email",
+            label="Email",
             hint=self.invoicing_contact.email,
             initial_value=self.invoicing_contact.email,
         )
 
         self.street_field = get_std_txt_field(
             on_change=self.on_street_changed,
-            lbl="Street",
+            label="Street",
             hint=self.invoicing_contact.address.street,
             initial_value=self.invoicing_contact.address.street,
             width=self.half_of_dialog_width,
         )
         self.street_num_field = get_std_txt_field(
             on_change=self.on_street_num_changed,
-            lbl="Street No.",
+            label="Street No.",
             hint=self.invoicing_contact.address.number,
             initial_value=self.invoicing_contact.address.number,
             width=self.half_of_dialog_width,
         )
         self.postal_code_field = get_std_txt_field(
             on_change=self.on_postal_code_changed,
-            lbl="Postal code",
+            label="Postal code",
             hint=self.invoicing_contact.address.postal_code,
             initial_value=self.invoicing_contact.address.postal_code,
             width=self.half_of_dialog_width,
         )
         self.city_field = get_std_txt_field(
             on_change=self.on_city_changed,
-            lbl="City",
+            label="City",
             hint=self.invoicing_contact.address.city,
             initial_value=self.invoicing_contact.address.city,
             width=self.half_of_dialog_width,
         )
         self.country_field = get_std_txt_field(
             on_change=self.on_country_changed,
-            lbl="Country",
+            label="Country",
             hint=self.invoicing_contact.address.country,
             initial_value=self.invoicing_contact.address.country,
         )
@@ -231,7 +231,7 @@ class ClientEditorPopUp(DialogHandler, UserControl):
                         xsSpace,
                         get_std_txt_field(
                             on_change=self.on_title_changed,
-                            lbl="Client's title",
+                            label="Client's title",
                             hint=self.client.name,
                             initial_value=self.client.name,
                         ),
@@ -244,7 +244,7 @@ class ClientEditorPopUp(DialogHandler, UserControl):
                         xsSpace,
                         get_dropdown(
                             on_change=self.on_contact_selected,
-                            lbl="Select contact",
+                            label="Select contact",
                             items=self.contact_options,
                             initial_value=initial_selected_contact,
                         ),

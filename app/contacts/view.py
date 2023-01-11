@@ -161,25 +161,25 @@ class ContactEditorPopUp(DialogHandler):
                         xsSpace,
                         get_std_txt_field(
                             on_change=self.on_fname_changed,
-                            lbl="First Name",
+                            label="First Name",
                             hint=self.contact.first_name,
                             initial_value=self.contact.first_name,
                         ),
                         get_std_txt_field(
                             on_change=self.on_lname_changed,
-                            lbl="Last Name",
+                            label="Last Name",
                             hint=self.contact.last_name,
                             initial_value=self.contact.last_name,
                         ),
                         get_std_txt_field(
                             on_change=self.on_company_changed,
-                            lbl="Company",
+                            label="Company",
                             hint=self.contact.company,
                             initial_value=self.contact.company,
                         ),
                         get_std_txt_field(
                             on_change=self.on_email_changed,
-                            lbl="Email",
+                            label="Email",
                             hint=self.contact.email,
                             initial_value=self.contact.email,
                         ),
@@ -188,14 +188,14 @@ class ContactEditorPopUp(DialogHandler):
                             controls=[
                                 get_std_txt_field(
                                     on_change=self.on_street_changed,
-                                    lbl="Street",
+                                    label="Street",
                                     hint=self.contact.address.street,
                                     initial_value=self.contact.address.street,
                                     width=self.half_of_dialog_width,
                                 ),
                                 get_std_txt_field(
                                     on_change=self.on_street_num_changed,
-                                    lbl="Street No.",
+                                    label="Street No.",
                                     hint=self.contact.address.number,
                                     initial_value=self.contact.address.number,
                                     width=self.half_of_dialog_width,
@@ -207,14 +207,14 @@ class ContactEditorPopUp(DialogHandler):
                             controls=[
                                 get_std_txt_field(
                                     on_change=self.on_postal_code_changed,
-                                    lbl="Postal code",
+                                    label="Postal code",
                                     hint=self.contact.address.postal_code,
                                     initial_value=self.contact.address.postal_code,
                                     width=self.half_of_dialog_width,
                                 ),
                                 get_std_txt_field(
                                     on_change=self.on_city_changed,
-                                    lbl="City",
+                                    label="City",
                                     hint=self.contact.address.city,
                                     initial_value=self.contact.address.city,
                                     width=self.half_of_dialog_width,
@@ -223,7 +223,7 @@ class ContactEditorPopUp(DialogHandler):
                         ),
                         get_std_txt_field(
                             on_change=self.on_country_changed,
-                            lbl="Country",
+                            label="Country",
                             hint=self.contact.address.country,
                             initial_value=self.contact.address.country,
                         ),
