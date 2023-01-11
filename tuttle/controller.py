@@ -32,7 +32,10 @@ from .model import (
     Invoice,
 )
 
+from .dev import deprecated
 
+
+@deprecated("Outdated approach")
 class Controller:
     """The application controller."""
 
