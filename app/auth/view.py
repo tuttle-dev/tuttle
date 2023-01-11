@@ -351,6 +351,7 @@ class ProfileScreen(TuttleView, UserControl):
         super().__init__(params=params)
         self.horizontal_alignment_in_parent = CENTER_ALIGNMENT
         self.intent_handler = AuthIntent()
+        self.uploaded_photo_url = ""
 
     def on_profile_updated(self, data):
         self.show_snack("Your profile has been updated", False)
