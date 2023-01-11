@@ -15,10 +15,15 @@ class TimeTrackingDataSource(SQLModelDataSourceMixin):
         returns was_intent_successful = True if processing completed successfully
         else was_intent_successful = False and err_msg are set
         """
-        return IntentResult(was_intent_successful=True, data=None)
+        return IntentResult(
+            was_intent_successful=False,
+            data=None,
+            error_msg_if_err="Not implemented yet",
+        )
 
     def configure_account_and_load_calendar(
-        self, info: CloudCalendarInfo
+        self,
+        info: CloudCalendarInfo,
     ) -> IntentResult:
         """Receives an account name, a password, and a calendar name. Attempts to load calendar data from this info.
         returns was_intent_successful=True if successful, else false along with a log message
