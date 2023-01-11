@@ -1,7 +1,7 @@
 import matplotlib
 import matplotlib.pyplot as plt
 
-import flet as ft
+import flet
 from flet.matplotlib_chart import MatplotlibChart
 from matplotlib.widgets import Slider
 

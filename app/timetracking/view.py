@@ -1,5 +1,5 @@
 from typing import Callable
-import flet as ft
+import flet
 from flet import (
     AlertDialog,
     Column,
@@ -250,7 +250,7 @@ class TimeTrackingView(TuttleView, UserControl):
 
     """Spreadsheet and ics uploads"""
 
-    def on_file_picker_result(self, e: ft.FilePickerResultEvent):
+    def on_file_picker_result(self, e: flet.FilePickerResultEvent):
         if e.files and len(e.files) > 0:
             file = e.files[0]
             self.set_progress_hint(f"Uploading file {file.name}")
