@@ -1,108 +1,86 @@
-from typing import Optional, Callable
+from typing import Callable, Optional
 
 import webbrowser
+from dataclasses import dataclass
+
 from flet import (
-    PopupMenuButton,
-    PopupMenuItem,
     Column,
     Container,
+    ElevatedButton,
+    Icon,
     IconButton,
     NavigationRail,
     NavigationRailDestination,
+    PopupMenuButton,
+    PopupMenuItem,
+    ResponsiveRow,
     Row,
     Text,
     UserControl,
     alignment,
+    border,
     icons,
     margin,
     padding,
-    ResponsiveRow,
-    Icon,
-    border,
-    icons,
-    Container,
-    Text,
-    padding,
-    Row,
-    icons,
-    alignment,
-    ElevatedButton,
 )
 
-
-from core.views import get_body_txt, get_headline_with_subtitle
+from clients.view import ClientsListView
+from contacts.view import ContactEditorPopUp, ContactsListView
+from contracts.view import ContractsListView
 from core.abstractions import DialogHandler, TuttleView, TuttleViewParams
 from core.utils import (
+    ALWAYS_SCROLL,
+    CENTER_ALIGNMENT,
     COMPACT_RAIL_WIDTH,
     SPACE_BETWEEN_ALIGNMENT,
     START_ALIGNMENT,
-    TXT_ALIGN_START,
-    ALWAYS_SCROLL,
     STRETCH_ALIGNMENT,
+    TXT_ALIGN_START,
 )
-from res.colors import GRAY_DARK_COLOR, GRAY_COLOR, BLACK_COLOR
+from core.views import (
+    get_app_logo,
+    get_body_txt,
+    get_headline_with_subtitle,
+    get_std_txt_field,
+)
+from invoicing.view import InvoicingView
+from projects.view import ProjectsListView
+from res.colors import (
+    BLACK_COLOR,
+    GRAY_COLOR,
+    GRAY_DARK_COLOR,
+    PRIMARY_COLOR,
+    WHITE_COLOR,
+)
 from res.dimens import (
-    MIN_WINDOW_WIDTH,
+    FOOTER_HEIGHT,
     MIN_WINDOW_HEIGHT,
+    MIN_WINDOW_WIDTH,
+    SPACE_LG,
     SPACE_MD,
     SPACE_SM,
     SPACE_STD,
     SPACE_XL,
     SPACE_XS,
-    SPACE_LG,
-    FOOTER_HEIGHT,
+    TOOLBAR_HEIGHT,
 )
 from res.fonts import (
+    BODY_2_SIZE,
     HEADLINE_4_SIZE,
     HEADLINE_FONT,
-    BODY_2_SIZE,
-    SUBTITLE_2_SIZE,
     SUBTITLE_1_SIZE,
+    SUBTITLE_2_SIZE,
 )
-
 from res.res_utils import (
-    ADD_CLIENT_INTENT,
-    ADD_CONTACT_INTENT,
-    PREFERENCES_SCREEN_ROUTE,
-    PROFILE_SCREEN_ROUTE,
-)
-from contacts.view import ContactEditorPopUp
-
-from flet import (
-    Container,
-    Text,
-    padding,
-    IconButton,
-    Row,
-    icons,
-    alignment,
-    ElevatedButton,
-)
-
-from core.utils import SPACE_BETWEEN_ALIGNMENT, CENTER_ALIGNMENT
-from core.views import get_app_logo, get_std_txt_field
-from res.colors import BLACK_COLOR, WHITE_COLOR, PRIMARY_COLOR
-from res.dimens import SPACE_MD, TOOLBAR_HEIGHT
-
-from res.fonts import HEADLINE_4_SIZE, HEADLINE_FONT
-from dataclasses import dataclass
-
-
-from res.res_utils import (
-    PROJECT_CREATOR_SCREEN_ROUTE,
     ADD_CLIENT_INTENT,
     ADD_CONTACT_INTENT,
     CONTRACT_CREATOR_SCREEN_ROUTE,
     NEW_TIME_TRACK_INTENT,
+    PREFERENCES_SCREEN_ROUTE,
+    PROFILE_SCREEN_ROUTE,
+    PROJECT_CREATOR_SCREEN_ROUTE,
 )
-from core.abstractions import TuttleView
-from typing import Optional
-from clients.view import ClientsListView
-from contacts.view import ContactsListView
-from contracts.view import ContractsListView
-from projects.view import ProjectsListView
 from timetracking.view import TimeTrackingView
-from invoicing.view import InvoicingView
 
 MIN_SIDE_BAR_WIDTH = int(MIN_WINDOW_WIDTH * 0.3)
 MIN_FOOTER_WIDTH = int(MIN_WINDOW_WIDTH * 0.7)
@@ -251,7 +229,7 @@ class MainMenuItemsHandler:
         self.contracts_view = ContractsListView(params)
         self.items = [
             MenuItem(
-                0,
+                index=0,
                 label="Dashboard",
                 icon=icons.SPEED,
                 selected_icon=icons.SPEED_ROUNDED,
@@ -259,38 +237,38 @@ class MainMenuItemsHandler:
                 on_new_screen_route="/404",
             ),
             MenuItem(
-                1,
-                "Projects",
-                icons.WORK_OUTLINE,
-                icons.WORK_ROUNDED,
-                self.projects_view,
+                index=1,
+                label="Projects",
+                icon=icons.WORK_OUTLINE,
+                selected_icon=icons.WORK_ROUNDED,
+                destination=self.projects_view,
                 on_new_screen_route=PROJECT_CREATOR_SCREEN_ROUTE,
                 on_new_intent=None,
             ),
             MenuItem(
-                2,
-                "Contacts",
-                icons.CONTACT_MAIL_OUTLINED,
-                icons.CONTACT_MAIL_ROUNDED,
-                self.contacts_view,
+                index=2,
+                label="Contacts",
+                icon=icons.CONTACT_MAIL_OUTLINED,
+                selected_icon=icons.CONTACT_MAIL_ROUNDED,
+                destination=self.contacts_view,
                 on_new_screen_route=None,
                 on_new_intent=ADD_CONTACT_INTENT,
             ),
             MenuItem(
-                3,
-                "Clients",
-                icons.CONTACTS_OUTLINED,
-                icons.CONTACTS_ROUNDED,
-                self.clients_view,
+                index=3,
+                label="Clients",
+                icon=icons.CONTACTS_OUTLINED,
+                selected_icon=icons.CONTACTS_ROUNDED,
+                destination=self.clients_view,
                 on_new_screen_route=None,
                 on_new_intent=ADD_CLIENT_INTENT,
             ),
             MenuItem(
-                4,
-                "Contracts",
-                icons.HANDSHAKE_OUTLINED,
-                icons.HANDSHAKE_ROUNDED,
-                self.contracts_view,
+                index=4,
+                label="Contracts",
+                icon=icons.HANDSHAKE_OUTLINED,
+                selected_icon=icons.HANDSHAKE_ROUNDED,
+                destination=self.contracts_view,
                 on_new_screen_route=CONTRACT_CREATOR_SCREEN_ROUTE,
                 on_new_intent=None,
             ),
@@ -309,29 +287,29 @@ class SecondaryMenuHandler:
 
         self.items = [
             MenuItem(
-                0,
-                "Time Tracking",
-                icons.TIMER_OUTLINED,
-                icons.TIMER_ROUNDED,
-                self.timetrack_view,
+                index=0,
+                label="Time Tracking",
+                icon=icons.TIMER_OUTLINED,
+                selected_icon=icons.TIMER_ROUNDED,
+                destination=self.timetrack_view,
                 on_new_screen_route=None,
                 on_new_intent=NEW_TIME_TRACK_INTENT,
             ),
             MenuItem(
-                0,
-                "Invoicing",
-                icons.ATTACH_MONEY_SHARP,
-                icons.ATTACH_MONEY_ROUNDED,
-                Container(),
-                "/404",
+                index=1,
+                label="Invoicing",
+                icon=icons.ATTACH_MONEY_SHARP,
+                selected_icon=icons.ATTACH_MONEY_ROUNDED,
+                destination=self.invoicing_view,
+                on_new_screen_route="/404",
             ),
             MenuItem(
-                0,
-                "Datatable",
-                icons.TABLE_CHART,
-                icons.TABLE_CHART_ROUNDED,
-                Container(),
-                "/404",
+                index=2,
+                label="Datatable",
+                icon=icons.TABLE_CHART,
+                selected_icon=icons.TABLE_CHART_ROUNDED,
+                destination=Container(),
+                on_new_screen_route="/404",
             ),
         ]
 
