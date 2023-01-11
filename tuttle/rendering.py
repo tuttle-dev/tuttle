@@ -5,11 +5,14 @@ import sys
 from pathlib import Path
 import shutil
 import glob
-
 import jinja2
 from babel.numbers import format_currency
 import pandas
 from loguru import logger
+import base64
+import io
+import PyPDF2
+import PIL
 
 
 from .model import User, Invoice, Timesheet, Project
@@ -256,3 +259,48 @@ def render_timesheet(
                 css_paths=css_paths,
                 out_path=timesheet_dir / Path(f"{prefix}.pdf"),
             )
+
+
+def generate_document_thumbnail(pdf_path: str, thumbnail_width: int) -> str:
+    """
+    Generate a thumbnail image of a PDF document.
+
+    Parameters:
+        pdf_path (str): The path to the PDF file.
+        thumbnail_width (int): The width of the thumbnail image in pixels.
+
+    Returns:
+        str: A base64-encoded string of the thumbnail image.
+    """
+    # Open the PDF file in memory
+    with open(pdf_path, "rb") as pdf_file:
+        # Create a PDF object
+        pdf_doc = PyPDF2.PdfFileReader(pdf_file)
+
+        # Get the first page
+        page = pdf_doc.getPage(0)
+
+        # Get the size of the page
+        page_width, page_height = page.mediaBox.upperRight
+
+        # Calculate the aspect ratio of the page
+        aspect_ratio = page_width / page_height
+
+        # Calculate the size of the thumbnail image
+        thumbnail_height = thumbnail_width / aspect_ratio
+        thumbnail_size = (thumbnail_width, thumbnail_height)
+
+        # Generate a thumbnail image
+        image = page.thumbnail(thumbnail_size)
+
+        # Save the image to a BytesIO object
+        img_buffer = io.BytesIO()
+        image.save(img_buffer, format="JPEG")
+
+        # Get the contents of the BytesIO object as a string
+        image_data = img_buffer.getvalue()
+
+        # Encode the image data as base64
+        base64_image = base64.b64encode(image_data).decode()
+
+    return base64_image

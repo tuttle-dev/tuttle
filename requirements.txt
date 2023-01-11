@@ -11,6 +11,7 @@ pandera
 weasyprint
 matplotlib
 faker
+PyPDF2
 flet
 pycountry
 icloudpy
