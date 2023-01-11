@@ -172,21 +172,24 @@ def get_primary_btn(
     on_click,
     label: str,
     width: int = 200,
+    icon: Optional[str] = None,
 ):
     """An elevated button with primary styling"""
-    return FilledButton(label, width=width, on_click=on_click)
+    return FilledButton(label, width=width, on_click=on_click, icon=icon)
 
 
 def get_secondary_btn(
     on_click,
     label: str,
     width: int = 200,
+    icon: Optional[str] = None,
 ):
     """An elevated button with secondary styling"""
     return ElevatedButton(
         label,
         width=width,
         on_click=on_click,
+        icon=icon,
     )
 
 

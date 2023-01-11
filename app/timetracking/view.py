@@ -31,8 +31,8 @@ from res.fonts import HEADLINE_4_SIZE
 from res.res_utils import NEW_TIME_TRACK_INTENT
 
 
-class TimeTrackFromIcloudPopUp(DialogHandler):
-    """Loads time track data from an cloud calendar"""
+class TimeTrackFromCloudPopup(DialogHandler):
+    """Loads time trackoing data from an cloud calendar"""
 
     def __init__(
         self,
@@ -125,7 +125,7 @@ class NewTimeTrackPopUp(DialogHandler):
         dialog_width = int(MIN_WINDOW_WIDTH * 0.8)
         title = "Track your progress"
         cloud_acc_btn_title = (
-            f"Use {preferred_cloud_acc}"
+            f"Use account {preferred_cloud_acc}"
             if preferred_cloud_acc
             else "Setup Cloud calendar"
         )
@@ -137,7 +137,8 @@ class NewTimeTrackPopUp(DialogHandler):
                         get_headline_txt(txt=title, size=HEADLINE_4_SIZE),
                         xsSpace,
                         get_secondary_btn(
-                            label="Upload as excel file",
+                            label="Upload a spreadsheet",
+                            icon="table_view",
                             on_click=lambda _: self.on_submit_btn_clicked(
                                 is_spreadsheet=True
                             ),
@@ -145,13 +146,15 @@ class NewTimeTrackPopUp(DialogHandler):
                         ),
                         xsSpace,
                         get_secondary_btn(
-                            label="Upload a .ics file",
+                            label="Upload a calendar (.ics) file",
+                            icon="calendar_month",
                             on_click=lambda _: self.on_submit_btn_clicked(is_ics=True),
                             width=240,
                         ),
                         xsSpace,
                         get_secondary_btn(
                             label=cloud_acc_btn_title,
+                            icon="cloud",
                             on_click=lambda _: self.on_submit_btn_clicked(
                                 is_cloud=True
                             ),
@@ -237,7 +240,7 @@ class TimetracksView(TuttleView, UserControl):
             self.set_progress_hint()
 
         elif is_cloud:
-            self.pop_up_handler = TimeTrackFromIcloudPopUp(
+            self.pop_up_handler = TimeTrackFromCloudPopup(
                 dialog_controller=self.dialog_controller,
                 on_submit=self.on_load_from_calendar,
                 preferred_cloud_acc=self.preferred_cloud_acc,
@@ -293,7 +296,8 @@ class TimetracksView(TuttleView, UserControl):
 
         save_cloud_acc_as_preferred = is_empty_str(self.preferred_cloud_acc)
         result = self.intent_handler.configure_account_and_load_calendar(
-            info, save_cloud_acc_as_preferred
+            info,
+            save_cloud_acc_as_preferred,
         )
         msg = (
             "Processed your calendar info"

@@ -1,14 +1,20 @@
 """Cloud connectors."""
 
+from typing import Optional
+
 import getpass
 import icloudpy
 
 from .model import ICloudAccount, GoogleAccount
 
 
-def login_iCloud(user_name: str):
+def login_iCloud(
+    user_name: str,
+    password: Optional[str] = None,
+):
     """Log in to Apple iCloud"""
-    password = getpass.getpass(prompt=f"iCloud password for account {user_name}: ")
+    if password is None:
+        password = getpass.getpass(prompt=f"iCloud password for account {user_name}: ")
     iCloud = icloudpy.ICloudPyService(user_name, password)
     if not iCloud.is_trusted_session:
         result = iCloud.validate_2fa_code(getpass.getpass(prompt="verification code: "))
