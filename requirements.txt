@@ -8,6 +8,7 @@ babel
 loguru
 pandera
 weasyprint
+PyPDF2
 
 flet
 icloudpy
