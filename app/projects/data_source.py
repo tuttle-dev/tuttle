@@ -54,7 +54,7 @@ class ProjectDataSource(SQLModelDataSourceMixin):
 
     def get_project_by_id(self, projectId) -> IntentResult:
         try:
-            project = self.query(Project).where(id=int(projectId)).first()
+            project = self.query_by_id(Project, projectId)
             return IntentResult(was_intent_successful=True, data=project)
         except Exception as e:
             return IntentResult(

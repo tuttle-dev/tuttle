@@ -1,4 +1,4 @@
-from typing import Callable, Type, Optional, List
+from typing import Callable, Type, Optional, List, Any
 from abc import ABC, abstractmethod
 from flet import AlertDialog
 from loguru import logger
@@ -128,6 +128,43 @@ class SQLModelDataSourceMixin:
         logger.debug(f"querying {entity_type}")
         with self.create_session() as session:
             entities = session.exec(sqlmodel.select(entity_type)).all()
+        if len(entities) == 0:
+            logger.warning(f"No instances of {entity_type} found")
+        else:
+            logger.info(f"Found {len(entities)} instances of {entity_type}")
+        return entities
+
+    def query_by_id(
+        self,
+        entity_type: Type[sqlmodel.SQLModel],
+        entity_id: int,
+    ) -> Optional[sqlmodel.SQLModel]:
+        """Queries the database for an instance of the given entity type with the given id"""
+        logger.debug(f"querying {entity_type} by id={entity_id}")
+        with self.create_session() as session:
+            entity = session.exec(
+                sqlmodel.select(entity_type).where(entity_type.id == entity_id)
+            ).one()
+        if entity is None:
+            logger.warning(f"No instance of {entity_type} found with id={entity_id}")
+        else:
+            logger.info(f"Found instance of {entity_type} with id={entity_id}")
+        return entity
+
+    def query_where(
+        self,
+        entity_type: Type[sqlmodel.SQLModel],
+        field_name: str,
+        field_value: Any,
+    ) -> List:
+        """Queries the database for all instances of the given entity type that have the given field value"""
+        logger.debug(f"querying {entity_type} by {field_name}={field_value}")
+        with self.create_session() as session:
+            entities = session.exec(
+                sqlmodel.select(entity_type).where(
+                    getattr(entity_type, field_name) == field_value
+                )
+            ).all()
         if len(entities) == 0:
             logger.warning(f"No instances of {entity_type} found")
         else:
