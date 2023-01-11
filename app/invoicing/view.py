@@ -1,5 +1,7 @@
 from typing import Callable
 
+import os
+
 from flet import (
     AlertDialog,
     Card,
@@ -16,6 +18,7 @@ from flet import (
     icons,
     Icon,
     padding,
+    Image,
 )
 
 from core.abstractions import DialogHandler, TuttleView, TuttleViewParams
@@ -54,6 +57,7 @@ from res.fonts import (
 
 
 from tuttle.model import Invoice
+from tuttle import rendering
 
 from .intent import InvoicingIntent
 
@@ -209,6 +213,46 @@ class InvoiceCard(UserControl):
                 padding=padding.all(SPACE_STD),
                 border_radius=border_radius.all(12),
                 content=self.invoice_info_container,
+            ),
+        )
+        return card
+
+
+class InvoiceCardWithThumbnail(UserControl):
+    """Formats a single invoice info into a card ui display"""
+
+    def __init__(self, invoice: Invoice, on_edit_clicked: Callable[[str], None]):
+        super().__init__()
+        self.invoice = invoice
+        self.on_edit_clicked = on_edit_clicked
+
+    def build(self):
+        if os.path.isfile(self.invoice.file_name):
+            pdf_thumbnail = rendering.generate_document_thumbnail(
+                self.invoice.file_name, thumbnail_width=150
+            )
+            leading = Image(src_base64=pdf_thumbnail, fit="contain")
+        else:
+            leading = Icon(icons.PAPER)
+
+        invoice_tile = ListTile(
+            leading=leading,
+            title=Text(f"Invoice #{self.invoice.number}"),
+            subtitle=Text(f"Client: {self.invoice.client.name}"),
+            trailing=IconButton(
+                icon=icons.EDIT_NOTE_OUTLINED,
+                tooltip="Edit Invoice",
+                on_click=lambda e: self.on_edit_clicked(self.invoice),
+            ),
+        )
+        card = Card(
+            elevation=2,
+            expand=True,
+            content=Container(
+                expand=True,
+                padding=padding.all(SPACE_STD),
+                border_radius=border_radius.all(12),
+                content=invoice_tile,
             ),
         )
         return card
