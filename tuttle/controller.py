@@ -22,6 +22,7 @@ from . import (
     calendar,
     cloud,
     os_functions,
+    mail,
 )
 from .preferences import Preferences
 from .model import (
@@ -366,11 +367,13 @@ class Controller:
                     invoice,
                     self.user,
                 )
-                os_functions.compose_email(
+                mail.compose_email(
                     recipient=email["recipient"],
                     subject=email["subject"],
                     body=email["body"],
-                    attachment_path=invoice_file_path,
+                    attachment_paths=[
+                        invoice_file_path,
+                    ],
                 )
             else:
                 logger.error(f"emailing not yet supported on {platform.system()}")
