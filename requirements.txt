@@ -14,6 +14,3 @@ faker
 flet
 pycountry
 icloudpy
-
-flet
-icloudpy
