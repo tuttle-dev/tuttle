@@ -59,7 +59,8 @@ class ProjectsIntent:
     def get_project_by_id(self, projectId) -> IntentResult:
         result = self.data_source.get_project_by_id(projectId=projectId)
         if not result.was_intent_successful:
-            result.error_msg = "-TODO- error message"
+            result.error_msg = "Something went wrong, failed to load the project"
+            print(result.log_message)
         return result
 
     def get_all_clients_as_map(self) -> Mapping[int, Client]:
