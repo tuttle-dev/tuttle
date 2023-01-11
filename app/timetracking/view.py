@@ -10,7 +10,8 @@ from flet import (
     UserControl,
     ProgressRing,
 )
-from .model import ICloudCalendarInfo
+from preferences.model import CloudAccounts
+from .model import CloudCalendarInfo
 from .intent import TimeTrackingIntent
 from core.abstractions import DialogHandler, TuttleView
 from core.utils import AUTO_SCROLL, AlertDialogControls, KEYBOARD_PASSWORD, is_empty_str
@@ -20,7 +21,7 @@ from core.views import (
     get_std_txt_field,
     get_secondary_btn,
     get_primary_btn,
-    horizontal_progress,
+    get_dropdown,
     mdSpace,
     xsSpace,
 )
@@ -31,17 +32,18 @@ from res.res_utils import NEW_TIME_TRACK_INTENT
 
 
 class TimeTrackFromIcloudPopUp(DialogHandler):
-    """Loads time track data from an icloud calendar"""
+    """Loads time track data from an cloud calendar"""
 
     def __init__(
         self,
         dialog_controller: Callable[[any, AlertDialogControls], None],
         on_submit: Callable,
-        preferred_icloud_acc: str,
+        preferred_cloud_acc: str,
+        preferred_acc_provider: str,
     ):
 
         dialog_width = int(MIN_WINDOW_WIDTH * 0.8)
-        title = "Load work progress from iCloud Calendar"
+        title = "Load work progress from Cloud Calendar"
         dialog = AlertDialog(
             content=Container(
                 content=Column(
@@ -49,10 +51,17 @@ class TimeTrackFromIcloudPopUp(DialogHandler):
                     controls=[
                         get_headline_txt(txt=title, size=HEADLINE_4_SIZE),
                         xsSpace,
+                        get_dropdown(
+                            lbl="Cloud Provider",
+                            items=[item.value for item in CloudAccounts],
+                            initial_value=preferred_acc_provider,
+                            on_change=self.on_cloud_provider_changed,
+                        ),
+                        xsSpace,
                         get_std_txt_field(
-                            lbl="iCloud Acc",
-                            initial_value=preferred_icloud_acc,
-                            on_change=self.on_icloud_acc_changed,
+                            lbl="Cloud Acc",
+                            initial_value=preferred_cloud_acc,
+                            on_change=self.on_cloud_acc_changed,
                         ),
                         xsSpace,
                         get_std_txt_field(
@@ -60,7 +69,7 @@ class TimeTrackFromIcloudPopUp(DialogHandler):
                         ),
                         xsSpace,
                         get_std_txt_field(
-                            lbl="iCloud Password",
+                            lbl="Cloud Password",
                             keyboard_type=KEYBOARD_PASSWORD,
                             on_change=self.on_password_changed,
                         ),
@@ -74,12 +83,16 @@ class TimeTrackFromIcloudPopUp(DialogHandler):
             ],
         )
         super().__init__(dialog=dialog, dialog_controller=dialog_controller)
-        self.acc = preferred_icloud_acc
+        self.acc = preferred_cloud_acc
+        self.provider = preferred_acc_provider
         self.password = ""
         self.calendar_name = ""
         self.on_submit = on_submit
 
-    def on_icloud_acc_changed(self, e):
+    def on_cloud_provider_changed(self, e):
+        self.provider = e.control.value
+
+    def on_cloud_acc_changed(self, e):
         self.acc = e.control.value
 
     def on_calendar_name_changed(self, e):
@@ -89,8 +102,11 @@ class TimeTrackFromIcloudPopUp(DialogHandler):
         self.password = e.control.value
 
     def on_submit_btn_clicked(self, e):
-        info = ICloudCalendarInfo(
-            account=self.acc, calendar_name=self.calendar_name, password=self.password
+        info = CloudCalendarInfo(
+            account=self.acc,
+            calendar_name=self.calendar_name,
+            password=self.password,
+            provider=self.provider,
         )
         self.close_dialog()
         self.on_submit(info)
@@ -103,15 +119,15 @@ class NewTimeTrackPopUp(DialogHandler):
         self,
         dialog_controller: Callable[[any, AlertDialogControls], None],
         on_submit: Callable,
-        preferred_icloud_acc: str,
+        preferred_cloud_acc: str,
     ):
 
         dialog_width = int(MIN_WINDOW_WIDTH * 0.8)
         title = "Track your progress"
-        icloud_acc_btn_title = (
-            f"Use {preferred_icloud_acc}"
-            if preferred_icloud_acc
-            else "Setup iCloud calendar"
+        cloud_acc_btn_title = (
+            f"Use {preferred_cloud_acc}"
+            if preferred_cloud_acc
+            else "Setup Cloud calendar"
         )
         dialog = AlertDialog(
             content=Container(
@@ -135,9 +151,9 @@ class NewTimeTrackPopUp(DialogHandler):
                         ),
                         xsSpace,
                         get_secondary_btn(
-                            label=icloud_acc_btn_title,
+                            label=cloud_acc_btn_title,
                             on_click=lambda _: self.on_submit_btn_clicked(
-                                is_icloud=True
+                                is_cloud=True
                             ),
                             width=(dialog_width * 0.7),
                         ),
@@ -150,12 +166,10 @@ class NewTimeTrackPopUp(DialogHandler):
         super().__init__(dialog=dialog, dialog_controller=dialog_controller)
         self.on_submit_callback = on_submit
 
-    def on_submit_btn_clicked(
-        self, is_spreadsheet=False, is_ics=False, is_icloud=False
-    ):
+    def on_submit_btn_clicked(self, is_spreadsheet=False, is_ics=False, is_cloud=False):
         self.close_dialog()
         self.on_submit_callback(
-            is_spreadsheet=is_spreadsheet, is_ics=is_ics, is_icloud=is_icloud
+            is_spreadsheet=is_spreadsheet, is_ics=is_ics, is_cloud=is_cloud
         )
 
 
@@ -190,25 +204,25 @@ class TimetracksView(TuttleView, UserControl):
         )
         self.timetracked_container = Container()
         self.timetracks_recorded = {}
-        self.preferred_icloud_acc = ""
-        self.new_pop_up_handler = None
-        self.icloud_calendar_config_handler = None
+        self.preferred_cloud_acc = ""
+        self.preferred_cloud_provider = ""
+        self.pop_up_handler = None
 
     def parent_intent_listener(self, intent: str, data: any):
         if self.loading_indicator.visible:
             return  # action in progress
 
         if intent == NEW_TIME_TRACK_INTENT:
-            self.new_pop_up_handler = NewTimeTrackPopUp(
+            self.pop_up_handler = NewTimeTrackPopUp(
                 dialog_controller=self.dialog_controller,
                 on_submit=self.on_add_new_timetrack_record,
-                preferred_icloud_acc=self.preferred_icloud_acc,
+                preferred_cloud_acc=self.preferred_cloud_acc,
             )
-            self.new_pop_up_handler.open_dialog()
+            self.pop_up_handler.open_dialog()
         return
 
     def on_add_new_timetrack_record(
-        self, is_spreadsheet=False, is_ics=False, is_icloud=False
+        self, is_spreadsheet=False, is_ics=False, is_cloud=False
     ):
         if is_spreadsheet or is_ics:
             exts = ["ics"] if is_ics else ["xlsx"]
@@ -222,13 +236,14 @@ class TimetracksView(TuttleView, UserControl):
             )
             self.set_progress_hint()
 
-        elif is_icloud:
-            self.icloud_calendar_config_handler = TimeTrackFromIcloudPopUp(
+        elif is_cloud:
+            self.pop_up_handler = TimeTrackFromIcloudPopUp(
                 dialog_controller=self.dialog_controller,
                 on_submit=self.on_load_from_calendar,
-                preferred_icloud_acc=self.preferred_icloud_acc,
+                preferred_cloud_acc=self.preferred_cloud_acc,
+                preferred_acc_provider=self.preferred_cloud_provider,
             )
-            self.icloud_calendar_config_handler.open_dialog()
+            self.pop_up_handler.open_dialog()
 
     """Spreadsheet and ics uploads"""
 
@@ -258,12 +273,12 @@ class TimetracksView(TuttleView, UserControl):
 
     """Icloud calendar setup"""
 
-    def on_load_from_calendar(self, info: ICloudCalendarInfo):
+    def on_load_from_calendar(self, info: CloudCalendarInfo):
         if self.loading_indicator.visible:
             return  # on going action
 
         if is_empty_str(info.account):
-            self.show_snack("No iCloud account was specified")
+            self.show_snack("No Cloud account was specified")
             return
 
         if is_empty_str(info.calendar_name):
@@ -271,14 +286,14 @@ class TimetracksView(TuttleView, UserControl):
             return
 
         if is_empty_str(info.password):
-            self.show_snack("Your iCloud password is required")
+            self.show_snack("Your Cloud password is required")
             return
 
         self.set_progress_hint(f"Loading data from your calendar...")
 
-        save_icloud_acc_as_preferred = is_empty_str(self.preferred_icloud_acc)
-        result = self.intent_handler.configure_icloud_and_load_calendar(
-            info, save_icloud_acc_as_preferred
+        save_cloud_acc_as_preferred = is_empty_str(self.preferred_cloud_acc)
+        result = self.intent_handler.configure_account_and_load_calendar(
+            info, save_cloud_acc_as_preferred
         )
         msg = (
             "Processed your calendar info"
@@ -301,10 +316,11 @@ class TimetracksView(TuttleView, UserControl):
     def show_no_recorded_timetracks(self):
         self.no_timetrack_control.visible = True
 
-    def load_preferred_icloud_acc(self):
-        icloud_acc_res = self.intent_handler.get_preferred_icloud_account()
-        if icloud_acc_res.was_intent_successful:
-            self.preferred_icloud_acc = icloud_acc_res.data
+    def load_preferred_cloud_acc(self):
+        result = self.intent_handler.get_preferred_cloud_account()
+        if result.was_intent_successful:
+            self.preferred_cloud_provider = result.data[0]
+            self.preferred_cloud_acc = result.data[1]
 
     def set_progress_hint(self, msg: str = "", hide_progress=False):
         if self.mounted:
@@ -325,7 +341,7 @@ class TimetracksView(TuttleView, UserControl):
             else:
                 self.refresh_records()
 
-            self.load_preferred_icloud_acc()
+            self.load_preferred_cloud_acc()
             if self.mounted:
                 self.update()
         except Exception as e:
@@ -345,9 +361,7 @@ class TimetracksView(TuttleView, UserControl):
     def will_unmount(self):
         try:
             self.mounted = False
-            if self.new_pop_up_handler:
-                self.new_pop_up_handler.dimiss_open_dialogs()
-            if self.icloud_calendar_config_handler:
-                self.icloud_calendar_config_handler.dimiss_open_dialogs()
+            if self.pop_up_handler:
+                self.pop_up_handler.dimiss_open_dialogs()
         except Exception as e:
             print(e)

@@ -3,7 +3,7 @@ from core.abstractions import ClientStorage
 from core.models import IntentResult
 from preferences.model import PreferencesStorageKeys
 from preferences.intent import PreferencesIntent
-from .model import ICloudCalendarInfo
+from .model import CloudCalendarInfo
 
 
 class TimeTrackingIntent:
@@ -20,20 +20,41 @@ class TimeTrackingIntent:
             result.error_msg = f"Failed to process the file {file_name}"
         return result
 
-    def get_preferred_icloud_account(self):
-        return self.preferences_intent.get_preference(
-            PreferencesStorageKeys.icloud_acc_id_key
+    def get_preferred_cloud_account(self):
+        """ïf successful returns data as a list [provider_name, account_name]"""
+        provider_result = self.preferences_intent.get_preference(
+            PreferencesStorageKeys.cloud_provider_key
+        )
+        acc_result = self.preferences_intent.get_preference(
+            PreferencesStorageKeys.cloud_acc_id_key
+        )
+        if (
+            not provider_result.was_intent_successful
+            or not acc_result.was_intent_successful
+        ):
+            return IntentResult(
+                was_intent_successful=False,
+                error_msg_if_err="Failed to load account preferences",
+            )
+        print(f"{provider_result.data},  {acc_result.data}")
+        return IntentResult(
+            was_intent_successful=True, data=[provider_result.data, acc_result.data]
         )
 
-    def set_preferred_icloud_account(self, icloud_acc):
+    def set_preferred_cloud_account(self, cloud_acc_id, cloud_provider):
+        result = self.preferences_intent.set_preference(
+            PreferencesStorageKeys.cloud_provider_key, cloud_provider
+        )
+        if not result.was_intent_successful:
+            return result  # do not proceed
         return self.preferences_intent.set_preference(
-            PreferencesStorageKeys.icloud_acc_id_key, icloud_acc
+            PreferencesStorageKeys.cloud_acc_id_key, cloud_acc_id
         )
 
-    def configure_icloud_and_load_calendar(
-        self, info: ICloudCalendarInfo, save_as_preferred
+    def configure_account_and_load_calendar(
+        self, info: CloudCalendarInfo, save_as_preferred
     ) -> IntentResult:
-        result = self.data_source.configure_icloud_and_load_calendar(info)
+        result = self.data_source.configure_account_and_load_calendar(info)
         if result.was_intent_successful and save_as_preferred:
-            self.set_preferred_icloud_account(info.account)
+            self.set_preferred_cloud_account(info.account, info.provider)
         return result

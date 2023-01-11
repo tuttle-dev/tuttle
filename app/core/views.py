@@ -191,7 +191,7 @@ def get_secondary_btn(
 
 
 def get_profile_photo_img(pic_src: str = image_paths.default_avatar):
-    print(pic_src)
+
     return Image(
         src=pic_src,
         width=72,

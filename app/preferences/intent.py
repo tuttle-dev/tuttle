@@ -23,8 +23,10 @@ class PreferencesIntent:
                 preferences.theme_mode = preference_item_result.data
             elif item.value == PreferencesStorageKeys.default_currency_key.value:
                 preferences.default_currency = preference_item_result.data
-            elif item.value == PreferencesStorageKeys.icloud_acc_id_key.value:
-                preferences.icloud_acc_id = preference_item_result.data
+            elif item.value == PreferencesStorageKeys.cloud_acc_id_key.value:
+                preferences.cloud_acc_id = preference_item_result.data
+            elif item.value == PreferencesStorageKeys.cloud_provider_key.value:
+                preferences.cloud_acc_provider = preference_item_result.data
 
         return IntentResult(
             was_intent_successful=True,
@@ -37,7 +39,11 @@ class PreferencesIntent:
                 PreferencesStorageKeys.theme_mode_key, preferences.theme_mode
             )
             self.set_preference(
-                PreferencesStorageKeys.icloud_acc_id_key, preferences.icloud_acc_id
+                PreferencesStorageKeys.cloud_acc_id_key, preferences.cloud_acc_id
+            )
+            self.set_preference(
+                PreferencesStorageKeys.cloud_provider_key,
+                preferences.cloud_acc_provider,
             )
             self.set_preference(
                 PreferencesStorageKeys.default_currency_key,

@@ -1,7 +1,7 @@
 from core.abstractions import ClientStorage, SQLModelDataSourceMixin
 
 from core.models import IntentResult
-from .model import ICloudCalendarInfo
+from .model import CloudCalendarInfo
 
 
 class TimeTrackingDataSource(SQLModelDataSourceMixin):
@@ -15,7 +15,7 @@ class TimeTrackingDataSource(SQLModelDataSourceMixin):
         """
         return IntentResult(was_intent_successful=True, data=None)
 
-    def configure_icloud_and_load_calendar(self, info: ICloudCalendarInfo):
+    def configure_account_and_load_calendar(self, info: CloudCalendarInfo):
         """Receives an account name, a password, and a calendar name. Attempts to load calendar data from this info.
         returns was_intent_successful=True if successful, else false along with a log message
         """

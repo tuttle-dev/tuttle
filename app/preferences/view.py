@@ -39,6 +39,7 @@ from res.dimens import (
 )
 from res.theme import THEME_MODES
 from core.abstractions import TuttleViewParams
+from .model import CloudAccounts
 
 
 class PreferencesScreen(TuttleView, UserControl):
@@ -65,19 +66,22 @@ class PreferencesScreen(TuttleView, UserControl):
             return
         self.preferences.default_currency = e.control.value
 
-    def on_cloud_account_name_changed(self, e):
+    def on_cloud_account_id_changed(self, e):
         if not self.preferences:
             return
-        self.preferences.icloud_acc_id = e.control.value
+        self.preferences.cloud_acc_id = e.control.value
 
     def on_cloud_provider_selected(self, e):
-        raise NotImplementedError("ToDo")
+        if not self.preferences:
+            return
+        self.preferences.cloud_acc_provider = e.control.value
 
     def refresh_preferences_items(self):
         if self.preferences is None:
             return
         self.theme_control.value = self.preferences.theme_mode
-        self.cloud_account_name_control.value = self.preferences.icloud_acc_id
+        self.cloud_provider_control.value = self.preferences.cloud_acc_provider
+        self.cloud_account_id_control.value = self.preferences.cloud_acc_id
         self.currencies_control.value = self.preferences.default_currency
 
     def on_theme_changed(self, e):
@@ -149,12 +153,12 @@ class PreferencesScreen(TuttleView, UserControl):
         self.cloud_provider_control = get_dropdown(
             lbl="Cloud Provider",
             on_change=self.on_cloud_provider_selected,
-            items=["iCloud", "Google Calendar"],
+            items=[item.value for item in CloudAccounts],
         )
-        self.cloud_account_name_control = get_std_txt_field(
+        self.cloud_account_id_control = get_std_txt_field(
             lbl="Cloud Account Name",
             hint="to load time tracking info from calendar",
-            on_change=self.on_cloud_account_name_changed,
+            on_change=self.on_cloud_account_id_changed,
         )
         self.currencies_control = get_dropdown(
             lbl="Default Currency",
@@ -186,7 +190,7 @@ class PreferencesScreen(TuttleView, UserControl):
                     icons.CLOUD_OUTLINED,
                     [
                         self.cloud_provider_control,
-                        self.cloud_account_name_control,
+                        self.cloud_account_id_control,
                     ],
                 ),
                 self.get_tab_item(
