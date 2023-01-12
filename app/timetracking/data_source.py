@@ -18,7 +18,7 @@ class TimeTrackingDataSource(SQLModelDataSourceMixin):
         return IntentResult(
             was_intent_successful=False,
             data=None,
-            error_msg_if_err="Not implemented yet",
+            error_msg="Not implemented yet",
         )
 
     def configure_account_and_load_calendar(
@@ -33,5 +33,5 @@ class TimeTrackingDataSource(SQLModelDataSourceMixin):
         return IntentResult(
             was_intent_successful=False,
             data=None,
-            error_msg_if_err="Not implemented yet",
+            error_msg="Not implemented yet",
         )

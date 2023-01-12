@@ -4,7 +4,7 @@ from core.abstractions import ClientStorage
 from core.models import IntentResult
 from .data_source import ProjectDataSource
 
-
+from loguru import logger
 from clients.data_source import ClientDataSource
 from contracts.data_source import ContractDataSource
 
@@ -60,21 +60,26 @@ class ProjectsIntent:
         result = self.data_source.get_project_by_id(projectId=projectId)
         if not result.was_intent_successful:
             result.error_msg = "Something went wrong, failed to load the project"
-            print(result.log_message)
         return result
 
     def get_all_clients_as_map(self) -> Mapping[int, Client]:
-        result = self.clients_data_source.get_all_clients_as_map()
+        result = self.clients_data_source.get_all_clients()
         if result.was_intent_successful:
-            return result.data
+            clients = result.data
+            clients_map = {client.id: client for client in clients}
+            return clients_map
         else:
+            logger.error(result.log_message)
             return {}
 
     def get_all_contracts_as_map(self) -> Mapping[int, Contract]:
-        result = self.contracts_data_source.get_all_contracts_as_map()
+        result = self.contracts_data_source.get_all_contracts()
         if result.was_intent_successful:
-            return result.data
+            contracts = result.data
+            contracts_map = {contract.id: contract for contract in contracts}
+            return contracts_map
         else:
+            logger.error(result.log_message)
             return {}
 
     def get_all_projects_as_map(self) -> Mapping[int, Project]:
@@ -86,6 +91,8 @@ class ProjectsIntent:
                 projects = result.data
                 projects_map = {project.id: project for project in projects}
                 self.all_projects_cache = projects_map
+            else:
+                logger.error(result.log_message)
         return self.all_projects_cache
 
     def get_completed_projects(self) -> Mapping[int, Project]:

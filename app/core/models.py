@@ -88,13 +88,13 @@ class IntentResult:
 
     def __init__(
         self,
-        data,
-        was_intent_successful: bool,
-        error_msg_if_err: str = "",
+        data: Optional[any] = None,
+        was_intent_successful: bool = False,
+        error_msg: str = "",
         log_message: str = "",
     ):
         super().__init__()
-        self.error_msg = error_msg_if_err
+        self.error_msg = error_msg
         self.data = data
         self.was_intent_successful = was_intent_successful
         self.log_message = log_message

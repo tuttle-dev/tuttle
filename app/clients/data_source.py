@@ -18,13 +18,16 @@ class ClientDataSource(SQLModelDataSourceMixin):
     def get_client_by_id(self, clientId) -> IntentResult:
         raise NotImplementedError("This method is deprecated.")
 
-    def get_all_clients_as_map(self) -> IntentResult:
-        clients = self.query(Client)
-        result = {client.id: client for client in clients}
-        return IntentResult(
-            was_intent_successful=True,
-            data=result,
-        )
+    def get_all_clients(self) -> IntentResult:
+        """returns data as all existing clients"""
+        try:
+            clients = self.query(Client)
+            return IntentResult(was_intent_successful=True, data=clients)
+        except Exception as e:
+            return IntentResult(
+                was_intent_successful=False,
+                log_message=f"An exception was raised @ClientDataSource.get_all_clients {e}",
+            )
 
     def save_client(self, client: Client) -> IntentResult:
         self.store(client)

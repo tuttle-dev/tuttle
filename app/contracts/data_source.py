@@ -14,15 +14,16 @@ class ContractDataSource(SQLModelDataSourceMixin):
         """Initialize the ContractDataSource object"""
         super().__init__()
 
-    def get_all_contracts_as_map(self) -> IntentResult:
-        """Retrieve all contracts and return them as a map with the contract's id as the key.
-
-        Returns:
-            IntentResult : A IntentResult object representing the outcome of the operation
-        """
-        contracts = self.query(Contract)
-        result = {contract.id: contract for contract in contracts}
-        return IntentResult(was_intent_successful=True, data=result)
+    def get_all_contracts(self) -> IntentResult:
+        """Return data as all contracts."""
+        try:
+            contracts = self.query(Contract)
+            return IntentResult(was_intent_successful=True, data=contracts)
+        except Exception as e:
+            return IntentResult(
+                was_intent_successful=False,
+                log_message=f"An exception was raised @ContractDataSource.get_all_contracts {e}",
+            )
 
     def get_contract_by_id(self, contractId: str) -> IntentResult:
         """Retrieve a contract by its id.

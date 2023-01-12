@@ -5,7 +5,7 @@ from loguru import logger
 from core.models import IntentResult
 from core.abstractions import SQLModelDataSourceMixin
 
-from tuttle.dev import deprecated
+
 from tuttle.model import Contact
 
 
@@ -16,29 +16,19 @@ class ContactDataSource(SQLModelDataSourceMixin):
         """Initialize the ContactDataSource object"""
         super().__init__()
 
-    def get_all_contacts_as_map(self) -> IntentResult:
-        """Retrieve all contacts and return them as a map with the contact's id as the key.
-
-        Returns:
-            IntentResult : A IntentResult object representing the outcome of the operation
-        """
-        contacts = self.query(Contact)
-        result = {contact.id: contact for contact in contacts}
-        return IntentResult(
-            was_intent_successful=True,
-            data=result,
-        )
-
-    @deprecated
-    def get_contact_by_id(self, contactId) -> IntentResult:
-        """Retrieve a contact by their id.
-
-        This method is deprecated.
-
-        Returns:
-            IntentResult : A IntentResult object representing the outcome of the operation
-        """
-        raise NotImplementedError("This method is deprecated.")
+    def get_all_contacts(self) -> IntentResult:
+        """Returns data as a list of all existing contacts"""
+        try:
+            contacts = self.query(Contact)
+            return IntentResult(
+                was_intent_successful=True,
+                data=contacts,
+            )
+        except Exception as e:
+            return IntentResult(
+                was_intent_successful=False,
+                log_message=f"An exception was raised @ContactDataSource.get_all_contacts {e}",
+            )
 
     def save_contact(self, contact: Contact) -> IntentResult:
         """Store a contact in the data source.

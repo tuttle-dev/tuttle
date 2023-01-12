@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Callable, Optional
 from core.abstractions import TuttleViewParams
-
+from loguru import logger
 from flet import (
     ButtonStyle,
     Card,
@@ -333,8 +333,7 @@ class ViewProjectScreen(TuttleView, UserControl):
             if self.mounted:
                 self.update()
         except Exception as e:
-            # log
-            print(f"Exception raised @view_project_screen.did_mount {e}")
+            logger.exception(f"Exception raised @view_project_screen.did_mount {e}")
 
     def on_view_client_clicked(self, e):
         self.show_snack("Coming soon", False)
@@ -634,8 +633,7 @@ class ProjectsListView(TuttleView, UserControl):
             if self.mounted:
                 self.update()
         except Exception as e:
-            # logger
-            print(f"exception raised @projects.did_mount {e}")
+            logger.exception(f"exception raised @projects.did_mount {e}")
 
     def build(self):
         return Column(

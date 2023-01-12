@@ -17,8 +17,14 @@ class ProjectDataSource(SQLModelDataSourceMixin):
         self,
     ) -> IntentResult:
         """returns data as all existing projects"""
-        projects = self.query(Project)
-        return IntentResult(was_intent_successful=True, data=projects)
+        try:
+            projects = self.query(Project)
+            return IntentResult(was_intent_successful=True, data=projects)
+        except Exception as e:
+            return IntentResult(
+                was_intent_successful=False,
+                log_message=f"Exception raised @ProjectDataSource.get_all_projects {e}",
+            )
 
     def save_project(
         self,
@@ -31,6 +37,9 @@ class ProjectDataSource(SQLModelDataSourceMixin):
         is_completed: bool = False,
         project: Optional[Project] = None,
     ) -> IntentResult:
+        """creates a new project or updates an existing project (if project param is not None)
+        returns data as the newly created/updated project
+        """
         try:
             if not project:
                 # create a project, this is not an update
@@ -53,6 +62,7 @@ class ProjectDataSource(SQLModelDataSourceMixin):
             )
 
     def get_project_by_id(self, projectId) -> IntentResult:
+        """returns data as project with given id if found, else None"""
         try:
             project = self.query_by_id(Project, projectId)
             return IntentResult(was_intent_successful=True, data=project)

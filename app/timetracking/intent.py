@@ -34,7 +34,7 @@ class TimeTrackingIntent:
         ):
             return IntentResult(
                 was_intent_successful=False,
-                error_msg_if_err="Failed to load account preferences",
+                error_msg="Failed to load account preferences",
             )
 
         return IntentResult(

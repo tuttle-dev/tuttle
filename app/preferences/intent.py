@@ -16,7 +16,7 @@ class PreferencesIntent:
                 return IntentResult(
                     was_intent_successful=False,
                     data=None,
-                    error_msg_if_err="Loading preferences failed!",
+                    error_msg="Loading preferences failed!",
                     log_message=preference_item_result.log_message,
                 )
             if item.value == PreferencesStorageKeys.theme_mode_key.value:
@@ -53,7 +53,7 @@ class PreferencesIntent:
             return IntentResult(
                 was_intent_successful=False,
                 data=None,
-                error_msg_if_err="Failed to save preferences",
+                error_msg="Failed to save preferences",
                 log_message=f"An exception was raised @PreferencesIntent.save_preferences {e}",
             )
 
@@ -66,7 +66,7 @@ class PreferencesIntent:
             return IntentResult(
                 was_intent_successful=False,
                 data=None,
-                error_msg_if_err="Failed to load that preference item",
+                error_msg="Failed to load that preference item",
                 log_message=f"Exception was raised @PreferencesIntent.get_preference f{e}",
             )
 
@@ -84,6 +84,6 @@ class PreferencesIntent:
             return IntentResult(
                 was_intent_successful=False,
                 data=None,
-                error_msg_if_err="Saving preferences failed!",
+                error_msg="Saving preferences failed!",
                 log_message=f"Exception was raised @PreferencesIntent.set_preference f{e}",
             )

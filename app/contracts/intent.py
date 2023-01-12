@@ -34,20 +34,24 @@ class ContractsIntent:
     def get_contract_by_id(self, contractId) -> IntentResult:
         result = self.data_source.get_contract_by_id(contractId)
         if not result.was_intent_successful:
-            result.error_msg = "TODO -- error message"
+            result.error_msg = "Failed to load contract details. Please retry"
         return result
 
     def get_all_clients_as_map(self) -> Mapping[int, Client]:
-        result = self.clients_data_source.get_all_clients_as_map()
+        result = self.clients_data_source.get_all_clients()
         if result.was_intent_successful:
-            return result.data
+            clients = result.data
+            clients_as_map = {client.id: client for client in clients}
+            return clients_as_map
         else:
             return {}
 
     def get_all_contacts_as_map(self) -> Mapping[int, Contact]:
-        result = self.contacts_data_source.get_all_contacts_as_map()
+        result = self.contacts_data_source.get_all_contacts()
         if result.was_intent_successful:
-            return result.data
+            contacts = result.data
+            contacts_map = {contact.id: contact for contact in contacts}
+            return contacts_map
         else:
             return {}
 
@@ -95,9 +99,11 @@ class ContractsIntent:
             # return cached results
             return self.all_contracts_cache
         self._clear_cached_results()
-        result = self.data_source.get_all_contracts_as_map()
+        result = self.data_source.get_all_contracts()
         if result.was_intent_successful:
-            self.all_contracts_cache = result.data
+            contracts = result.data
+            contracts_map = {contract.id: contract for contract in contracts}
+            self.all_contracts_cache = contracts_map
         else:
             self.all_contracts_cache = {}
         return self.all_contracts_cache

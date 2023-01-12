@@ -744,7 +744,7 @@ class CreateContractScreen(TuttleView, ft.UserControl):
         return clients
 
     def get_client_dropdown_item(self, key):
-        return f"#{key} {self.clients_map[key].title}"
+        return f"#{key} {self.clients_map[key].name}"
 
     def on_client_selected(self, e):
         # parse selected value to extract id
