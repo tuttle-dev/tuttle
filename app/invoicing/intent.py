@@ -1,4 +1,5 @@
 """  """
+from loguru import logger
 
 from core.abstractions import IntentResult
 
@@ -31,3 +32,21 @@ class InvoicingIntent:
         else:
             result.error_msg = "Failed to load invoices."
             return result
+
+    def get_all_invoices(self) -> IntentResult:
+        """returns data as a map of all invoices in the database"""
+        result = self.data_source.get_all_invoices()
+        if result.was_intent_successful:
+            invoices = result.data
+            invoices_map = {invoice.id: invoice for invoice in invoices}
+            return IntentResult(
+                data=invoices_map,
+                was_intent_successful=True,
+            )
+        else:
+            logger.error(result.log_message)
+            logger.exception(result.exception)
+            return IntentResult(
+                was_intent_successful=False,
+                error_msg="Failed to load invoices.",
+            )

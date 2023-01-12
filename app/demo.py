@@ -18,6 +18,7 @@ from tuttle.model import (
     Cycle,
     User,
     BankAccount,
+    Invoice,
 )
 
 
@@ -99,6 +100,21 @@ def create_fake_project(
     return project
 
 
+def create_fake_invoice(project: Project, fake: faker.Faker) -> Invoice:
+    invoice_number = fake.random_int(min=1000, max=9999)
+    invoice = Invoice(
+        number=invoice_number,
+        date=datetime.date.today(),
+        sent=fake.pybool(),
+        paid=fake.pybool(),
+        cancelled=fake.pybool(),
+        contract=project.contract,
+        project=project,
+        rendered=fake.pybool(),
+    )
+    return invoice
+
+
 def create_fake_data(
     n: int = 10,
 ):
@@ -108,7 +124,9 @@ def create_fake_data(
     clients = [create_fake_client(contact, fake) for contact in contacts]
     contracts = [create_fake_contract(client, fake) for client in clients]
     projects = [create_fake_project(contract, fake) for contract in contracts]
-    return projects
+
+    invoices = [create_fake_invoice(project, fake) for project in projects]
+    return projects, invoices
 
 
 def create_demo_user() -> User:
@@ -143,7 +161,7 @@ def install_demo_data(
     db_path = f"""sqlite:///{db_path}"""
     logger.info(f"Installing demo data in {db_path}...")
     logger.info(f"Creating {n} fake projects...")
-    projects = create_fake_data(n)
+    projects, invoices = create_fake_data(n)
     logger.info(f"Creating database engine at: {db_path}...")
     db_engine = create_engine(db_path)
     logger.info("Creating database tables...")
@@ -154,6 +172,13 @@ def install_demo_data(
         user = create_demo_user()
         session.add(user)
         session.commit()
+
+    # add fake invoices
+    logger.info("Adding fake invoices...")
+    with Session(db_engine) as session:
+        for invoice in invoices:
+            session.add(invoice)
+            session.commit()
 
     logger.info("Adding demo data to database...")
     with Session(db_engine) as session:

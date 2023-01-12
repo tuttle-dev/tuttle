@@ -19,6 +19,7 @@ from flet import (
     Icon,
     padding,
     Image,
+    ListView,
 )
 
 from core.abstractions import DialogHandler, TuttleView, TuttleViewParams
@@ -29,6 +30,7 @@ from core.views import (
     CENTER_ALIGNMENT,
     StandardDropdown,
     get_dropdown,
+    update_dropdown_items,
     get_headline_txt,
     get_primary_btn,
     get_std_txt_field,
@@ -90,27 +92,64 @@ class InvoicingView(TuttleView, UserControl):
         result = self.intent_handler.get_invoices_for_project_as_map(id)
         # TODO process result
 
+    def on_invoice_edit_clicked(self, e):
+        raise NotImplementedError("TODO")
+
     def build(self):
 
-        project_options = [
-            f"{id} {project.title}".strip()
-            for id, project in self.projects_intent_handler.get_all_projects_as_map().items()
-        ]
-        logger.info(f"project_options: {project_options}")
         self.project_selector = get_dropdown(
             label="Project",
-            items=project_options,
+            items=[],
             initial_value="Select a project",
             on_change=self.on_project_change,
         )
+
+        # Invoice list view
+        self.invoice_list_view = ListView(
+            controls=[],
+            expand=True,
+        )
+
         view = Column(
             controls=[
                 self.title_control,
                 mdSpace,
                 self.project_selector,
+                mdSpace,
+                self.invoice_list_view,
             ]
         )
         return view
+
+    def did_mount(self):
+        # populate the view with data here
+
+        # project selection
+        project_options = [
+            f"{id} {project.title}".strip()
+            for id, project in self.projects_intent_handler.get_all_projects_as_map().items()
+        ]
+        logger.info(f"project_options: {project_options}")
+        update_dropdown_items(self.project_selector, project_options)
+
+        # invoice list
+        invoices_result = self.intent_handler.get_all_invoices()
+        if invoices_result.was_intent_successful:
+            invoice_map = invoices_result.data
+            logger.debug(invoice_map)
+            self.invoice_list_view.controls = [
+                InvoiceTile(
+                    invoice,
+                    self.on_invoice_edit_clicked,
+                )
+                for _, invoice in invoice_map.items()
+            ]
+            self.update()
+        else:
+            self.show_snack(
+                message=invoices_result.error_msg,
+                is_error=True,
+            )
 
 
 class InvoiceCard(UserControl):
@@ -128,7 +167,7 @@ class InvoiceCard(UserControl):
     def build(self):
         self.invoice_info_container.controls = [
             ListTile(
-                leading=Icon(icons.INVOICE),
+                leading=Icon(icons.RECEIPT_LONG),
                 title=Text(self.invoice.number),
                 subtitle=Text(f"Date: {self.invoice.date}", color=GRAY_COLOR),
                 trailing=IconButton(
@@ -182,14 +221,14 @@ class InvoiceCard(UserControl):
             ResponsiveRow(
                 controls=[
                     Text(
-                        "Status",
+                        "Paid",
                         color=GRAY_COLOR,
                         size=BODY_2_SIZE,
                         col={"xs": "12"},
                     ),
                     Container(
                         Text(
-                            self.invoice.status,
+                            self.invoice.paid,
                             size=BODY_2_SIZE,
                             col={"xs": "12"},
                         ),
@@ -259,9 +298,10 @@ class InvoiceTile(UserControl):
     A UserControl that formats an invoice object as a list tile for display in the UI
     """
 
-    def __init__(self, invoice: Invoice):
+    def __init__(self, invoice: Invoice, on_edit_clicked: Callable[[str], None]):
         super().__init__()
         self.invoice = invoice
+        self.on_edit_clicked = on_edit_clicked
 
     def build(self):
         """

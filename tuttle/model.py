@@ -427,8 +427,10 @@ class Timesheet(SQLModel, table=True):
 
 
 class Invoice(SQLModel, table=True):
+    """An invoice is a bill for a client."""
+
     id: Optional[int] = Field(default=None, primary_key=True)
-    number: Optional[str]
+    number: str
     # date and time
     date: datetime.date
     # due_date: datetime.date
@@ -438,14 +440,18 @@ class Invoice(SQLModel, table=True):
     # timesheet: Timesheet = Relationship(back_populates="invoice")
     # Invoice n:1 Contract ?
     contract_id: Optional[int] = Field(default=None, foreign_key="contract.id")
-    contract: Contract = Relationship(back_populates="invoices")
+    contract: Contract = Relationship(
+        back_populates="invoices", sa_relationship_kwargs={"lazy": "subquery"}
+    )
     # status
     sent: Optional[bool]
     paid: Optional[bool]
     cancelled: Optional[bool]
     # payment: Optional["Payment"] = Relationship(back_populates="invoice")
     # invoice items
-    items: List["InvoiceItem"] = Relationship(back_populates="invoice")
+    items: List["InvoiceItem"] = Relationship(
+        back_populates="invoice", sa_relationship_kwargs={"lazy": "subquery"}
+    )
     rendered: bool = Field(default=False)
 
     #

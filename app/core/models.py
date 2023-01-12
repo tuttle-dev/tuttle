@@ -92,12 +92,14 @@ class IntentResult:
         was_intent_successful: bool = False,
         error_msg: str = "",
         log_message: str = "",
+        exception: Optional[Exception] = None,
     ):
         super().__init__()
         self.error_msg = error_msg
         self.data = data
         self.was_intent_successful = was_intent_successful
         self.log_message = log_message
+        self.exception = exception
 
 
 @dataclass
