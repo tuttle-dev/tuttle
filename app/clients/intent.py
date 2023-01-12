@@ -62,3 +62,9 @@ class ClientsIntent:
 
     def get_all_contacts_as_map(self) -> IntentResult:
         return self.contacts_intent.get_all_contacts_as_map()
+
+    def delete_client_by_id(self, client_id):
+        result: IntentResult = self.data_source.delete_client_by_id(client_id)
+        if not result.was_intent_successful:
+            result.error_msg = "Failed to delete the client! please retry"
+        return result
