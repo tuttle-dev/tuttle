@@ -11,6 +11,8 @@ from flet import (
     GridView,
     Icon,
     IconButton,
+    PopupMenuButton,
+    PopupMenuItem,
     ResponsiveRow,
     Row,
     Text,
@@ -24,56 +26,14 @@ from flet import (
 
 from core.abstractions import TuttleView
 from core.charts import BarChart
-from core.utils import (
-    ALWAYS_SCROLL,
-    CENTER_ALIGNMENT,
-    END_ALIGNMENT,
-    HOVERED,
-    OTHER_CONTROL_STATES,
-    PRESSED,
-    SELECTED,
-    SPACE_BETWEEN_ALIGNMENT,
-    START_ALIGNMENT,
-    TXT_ALIGN_JUSTIFY,
-    AlertDialogControls,
-)
+from core import utils
 from core.date_time_utils import get_last_seven_days
 from core.models import IntentResult
-from core.views import (
-    AlertDisplayPopUp,
-    ConfirmDisplayPopUp,
-    DateSelector,
-    get_dropdown,
-    get_headline_txt,
-    get_headline_with_subtitle,
-    get_primary_btn,
-    get_std_multiline_field,
-    get_std_txt_field,
-    horizontal_progress,
-    mdSpace,
-    smSpace,
-    update_dropdown_items,
-)
+from core import views
 from projects.intent import ProjectsIntent
-from res import colors, dimens, fonts
-from res.colors import ERROR_COLOR, GRAY_COLOR, PRIMARY_COLOR
-from res.dimens import (
-    CLICKABLE_PILL_HEIGHT,
-    MIN_WINDOW_WIDTH,
-    SPACE_MD,
-    SPACE_STD,
-    SPACE_XS,
-)
-from res.fonts import BODY_1_SIZE, BODY_2_SIZE, HEADLINE_4_SIZE
-
-from res.res_utils import (
-    CONTRACT_CREATOR_SCREEN_ROUTE,
-    PROJECT_DETAILS_SCREEN_ROUTE,
-    PROJECT_EDITOR_SCREEN_ROUTE,
-)
+from res import colors, dimens, fonts, res_utils
 
 from tuttle.model import (
-    Client,
     Contract,
     Project,
 )
@@ -82,110 +42,119 @@ from tuttle.model import (
 class ProjectCard(UserControl):
     """Formats a single project info into a card ui display"""
 
-    def __init__(self, project: Project, onClickView: Callable[[str], None]):
+    def __init__(
+        self, project, on_view_details_clicked, on_delete_clicked, on_edit_clicked
+    ):
         super().__init__()
-        self.project = project
+        self.project: Project = project
         self.productInfoContainer = Column()
-        self.onClickView = onClickView
+        self.on_view_details_clicked = on_view_details_clicked
+        self.on_delete_clicked = on_delete_clicked
+        self.on_edit_clicked = on_edit_clicked
 
     def build(self):
         self.productInfoContainer.controls = [
-            get_headline_with_subtitle(
+            views.get_headline_with_subtitle(
                 title=self.project.title,
                 subtitle=self.project.get_brief_description(),
-                titleSize=HEADLINE_4_SIZE,
-                subtitleColor=GRAY_COLOR,
+                titleSize=fonts.HEADLINE_4_SIZE,
+                subtitleColor=colors.GRAY_COLOR,
             ),
             ResponsiveRow(
                 controls=[
                     Text(
                         "Contract",
-                        color=GRAY_COLOR,
-                        size=BODY_2_SIZE,
+                        color=colors.GRAY_COLOR,
+                        size=fonts.BODY_2_SIZE,
                         col={"xs": "12", "sm": "5", "md": "3"},
                     ),
                     Text(
                         self.project.contract.title,
-                        size=BODY_2_SIZE,
+                        size=fonts.BODY_2_SIZE,
                         col={"xs": "12", "sm": "7", "md": "9"},
                     ),
                 ],
-                spacing=SPACE_XS,
+                spacing=dimens.SPACE_XS,
                 run_spacing=0,
-                vertical_alignment=CENTER_ALIGNMENT,
+                vertical_alignment=utils.CENTER_ALIGNMENT,
             ),
             ResponsiveRow(
                 controls=[
                     Text(
                         "Client",
-                        color=GRAY_COLOR,
-                        size=BODY_2_SIZE,
+                        color=colors.GRAY_COLOR,
+                        size=fonts.BODY_2_SIZE,
                         col={"xs": "12", "sm": "5", "md": "3"},
                     ),
                     Text(
                         self.project.contract.client.name,
-                        size=BODY_2_SIZE,
+                        size=fonts.BODY_2_SIZE,
                         col={"xs": "12", "sm": "7", "md": "9"},
                     ),
                 ],
-                spacing=SPACE_XS,
+                spacing=dimens.SPACE_XS,
                 run_spacing=0,
-                vertical_alignment=CENTER_ALIGNMENT,
+                vertical_alignment=utils.CENTER_ALIGNMENT,
             ),
             ResponsiveRow(
                 controls=[
                     Text(
                         "Start Date",
-                        color=GRAY_COLOR,
-                        size=BODY_2_SIZE,
+                        color=colors.GRAY_COLOR,
+                        size=fonts.BODY_2_SIZE,
                         col={"xs": "12", "sm": "5", "md": "3"},
                     ),
                     Text(
                         self.project.start_date.strftime("%d/%m/%Y"),
-                        size=BODY_2_SIZE,
+                        size=fonts.BODY_2_SIZE,
                         col={"xs": "12", "sm": "7", "md": "9"},
                     ),
                 ],
-                spacing=SPACE_XS,
+                spacing=dimens.SPACE_XS,
                 run_spacing=0,
-                vertical_alignment=CENTER_ALIGNMENT,
+                vertical_alignment=utils.CENTER_ALIGNMENT,
             ),
             ResponsiveRow(
                 controls=[
                     Text(
                         "End date",
-                        color=GRAY_COLOR,
-                        size=BODY_2_SIZE,
+                        color=colors.GRAY_COLOR,
+                        size=fonts.BODY_2_SIZE,
                         col={"xs": "12", "sm": "5", "md": "3"},
                     ),
                     Text(
                         self.project.end_date.strftime("%d/%m/%Y")
                         if self.project.end_date
                         else "",
-                        size=BODY_2_SIZE,
-                        color=ERROR_COLOR,
+                        size=fonts.BODY_2_SIZE,
+                        color=colors.ERROR_COLOR,
                         col={"xs": "12", "sm": "7", "md": "9"},
                     ),
                 ],
-                spacing=SPACE_XS,
+                spacing=dimens.SPACE_XS,
                 run_spacing=0,
-                vertical_alignment=CENTER_ALIGNMENT,
+                vertical_alignment=utils.CENTER_ALIGNMENT,
             ),
             Row(
-                alignment=SPACE_BETWEEN_ALIGNMENT,
-                vertical_alignment=END_ALIGNMENT,
+                alignment=utils.SPACE_BETWEEN_ALIGNMENT,
+                vertical_alignment=utils.END_ALIGNMENT,
                 expand=True,
                 controls=[
                     Row(
                         spacing=0,
                         controls=[
-                            Text(f"#", color=PRIMARY_COLOR),
-                            Text(f"{self.project.tag}", color=GRAY_COLOR),
+                            Text(f"#", color=colors.PRIMARY_COLOR),
+                            Text(f"{self.project.tag}", color=colors.GRAY_COLOR),
                         ],
                     ),
-                    ElevatedButton(
-                        text="View",
-                        on_click=lambda e: self.onClickView(self.project.id),
+                    views.view_edit_delete_pop_up(
+                        on_click_view=lambda e: self.on_view_details_clicked(
+                            self.project.id
+                        ),
+                        on_click_delete=lambda e: self.on_delete_clicked(
+                            self.project.id
+                        ),
+                        on_click_edit=lambda e: self.on_edit_clicked(self.project.id),
                     ),
                 ],
             ),
@@ -195,7 +164,7 @@ class ProjectCard(UserControl):
             expand=True,
             content=Container(
                 expand=True,
-                padding=padding.all(SPACE_STD),
+                padding=padding.all(dimens.SPACE_STD),
                 border_radius=border_radius.all(12),
                 content=self.productInfoContainer,
             ),
@@ -226,14 +195,16 @@ class ProjectFiltersView(UserControl):
             text=label,
             col={"xs": 6, "sm": 3, "lg": 2},
             on_click=lambda e: onClick(state),
-            height=CLICKABLE_PILL_HEIGHT,
-            color=PRIMARY_COLOR if state == self.currentState else GRAY_COLOR,
+            height=dimens.CLICKABLE_PILL_HEIGHT,
+            color=colors.PRIMARY_COLOR
+            if state == self.currentState
+            else colors.GRAY_COLOR,
             style=ButtonStyle(
                 elevation={
-                    PRESSED: 3,
-                    SELECTED: 3,
-                    HOVERED: 4,
-                    OTHER_CONTROL_STATES: 2,
+                    utils.PRESSED: 3,
+                    utils.SELECTED: 3,
+                    utils.HOVERED: 4,
+                    utils.OTHER_CONTROL_STATES: 2,
                 },
             ),
         )
@@ -241,9 +212,9 @@ class ProjectFiltersView(UserControl):
 
     def on_filter_button_clicked(self, state: ProjectStates):
         """sets the new state and updates selected button"""
-        self.stateTofilterButtonsMap[self.currentState].color = GRAY_COLOR
+        self.stateTofilterButtonsMap[self.currentState].color = colors.GRAY_COLOR
         self.currentState = state
-        self.stateTofilterButtonsMap[self.currentState].color = PRIMARY_COLOR
+        self.stateTofilterButtonsMap[self.currentState].color = colors.PRIMARY_COLOR
         self.update()
         self.onStateChangedCallback(state)
 
@@ -286,7 +257,7 @@ class ViewProjectScreen(TuttleView, UserControl):
         super().__init__(params)
         self.intent_handler = ProjectsIntent()
         self.project_id = project_id
-        self.loading_indicator = horizontal_progress
+        self.loading_indicator = views.horizontal_progress
         self.project: Optional[Project] = None
         self.dialog = None
         self.chart = None
@@ -344,7 +315,7 @@ class ViewProjectScreen(TuttleView, UserControl):
     def on_mark_as_complete_clicked(self, e):
         if self.dialog:
             self.dialog.close_dialog()
-        self.dialog = AlertDisplayPopUp(
+        self.dialog = views.AlertDisplayPopUp(
             dialog_controller=self.dialog_controller,
             title="Not Implemented",
             description="This feature is coming soon",
@@ -355,12 +326,12 @@ class ViewProjectScreen(TuttleView, UserControl):
         if self.project is None:
             # project is not loaded yet
             return
-        self.navigate_to_route(PROJECT_EDITOR_SCREEN_ROUTE, self.project.id)
+        self.navigate_to_route(res_utils.PROJECT_EDITOR_SCREEN_ROUTE, self.project.id)
 
     def on_delete_clicked(self, e):
         if self.dialog:
             self.dialog.close_dialog()
-        self.dialog = ConfirmDisplayPopUp(
+        self.dialog = views.ConfirmDisplayPopUp(
             dialog_controller=self.dialog_controller,
             title="Are You Sure?",
             description="Are you sure you wish to delete this project?",
@@ -377,7 +348,7 @@ class ViewProjectScreen(TuttleView, UserControl):
     def on_window_resized(self, desired_width, height):
         super().on_window_resized(desired_width, height)
         desired_width = self.page_width * 0.4
-        min_chart_width = MIN_WINDOW_WIDTH * 0.7
+        min_chart_width = dimens.MIN_WINDOW_WIDTH * 0.7
         chart_width = (
             desired_width if desired_width > min_chart_width else min_chart_width
         )
@@ -416,7 +387,7 @@ class ViewProjectScreen(TuttleView, UserControl):
         )
         self.project_description_control = Text(
             size=fonts.BODY_1_SIZE,
-            text_align=TXT_ALIGN_JUSTIFY,
+            text_align=utils.TXT_ALIGN_JUSTIFY,
         )
 
         self.project_start_date_control = Text(
@@ -443,7 +414,7 @@ class ViewProjectScreen(TuttleView, UserControl):
             [
                 Container(
                     padding=padding.all(dimens.SPACE_STD),
-                    width=int(MIN_WINDOW_WIDTH * 0.3),
+                    width=int(dimens.MIN_WINDOW_WIDTH * 0.3),
                     content=Column(
                         controls=[
                             IconButton(
@@ -478,8 +449,8 @@ class ViewProjectScreen(TuttleView, UserControl):
                                         run_spacing=0,
                                         controls=[
                                             Row(
-                                                vertical_alignment=CENTER_ALIGNMENT,
-                                                alignment=SPACE_BETWEEN_ALIGNMENT,
+                                                vertical_alignment=utils.CENTER_ALIGNMENT,
+                                                alignment=utils.SPACE_BETWEEN_ALIGNMENT,
                                                 controls=[
                                                     Text(
                                                         "Project",
@@ -488,8 +459,8 @@ class ViewProjectScreen(TuttleView, UserControl):
                                                         color=colors.PRIMARY_COLOR,
                                                     ),
                                                     Row(
-                                                        vertical_alignment=CENTER_ALIGNMENT,
-                                                        alignment=SPACE_BETWEEN_ALIGNMENT,
+                                                        vertical_alignment=utils.CENTER_ALIGNMENT,
+                                                        alignment=utils.SPACE_BETWEEN_ALIGNMENT,
                                                         spacing=dimens.SPACE_STD,
                                                         run_spacing=dimens.SPACE_STD,
                                                         controls=[
@@ -507,7 +478,7 @@ class ViewProjectScreen(TuttleView, UserControl):
                                     ),
                                 ],
                             ),
-                            mdSpace,
+                            views.mdSpace,
                             Text(
                                 "Project Description",
                                 size=fonts.SUBTITLE_1_SIZE,
@@ -515,14 +486,14 @@ class ViewProjectScreen(TuttleView, UserControl):
                             self.project_description_control,
                             self.project_start_date_control,
                             self.project_end_date_control,
-                            mdSpace,
+                            views.mdSpace,
                             self.chart_container,
-                            mdSpace,
+                            views.mdSpace,
                             Row(
                                 spacing=dimens.SPACE_STD,
                                 run_spacing=dimens.SPACE_STD,
-                                alignment=START_ALIGNMENT,
-                                vertical_alignment=CENTER_ALIGNMENT,
+                                alignment=utils.START_ALIGNMENT,
+                                vertical_alignment=utils.CENTER_ALIGNMENT,
                                 controls=[
                                     Card(
                                         Container(
@@ -546,8 +517,8 @@ class ViewProjectScreen(TuttleView, UserControl):
             ],
             spacing=dimens.SPACE_XS,
             run_spacing=dimens.SPACE_MD,
-            alignment=START_ALIGNMENT,
-            vertical_alignment=START_ALIGNMENT,
+            alignment=utils.START_ALIGNMENT,
+            vertical_alignment=utils.START_ALIGNMENT,
             expand=True,
         )
         return page_view
@@ -562,10 +533,10 @@ class ProjectsListView(TuttleView, UserControl):
     def __init__(self, params):
         super().__init__(params)
         self.intent_handler = ProjectsIntent()
-        self.loading_indicator = horizontal_progress
+        self.loading_indicator = views.horizontal_progress
         self.no_projects_control = Text(
             value="You have not added any projects yet.",
-            color=ERROR_COLOR,
+            color=colors.ERROR_COLOR,
             visible=False,
         )
         self.title_control = ResponsiveRow(
@@ -573,7 +544,9 @@ class ProjectsListView(TuttleView, UserControl):
                 Column(
                     col={"xs": 12},
                     controls=[
-                        get_headline_txt(txt="My Projects", size=HEADLINE_4_SIZE),
+                        views.get_headline_txt(
+                            txt="My Projects", size=fonts.HEADLINE_4_SIZE
+                        ),
                         self.loading_indicator,
                         self.no_projects_control,
                     ],
@@ -584,8 +557,8 @@ class ProjectsListView(TuttleView, UserControl):
             expand=False,
             max_extent=540,
             child_aspect_ratio=1.0,
-            spacing=SPACE_STD,
-            run_spacing=SPACE_MD,
+            spacing=dimens.SPACE_STD,
+            run_spacing=dimens.SPACE_MD,
         )
         self.projects_to_display = {}
 
@@ -597,12 +570,21 @@ class ProjectsListView(TuttleView, UserControl):
         for key in self.projects_to_display:
             project = self.projects_to_display[key]
             projectCard = ProjectCard(
-                project=project, onClickView=self.on_view_project_clicked
+                project=project,
+                on_view_details_clicked=self.on_view_project_clicked,
+                on_delete_clicked=self.on_delete_project_clicked,
+                on_edit_clicked=self.on_edit_project_clicked,
             )
             self.projects_container.controls.append(projectCard)
 
-    def on_view_project_clicked(self, projectId: str):
-        self.navigate_to_route(PROJECT_DETAILS_SCREEN_ROUTE, projectId)
+    def on_view_project_clicked(self, project_id: str):
+        self.navigate_to_route(res_utils.PROJECT_DETAILS_SCREEN_ROUTE, project_id)
+
+    def on_delete_project_clicked(self, project_id: str):
+        self.show_snack("Unimplemented error", True)  # TODO
+
+    def on_edit_project_clicked(self, project_id: str):
+        self.show_snack("Unimplemented error", True)  # TODO
 
     def on_filter_projects(self, filterByState: ProjectStates):
         if filterByState.value == ProjectStates.ACTIVE.value:
@@ -639,9 +621,9 @@ class ProjectsListView(TuttleView, UserControl):
         return Column(
             controls=[
                 self.title_control,
-                mdSpace,
+                views.mdSpace,
                 ProjectFiltersView(onStateChanged=self.on_filter_projects),
-                mdSpace,
+                views.mdSpace,
                 Container(self.projects_container, expand=True),
             ]
         )
@@ -659,11 +641,11 @@ class EditProjectScreen(TuttleView, UserControl):
         super().__init__(
             params,
         )
-        self.horizontal_alignment_in_parent = CENTER_ALIGNMENT
+        self.horizontal_alignment_in_parent = utils.CENTER_ALIGNMENT
         self.intent_handler = ProjectsIntent()
 
         self.contracts_map = {}
-        self.loading_indicator = horizontal_progress
+        self.loading_indicator = views.horizontal_progress
         # info of project being edited
         self.project_id: int = int(project_id)
         self.project: Optional[Project] = None
@@ -781,31 +763,31 @@ class EditProjectScreen(TuttleView, UserControl):
             self.on_navigate_back()
 
     def build(self):
-        self.title_field = get_std_txt_field(
+        self.title_field = views.get_std_txt_field(
             label="Title",
             hint="Project's title",
             on_change=self.on_title_changed,
             on_focus=self.clear_title_error,
         )
-        self.description_field = get_std_multiline_field(
+        self.description_field = views.get_std_multiline_field(
             label="Description",
             hint="Project's description",
             on_change=self.on_description_changed,
             on_focus=self.clear_description_error,
         )
-        self.tag_field = get_std_txt_field(
+        self.tag_field = views.get_std_txt_field(
             label="Tag",
             hint="an optional tag",
             on_change=self.on_tag_changed,
         )
-        self.start_date_field = DateSelector(label="Start Date")
-        self.end_date_field = DateSelector(label="End Date")
-        self.submit_btn = get_primary_btn(
+        self.start_date_field = views.DateSelector(label="Start Date")
+        self.end_date_field = views.DateSelector(label="End Date")
+        self.submit_btn = views.get_primary_btn(
             label="Create Project" if self.project_id is None else "Update Project",
             on_click=self.on_save,
         )
-        self.contract_title_view = Text(size=BODY_1_SIZE, color=GRAY_COLOR)
-        self.client_title_view = Text(size=BODY_1_SIZE, color=GRAY_COLOR)
+        self.contract_title_view = Text(size=fonts.BODY_1_SIZE, color=colors.GRAY_COLOR)
+        self.client_title_view = Text(size=fonts.BODY_1_SIZE, color=colors.GRAY_COLOR)
         view = Container(
             expand=True,
             padding=padding.all(dimens.SPACE_MD),
@@ -822,32 +804,32 @@ class EditProjectScreen(TuttleView, UserControl):
                                         icon=icons.CHEVRON_LEFT_ROUNDED,
                                         on_click=self.on_navigate_back,
                                     ),
-                                    get_headline_with_subtitle(
+                                    views.get_headline_with_subtitle(
                                         title="Edit Project",
                                         subtitle="Update project",
                                     ),
                                 ]
                             ),
                             self.loading_indicator,
-                            mdSpace,
+                            views.mdSpace,
                             self.contract_title_view,
                             self.client_title_view,
-                            smSpace,
+                            views.smSpace,
                             self.title_field,
-                            smSpace,
+                            views.smSpace,
                             self.description_field,
-                            smSpace,
+                            views.smSpace,
                             self.tag_field,
-                            mdSpace,
+                            views.mdSpace,
                             self.start_date_field,
-                            mdSpace,
+                            views.mdSpace,
                             self.end_date_field,
-                            mdSpace,
+                            views.mdSpace,
                             self.submit_btn,
                         ],
                     ),
                     padding=padding.all(dimens.SPACE_MD),
-                    width=MIN_WINDOW_WIDTH,
+                    width=dimens.MIN_WINDOW_WIDTH,
                 ),
             ),
         )
@@ -861,11 +843,11 @@ class EditProjectScreen(TuttleView, UserControl):
 class CreateProjectScreen(TuttleView, UserControl):
     def __init__(self, params):
         super().__init__(params)
-        self.horizontal_alignment_in_parent = CENTER_ALIGNMENT
+        self.horizontal_alignment_in_parent = utils.CENTER_ALIGNMENT
         self.intent_handler = ProjectsIntent()
 
         self.contracts_map = {}
-        self.loading_indicator = horizontal_progress
+        self.loading_indicator = views.horizontal_progress
         self.title = ""
         self.description = ""
         self.tag = ""
@@ -950,11 +932,11 @@ class CreateProjectScreen(TuttleView, UserControl):
         self.contracts_field.error_text = (
             "Please create a new contract" if len(self.contracts_map) == 0 else None
         )
-        update_dropdown_items(self.contracts_field, self.get_contracts_as_list())
+        views.update_dropdown_items(self.contracts_field, self.get_contracts_as_list())
 
     def on_add_contract(self, e):
         # todo confirm? before re routing
-        self.navigate_to_route(CONTRACT_CREATOR_SCREEN_ROUTE)
+        self.navigate_to_route(res_utils.CONTRACT_CREATOR_SCREEN_ROUTE)
 
     def on_save(self, e):
         if not self.title:
@@ -1007,39 +989,39 @@ class CreateProjectScreen(TuttleView, UserControl):
             self.on_navigate_back()
 
     def build(self):
-        self.title_field = get_std_txt_field(
+        self.title_field = views.get_std_txt_field(
             label="Title",
             hint="Project's title",
             on_change=self.on_title_changed,
             on_focus=self.clear_title_error,
         )
-        self.description_field = get_std_multiline_field(
+        self.description_field = views.get_std_multiline_field(
             label="Description",
             hint="Project's description",
             on_change=self.on_description_changed,
             on_focus=self.clear_description_error,
         )
-        self.tag_field = get_std_txt_field(
+        self.tag_field = views.get_std_txt_field(
             label="Tag",
             hint="an optional tag",
             on_change=self.on_tag_changed,
         )
 
-        self.contracts_field = get_dropdown(
+        self.contracts_field = views.get_dropdown(
             label="Contract",
             on_change=self.on_contract_selected,
             items=self.get_contracts_as_list(),
         )
-        self.start_date_field = DateSelector(label="Start Date")
-        self.end_date_field = DateSelector(label="End Date")
-        self.submit_btn = get_primary_btn(
+        self.start_date_field = views.DateSelector(label="Start Date")
+        self.end_date_field = views.DateSelector(label="End Date")
+        self.submit_btn = views.get_primary_btn(
             label="Create Project",
             on_click=self.on_save,
         )
 
         self.contractsEditor = Row(
-            alignment=SPACE_BETWEEN_ALIGNMENT,
-            vertical_alignment=CENTER_ALIGNMENT,
+            alignment=utils.SPACE_BETWEEN_ALIGNMENT,
+            vertical_alignment=utils.CENTER_ALIGNMENT,
             spacing=dimens.SPACE_STD,
             controls=[
                 self.contracts_field,
@@ -1053,7 +1035,7 @@ class CreateProjectScreen(TuttleView, UserControl):
         """used to display contract id
         for when editing the project"""
         self.contract_title_view = Text(
-            size=BODY_1_SIZE, color=GRAY_COLOR, visible=False
+            size=fonts.BODY_1_SIZE, color=colors.GRAY_COLOR, visible=False
         )
         view = Container(
             expand=True,
@@ -1071,32 +1053,32 @@ class CreateProjectScreen(TuttleView, UserControl):
                                         icon=icons.CHEVRON_LEFT_ROUNDED,
                                         on_click=self.on_navigate_back,
                                     ),
-                                    get_headline_with_subtitle(
+                                    views.get_headline_with_subtitle(
                                         title="New Project",
                                         subtitle="Create a new project",
                                     ),
                                 ]
                             ),
                             self.loading_indicator,
-                            mdSpace,
+                            views.mdSpace,
                             self.title_field,
-                            smSpace,
+                            views.smSpace,
                             self.description_field,
-                            smSpace,
+                            views.smSpace,
                             self.contractsEditor,
                             self.contract_title_view,
-                            smSpace,
+                            views.smSpace,
                             self.tag_field,
-                            mdSpace,
+                            views.mdSpace,
                             self.start_date_field,
-                            mdSpace,
+                            views.mdSpace,
                             self.end_date_field,
-                            mdSpace,
+                            views.mdSpace,
                             self.submit_btn,
                         ],
                     ),
                     padding=padding.all(dimens.SPACE_MD),
-                    width=MIN_WINDOW_WIDTH,
+                    width=dimens.MIN_WINDOW_WIDTH,
                 ),
             ),
         )

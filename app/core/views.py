@@ -20,6 +20,10 @@ from flet import (
     UserControl,
     dropdown,
     padding,
+    PopupMenuButton,
+    PopupMenuItem,
+    Icon,
+    icons,
 )
 
 
@@ -533,3 +537,46 @@ class ConfirmDisplayPopUp(DialogHandler):
     def on_proceed_btn_clicked(self, e):
         self.close_dialog()
         self.on_proceed_callback()
+
+
+def view_edit_delete_pop_up_item(icon, txt, on_click, is_delete: bool = False):
+    return PopupMenuItem(
+        content=Row(
+            [
+                Icon(icon, color=colors.ERROR_COLOR if is_delete else None),
+                get_body_txt(
+                    txt,
+                    size=fonts.BUTTON_SIZE,
+                    color=colors.ERROR_COLOR if is_delete else None,
+                ),
+            ]
+        ),
+        on_click=on_click,
+    )
+
+
+def view_edit_delete_pop_up(
+    on_click_view,
+    on_click_edit,
+    on_click_delete,
+    view_item_lbl="View Details",
+    delete_item_lbl="Delete",
+    edit_item_lbl="Edit",
+):
+    """Returns a pop up menu button with view, edit and delete options"""
+    return PopupMenuButton(
+        items=[
+            view_edit_delete_pop_up_item(
+                icons.REMOVE_RED_EYE, txt=view_item_lbl, on_click=on_click_view
+            ),
+            view_edit_delete_pop_up_item(
+                icons.EDIT_OUTLINED, txt=edit_item_lbl, on_click=on_click_edit
+            ),
+            view_edit_delete_pop_up_item(
+                icons.DELETE_OUTLINE,
+                txt=delete_item_lbl,
+                on_click=on_click_delete,
+                is_delete=True,
+            ),
+        ]
+    )
