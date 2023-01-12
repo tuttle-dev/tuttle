@@ -81,9 +81,11 @@ class ProjectsIntent:
         if not self.all_projects_cache:
             self._clear_cached_results()
             self.all_projects_cache = {}
-            result = self.data_source.get_all_projects_as_map()
+            result = self.data_source.get_all_projects()
             if result.was_intent_successful:
-                self.all_projects_cache = result.data
+                projects = result.data
+                projects_map = {project.id: project for project in projects}
+                self.all_projects_cache = projects_map
         return self.all_projects_cache
 
     def get_completed_projects(self) -> Mapping[int, Project]:

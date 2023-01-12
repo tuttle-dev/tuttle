@@ -13,12 +13,12 @@ class ProjectDataSource(SQLModelDataSourceMixin):
     def __init__(self):
         super().__init__()
 
-    def get_all_projects_as_map(
+    def get_all_projects(
         self,
     ) -> IntentResult:
+        """returns data as all existing projects"""
         projects = self.query(Project)
-        result = {project.id: project for project in projects}
-        return IntentResult(was_intent_successful=True, data=result)
+        return IntentResult(was_intent_successful=True, data=projects)
 
     def save_project(
         self,

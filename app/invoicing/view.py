@@ -87,7 +87,7 @@ class InvoicingView(TuttleView, UserControl):
         # extract id
         id = selected_project_id_title.split(" ")[0]
         logger.info(f"selected project id : {id}")
-        result = self.intent_handler.get_invoices_for_project(id)
+        result = self.intent_handler.get_invoices_for_project_as_map(id)
         # TODO process result
 
     def build(self):
