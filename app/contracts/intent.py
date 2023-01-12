@@ -26,7 +26,7 @@ class ContractsIntent:
         self.data_source = ContractDataSource()
 
         self.all_contracts_cache: Mapping[str, Contract] = None
-        self.completed_conracts_cache: Mapping[str, Contract] = None
+        self.completed_contracts_cache: Mapping[str, Contract] = None
         self.active_contracts_cache: Mapping[str, Contract] = None
         self.upcoming_contracts_cache: Mapping[str, Contract] = None
 
@@ -96,13 +96,13 @@ class ContractsIntent:
         return self.all_contracts_cache
 
     def get_completed_contracts(self) -> Mapping[str, Contract]:
-        if not self.completed_conracts_cache:
-            self.completed_conracts_cache = {}
+        if not self.completed_contracts_cache:
+            self.completed_contracts_cache = {}
             for key in self.all_contracts_cache:
                 c = self.all_contracts_cache[key]
                 if c.is_completed:
-                    self.completed_conracts_cache[key] = c
-        return self.completed_conracts_cache
+                    self.completed_contracts_cache[key] = c
+        return self.completed_contracts_cache
 
     def get_active_contracts(self):
         if not self.active_contracts_cache:
@@ -124,6 +124,31 @@ class ContractsIntent:
 
     def _clear_cached_results(self):
         self.all_contracts_cache = None
-        self.completed_conracts_cache = None
+        self.completed_contracts_cache = None
         self.active_contracts_cache = None
         self.upcoming_contracts_cache = None
+
+    def delete_contract_by_id(self, contract_id: str):
+        result: IntentResult = self.data_source.delete_contract_by_id(contract_id)
+        if not result.was_intent_successful:
+            result.error_msg = "Failed to delete that contract! Please retry"
+        else:
+            # remove it from all caches
+            if self.all_contracts_cache and contract_id in self.all_contracts_cache:
+                self.all_contracts_cache[contract_id]
+            if (
+                self.completed_contracts_cache
+                and contract_id in self.completed_contracts_cache
+            ):
+                self.completed_contracts_cache[contract_id]
+            if (
+                self.active_contracts_cache
+                and contract_id in self.active_contracts_cache
+            ):
+                self.active_contracts_cache[contract_id]
+            if (
+                self.upcoming_contracts_cache
+                and contract_id in self.upcoming_contracts_cache
+            ):
+                self.upcoming_contracts_cache[contract_id]
+        return result

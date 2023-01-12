@@ -259,7 +259,7 @@ class ViewProjectScreen(TuttleView, UserControl):
         self.project_id = project_id
         self.loading_indicator = views.horizontal_progress
         self.project: Optional[Project] = None
-        self.dialog = None
+        self.pop_up_handler = None
         self.chart = None
 
     def display_project_data(self):
@@ -313,14 +313,14 @@ class ViewProjectScreen(TuttleView, UserControl):
         self.show_snack("Coming soon", False)
 
     def on_mark_as_complete_clicked(self, e):
-        if self.dialog:
-            self.dialog.close_dialog()
-        self.dialog = views.AlertDisplayPopUp(
+        if self.pop_up_handler:
+            self.pop_up_handler.close_dialog()
+        self.pop_up_handler = views.AlertDisplayPopUp(
             dialog_controller=self.dialog_controller,
             title="Not Implemented",
             description="This feature is coming soon",
         )
-        self.dialog.open_dialog()
+        self.pop_up_handler.open_dialog()
 
     def on_edit_clicked(self, e):
         if self.project is None:
@@ -332,17 +332,17 @@ class ViewProjectScreen(TuttleView, UserControl):
         if self.project is None:
             # project is not loaded yet
             return
-        if self.dialog:
-            self.dialog.close_dialog()
-        self.dialog = views.ConfirmDisplayPopUp(
+        if self.pop_up_handler:
+            self.pop_up_handler.close_dialog()
+        self.pop_up_handler = views.ConfirmDisplayPopUp(
             dialog_controller=self.dialog_controller,
             title="Are You Sure?",
-            description="Are you sure you wish to delete this project?",
+            description=f"Are you sure you wish to delete this project\n{self.project.title}",
             on_proceed=self.on_delete_confirmed,
             proceed_button_label="Yes! Delete",
             data_on_confirmed=self.project.id,
         )
-        self.dialog.open_dialog()
+        self.pop_up_handler.open_dialog()
 
     def on_delete_confirmed(self, project_id):
         result = self.intent_handler.delete_project_by_id(project_id)
@@ -533,8 +533,8 @@ class ViewProjectScreen(TuttleView, UserControl):
 
     def will_unmount(self):
         self.mounted = False
-        if self.dialog:
-            self.dialog.dimiss_open_dialogs()
+        if self.pop_up_handler:
+            self.pop_up_handler.dimiss_open_dialogs()
 
 
 class ProjectsListView(TuttleView, UserControl):

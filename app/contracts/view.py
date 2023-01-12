@@ -1,24 +1,12 @@
 from enum import Enum
 from typing import Callable, Optional
 from clients.view import ClientEditorPopUp
-import flet as ft
+import flet
 from contracts.intent import ContractsIntent
 from core.abstractions import TuttleView, DialogHandler, TuttleViewParams
 from res import colors, dimens, fonts, res_utils
 from contracts.intent import ContractsIntent
-from core import utils
-from core.views import (
-    DateSelector,
-    get_dropdown,
-    get_headline_txt,
-    get_headline_with_subtitle,
-    get_primary_btn,
-    get_std_txt_field,
-    horizontal_progress,
-    mdSpace,
-    smSpace,
-    update_dropdown_items,
-)
+from core import utils, views
 
 from core.models import (
     IntentResult,
@@ -34,27 +22,31 @@ from tuttle.model import (
 LABEL_WIDTH = 80
 
 
-class ContractCard(ft.UserControl):
-    """Formats a single contract info into a ft.Card ui display"""
+class ContractCard(flet.UserControl):
+    """Formats a single contract info into a flet.Card ui display"""
 
-    def __init__(self, contract: Contract, on_click_view: Callable[[str], None]):
+    def __init__(
+        self, contract: Contract, on_click_view, on_click_edit, on_click_delete
+    ):
         super().__init__()
         self.contract = contract
-        self.product_info_container = ft.Column()
+        self.product_info_container = flet.Column()
         self.on_click_view = on_click_view
+        self.on_click_edit = on_click_edit
+        self.on_click_delete = on_click_delete
 
     def build(self):
         self.product_info_container.controls = [
-            get_headline_txt(txt=self.contract.title, size=fonts.SUBTITLE_1_SIZE),
-            ft.ResponsiveRow(
+            views.get_headline_txt(txt=self.contract.title, size=fonts.SUBTITLE_1_SIZE),
+            flet.ResponsiveRow(
                 controls=[
-                    ft.Text(
+                    flet.Text(
                         "Billing Cycle",
                         color=colors.GRAY_COLOR,
                         size=fonts.BODY_2_SIZE,
                         col={"xs": "12", "sm": "5", "md": "3"},
                     ),
-                    ft.Text(
+                    flet.Text(
                         self.contract.billing_cycle,
                         size=fonts.BODY_2_SIZE,
                         col={"xs": "12", "sm": "7", "md": "9"},
@@ -64,15 +56,15 @@ class ContractCard(ft.UserControl):
                 run_spacing=0,
                 vertical_alignment=utils.CENTER_ALIGNMENT,
             ),
-            ft.ResponsiveRow(
+            flet.ResponsiveRow(
                 controls=[
-                    ft.Text(
+                    flet.Text(
                         "Start date",
                         color=colors.GRAY_COLOR,
                         size=fonts.BODY_2_SIZE,
                         col={"xs": "12", "sm": "5", "md": "3"},
                     ),
-                    ft.Text(
+                    flet.Text(
                         self.contract.start_date.strftime("%d/%m/%Y")
                         if self.contract.start_date
                         else "",
@@ -84,15 +76,15 @@ class ContractCard(ft.UserControl):
                 run_spacing=0,
                 vertical_alignment=utils.CENTER_ALIGNMENT,
             ),
-            ft.ResponsiveRow(
+            flet.ResponsiveRow(
                 controls=[
-                    ft.Text(
+                    flet.Text(
                         "End date",
                         color=colors.GRAY_COLOR,
                         size=fonts.BODY_2_SIZE,
                         col={"xs": "12", "sm": "5", "md": "3"},
                     ),
-                    ft.Text(
+                    flet.Text(
                         self.contract.end_date.strftime("%d/%m/%Y")
                         if self.contract.end_date
                         else "",
@@ -105,31 +97,25 @@ class ContractCard(ft.UserControl):
                 run_spacing=0,
                 vertical_alignment=utils.CENTER_ALIGNMENT,
             ),
-            ft.Row(
-                alignment=utils.END_ALIGNMENT,
-                vertical_alignment=utils.END_ALIGNMENT,
-                expand=True,
-                controls=[
-                    ft.ElevatedButton(
-                        text="View",
-                        on_click=lambda e: self.on_click_view(self.contract.id),
-                    ),
-                ],
+            views.view_edit_delete_pop_up(
+                on_click_view=lambda e: self.on_click_view(self.contract.id),
+                on_click_edit=lambda e: self.on_click_edit(self.contract.id),
+                on_click_delete=lambda e: self.on_click_delete(self.contract.id),
             ),
         ]
-        return ft.Card(
+        return flet.Card(
             elevation=2,
             expand=True,
-            content=ft.Container(
+            content=flet.Container(
                 expand=True,
-                padding=ft.padding.all(dimens.SPACE_STD),
-                border_radius=ft.border_radius.all(12),
+                padding=flet.padding.all(dimens.SPACE_STD),
+                border_radius=flet.border_radius.all(12),
                 content=self.product_info_container,
             ),
         )
 
 
-class ContractEditorScreen(TuttleView, ft.UserControl):
+class ContractEditorScreen(TuttleView, flet.UserControl):
     def __init__(
         self,
         params: TuttleViewParams,
@@ -141,7 +127,7 @@ class ContractEditorScreen(TuttleView, ft.UserControl):
         self.horizontal_alignment_in_parent = utils.CENTER_ALIGNMENT
         self.intent_handler = ContractsIntent()
 
-        self.loading_indicator = horizontal_progress
+        self.loading_indicator = views.horizontal_progress
         self.new_client_pop_up = None
 
         # info of contract being edited / created
@@ -267,7 +253,7 @@ class ContractEditorScreen(TuttleView, ft.UserControl):
         self.clients_field.error_text = (
             "Please create a new client" if len(self.clients_map) == 0 else None
         )
-        update_dropdown_items(self.clients_field, self.get_clients_as_list())
+        views.update_dropdown_items(self.clients_field, self.get_clients_as_list())
 
     def load_contacts(self):
         self.contacts_map = self.intent_handler.get_all_contacts_as_map()
@@ -319,7 +305,9 @@ class ContractEditorScreen(TuttleView, ft.UserControl):
             if result.was_intent_successful:
                 self.selected_client: Client = result.data
                 self.clients_map[self.selected_client.id] = self.selected_client
-                update_dropdown_items(self.clients_field, self.get_clients_as_list())
+                views.update_dropdown_items(
+                    self.clients_field, self.get_clients_as_list()
+                )
                 item = self.get_client_dropdown_item(self.selected_client.id)
                 self.clients_field.value = item
             else:
@@ -392,14 +380,14 @@ class ContractEditorScreen(TuttleView, ft.UserControl):
             self.on_navigate_back()
 
     def build(self):
-        self.title_field = get_std_txt_field(
+        self.title_field = views.get_std_txt_field(
             label="Title",
             hint="Contract's title",
             on_change=self.on_title_changed,
             on_focus=self.clear_title_error,
         )
 
-        self.rate_field = get_std_txt_field(
+        self.rate_field = views.get_std_txt_field(
             label="Rate",
             hint="Contract's rate",
             on_change=self.on_rate_changed,
@@ -407,14 +395,14 @@ class ContractEditorScreen(TuttleView, ft.UserControl):
             keyboard_type=utils.KEYBOARD_NUMBER,
         )
 
-        self.currency_field = get_std_txt_field(
+        self.currency_field = views.get_std_txt_field(
             label="Currency",
             hint="Payment currency",
             on_change=self.on_currency_changed,
             on_focus=self.clear_currency_error,
         )
 
-        self.vatRate_field = get_std_txt_field(
+        self.vatRate_field = views.get_std_txt_field(
             label="Vat",
             hint="Vat rate",
             on_change=self.on_vat_rate_changed,
@@ -422,7 +410,7 @@ class ContractEditorScreen(TuttleView, ft.UserControl):
             keyboard_type=utils.KEYBOARD_NUMBER,
         )
 
-        self.unitPW_field = get_std_txt_field(
+        self.unitPW_field = views.get_std_txt_field(
             label="Units per workday",
             hint="",
             on_change=self.on_upw_changed,
@@ -430,7 +418,7 @@ class ContractEditorScreen(TuttleView, ft.UserControl):
             keyboard_type=utils.KEYBOARD_NUMBER,
         )
 
-        self.volume_field = get_std_txt_field(
+        self.volume_field = views.get_std_txt_field(
             label="Volume (optional)",
             hint="",
             on_change=self.on_volume_changed,
@@ -438,7 +426,7 @@ class ContractEditorScreen(TuttleView, ft.UserControl):
             keyboard_type=utils.KEYBOARD_NUMBER,
         )
 
-        self.termOfPayment_field = get_std_txt_field(
+        self.termOfPayment_field = views.get_std_txt_field(
             label="Term of payment (optional)",
             hint="",
             on_change=self.on_top_changed,
@@ -446,89 +434,89 @@ class ContractEditorScreen(TuttleView, ft.UserControl):
             keyboard_type=utils.KEYBOARD_NUMBER,
         )
 
-        self.clients_field = get_dropdown(
+        self.clients_field = views.get_dropdown(
             label="Client",
             on_change=self.on_client_selected,
             items=self.get_clients_as_list(),
         )
-        self.units_field = get_dropdown(
+        self.units_field = views.get_dropdown(
             label="Time Unit",
             on_change=self.on_unit_selected,
             items=get_time_unit_values_as_list(),
         )
 
-        self.billingCycle_field = get_dropdown(
+        self.billingCycle_field = views.get_dropdown(
             label="Billing Cycle",
             on_change=self.on_billing_cycle_selected,
             items=get_cycle_values_as_list(),
         )
 
-        self.signatureDate_field = DateSelector(label="Signed on Date")
-        self.startDate_field = DateSelector(label="Start Date")
-        self.endDate_field = DateSelector(label="End Date")
-        self.submit_btn = get_primary_btn(
+        self.signatureDate_field = views.DateSelector(label="Signed on Date")
+        self.startDate_field = views.DateSelector(label="Start Date")
+        self.endDate_field = views.DateSelector(label="End Date")
+        self.submit_btn = views.get_primary_btn(
             label="Create Contract", on_click=self.on_save
         )
-        view = ft.Container(
+        view = flet.Container(
             expand=True,
-            padding=ft.padding.all(dimens.SPACE_MD),
-            margin=ft.margin.symmetric(vertical=dimens.SPACE_MD),
-            content=ft.Card(
+            padding=flet.padding.all(dimens.SPACE_MD),
+            margin=flet.margin.symmetric(vertical=dimens.SPACE_MD),
+            content=flet.Card(
                 expand=True,
-                content=ft.Container(
-                    ft.Column(
+                content=flet.Container(
+                    flet.Column(
                         expand=True,
                         controls=[
-                            ft.Row(
+                            flet.Row(
                                 controls=[
-                                    ft.IconButton(
-                                        icon=ft.icons.CHEVRON_LEFT_ROUNDED,
+                                    flet.IconButton(
+                                        icon=flet.icons.CHEVRON_LEFT_ROUNDED,
                                         on_click=self.on_navigate_back,
                                     ),
-                                    get_headline_with_subtitle(
+                                    views.get_headline_with_subtitle(
                                         title="New Contract",
                                         subtitle="Create a new contract",
                                     ),
                                 ]
                             ),
                             self.loading_indicator,
-                            mdSpace,
+                            views.mdSpace,
                             self.title_field,
-                            smSpace,
+                            views.smSpace,
                             self.currency_field,
                             self.rate_field,
                             self.termOfPayment_field,
                             self.unitPW_field,
                             self.vatRate_field,
                             self.volume_field,
-                            smSpace,
-                            ft.Row(
+                            views.smSpace,
+                            flet.Row(
                                 alignment=utils.SPACE_BETWEEN_ALIGNMENT,
                                 vertical_alignment=utils.CENTER_ALIGNMENT,
                                 spacing=dimens.SPACE_STD,
                                 controls=[
                                     self.clients_field,
-                                    ft.IconButton(
-                                        icon=ft.icons.ADD_CIRCLE_OUTLINE,
+                                    flet.IconButton(
+                                        icon=flet.icons.ADD_CIRCLE_OUTLINE,
                                         on_click=self.on_add_client_clicked,
                                     ),
                                 ],
                             ),
-                            smSpace,
+                            views.smSpace,
                             self.units_field,
-                            smSpace,
+                            views.smSpace,
                             self.billingCycle_field,
-                            smSpace,
+                            views.smSpace,
                             self.signatureDate_field,
-                            smSpace,
+                            views.smSpace,
                             self.startDate_field,
-                            mdSpace,
+                            views.mdSpace,
                             self.endDate_field,
-                            mdSpace,
+                            views.mdSpace,
                             self.submit_btn,
                         ],
                     ),
-                    padding=ft.padding.all(dimens.SPACE_MD),
+                    padding=flet.padding.all(dimens.SPACE_MD),
                     width=dimens.MIN_WINDOW_WIDTH,
                 ),
             ),
@@ -552,7 +540,7 @@ class ContractStates(Enum):
     UPCOMING = 4
 
 
-class ContractFiltersView(ft.UserControl):
+class ContractFiltersView(flet.UserControl):
     """Create and Handles contracts view filtering buttons"""
 
     def __init__(self, onStateChanged: Callable[[ContractStates], None]):
@@ -567,7 +555,7 @@ class ContractFiltersView(ft.UserControl):
         label: str,
         onClick: Callable[[ContractStates], None],
     ):
-        button = ft.ElevatedButton(
+        button = flet.ElevatedButton(
             text=label,
             col={"xs": 6, "sm": 3, "lg": 2},
             on_click=lambda e: onClick(state),
@@ -575,7 +563,7 @@ class ContractFiltersView(ft.UserControl):
             color=colors.PRIMARY_COLOR
             if state == self.currentState
             else colors.GRAY_COLOR,
-            style=ft.ButtonStyle(
+            style=flet.ButtonStyle(
                 elevation={
                     utils.PRESSED: 3,
                     utils.SELECTED: 3,
@@ -618,19 +606,19 @@ class ContractFiltersView(ft.UserControl):
             # set the buttons
             self.set_filter_buttons()
 
-        self.filters = ft.ResponsiveRow(
+        self.filters = flet.ResponsiveRow(
             controls=list(self.stateTofilterButtonsMap.values())
         )
         return self.filters
 
 
-class CreateContractScreen(TuttleView, ft.UserControl):
+class CreateContractScreen(TuttleView, flet.UserControl):
     def __init__(self, params):
         super().__init__(params=params)
         self.horizontal_alignment_in_parent = utils.CENTER_ALIGNMENT
         self.intent_handler = ContractsIntent()
 
-        self.loading_indicator = horizontal_progress
+        self.loading_indicator = views.horizontal_progress
         self.new_client_pop_up: Optional[DialogHandler] = None
 
         # info of contract being edited / created
@@ -731,7 +719,7 @@ class CreateContractScreen(TuttleView, ft.UserControl):
         self.clients_field.error_text = (
             "Please create a new client" if len(self.clients_map) == 0 else None
         )
-        update_dropdown_items(self.clients_field, self.get_clients_as_list())
+        views.update_dropdown_items(self.clients_field, self.get_clients_as_list())
 
     def load_contacts(self):
         self.contacts_map = self.intent_handler.get_all_contacts_as_map()
@@ -782,7 +770,9 @@ class CreateContractScreen(TuttleView, ft.UserControl):
             if result.was_intent_successful:
                 self.client: Client = result.data
                 self.clients_map[self.client.id] = self.client
-                update_dropdown_items(self.clients_field, self.get_clients_as_list())
+                views.update_dropdown_items(
+                    self.clients_field, self.get_clients_as_list()
+                )
                 item = self.get_client_dropdown_item(self.client.id)
                 self.clients_field.value = item
             else:
@@ -854,134 +844,134 @@ class CreateContractScreen(TuttleView, ft.UserControl):
             self.on_navigate_back()
 
     def build(self):
-        self.title_field = get_std_txt_field(
+        self.title_field = views.get_std_txt_field(
             label="Title",
             hint="Contract's title",
             on_change=self.on_title_changed,
             on_focus=self.clear_title_error,
         )
-        self.rate_field = get_std_txt_field(
+        self.rate_field = views.get_std_txt_field(
             label="Rate",
             hint="Contract's rate",
             on_change=self.on_rate_changed,
             on_focus=self.clear_rate_error,
             keyboard_type=utils.KEYBOARD_NUMBER,
         )
-        self.currency_field = get_std_txt_field(
+        self.currency_field = views.get_std_txt_field(
             label="Currency",
             hint="Payment currency",
             on_change=self.on_currency_changed,
             on_focus=self.clear_currency_error,
         )
-        self.vat_rate_field = get_std_txt_field(
+        self.vat_rate_field = views.get_std_txt_field(
             label="Vat",
             hint="Vat rate",
             on_change=self.on_vat_rate_changed,
             on_focus=self.clear_vat_rate_error,
             keyboard_type=utils.KEYBOARD_NUMBER,
         )
-        self.unit_PW_field = get_std_txt_field(
+        self.unit_PW_field = views.get_std_txt_field(
             label="Units per workday",
             hint="",
             on_change=self.on_upw_changed,
             on_focus=self.clear_upw_error,
             keyboard_type=utils.KEYBOARD_NUMBER,
         )
-        self.volume_field = get_std_txt_field(
+        self.volume_field = views.get_std_txt_field(
             label="Volume (optional)",
             hint="",
             on_change=self.on_volume_changed,
             on_focus=self.clear_volume_error,
             keyboard_type=utils.KEYBOARD_NUMBER,
         )
-        self.term_of_payment_field = get_std_txt_field(
+        self.term_of_payment_field = views.get_std_txt_field(
             label="Term of payment (optional)",
             hint="",
             on_change=self.on_top_changed,
             on_focus=self.clear_top_error,
             keyboard_type=utils.KEYBOARD_NUMBER,
         )
-        self.clients_field = get_dropdown(
+        self.clients_field = views.get_dropdown(
             label="Client",
             on_change=self.on_client_selected,
             items=self.get_clients_as_list(),
         )
-        self.units_field = get_dropdown(
+        self.units_field = views.get_dropdown(
             label="Time Unit",
             on_change=self.on_unit_selected,
             items=get_time_unit_values_as_list(),
         )
-        self.billing_cycle_field = get_dropdown(
+        self.billing_cycle_field = views.get_dropdown(
             label="Billing Cycle",
             on_change=self.on_billing_cycle_selected,
             items=get_cycle_values_as_list(),
         )
-        self.signature_date_field = DateSelector(label="Signed on Date")
-        self.start_date_field = DateSelector(label="Start Date")
-        self.end_date_field = DateSelector(label="End Date")
-        self.submit_btn = get_primary_btn(
+        self.signature_date_field = views.DateSelector(label="Signed on Date")
+        self.start_date_field = views.DateSelector(label="Start Date")
+        self.end_date_field = views.DateSelector(label="End Date")
+        self.submit_btn = views.get_primary_btn(
             label="Create Contract", on_click=self.on_save
         )
-        view = ft.Container(
+        view = flet.Container(
             expand=True,
-            padding=ft.padding.all(dimens.SPACE_MD),
-            margin=ft.margin.symmetric(vertical=dimens.SPACE_MD),
-            content=ft.Card(
+            padding=flet.padding.all(dimens.SPACE_MD),
+            margin=flet.margin.symmetric(vertical=dimens.SPACE_MD),
+            content=flet.Card(
                 expand=True,
-                content=ft.Container(
-                    ft.Column(
+                content=flet.Container(
+                    flet.Column(
                         expand=True,
                         controls=[
-                            ft.Row(
+                            flet.Row(
                                 controls=[
-                                    ft.IconButton(
-                                        icon=ft.icons.CHEVRON_LEFT_ROUNDED,
+                                    flet.IconButton(
+                                        icon=flet.icons.CHEVRON_LEFT_ROUNDED,
                                         on_click=self.on_navigate_back,
                                     ),
-                                    get_headline_with_subtitle(
+                                    views.get_headline_with_subtitle(
                                         title="New Contract",
                                         subtitle="Create a new contract",
                                     ),
                                 ]
                             ),
                             self.loading_indicator,
-                            mdSpace,
+                            views.mdSpace,
                             self.title_field,
-                            smSpace,
+                            views.smSpace,
                             self.currency_field,
                             self.rate_field,
                             self.term_of_payment_field,
                             self.unit_PW_field,
                             self.vat_rate_field,
                             self.volume_field,
-                            smSpace,
-                            ft.Row(
+                            views.smSpace,
+                            flet.Row(
                                 alignment=utils.SPACE_BETWEEN_ALIGNMENT,
                                 vertical_alignment=utils.CENTER_ALIGNMENT,
                                 spacing=dimens.SPACE_STD,
                                 controls=[
                                     self.clients_field,
-                                    ft.IconButton(
-                                        icon=ft.icons.ADD_CIRCLE_OUTLINE,
+                                    flet.IconButton(
+                                        icon=flet.icons.ADD_CIRCLE_OUTLINE,
                                         on_click=self.on_add_client_clicked,
                                     ),
                                 ],
                             ),
-                            smSpace,
+                            views.smSpace,
                             self.units_field,
-                            smSpace,
+                            views.smSpace,
                             self.billing_cycle_field,
-                            smSpace,
+                            views.smSpace,
                             self.signature_date_field,
-                            smSpace,
+                            views.smSpace,
                             self.start_date_field,
-                            mdSpace,
+                            views.mdSpace,
                             self.end_date_field,
-                            mdSpace,
+                            views.mdSpace,
                             self.submit_btn,
                         ],
                     ),
-                    padding=ft.padding.all(dimens.SPACE_MD),
+                    padding=flet.padding.all(dimens.SPACE_MD),
                     width=dimens.MIN_WINDOW_WIDTH,
                 ),
             ),
@@ -997,22 +987,22 @@ class CreateContractScreen(TuttleView, ft.UserControl):
             print(e)
 
 
-class ContractsListView(TuttleView, ft.UserControl):
+class ContractsListView(TuttleView, flet.UserControl):
     def __init__(self, params: TuttleViewParams):
         super().__init__(params)
         self.intent_handler = ContractsIntent()
-        self.loading_indicator = horizontal_progress
-        self.no_contracts_control = ft.Text(
+        self.loading_indicator = views.horizontal_progress
+        self.no_contracts_control = flet.Text(
             value="You have not added any contracts yet",
             color=colors.ERROR_COLOR,
             visible=False,
         )
-        self.title_control = ft.ResponsiveRow(
+        self.title_control = flet.ResponsiveRow(
             controls=[
-                ft.Column(
+                flet.Column(
                     col={"xs": 12},
                     controls=[
-                        get_headline_txt(
+                        views.get_headline_txt(
                             txt="My Contracts", size=fonts.HEADLINE_4_SIZE
                         ),
                         self.loading_indicator,
@@ -1021,7 +1011,7 @@ class ContractsListView(TuttleView, ft.UserControl):
                 )
             ]
         )
-        self.contracts_container = ft.GridView(
+        self.contracts_container = flet.GridView(
             expand=False,
             max_extent=540,
             child_aspect_ratio=1.0,
@@ -1029,21 +1019,56 @@ class ContractsListView(TuttleView, ft.UserControl):
             run_spacing=dimens.SPACE_MD,
         )
         self.contracts_to_display = {}
-
-    def load_all_contracts(self):
-        self.contracts_to_display = self.intent_handler.get_all_contracts_as_map()
+        self.pop_up_handler = None
 
     def display_currently_filtered_contracts(self):
         self.contracts_container.controls.clear()
         for key in self.contracts_to_display:
             contract = self.contracts_to_display[key]
             contractCard = ContractCard(
-                contract=contract, on_click_view=self.on_view_contract_clicked
+                contract=contract,
+                on_click_view=self.on_view_contract_clicked,
+                on_click_edit=self.on_edit_contract_clicked,
+                on_click_delete=self.on_delete_contract_clicked,
             )
             self.contracts_container.controls.append(contractCard)
 
-    def on_view_contract_clicked(self, contractId: str):
-        self.navigate_to_route(res_utils.CONTRACT_DETAILS_SCREEN_ROUTE, contractId)
+    def on_view_contract_clicked(self, contract_id: str):
+        self.navigate_to_route(res_utils.CONTRACT_DETAILS_SCREEN_ROUTE, contract_id)
+
+    def on_edit_contract_clicked(self, contract_id: str):
+        self.navigate_to_route(res_utils.CONTRACT_EDITOR_SCREEN_ROUTE, contract_id)
+
+    def on_delete_contract_clicked(self, contract_id: str):
+        if contract_id not in self.contracts_to_display:
+            return
+        contract_title = self.contracts_to_display[contract_id].title
+        if self.pop_up_handler:
+            self.pop_up_handler.close_dialog()
+        self.pop_up_handler = views.ConfirmDisplayPopUp(
+            dialog_controller=self.dialog_controller,
+            title="Are You Sure?",
+            description=f"Are you sure you wish to delete this contract?\n{contract_title}",
+            on_proceed=self.on_delete_contract_confirmed,
+            proceed_button_label="Yes! Delete",
+            data_on_confirmed=contract_id,
+        )
+        self.pop_up_handler.open_dialog()
+
+    def on_delete_contract_confirmed(self, contract_id: str):
+        self.loading_indicator.visible = True
+        if self.mounted:
+            self.update()
+        result = self.intent_handler.delete_contract_by_id(contract_id=contract_id)
+        is_error = not result.was_intent_successful
+        msg = "Contract deleted!" if not is_error else result.error_msg
+        self.show_snack(msg, is_error)
+        if not is_error and contract_id in self.contracts_to_display:
+            del self.contracts_to_display[contract_id]
+            self.display_currently_filtered_contracts()
+        self.loading_indicator.visible = False
+        if self.mounted:
+            self.update()
 
     def on_filter_contracts(self, filterByState: ContractStates):
         if filterByState.value == ContractStates.ACTIVE.value:
@@ -1065,7 +1090,7 @@ class ContractsListView(TuttleView, ft.UserControl):
         try:
             self.mounted = True
             self.loading_indicator.visible = True
-            self.load_all_contracts()
+            self.contracts_to_display = self.intent_handler.get_all_contracts_as_map()
             count = len(self.contracts_to_display)
             self.loading_indicator.visible = False
             if count == 0:
@@ -1079,22 +1104,24 @@ class ContractsListView(TuttleView, ft.UserControl):
             print(f"exception raised @contracts.did_mount {e}")
 
     def build(self):
-        view = ft.Column(
+        view = flet.Column(
             controls=[
                 self.title_control,
-                mdSpace,
+                views.mdSpace,
                 ContractFiltersView(onStateChanged=self.on_filter_contracts),
-                mdSpace,
-                ft.Container(self.contracts_container, expand=True),
+                views.mdSpace,
+                flet.Container(self.contracts_container, expand=True),
             ]
         )
         return view
 
     def will_unmount(self):
         self.mounted = False
+        if self.pop_up_handler:
+            self.pop_up_handler.dimiss_open_dialogs()
 
 
-class ViewContractScreen(TuttleView, ft.UserControl):
+class ViewContractScreen(TuttleView, flet.UserControl):
     def __init__(
         self,
         params: TuttleViewParams,
@@ -1103,8 +1130,9 @@ class ViewContractScreen(TuttleView, ft.UserControl):
         super().__init__(params)
         self.intent_handler = ContractsIntent()
         self.contract_id = contract_id
-        self.loading_indicator = horizontal_progress
+        self.loading_indicator = views.horizontal_progress
         self.contract: Optional[Contract] = None
+        self.pop_up_handler = None
 
     def display_contract_data(self):
         self.contract_title_control.value = self.contract.title
@@ -1142,19 +1170,38 @@ class ViewContractScreen(TuttleView, ft.UserControl):
         self.show_snack("Coming soon", False)
 
     def on_edit_clicked(self, e):
-        """TODO if self.contract is None:
-            # project is not loaded yet
+        if not self.contract:
             return
-        self.navigate_to_route(CONTRACT_EDITOR_SCREEN_ROUTE, self.contract.id)"""
-        self.show_snack("Coming soon", False)
+        self.navigate_to_route(res_utils.CONTRACT_EDITOR_SCREEN_ROUTE, self.contract.id)
 
     def on_delete_clicked(self, e):
-        self.show_snack("Coming soon", False)
+        if self.contract is None:
+            return
+        if self.pop_up_handler:
+            self.pop_up_handler.close_dialog()
+        self.pop_up_handler = views.ConfirmDisplayPopUp(
+            dialog_controller=self.dialog_controller,
+            title="Are You Sure?",
+            description=f"Are you sure you wish to delete this contract?\n{self.contract.title}",
+            on_proceed=self.on_delete_confirmed,
+            proceed_button_label="Yes! Delete",
+            data_on_confirmed=self.contract.id,
+        )
+        self.pop_up_handler.open_dialog()
+
+    def on_delete_confirmed(self, contract_id):
+        result = self.intent_handler.delete_contract_by_id(contract_id)
+        is_err = not result.was_intent_successful
+        msg = result.error_msg if is_err else "Contract deleted!"
+        self.show_snack(msg, is_err)
+        if not is_err:
+            # go back
+            self.on_navigate_back()
 
     def get_body_element(self, label, control):
-        return ft.ResponsiveRow(
+        return flet.ResponsiveRow(
             controls=[
-                ft.Text(
+                flet.Text(
                     label,
                     color=colors.GRAY_COLOR,
                     size=fonts.BODY_2_SIZE,
@@ -1171,92 +1218,92 @@ class ViewContractScreen(TuttleView, ft.UserControl):
 
     def build(self):
         """Called when page is built"""
-        self.edit_contract_btn = ft.IconButton(
-            icon=ft.icons.EDIT_OUTLINED,
+        self.edit_contract_btn = flet.IconButton(
+            icon=flet.icons.EDIT_OUTLINED,
             tooltip="Edit contract",
             on_click=self.on_edit_clicked,
         )
-        self.mark_as_complete_btn = ft.IconButton(
-            icon=ft.icons.CHECK_CIRCLE_OUTLINE,
+        self.mark_as_complete_btn = flet.IconButton(
+            icon=flet.icons.CHECK_CIRCLE_OUTLINE,
             icon_color=colors.PRIMARY_COLOR,
             tooltip="Mark contract as completed",
             on_click=self.on_mark_as_complete_clicked,
         )
-        self.delete_contract_btn = ft.IconButton(
-            icon=ft.icons.DELETE_OUTLINE_ROUNDED,
+        self.delete_contract_btn = flet.IconButton(
+            icon=flet.icons.DELETE_OUTLINE_ROUNDED,
             icon_color=colors.ERROR_COLOR,
             tooltip="Delete contract",
             on_click=self.on_delete_clicked,
         )
 
-        self.client_control = ft.Text(
+        self.client_control = flet.Text(
             size=fonts.SUBTITLE_2_SIZE,
         )
-        self.contract_title_control = ft.Text(
+        self.contract_title_control = flet.Text(
             size=fonts.SUBTITLE_1_SIZE,
         )
-        self.billing_cycle_control = ft.Text(
+        self.billing_cycle_control = flet.Text(
             size=fonts.BODY_1_SIZE,
             text_align=utils.TXT_ALIGN_JUSTIFY,
         )
-        self.rate_control = ft.Text(
+        self.rate_control = flet.Text(
             size=fonts.BODY_1_SIZE,
             text_align=utils.TXT_ALIGN_JUSTIFY,
         )
-        self.currency_control = ft.Text(
+        self.currency_control = flet.Text(
             size=fonts.BODY_1_SIZE,
             text_align=utils.TXT_ALIGN_JUSTIFY,
         )
-        self.vat_rate_control = ft.Text(
+        self.vat_rate_control = flet.Text(
             size=fonts.BODY_1_SIZE,
             text_align=utils.TXT_ALIGN_JUSTIFY,
         )
-        self.unit_control = ft.Text(
+        self.unit_control = flet.Text(
             size=fonts.BODY_1_SIZE,
             text_align=utils.TXT_ALIGN_JUSTIFY,
         )
-        self.units_per_workday_control = ft.Text(
+        self.units_per_workday_control = flet.Text(
             size=fonts.BODY_1_SIZE,
             text_align=utils.TXT_ALIGN_JUSTIFY,
         )
-        self.volume_control = ft.Text(
+        self.volume_control = flet.Text(
             size=fonts.BODY_1_SIZE,
             text_align=utils.TXT_ALIGN_JUSTIFY,
         )
-        self.term_of_payment_control = ft.Text(
-            size=fonts.BODY_1_SIZE,
-            text_align=utils.TXT_ALIGN_JUSTIFY,
-        )
-
-        self.signature_date_control = ft.Text(
-            size=fonts.BODY_1_SIZE,
-            text_align=utils.TXT_ALIGN_JUSTIFY,
-        )
-        self.start_date_control = ft.Text(
-            size=fonts.BODY_1_SIZE,
-            text_align=utils.TXT_ALIGN_JUSTIFY,
-        )
-        self.end_date_control = ft.Text(
+        self.term_of_payment_control = flet.Text(
             size=fonts.BODY_1_SIZE,
             text_align=utils.TXT_ALIGN_JUSTIFY,
         )
 
-        self.status_control = ft.Text(
+        self.signature_date_control = flet.Text(
+            size=fonts.BODY_1_SIZE,
+            text_align=utils.TXT_ALIGN_JUSTIFY,
+        )
+        self.start_date_control = flet.Text(
+            size=fonts.BODY_1_SIZE,
+            text_align=utils.TXT_ALIGN_JUSTIFY,
+        )
+        self.end_date_control = flet.Text(
+            size=fonts.BODY_1_SIZE,
+            text_align=utils.TXT_ALIGN_JUSTIFY,
+        )
+
+        self.status_control = flet.Text(
             size=fonts.BUTTON_SIZE, color=colors.PRIMARY_COLOR
         )
 
-        page_view = ft.Row(
+        page_view = flet.Row(
             [
-                ft.Container(
-                    padding=ft.padding.all(dimens.SPACE_STD),
+                flet.Container(
+                    padding=flet.padding.all(dimens.SPACE_STD),
                     width=int(dimens.MIN_WINDOW_WIDTH * 0.3),
-                    content=ft.Column(
+                    content=flet.Column(
                         controls=[
-                            ft.IconButton(
-                                icon=ft.icons.KEYBOARD_ARROW_LEFT,
+                            flet.IconButton(
+                                icon=flet.icons.KEYBOARD_ARROW_LEFT,
                                 on_click=self.on_navigate_back,
                             ),
-                            ft.TextButton(
+                            flet.TextButton(
                                 "Client",
                                 tooltip="View contract's client",
                                 on_click=self.on_view_client_clicked,
@@ -1264,31 +1311,31 @@ class ViewContractScreen(TuttleView, ft.UserControl):
                         ]
                     ),
                 ),
-                ft.Container(
+                flet.Container(
                     expand=True,
-                    padding=ft.padding.all(dimens.SPACE_MD),
-                    content=ft.Column(
+                    padding=flet.padding.all(dimens.SPACE_MD),
+                    content=flet.Column(
                         controls=[
                             self.loading_indicator,
-                            ft.Row(
+                            flet.Row(
                                 controls=[
-                                    ft.Icon(ft.icons.HANDSHAKE_ROUNDED),
-                                    ft.Column(
+                                    flet.Icon(flet.icons.HANDSHAKE_ROUNDED),
+                                    flet.Column(
                                         expand=True,
                                         spacing=0,
                                         run_spacing=0,
                                         controls=[
-                                            ft.Row(
+                                            flet.Row(
                                                 vertical_alignment=utils.CENTER_ALIGNMENT,
                                                 alignment=utils.SPACE_BETWEEN_ALIGNMENT,
                                                 controls=[
-                                                    ft.Text(
+                                                    flet.Text(
                                                         "Contract",
                                                         size=fonts.HEADLINE_4_SIZE,
                                                         font_family=fonts.HEADLINE_FONT,
                                                         color=colors.PRIMARY_COLOR,
                                                     ),
-                                                    ft.Row(
+                                                    flet.Row(
                                                         vertical_alignment=utils.CENTER_ALIGNMENT,
                                                         alignment=utils.SPACE_BETWEEN_ALIGNMENT,
                                                         spacing=dimens.SPACE_STD,
@@ -1312,7 +1359,7 @@ class ViewContractScreen(TuttleView, ft.UserControl):
                                     ),
                                 ],
                             ),
-                            mdSpace,
+                            views.mdSpace,
                             self.get_body_element(
                                 "Billing Cycle", self.billing_cycle_control
                             ),
@@ -1335,17 +1382,17 @@ class ViewContractScreen(TuttleView, ft.UserControl):
                                 "Start Date", self.start_date_control
                             ),
                             self.get_body_element("End Date", self.end_date_control),
-                            mdSpace,
-                            ft.Row(
+                            views.mdSpace,
+                            flet.Row(
                                 spacing=dimens.SPACE_STD,
                                 run_spacing=dimens.SPACE_STD,
                                 alignment=utils.START_ALIGNMENT,
                                 vertical_alignment=utils.CENTER_ALIGNMENT,
                                 controls=[
-                                    ft.Card(
-                                        ft.Container(
+                                    flet.Card(
+                                        flet.Container(
                                             self.status_control,
-                                            padding=ft.padding.all(dimens.SPACE_SM),
+                                            padding=flet.padding.all(dimens.SPACE_SM),
                                         ),
                                         elevation=2,
                                     ),

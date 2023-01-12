@@ -111,4 +111,20 @@ class ProjectsIntent:
         result: IntentResult = self.data_source.delete_project_by_id(project_id)
         if not result.was_intent_successful:
             result.error_msg = "Failed to delete that project! Please retry"
+        else:
+            # remove it from all caches
+            if self.all_projects_cache and project_id in self.all_projects_cache:
+                self.all_projects_cache[project_id]
+            if (
+                self.completed_projects_cache
+                and project_id in self.completed_projects_cache
+            ):
+                self.completed_projects_cache[project_id]
+            if self.active_projects_cache and project_id in self.active_projects_cache:
+                self.active_projects_cache[project_id]
+            if (
+                self.upcoming_projects_cache
+                and project_id in self.upcoming_projects_cache
+            ):
+                self.upcoming_projects_cache[project_id]
         return result
