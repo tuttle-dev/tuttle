@@ -40,7 +40,7 @@ class ClientDataSource(SQLModelDataSourceMixin):
     def delete_client_by_id(self, client_id):
         """Attempts to delete the client associated with the given id"""
         try:
-            # TODO perform deletion
+            self.delete_by_id(Client, client_id)
             return IntentResult(was_intent_successful=True)
         except Exception as e:
             return IntentResult(
