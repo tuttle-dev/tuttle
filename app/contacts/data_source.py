@@ -49,7 +49,7 @@ class ContactDataSource(SQLModelDataSourceMixin):
     def delete_contact_by_id(self, contact_id):
         """Attempts to delete the contact associated with the given id"""
         try:
-            # TODO perform deletion
+            self.delete_by_id(Contact, contact_id)
             return IntentResult(was_intent_successful=True)
         except Exception as e:
             return IntentResult(
