@@ -56,7 +56,7 @@ class ContractDataSource(SQLModelDataSourceMixin):
     def delete_contract_by_id(self, contract_id):
         """Attempts to delete the contract associated with the given id"""
         try:
-            # TODO perform deletion
+            self.delete_by_id(Contract, contract_id)
             return IntentResult(was_intent_successful=True)
         except Exception as e:
             return IntentResult(
