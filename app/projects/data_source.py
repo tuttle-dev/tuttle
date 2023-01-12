@@ -76,6 +76,7 @@ class ProjectDataSource(SQLModelDataSourceMixin):
     def delete_project_by_id(self, project_id):
         """attempts to delete a project given an id"""
         try:
+            self.delete_by_id(Project, project_id)
             return IntentResult(was_intent_successful=True)
         except Exception as e:
             return IntentResult(
