@@ -45,3 +45,14 @@ class ContactDataSource(SQLModelDataSourceMixin):
             was_intent_successful=True,
             data=contact,
         )
+
+    def delete_contact_by_id(self, contact_id):
+        """Attempts to delete the contact associated with the given id"""
+        try:
+            # TODO perform deletion
+            return IntentResult(was_intent_successful=True)
+        except Exception as e:
+            return IntentResult(
+                was_intent_successful=False,
+                log_message=f"An exception was raised @ContactDataSource.delete_contact_by_id {e}",
+            )

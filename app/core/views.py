@@ -558,27 +558,30 @@ def view_edit_delete_pop_up_item(icon, txt, on_click, is_delete: bool = False):
 
 
 def view_edit_delete_pop_up(
-    on_click_view,
     on_click_edit,
     on_click_delete,
     view_item_lbl="View Details",
     delete_item_lbl="Delete",
     edit_item_lbl="Edit",
+    on_click_view: Optional[Callable] = None,
 ):
-    """Returns a pop up menu button with view, edit and delete options"""
-    return PopupMenuButton(
-        items=[
+    """Returns a pop up menu button with view (optional), edit and delete options"""
+    items = items = [
+        view_edit_delete_pop_up_item(
+            icons.EDIT_OUTLINED, txt=edit_item_lbl, on_click=on_click_edit
+        ),
+        view_edit_delete_pop_up_item(
+            icons.DELETE_OUTLINE,
+            txt=delete_item_lbl,
+            on_click=on_click_delete,
+            is_delete=True,
+        ),
+    ]
+    if on_click_view:
+        items.insert(
+            0,
             view_edit_delete_pop_up_item(
                 icons.REMOVE_RED_EYE, txt=view_item_lbl, on_click=on_click_view
             ),
-            view_edit_delete_pop_up_item(
-                icons.EDIT_OUTLINED, txt=edit_item_lbl, on_click=on_click_edit
-            ),
-            view_edit_delete_pop_up_item(
-                icons.DELETE_OUTLINE,
-                txt=delete_item_lbl,
-                on_click=on_click_delete,
-                is_delete=True,
-            ),
-        ]
-    )
+        )
+    return PopupMenuButton(items=items)

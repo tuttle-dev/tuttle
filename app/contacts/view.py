@@ -1,4 +1,3 @@
-import typing
 from typing import Callable, Optional
 
 from flet import (
@@ -20,30 +19,10 @@ from flet import (
 )
 from contacts.intent import ContactsIntent
 from core.abstractions import DialogHandler, TuttleView, TuttleViewParams
-from core.utils import (
-    ALWAYS_SCROLL,
-    AUTO_SCROLL,
-    CENTER_ALIGNMENT,
-    END_ALIGNMENT,
-    START_ALIGNMENT,
-    AlertDialogControls,
-)
+from core import utils
 from core.models import IntentResult
-from core.views import (
-    CENTER_ALIGNMENT,
-    get_headline_txt,
-    get_headline_with_subtitle,
-    get_primary_btn,
-    get_std_txt_field,
-    horizontal_progress,
-    mdSpace,
-    xsSpace,
-)
-from res.colors import ERROR_COLOR, GRAY_COLOR
-from res.dimens import MIN_WINDOW_WIDTH, SPACE_MD, SPACE_STD, SPACE_XS
-from res.fonts import BODY_2_SIZE, HEADLINE_4_SIZE
-
-from res.res_utils import ADD_CONTACT_INTENT
+from core import views
+from res import colors, dimens, res_utils, fonts
 
 from tuttle.model import (
     Address,
@@ -54,7 +33,12 @@ from tuttle.model import (
 class ContactCard(UserControl):
     """Formats a single contact info into a card ui display"""
 
-    def __init__(self, contact: Contact, on_edit_clicked: Callable[[str], None]):
+    def __init__(
+        self,
+        contact: Contact,
+        on_edit_clicked,
+        on_deleted_clicked,
+    ):
         super().__init__()
         self.contact = contact
         self.product_info_container = Column(
@@ -62,58 +46,58 @@ class ContactCard(UserControl):
             run_spacing=0,
         )
         self.on_edit_clicked = on_edit_clicked
+        self.on_deleted_clicked = on_deleted_clicked
 
     def build(self):
         self.product_info_container.controls = [
             ListTile(
                 leading=Icon(icons.CONTACT_MAIL),
                 title=Text(self.contact.name),
-                subtitle=Text(self.contact.company, color=GRAY_COLOR),
-                trailing=IconButton(
-                    icon=icons.EDIT_NOTE_OUTLINED,
-                    tooltip="Edit Contact",
-                    on_click=lambda e: self.on_edit_clicked(self.contact),
+                subtitle=Text(self.contact.company, color=colors.GRAY_COLOR),
+                trailing=views.view_edit_delete_pop_up(
+                    on_click_edit=lambda e: self.on_edit_clicked(self.contact),
+                    on_click_delete=lambda e: self.on_deleted_clicked(self.contact),
                 ),
             ),
-            mdSpace,
+            views.mdSpace,
             ResponsiveRow(
                 controls=[
                     Text(
                         "email",
-                        color=GRAY_COLOR,
-                        size=BODY_2_SIZE,
+                        color=colors.GRAY_COLOR,
+                        size=fonts.BODY_2_SIZE,
                         col={"xs": "12"},
                     ),
                     Text(
                         self.contact.email,
-                        size=BODY_2_SIZE,
+                        size=fonts.BODY_2_SIZE,
                         col={"xs": "12"},
                     ),
                 ],
-                spacing=SPACE_XS,
+                spacing=dimens.SPACE_XS,
                 run_spacing=0,
-                vertical_alignment=CENTER_ALIGNMENT,
+                vertical_alignment=utils.CENTER_ALIGNMENT,
             ),
-            mdSpace,
+            views.mdSpace,
             ResponsiveRow(
                 controls=[
                     Text(
                         "address",
-                        color=GRAY_COLOR,
-                        size=BODY_2_SIZE,
+                        color=colors.GRAY_COLOR,
+                        size=fonts.BODY_2_SIZE,
                         col={"xs": "12"},
                     ),
                     Container(
                         Text(
                             self.contact.print_address(onlyAddress=True).strip(),
-                            size=BODY_2_SIZE,
+                            size=fonts.BODY_2_SIZE,
                             col={"xs": "12"},
                         ),
                     ),
                 ],
-                alignment=START_ALIGNMENT,
-                vertical_alignment=START_ALIGNMENT,
-                spacing=SPACE_XS,
+                alignment=utils.START_ALIGNMENT,
+                vertical_alignment=utils.START_ALIGNMENT,
+                spacing=dimens.SPACE_XS,
                 run_spacing=0,
             ),
         ]
@@ -122,7 +106,7 @@ class ContactCard(UserControl):
             expand=True,
             content=Container(
                 expand=True,
-                padding=padding.all(SPACE_STD),
+                padding=padding.all(dimens.SPACE_STD),
                 border_radius=border_radius.all(12),
                 content=self.product_info_container,
             ),
@@ -135,13 +119,13 @@ class ContactEditorPopUp(DialogHandler):
 
     def __init__(
         self,
-        dialog_controller: Callable[[any, AlertDialogControls], None],
+        dialog_controller: Callable[[any, utils.AlertDialogControls], None],
         on_submit: Callable,
         contact: Optional[Contact] = None,
     ):
         self.dialog_height = 550
-        self.dialog_width = int(MIN_WINDOW_WIDTH * 0.8)
-        self.half_of_dialog_width = int(MIN_WINDOW_WIDTH * 0.35)
+        self.dialog_width = int(dimens.MIN_WINDOW_WIDTH * 0.8)
+        self.half_of_dialog_width = int(dimens.MIN_WINDOW_WIDTH * 0.35)
         self.contact = contact
         if not self.contact:
             # user is creating a new contact
@@ -155,45 +139,45 @@ class ContactEditorPopUp(DialogHandler):
             content=Container(
                 height=self.dialog_height,
                 content=Column(
-                    scroll=AUTO_SCROLL,
+                    scroll=utils.AUTO_SCROLL,
                     controls=[
-                        get_headline_txt(txt=title, size=HEADLINE_4_SIZE),
-                        xsSpace,
-                        get_std_txt_field(
+                        views.get_headline_txt(txt=title, size=fonts.HEADLINE_4_SIZE),
+                        views.xsSpace,
+                        views.get_std_txt_field(
                             on_change=self.on_fname_changed,
                             label="First Name",
                             hint=self.contact.first_name,
                             initial_value=self.contact.first_name,
                         ),
-                        get_std_txt_field(
+                        views.get_std_txt_field(
                             on_change=self.on_lname_changed,
                             label="Last Name",
                             hint=self.contact.last_name,
                             initial_value=self.contact.last_name,
                         ),
-                        get_std_txt_field(
+                        views.get_std_txt_field(
                             on_change=self.on_company_changed,
                             label="Company",
                             hint=self.contact.company,
                             initial_value=self.contact.company,
                         ),
-                        get_std_txt_field(
+                        views.get_std_txt_field(
                             on_change=self.on_email_changed,
                             label="Email",
                             hint=self.contact.email,
                             initial_value=self.contact.email,
                         ),
                         Row(
-                            vertical_alignment=CENTER_ALIGNMENT,
+                            vertical_alignment=utils.CENTER_ALIGNMENT,
                             controls=[
-                                get_std_txt_field(
+                                views.get_std_txt_field(
                                     on_change=self.on_street_changed,
                                     label="Street",
                                     hint=self.contact.address.street,
                                     initial_value=self.contact.address.street,
                                     width=self.half_of_dialog_width,
                                 ),
-                                get_std_txt_field(
+                                views.get_std_txt_field(
                                     on_change=self.on_street_num_changed,
                                     label="Street No.",
                                     hint=self.contact.address.number,
@@ -203,16 +187,16 @@ class ContactEditorPopUp(DialogHandler):
                             ],
                         ),
                         Row(
-                            vertical_alignment=CENTER_ALIGNMENT,
+                            vertical_alignment=utils.CENTER_ALIGNMENT,
                             controls=[
-                                get_std_txt_field(
+                                views.get_std_txt_field(
                                     on_change=self.on_postal_code_changed,
                                     label="Postal code",
                                     hint=self.contact.address.postal_code,
                                     initial_value=self.contact.address.postal_code,
                                     width=self.half_of_dialog_width,
                                 ),
-                                get_std_txt_field(
+                                views.get_std_txt_field(
                                     on_change=self.on_city_changed,
                                     label="City",
                                     hint=self.contact.address.city,
@@ -221,19 +205,21 @@ class ContactEditorPopUp(DialogHandler):
                                 ),
                             ],
                         ),
-                        get_std_txt_field(
+                        views.get_std_txt_field(
                             on_change=self.on_country_changed,
                             label="Country",
                             hint=self.contact.address.country,
                             initial_value=self.contact.address.country,
                         ),
-                        xsSpace,
+                        views.xsSpace,
                     ],
                 ),
                 width=self.dialog_width,
             ),
             actions=[
-                get_primary_btn(label="Done", on_click=self.on_submit_btn_clicked),
+                views.get_primary_btn(
+                    label="Done", on_click=self.on_submit_btn_clicked
+                ),
             ],
         )
         super().__init__(dialog=dialog, dialog_controller=dialog_controller)
@@ -321,10 +307,10 @@ class ContactsListView(TuttleView, UserControl):
     def __init__(self, params: TuttleViewParams):
         super().__init__(params)
         self.intent_handler = ContactsIntent()
-        self.loading_indicator = horizontal_progress
+        self.loading_indicator = views.horizontal_progress
         self.no_contacts_control = Text(
             value="You have not added any contacts yet",
-            color=ERROR_COLOR,
+            color=colors.ERROR_COLOR,
             visible=False,
         )
         self.title_control = ResponsiveRow(
@@ -332,7 +318,9 @@ class ContactsListView(TuttleView, UserControl):
                 Column(
                     col={"xs": 12},
                     controls=[
-                        get_headline_txt(txt="My Contacts", size=HEADLINE_4_SIZE),
+                        views.get_headline_txt(
+                            txt="My Contacts", size=fonts.HEADLINE_4_SIZE
+                        ),
                         self.loading_indicator,
                         self.no_contacts_control,
                     ],
@@ -343,14 +331,14 @@ class ContactsListView(TuttleView, UserControl):
             expand=False,
             max_extent=540,
             child_aspect_ratio=1.0,
-            spacing=SPACE_STD,
-            run_spacing=SPACE_MD,
+            spacing=dimens.SPACE_STD,
+            run_spacing=dimens.SPACE_MD,
         )
         self.contacts_to_display = {}
         self.editor = None
 
     def parent_intent_listener(self, intent: str, data: any):
-        if intent == ADD_CONTACT_INTENT:
+        if intent == res_utils.ADD_CONTACT_INTENT:
             if self.editor:
                 self.editor.close_dialog()
             self.editor = ContactEditorPopUp(
@@ -386,6 +374,7 @@ class ContactsListView(TuttleView, UserControl):
             contactCard = ContactCard(
                 contact=contact,
                 on_edit_clicked=self.on_edit_contact_clicked,
+                on_deleted_clicked=self.on_delete_contact_clicked,
             )
             self.contacts_container.controls.append(contactCard)
 
@@ -400,22 +389,50 @@ class ContactsListView(TuttleView, UserControl):
 
         self.editor.open_dialog()
 
+    def on_delete_contact_clicked(self, contact: Contact):
+        if self.editor:
+            self.editor.close_dialog()
+        self.editor = views.ConfirmDisplayPopUp(
+            dialog_controller=self.dialog_controller,
+            title="Are You Sure?",
+            description=f"Are you sure you wish to delete this contact?\n{contact.first_name} {contact.last_name}",
+            on_proceed=self.on_delete_confirmed,
+            proceed_button_label="Yes! Delete",
+            data_on_confirmed=contact.id,
+        )
+
+        self.editor.open_dialog()
+
+    def on_delete_confirmed(self, contact_id):
+        self.loading_indicator.visible = True
+        if self.mounted:
+            self.update()
+        result = self.intent_handler.delete_contact_by_id(contact_id)
+        is_error = False if result.was_intent_successful else True
+        msg = "Contact deleted!" if not is_error else result.error_msg
+        self.show_snack(msg, is_error)
+        self.loading_indicator.visible = False
+        if not is_error and contact_id in self.contacts_to_display:
+            del self.contacts_to_display[contact_id]
+            self.refresh_list()
+        if self.mounted:
+            self.update()
+
     def on_update_contact(self, contact):
         self.loading_indicator.visible = True
         if self.mounted:
             self.update()
         result = self.intent_handler.save_contact(contact)
+        is_error = False if result.was_intent_successful else True
         msg = (
-            "The contact's info has been updated"
-            if result.was_intent_successful
-            else "Failed to update the contact"
+            "The contact's info has been updated" if not is_error else result.error_msg
         )
-        isError = False if result.was_intent_successful else True
-        self.show_snack(msg, isError)
+
+        self.show_snack(msg, is_error)
         self.loading_indicator.visible = False
-        if not isError:
-            updatedContact: Contact = result.data
-            self.contacts_to_display[updatedContact.id] = updatedContact
+        if not is_error:
+            updated_contact: Contact = result.data
+            self.contacts_to_display[updated_contact.id] = updated_contact
             self.refresh_list()
         if self.mounted:
             self.update()
@@ -447,7 +464,7 @@ class ContactsListView(TuttleView, UserControl):
         view = Column(
             controls=[
                 self.title_control,
-                mdSpace,
+                views.mdSpace,
                 Container(self.contacts_container, expand=True),
             ]
         )

@@ -41,3 +41,9 @@ class ContactsIntent:
                 data=None,
             )
         return self.data_source.save_contact(contact=contact)
+
+    def delete_contact_by_id(self, contact_id):
+        result: IntentResult = self.data_source.delete_contact_by_id(contact_id)
+        if not result.was_intent_successful:
+            result.error_msg = "Failed to delete the contact! please retry"
+        return result
