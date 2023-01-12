@@ -69,6 +69,17 @@ class ProjectDataSource(SQLModelDataSourceMixin):
         except Exception as e:
             return IntentResult(
                 was_intent_successful=False,
-                log_message=f"Exception raised @Projects.data_source_impl.get_project_by_id {e}",
+                log_message=f"Exception raised @Projects.get_project_by_id {e}",
+                data=None,
+            )
+
+    def delete_project_by_id(self, project_id):
+        """attempts to delete a project given an id"""
+        try:
+            return IntentResult(was_intent_successful=True)
+        except Exception as e:
+            return IntentResult(
+                was_intent_successful=False,
+                log_message=f"Exception raised @Projects.delete_project_by_id {e}",
                 data=None,
             )

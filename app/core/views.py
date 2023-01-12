@@ -491,6 +491,7 @@ class ConfirmDisplayPopUp(DialogHandler):
         dialog_controller: Callable[[any, AlertDialogControls], None],
         title: str,
         description: str,
+        data_on_confirmed: any,
         on_proceed: Callable,
         on_cancel: Optional[Callable] = None,
         proceed_button_label: str = "Proceed",
@@ -528,6 +529,7 @@ class ConfirmDisplayPopUp(DialogHandler):
         super().__init__(dialog=dialog, dialog_controller=dialog_controller)
         self.on_proceed_callback = on_proceed
         self.on_cancel_callback = on_cancel
+        self.data_on_confirmed = data_on_confirmed
 
     def on_cancel_btn_clicked(self, e):
         self.close_dialog()
@@ -536,7 +538,7 @@ class ConfirmDisplayPopUp(DialogHandler):
 
     def on_proceed_btn_clicked(self, e):
         self.close_dialog()
-        self.on_proceed_callback()
+        self.on_proceed_callback(self.data_on_confirmed)
 
 
 def view_edit_delete_pop_up_item(icon, txt, on_click, is_delete: bool = False):

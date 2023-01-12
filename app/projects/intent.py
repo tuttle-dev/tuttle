@@ -106,3 +106,9 @@ class ProjectsIntent:
                 if p.is_upcoming():
                     self.upcoming_projects_cache[key] = p
         return self.upcoming_projects_cache
+
+    def delete_project_by_id(self, project_id: str):
+        result: IntentResult = self.data_source.delete_project_by_id(project_id)
+        if not result.was_intent_successful:
+            result.error_msg = "Failed to delete that project! Please retry"
+        return result

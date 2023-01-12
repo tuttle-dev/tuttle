@@ -329,6 +329,9 @@ class ViewProjectScreen(TuttleView, UserControl):
         self.navigate_to_route(res_utils.PROJECT_EDITOR_SCREEN_ROUTE, self.project.id)
 
     def on_delete_clicked(self, e):
+        if self.project is None:
+            # project is not loaded yet
+            return
         if self.dialog:
             self.dialog.close_dialog()
         self.dialog = views.ConfirmDisplayPopUp(
@@ -337,13 +340,18 @@ class ViewProjectScreen(TuttleView, UserControl):
             description="Are you sure you wish to delete this project?",
             on_proceed=self.on_delete_confirmed,
             proceed_button_label="Yes! Delete",
+            data_on_confirmed=self.project.id,
         )
         self.dialog.open_dialog()
 
-    def on_delete_confirmed(
-        self,
-    ):
-        self.show_snack("Not implemented", True)
+    def on_delete_confirmed(self, project_id):
+        result = self.intent_handler.delete_project_by_id(project_id)
+        is_err = not result.was_intent_successful
+        msg = result.error_msg if is_err else "Project deleted!"
+        self.show_snack(msg, is_err)
+        if not is_err:
+            # go back
+            self.on_navigate_back()
 
     def on_window_resized(self, desired_width, height):
         super().on_window_resized(desired_width, height)
@@ -561,9 +569,7 @@ class ProjectsListView(TuttleView, UserControl):
             run_spacing=dimens.SPACE_MD,
         )
         self.projects_to_display = {}
-
-    def load_all_projects(self):
-        self.projects_to_display = self.intent_handler.get_all_projects_as_map()
+        self.dialog = None
 
     def display_currently_filtered_projects(self):
         self.projects_container.controls.clear()
@@ -581,10 +587,38 @@ class ProjectsListView(TuttleView, UserControl):
         self.navigate_to_route(res_utils.PROJECT_DETAILS_SCREEN_ROUTE, project_id)
 
     def on_delete_project_clicked(self, project_id: str):
-        self.show_snack("Unimplemented error", True)  # TODO
+        if project_id not in self.projects_to_display:
+            return
+        project_title = self.projects_to_display[project_id].title
+        if self.dialog:
+            self.dialog.close_dialog()
+        self.dialog = views.ConfirmDisplayPopUp(
+            dialog_controller=self.dialog_controller,
+            title="Are You Sure?",
+            description=f"Are you sure you wish to delete this project?\n{project_title}",
+            on_proceed=self.on_delete_confirmed,
+            data_on_confirmed=project_id,
+            proceed_button_label="Yes! Delete",
+        )
+        self.dialog.open_dialog()
+
+    def on_delete_confirmed(self, project_id):
+        self.loading_indicator.visible = True
+        if self.mounted:
+            self.update()
+        result = self.intent_handler.delete_project_by_id(project_id)
+        is_err = not result.was_intent_successful
+        if not is_err and project_id in self.projects_to_display:
+            del self.projects_to_display[project_id]
+            self.display_currently_filtered_projects()
+        msg = result.error_msg if is_err else "Project deleted!"
+        self.show_snack(msg, is_err)
+        self.loading_indicator.visible = False
+        if self.mounted:
+            self.update()
 
     def on_edit_project_clicked(self, project_id: str):
-        self.show_snack("Unimplemented error", True)  # TODO
+        self.navigate_to_route(res_utils.PROJECT_EDITOR_SCREEN_ROUTE, project_id)
 
     def on_filter_projects(self, filterByState: ProjectStates):
         if filterByState.value == ProjectStates.ACTIVE.value:
@@ -605,7 +639,7 @@ class ProjectsListView(TuttleView, UserControl):
         try:
             self.mounted = True
             self.loading_indicator.visible = True
-            self.load_all_projects()
+            self.projects_to_display = self.intent_handler.get_all_projects_as_map()
             count = len(self.projects_to_display)
             self.loading_indicator.visible = False
             if count == 0:
