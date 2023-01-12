@@ -1,12 +1,11 @@
 from typing import List, Optional, Mapping
 import datetime
-from core.abstractions import ClientStorage
 from core.models import IntentResult
 from .data_source import ProjectDataSource
 
 from loguru import logger
-from clients.data_source import ClientDataSource
-from contracts.data_source import ContractDataSource
+from clients.intent import ClientsIntent
+from contracts.intent import ContractsIntent
 
 from tuttle.model import (
     Client,
@@ -20,8 +19,8 @@ class ProjectsIntent:
         self,
     ):
         self.data_source = ProjectDataSource()
-        self.clients_data_source = ClientDataSource()
-        self.contracts_data_source = ContractDataSource()
+        self.clients_intent = ClientsIntent()
+        self.contracts_intent = ContractsIntent()
 
         self.all_projects_cache: Mapping[int, Project] = None
         self.completed_projects_cache: Mapping[int, Project] = None
@@ -63,24 +62,10 @@ class ProjectsIntent:
         return result
 
     def get_all_clients_as_map(self) -> Mapping[int, Client]:
-        result = self.clients_data_source.get_all_clients()
-        if result.was_intent_successful:
-            clients = result.data
-            clients_map = {client.id: client for client in clients}
-            return clients_map
-        else:
-            logger.error(result.log_message)
-            return {}
+        return self.clients_intent.get_all_clients_as_map()
 
     def get_all_contracts_as_map(self) -> Mapping[int, Contract]:
-        result = self.contracts_data_source.get_all_contracts()
-        if result.was_intent_successful:
-            contracts = result.data
-            contracts_map = {contract.id: contract for contract in contracts}
-            return contracts_map
-        else:
-            logger.error(result.log_message)
-            return {}
+        return self.contracts_intent.get_all_contracts_as_map()
 
     def get_all_projects_as_map(self) -> Mapping[int, Project]:
         if not self.all_projects_cache:

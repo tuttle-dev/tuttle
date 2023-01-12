@@ -4,12 +4,11 @@ from typing import Optional, Mapping
 from core.models import Cycle, TimeUnit
 
 
-from core.abstractions import ClientStorage
 from core.models import IntentResult
 
 from .data_source import ContractDataSource
-from clients.data_source import ClientDataSource
-from contacts.data_source import ContactDataSource
+from clients.intent import ClientsIntent
+from contacts.intent import ContactsIntent
 
 from tuttle.model import (
     Client,
@@ -22,8 +21,8 @@ class ContractsIntent:
     def __init__(
         self,
     ):
-        self.clients_data_source = ClientDataSource()
-        self.contacts_data_source = ContactDataSource()
+        self.clients_intent = ClientsIntent()
+        self.contacts_intent = ContactsIntent()
         self.data_source = ContractDataSource()
 
         self.all_contracts_cache: Mapping[str, Contract] = None
@@ -38,25 +37,13 @@ class ContractsIntent:
         return result
 
     def get_all_clients_as_map(self) -> Mapping[int, Client]:
-        result = self.clients_data_source.get_all_clients()
-        if result.was_intent_successful:
-            clients = result.data
-            clients_as_map = {client.id: client for client in clients}
-            return clients_as_map
-        else:
-            return {}
+        return self.clients_intent.get_all_clients_as_map()
 
     def get_all_contacts_as_map(self) -> Mapping[int, Contact]:
-        result = self.contacts_data_source.get_all_contacts()
-        if result.was_intent_successful:
-            contacts = result.data
-            contacts_map = {contact.id: contact for contact in contacts}
-            return contacts_map
-        else:
-            return {}
+        return self.contacts_intent.get_all_contacts_as_map()
 
     def save_client(self, client: Client) -> IntentResult:
-        return self.clients_data_source.save_client(client=client)
+        return self.clients_intent.save_client(client=client)
 
     def save_contract(
         self,

@@ -263,6 +263,9 @@ class Contract(SQLModel, table=True):
     rate: condecimal(decimal_places=2) = Field(
         description="Rate of remuneration",
     )
+    is_completed: bool = Field(
+        default=False, description="flag marking if contract has been completed"
+    )
     currency: str  # TODO: currency representation
     VAT_rate: Decimal = Field(
         description="VAT rate applied to the contractual rate.",

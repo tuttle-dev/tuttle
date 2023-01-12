@@ -2,7 +2,7 @@ from typing import Mapping
 
 from core.models import IntentResult
 from .data_source import ClientDataSource
-from contacts.data_source import ContactDataSource
+from contacts.intent import ContactsIntent
 from tuttle.model import (
     Client,
 )
@@ -10,7 +10,7 @@ from tuttle.model import (
 
 class ClientsIntent:
     def __init__(self):
-        self.contacts_data_source = ContactDataSource()
+        self.contacts_intent = ContactsIntent()
         self.data_source = ClientDataSource()
 
     def get_all_clients_as_map(self) -> Mapping[int, Client]:
@@ -61,10 +61,4 @@ class ClientsIntent:
         return result
 
     def get_all_contacts_as_map(self) -> IntentResult:
-        result = self.contacts_data_source.get_all_contacts()
-        if result.was_intent_successful:
-            contacts = result.data
-            contacts_as_map = {contact.id: contact for contact in contacts}
-            return contacts_as_map
-        else:
-            return {}
+        return self.contacts_intent.get_all_contacts_as_map()

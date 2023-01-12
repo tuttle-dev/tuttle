@@ -1,11 +1,9 @@
-from typing import Optional, Mapping
+from typing import Mapping
 from tuttle.dev import deprecated
-from core.abstractions import ClientStorage
 from core.models import IntentResult
 from .data_source import ContactDataSource
 
 from tuttle.model import (
-    Address,
     Contact,
 )
 
