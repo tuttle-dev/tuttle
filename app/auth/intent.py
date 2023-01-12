@@ -21,12 +21,18 @@ class AuthIntent:
         city: str,
         country: str,
     ) -> IntentResult:
-        return self.data_source.create_user(
+        result = self.data_source.create_user(
             title, name, email, phone, street, street_num, postal_code, city, country
         )
+        if not result.was_intent_successful:
+            result.error_msg = "Login failed! Please check the info and re-try"
+        return result
 
     def get_user(self) -> IntentResult:
-        return self.data_source.get_user()
+        result = self.data_source.get_user()
+        if not result.was_intent_successful:
+            result.error_msg = "Checking auth status failed! Please restart the app"
+        return result
 
     def update_user(
         self,
@@ -41,7 +47,7 @@ class AuthIntent:
         city: str,
         country: str,
     ) -> IntentResult:
-        return self.data_source.update_user(
+        result = self.data_source.update_user(
             user,
             title,
             name,
@@ -53,6 +59,12 @@ class AuthIntent:
             city,
             country,
         )
+        if not result.was_intent_successful:
+            result.error_msg = "Failed to update your info! Please retry"
+        return result
 
     def update_user_photo(self, upload_url):
-        return self.data_source.update_user_photo_url(upload_url)
+        result = self.data_source.update_user_photo_url(upload_url)
+        if not result.was_intent_successful:
+            result.error_msg = "Setting profile photo failed. Please re-try"
+        return result

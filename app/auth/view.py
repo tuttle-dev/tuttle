@@ -10,6 +10,7 @@ from flet import (
     margin,
     padding,
 )
+from loguru import logger
 from core.abstractions import TuttleViewParams
 
 from tuttle.model import User
@@ -257,6 +258,7 @@ class SplashScreen(TuttleView, UserControl):
                 self.set_login_form()
         else:
             self.show_snack(result.error_msg)
+            logger.error(result.log_message)
 
     def set_login_form(self):
         form = UserDataForm(
@@ -287,7 +289,7 @@ class SplashScreen(TuttleView, UserControl):
             self.show_login_if_signed_out_else_redirect()
         except Exception as e:
             self.mounted = False
-            print(f"exception raised @splash_screen.did_mount {e}")
+            logger.exception(f"exception raised @splash_screen.did_mount {e}")
 
     def build(self):
         """Called when page is built"""
@@ -379,13 +381,16 @@ class ProfileScreen(TuttleView, UserControl):
             self.toggle_progress_bar(f"Upload complete, processing file...")
             if self.uploaded_photo_url:
                 result = self.intent_handler.update_user_photo(self.uploaded_photo_url)
-                msg = "Failed to update photo"
+                # assume error occurred
+                msg = result.error_msg
                 is_err = True
                 if result.was_intent_successful:
                     self.profile_photo_control.src = self.uploaded_photo_url
                     msg = "Profile photo updated"
                     is_err = False
                 self.show_snack(msg, is_err)
+                if is_err:
+                    logger.error(result.log_message)
                 self.uploaded_photo_url = None  # clear
             self.toggle_progress_bar(hide_progress=True)
 
@@ -468,6 +473,7 @@ class ProfileScreen(TuttleView, UserControl):
             result: IntentResult = self.intent_handler.get_user()
             if not result.was_intent_successful:
                 self.show_snack(result.error_msg, True)
+                logger.error(result.log_message)
             else:
                 self.user: User = result.data
                 self.user_data_form.refresh_user_info(self.user)

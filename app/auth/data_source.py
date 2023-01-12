@@ -11,8 +11,8 @@ class UserDataSource(SQLModelDataSourceMixin):
         self._dummy_user = None
 
     def get_user(self) -> IntentResult:
+        """returns data as the user if one exists else None"""
         user = self.query_the_only(User)
-
         return IntentResult(
             was_intent_successful=True,
             data=user,
@@ -30,27 +30,35 @@ class UserDataSource(SQLModelDataSourceMixin):
         city: str,
         country: str,
     ) -> IntentResult:
-        adddress = Address(
-            street=street,
-            number=street_num,
-            postal_code=postal_code,
-            city=city,
-            country=country,
-        )
-        user = User(
-            name=name,
-            subtitle=title,
-            email=email,
-            phone_number=phone,
-            address=adddress,
-        )
+        """creates and saves a user instance
+        returns data as the created user if successful"""
+        try:
+            adddress = Address(
+                street=street,
+                number=street_num,
+                postal_code=postal_code,
+                city=city,
+                country=country,
+            )
+            user = User(
+                name=name,
+                subtitle=title,
+                email=email,
+                phone_number=phone,
+                address=adddress,
+            )
 
-        self.store(user)
+            self.store(user)
 
-        return IntentResult(
-            was_intent_successful=True,
-            data=user,
-        )
+            return IntentResult(
+                was_intent_successful=True,
+                data=user,
+            )
+        except Exception as e:
+            return IntentResult(
+                was_intent_successful=False,
+                log_message=f"An exception was raised at UserDataSource.create_user {e}",
+            )
 
     def update_user(
         self,
@@ -65,28 +73,41 @@ class UserDataSource(SQLModelDataSourceMixin):
         city: str,
         country: str,
     ) -> IntentResult:
-        address_id = user.address_id if user.address_id is not None else 123
-        add = Address(
-            id=address_id,
-            street=street,
-            number=street_num,
-            postal_code=postal_code,
-            city=city,
-            country=country,
-        )
-        user = User(
-            id=user.id,
-            name=name,
-            subtitle=title,
-            email=email,
-            phone_number=phone,
-            address_id=add.id,
-            address=add,
-            profile_photo=user.profile_photo,
-        )
-        self._dummy_user = user
-        return IntentResult(was_intent_successful=True, data=self._dummy_user)
+        """attempts to update an existing user.
+        returns data as the updated user if succesful"""
+        try:
+            address_id = user.address_id if user.address_id is not None else 123
+            add = Address(
+                id=address_id,
+                street=street,
+                number=street_num,
+                postal_code=postal_code,
+                city=city,
+                country=country,
+            )
+            user = User(
+                id=user.id,
+                name=name,
+                subtitle=title,
+                email=email,
+                phone_number=phone,
+                address_id=add.id,
+                address=add,
+                profile_photo=user.profile_photo,
+            )
+            return IntentResult(was_intent_successful=True, data=user)
+        except Exception as e:
+            return IntentResult(
+                was_intent_successful=False,
+                log_message=f"An exception was raised @UserDataSource.update_user {e}",
+            )
 
     def update_user_photo_url(self, url):
-        """saves the path of the new uploaded profile photo"""
-        return IntentResult(was_intent_successful=True, data=None)
+        """TODO saves the path of the new uploaded profile photo"""
+        try:
+            return IntentResult(was_intent_successful=True, data=None)
+        except Exception as e:
+            return IntentResult(
+                was_intent_successful=False,
+                log_message=f"An exception was raised @UserDataSource.update_user_photo_url {e}",
+            )
