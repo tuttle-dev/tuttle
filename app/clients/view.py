@@ -1,4 +1,3 @@
-import typing
 from typing import Callable, Optional
 from core.abstractions import TuttleViewParams
 from flet import (
@@ -19,40 +18,10 @@ from flet import (
 from tuttle.model import Address
 from clients.intent import ClientsIntent
 from core.abstractions import DialogHandler, TuttleView
-from core.utils import (
-    ALWAYS_SCROLL,
-    AUTO_SCROLL,
-    CENTER_ALIGNMENT,
-    END_ALIGNMENT,
-    AlertDialogControls,
-)
+from core import utils
 from core.models import IntentResult
-from core.views import (
-    CENTER_ALIGNMENT,
-    get_dropdown,
-    get_headline_txt,
-    get_primary_btn,
-    get_std_txt_field,
-    horizontal_progress,
-    mdSpace,
-    xsSpace,
-)
-from res.colors import ERROR_COLOR, GRAY_COLOR
-from res.dimens import (
-    MIN_WINDOW_HEIGHT,
-    MIN_WINDOW_WIDTH,
-    SPACE_MD,
-    SPACE_STD,
-    SPACE_XS,
-)
-from res.fonts import (
-    BODY_1_SIZE,
-    BODY_2_SIZE,
-    HEADLINE_4_SIZE,
-    SUBTITLE_1_SIZE,
-    SUBTITLE_2_SIZE,
-)
-from res.res_utils import ADD_CLIENT_INTENT
+from core import views
+from res import colors, dimens, fonts, res_utils
 
 from tuttle.model import (
     Client,
@@ -63,11 +32,12 @@ from tuttle.model import (
 class ClientCard(UserControl):
     """Formats a single client info into a card ui display"""
 
-    def __init__(self, client: Client, on_edit: Callable[[str], None]):
+    def __init__(self, client: Client, on_edit, on_delete):
         super().__init__()
         self.client = client
         self.product_info_container = Column()
         self.on_edit_clicked = on_edit
+        self.on_delete_clicked = on_delete
 
     def build(self):
         if self.client.invoicing_contact:
@@ -75,39 +45,31 @@ class ClientCard(UserControl):
         else:
             invoicing_contact_info = "*not specified"
         self.product_info_container.controls = [
-            get_headline_txt(
+            views.get_headline_txt(
                 txt=self.client.name,
-                size=SUBTITLE_1_SIZE,
+                size=fonts.SUBTITLE_1_SIZE,
             ),
             ResponsiveRow(
                 controls=[
                     Text(
                         "Invoicing Contact",
-                        color=GRAY_COLOR,
-                        size=BODY_2_SIZE,
+                        color=colors.GRAY_COLOR,
+                        size=fonts.BODY_2_SIZE,
                         col={"xs": "12"},
                     ),
                     Text(
                         invoicing_contact_info,
-                        size=BODY_2_SIZE,
+                        size=fonts.BODY_2_SIZE,
                         col={"xs": "12"},
                     ),
                 ],
-                spacing=SPACE_XS,
+                spacing=dimens.SPACE_XS,
                 run_spacing=0,
-                vertical_alignment=CENTER_ALIGNMENT,
+                vertical_alignment=utils.CENTER_ALIGNMENT,
             ),
-            Row(
-                alignment=END_ALIGNMENT,
-                vertical_alignment=END_ALIGNMENT,
-                expand=True,
-                controls=[
-                    IconButton(
-                        icon=icons.EDIT_NOTE_OUTLINED,
-                        tooltip="Edit client",
-                        on_click=lambda e: self.on_edit_clicked(self.client),
-                    ),
-                ],
+            views.view_edit_delete_pop_up(
+                on_click_delete=lambda e: self.on_delete_clicked(self.client),
+                on_click_edit=lambda e: self.on_edit_clicked(self.client),
             ),
         ]
         card = Card(
@@ -115,7 +77,7 @@ class ClientCard(UserControl):
             expand=True,
             content=Container(
                 expand=True,
-                padding=padding.all(SPACE_STD),
+                padding=padding.all(dimens.SPACE_STD),
                 border_radius=border_radius.all(12),
                 content=self.product_info_container,
             ),
@@ -128,14 +90,14 @@ class ClientEditorPopUp(DialogHandler, UserControl):
 
     def __init__(
         self,
-        dialog_controller: Callable[[any, AlertDialogControls], None],
+        dialog_controller: Callable[[any, utils.AlertDialogControls], None],
         on_submit: Callable,
         contacts_map,
         client: Optional[Client] = None,
     ):
-        self.dialog_height = MIN_WINDOW_HEIGHT
-        self.dialog_width = int(MIN_WINDOW_WIDTH * 0.8)
-        self.half_of_dialog_width = int(MIN_WINDOW_WIDTH * 0.35)
+        self.dialog_height = dimens.MIN_WINDOW_HEIGHT
+        self.dialog_width = int(dimens.MIN_WINDOW_WIDTH * 0.8)
+        self.half_of_dialog_width = int(dimens.MIN_WINDOW_WIDTH * 0.35)
 
         # initialize the data
         self.client = client if client is not None else Client()
@@ -160,61 +122,61 @@ class ClientEditorPopUp(DialogHandler, UserControl):
             self.invoicing_contact.id
         )
 
-        self.first_name_field = get_std_txt_field(
+        self.first_name_field = views.get_std_txt_field(
             on_change=self.on_fname_changed,
             label="First Name",
             hint=self.invoicing_contact.first_name,
             initial_value=self.invoicing_contact.first_name,
         )
 
-        self.last_name_field = get_std_txt_field(
+        self.last_name_field = views.get_std_txt_field(
             on_change=self.on_lname_changed,
             label="Last Name",
             hint=self.invoicing_contact.last_name,
             initial_value=self.invoicing_contact.last_name,
         )
-        self.company_field = get_std_txt_field(
+        self.company_field = views.get_std_txt_field(
             on_change=self.on_company_changed,
             label="Company",
             hint=self.invoicing_contact.company,
             initial_value=self.invoicing_contact.company,
         )
-        self.email_field = get_std_txt_field(
+        self.email_field = views.get_std_txt_field(
             on_change=self.on_email_changed,
             label="Email",
             hint=self.invoicing_contact.email,
             initial_value=self.invoicing_contact.email,
         )
 
-        self.street_field = get_std_txt_field(
+        self.street_field = views.get_std_txt_field(
             on_change=self.on_street_changed,
             label="Street",
             hint=self.invoicing_contact.address.street,
             initial_value=self.invoicing_contact.address.street,
             width=self.half_of_dialog_width,
         )
-        self.street_num_field = get_std_txt_field(
+        self.street_num_field = views.get_std_txt_field(
             on_change=self.on_street_num_changed,
             label="Street No.",
             hint=self.invoicing_contact.address.number,
             initial_value=self.invoicing_contact.address.number,
             width=self.half_of_dialog_width,
         )
-        self.postal_code_field = get_std_txt_field(
+        self.postal_code_field = views.get_std_txt_field(
             on_change=self.on_postal_code_changed,
             label="Postal code",
             hint=self.invoicing_contact.address.postal_code,
             initial_value=self.invoicing_contact.address.postal_code,
             width=self.half_of_dialog_width,
         )
-        self.city_field = get_std_txt_field(
+        self.city_field = views.get_std_txt_field(
             on_change=self.on_city_changed,
             label="City",
             hint=self.invoicing_contact.address.city,
             initial_value=self.invoicing_contact.address.city,
             width=self.half_of_dialog_width,
         )
-        self.country_field = get_std_txt_field(
+        self.country_field = views.get_std_txt_field(
             on_change=self.on_country_changed,
             label="Country",
             hint=self.invoicing_contact.address.country,
@@ -225,53 +187,55 @@ class ClientEditorPopUp(DialogHandler, UserControl):
             content=Container(
                 height=self.dialog_height,
                 content=Column(
-                    scroll=AUTO_SCROLL,
+                    scroll=utils.AUTO_SCROLL,
                     controls=[
-                        get_headline_txt(txt=title, size=HEADLINE_4_SIZE),
-                        xsSpace,
-                        get_std_txt_field(
+                        views.get_headline_txt(txt=title, size=fonts.HEADLINE_4_SIZE),
+                        views.xsSpace,
+                        views.get_std_txt_field(
                             on_change=self.on_title_changed,
                             label="Client's title",
                             hint=self.client.name,
                             initial_value=self.client.name,
                         ),
-                        xsSpace,
-                        get_headline_txt(
+                        views.xsSpace,
+                        views.get_headline_txt(
                             txt="Invoicing Contact",
-                            size=SUBTITLE_2_SIZE,
-                            color=GRAY_COLOR,
+                            size=fonts.SUBTITLE_2_SIZE,
+                            color=colors.GRAY_COLOR,
                         ),
-                        xsSpace,
-                        get_dropdown(
+                        views.xsSpace,
+                        views.get_dropdown(
                             on_change=self.on_contact_selected,
                             label="Select contact",
                             items=self.contact_options,
                             initial_value=initial_selected_contact,
                         ),
-                        xsSpace,
+                        views.xsSpace,
                         self.first_name_field,
                         self.last_name_field,
                         self.company_field,
                         self.email_field,
                         Row(
-                            vertical_alignment=CENTER_ALIGNMENT,
+                            vertical_alignment=utils.CENTER_ALIGNMENT,
                             controls=[self.street_field, self.street_num_field],
                         ),
                         Row(
-                            vertical_alignment=CENTER_ALIGNMENT,
+                            vertical_alignment=utils.CENTER_ALIGNMENT,
                             controls=[
                                 self.postal_code_field,
                                 self.city_field,
                             ],
                         ),
                         self.country_field,
-                        xsSpace,
+                        views.xsSpace,
                     ],
                 ),
                 width=self.dialog_width,
             ),
             actions=[
-                get_primary_btn(label="Done", on_click=self.on_submit_btn_clicked),
+                views.get_primary_btn(
+                    label="Done", on_click=self.on_submit_btn_clicked
+                ),
             ],
         )
         super().__init__(dialog=dialog, dialog_controller=dialog_controller)
@@ -418,10 +382,10 @@ class ClientsListView(TuttleView, UserControl):
     def __init__(self, params: TuttleViewParams):
         super().__init__(params=params)
         self.intent_handler = ClientsIntent()
-        self.loading_indicator = horizontal_progress
+        self.loading_indicator = views.horizontal_progress
         self.no_clients_control = Text(
             value="You have not added any clients yet.",
-            color=ERROR_COLOR,
+            color=colors.ERROR_COLOR,
             visible=False,
         )
         self.title_control = ResponsiveRow(
@@ -429,7 +393,9 @@ class ClientsListView(TuttleView, UserControl):
                 Column(
                     col={"xs": 12},
                     controls=[
-                        get_headline_txt(txt="My Clients", size=HEADLINE_4_SIZE),
+                        views.get_headline_txt(
+                            txt="My Clients", size=fonts.HEADLINE_4_SIZE
+                        ),
                         self.loading_indicator,
                         self.no_clients_control,
                     ],
@@ -440,15 +406,15 @@ class ClientsListView(TuttleView, UserControl):
             expand=False,
             max_extent=540,
             child_aspect_ratio=1.0,
-            spacing=SPACE_STD,
-            run_spacing=SPACE_MD,
+            spacing=dimens.SPACE_STD,
+            run_spacing=dimens.SPACE_MD,
         )
         self.clients_to_display = {}
         self.contacts = {}
         self.editor = None
 
     def parent_intent_listener(self, intent: str, data: any):
-        if intent == ADD_CLIENT_INTENT:
+        if intent == res_utils.ADD_CLIENT_INTENT:
             if self.editor is not None:
                 self.editor.close_dialog()
             self.editor = ClientEditorPopUp(
@@ -469,7 +435,11 @@ class ClientsListView(TuttleView, UserControl):
         self.clients_container.controls.clear()
         for key in self.clients_to_display:
             client = self.clients_to_display[key]
-            clientCard = ClientCard(client=client, on_edit=self.on_edit_client_clicked)
+            clientCard = ClientCard(
+                client=client,
+                on_edit=self.on_edit_client_clicked,
+                on_delete=self.on_delete_client_clicked,
+            )
             self.clients_container.controls.append(clientCard)
 
     def on_edit_client_clicked(self, client: Client):
@@ -482,6 +452,34 @@ class ClientsListView(TuttleView, UserControl):
             client=client,
         )
         self.editor.open_dialog()
+
+    def on_delete_client_clicked(self, client: Client):
+        if self.editor is not None:
+            self.editor.close_dialog()
+        self.editor = views.ConfirmDisplayPopUp(
+            dialog_controller=self.dialog_controller,
+            title="Are You Sure?",
+            description=f"Are you sure you wish to delete this client's info?\n{client.name}",
+            on_proceed=self.on_delete_confirmed,
+            proceed_button_label="Yes! Delete",
+            data_on_confirmed=client.id,
+        )
+        self.editor.open_dialog()
+
+    def on_delete_confirmed(self, client_id):
+        self.loading_indicator.visible = True
+        if self.mounted:
+            self.update()
+        result = self.intent_handler.delete_client_by_id(client_id)
+        is_error = not result.was_intent_successful
+        msg = result.error_msg if is_error else "Client deleted!"
+        self.show_snack(msg, is_error)
+        if not is_error and client_id in self.clients_to_display:
+            del self.clients_to_display[client_id]
+            self.refresh_clients()
+        self.loading_indicator.visible = False
+        if self.mounted:
+            self.update()
 
     def on_save_client(self, client_to_save: Client):
         is_updating = client_to_save.id is not None
@@ -528,7 +526,7 @@ class ClientsListView(TuttleView, UserControl):
         view = Column(
             controls=[
                 self.title_control,
-                mdSpace,
+                views.mdSpace,
                 Container(self.clients_container, expand=True),
             ],
         )
