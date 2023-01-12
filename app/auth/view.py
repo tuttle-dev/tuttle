@@ -371,7 +371,7 @@ class ProfileScreen(TuttleView, UserControl):
         super().__init__(params=params)
         self.horizontal_alignment_in_parent = CENTER_ALIGNMENT
         self.intent_handler = AuthIntent()
-        self.uploaded_photo_url = ""
+        self.uploaded_photo_path = ""
 
     def on_profile_updated(self, data):
         self.show_snack("Your profile has been updated", False)
@@ -392,24 +392,28 @@ class ProfileScreen(TuttleView, UserControl):
             self.toggle_progress_bar(f"Uploading file {file.name}")
             upload_url = self.upload_file_callback(file)
             if upload_url:
-                self.uploaded_photo_url = upload_url
+                self.uploaded_photo_path = upload_url
 
     def on_upload_profile_pic_progress(self, e):
         if e.progress == 1.0:
             self.toggle_progress_bar(f"Upload complete, processing file...")
-            if self.uploaded_photo_url:
-                result = self.intent_handler.update_user_photo(self.uploaded_photo_url)
+            if self.uploaded_photo_path:
+                result = self.intent_handler.update_user_photo(
+                    self.user,
+                    self.uploaded_photo_path,
+                )
                 # assume error occurred
                 msg = result.error_msg
                 is_err = True
                 if result.was_intent_successful:
-                    self.profile_photo_control.src = self.uploaded_photo_url
+                    self.profile_photo_control.src = self.uploaded_photo_path
                     msg = "Profile photo updated"
                     is_err = False
                 self.show_snack(msg, is_err)
                 if is_err:
+                    self.user.profile_photo_path = ""
                     logger.error(result.log_message)
-                self.uploaded_photo_url = None  # clear
+                self.uploaded_photo_path = None  # clear
             self.toggle_progress_bar(hide_progress=True)
 
     def toggle_progress_bar(self, msg: str = "", hide_progress: bool = False):
@@ -495,12 +499,15 @@ class ProfileScreen(TuttleView, UserControl):
             else:
                 self.user: User = result.data
                 self.user_data_form.refresh_user_info(self.user)
-                if self.user.profile_photo:
-                    self.profile_photo_control.src = self.user.profile_photo
+                if self.user.profile_photo_path:
+                    self.profile_photo_control.src = self.user.profile_photo_path
             self.toggle_progress_bar(hide_progress=True)
-        except Exception as e:
+        except Exception as ex:
             # log error
-            print(f"exception raised @profile_screen.did_mount {e}")
+            logger.error(
+                f"exception raised @profile_screen.did_mount {ex.__class__.__name__}"
+            )
+            logger.exception(ex)
 
     def will_unmount(self):
         self.mounted = False

@@ -63,8 +63,15 @@ class AuthIntent:
             result.error_msg = "Failed to update your info! Please retry"
         return result
 
-    def update_user_photo(self, upload_url):
-        result = self.data_source.update_user_photo_url(upload_url)
+    def update_user_photo(
+        self,
+        user: User,
+        upload_url,
+    ):
+        result = self.data_source.update_user_photo_url(
+            user,
+            upload_url,
+        )
         if not result.was_intent_successful:
             result.error_msg = "Setting profile photo failed. Please re-try"
         return result

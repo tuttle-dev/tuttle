@@ -115,7 +115,7 @@ class User(SQLModel, table=True):
     website: Optional[str]
     email: str
     phone_number: str
-    profile_photo: Optional[str] = Field(default=None)
+    profile_photo_path: Optional[str] = Field(default=None)
     address_id: Optional[int] = Field(default=None, foreign_key="address.id")
     address: Optional[Address] = Relationship(
         back_populates="users", sa_relationship_kwargs={"lazy": "subquery"}

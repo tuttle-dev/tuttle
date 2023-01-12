@@ -93,7 +93,7 @@ class UserDataSource(SQLModelDataSourceMixin):
                 phone_number=phone,
                 address_id=add.id,
                 address=add,
-                profile_photo=user.profile_photo,
+                profile_photo_path=user.profile_photo_path,
             )
             return IntentResult(was_intent_successful=True, data=user)
         except Exception as e:
@@ -102,10 +102,19 @@ class UserDataSource(SQLModelDataSourceMixin):
                 log_message=f"An exception was raised @UserDataSource.update_user {e}",
             )
 
-    def update_user_photo_url(self, url):
+    def update_user_photo_url(
+        self,
+        user: User,
+        path,
+    ) -> IntentResult:
         """TODO saves the path of the new uploaded profile photo"""
         try:
-            return IntentResult(was_intent_successful=True, data=None)
+            user.profile_photo_path = path
+            self.store(user)
+
+            return IntentResult(
+                was_intent_successful=True,
+            )
         except Exception as e:
             return IntentResult(
                 was_intent_successful=False,
