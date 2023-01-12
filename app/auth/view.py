@@ -244,10 +244,15 @@ class UserDataForm(UserControl):
 
 
 class SplashScreen(TuttleView, UserControl):
-    def __init__(self, params: TuttleViewParams):
+    def __init__(
+        self,
+        params: TuttleViewParams,
+        install_demo_data_callback,
+    ):
         super().__init__(params=params)
         self.keep_back_stack = False
         self.intent_handler = AuthIntent()
+        self.install_demo_data_callback = install_demo_data_callback
 
     def show_login_if_signed_out_else_redirect(self):
         result = self.intent_handler.get_user()
@@ -276,12 +281,17 @@ class SplashScreen(TuttleView, UserControl):
                 city=city,
                 country=country,
             ),
-            submit_btn_label="Get Started",
+            submit_btn_label="Save Profile",
         )
         self.form_container.controls.remove(self.loading_indicator)
         self.form_container.controls.append(form)
         if self.mounted:
             self.update()
+
+    def on_proceed_with_demo_data(self, event):
+        """Called when user clicks on proceed with demo data button"""
+        self.install_demo_data_callback()
+        self.navigate_to_route(res_utils.HOME_SCREEN_ROUTE)
 
     def did_mount(self):
         try:
@@ -338,7 +348,15 @@ class SplashScreen(TuttleView, UserControl):
                 Container(
                     col={"xs": 12, "sm": 7},
                     padding=padding.all(dimens.SPACE_XL),
-                    content=self.form_container,
+                    content=Column(
+                        [
+                            self.form_container,
+                            views.get_secondary_btn(
+                                on_click=self.on_proceed_with_demo_data,
+                                label="Proceed with demo data",
+                            ),
+                        ]
+                    ),
                 ),
             ],
         )

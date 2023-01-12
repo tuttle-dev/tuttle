@@ -231,6 +231,18 @@ class TuttleApp:
         logger.info("Creating database model")
         sqlmodel.SQLModel.metadata.create_all(self.db_engine, checkfirst=True)
 
+    def ensure_database(self):
+        """
+        Ensure that the database exists and is up to date.
+        """
+        if not self.db_path.exists():
+            self.db_engine = sqlmodel.create_engine(
+                f"sqlite:///{self.db_path}", echo=True
+            )
+            self.create_model()
+        else:
+            logger.info("Database exists, skipping creation")
+
     def clear_database(self):
         """
         Delete the database and rebuild database model.
@@ -276,6 +288,7 @@ class TuttleRoutes:
     """Utility class for parsing of routes to destination views"""
 
     def __init__(self, app: TuttleApp):
+        self.app = app
         self.on_theme_changed = app.on_theme_mode_changed
         self.tuttle_view_params = TuttleViewParams(
             navigate_to_route=app.change_route,
@@ -315,7 +328,10 @@ class TuttleRoutes:
         routePath = TemplateRoute(pageRoute)
         screen = None
         if routePath.match(SPLASH_SCREEN_ROUTE):
-            screen = SplashScreen(params=self.tuttle_view_params)
+            screen = SplashScreen(
+                params=self.tuttle_view_params,
+                install_demo_data_callback=self.app.install_demo_data,
+            )
         elif routePath.match(HOME_SCREEN_ROUTE):
             screen = HomeScreen(params=self.tuttle_view_params)
         elif routePath.match(PROFILE_SCREEN_ROUTE):
@@ -366,8 +382,9 @@ def main(page: Page):
     """Entry point of the app"""
     app = TuttleApp(page)
 
-    # install demo data
-    app.install_demo_data()
+    # if database does not exist, create it
+    app.ensure_database()
+
     app.build()
 
 
