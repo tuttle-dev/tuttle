@@ -1,6 +1,6 @@
 from .data_source import TimeTrackingDataSource
 from core.abstractions import ClientStorage
-from core.models import IntentResult
+from core.intent_result import IntentResult
 from preferences.model import PreferencesStorageKeys
 from preferences.intent import PreferencesIntent
 from .model import CloudCalendarInfo

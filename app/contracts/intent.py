@@ -4,7 +4,7 @@ from typing import Optional, Mapping
 from core.models import Cycle, TimeUnit
 
 
-from core.models import IntentResult
+from core.intent_result import IntentResult
 
 from .data_source import ContractDataSource
 from clients.intent import ClientsIntent

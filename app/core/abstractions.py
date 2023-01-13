@@ -5,7 +5,7 @@ from loguru import logger
 import sqlmodel
 from pathlib import Path
 from dataclasses import dataclass
-from .models import IntentResult
+from core.intent_result import IntentResult
 from .utils import AlertDialogControls, START_ALIGNMENT, AUTO_SCROLL
 
 

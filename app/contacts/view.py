@@ -20,7 +20,7 @@ from flet import (
 from contacts.intent import ContactsIntent
 from core.abstractions import DialogHandler, TuttleView, TuttleViewParams
 from core import utils
-from core.models import IntentResult
+from core.intent_result import IntentResult
 from core import views
 from res import colors, dimens, res_utils, fonts
 
@@ -454,7 +454,7 @@ class ContactsListView(TuttleView, UserControl):
             if self.mounted:
                 self.update()
         except Exception as e:
-            print(f"exception raised @contacts.did_mount {e}")
+            print(f"exception raised @contacts.did_mount {e.__class__.__name__}")
             self.show_snack("Loading contacts failed.")
             self.loading_indicator.visible = False
             if self.mounted:

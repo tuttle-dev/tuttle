@@ -1,22 +1,36 @@
-from core.abstractions import ClientStorage, SQLModelDataSourceMixin
-
-from core.models import IntentResult
-
+from core.abstractions import SQLModelDataSourceMixin
+from core.intent_result import IntentResult
 from tuttle.model import Address, User
 
 
 class UserDataSource(SQLModelDataSourceMixin):
+    """Handles manipulation of the User model in the database"""
+
     def __init__(self):
         super().__init__()
-        self._dummy_user = None
 
     def get_user(self) -> IntentResult:
-        """returns data as the user if one exists else None"""
-        user = self.query_the_only(User)
-        return IntentResult(
-            was_intent_successful=True,
-            data=user,
-        )
+        """Gets a user if exists
+
+        Returns:
+            IntentResult:
+                was_intent_successful : bool
+                data : User or None
+                log_message  : str  if an error or exception occurs
+                exception : Exception if an exception occurs
+        """
+        try:
+            user = self.query_the_only(User)
+            return IntentResult(
+                was_intent_successful=True,
+                data=user,
+            )
+        except Exception as e:
+            return IntentResult(
+                was_intent_successful=False,
+                log_message=f"Exception raised @UserDataSource.get_user{e.__class__.__name__}",
+                exception=e,
+            )
 
     def create_user(
         self,
@@ -30,8 +44,15 @@ class UserDataSource(SQLModelDataSourceMixin):
         city: str,
         country: str,
     ) -> IntentResult:
-        """creates and saves a user instance
-        returns data as the created user if successful"""
+        """Creates and stores a user with given info
+
+        Returns:
+            IntentResult:
+                was_intent_successful : bool
+                data : User if was_intent_successful else None
+                log_message  : str  if an error or exception occurs
+                exception : Exception if an exception occurs
+        """
         try:
             adddress = Address(
                 street=street,
@@ -57,7 +78,8 @@ class UserDataSource(SQLModelDataSourceMixin):
         except Exception as e:
             return IntentResult(
                 was_intent_successful=False,
-                log_message=f"An exception was raised at UserDataSource.create_user {e}",
+                log_message=f"An exception was raised @UserDataSource.create_user {e.__class__.__name__}",
+                exception=e,
             )
 
     def update_user(
@@ -73,8 +95,15 @@ class UserDataSource(SQLModelDataSourceMixin):
         city: str,
         country: str,
     ) -> IntentResult:
-        """attempts to update an existing user.
-        returns data as the updated user if succesful"""
+        """Updates a user with given info
+
+        Returns:
+            IntentResult:
+                was_intent_successful : bool
+                data : User  if was_intent_successful else None
+                log_message  : str  if an error or exception occurs
+                exception : Exception if an exception occurs
+        """
         try:
             address_id = user.address_id if user.address_id is not None else 123
             add = Address(
@@ -99,24 +128,32 @@ class UserDataSource(SQLModelDataSourceMixin):
         except Exception as e:
             return IntentResult(
                 was_intent_successful=False,
-                log_message=f"An exception was raised @UserDataSource.update_user {e}",
+                log_message=f"An exception was raised @UserDataSource.update_user {e.__class__.__name__}",
+                exception=e,
             )
 
     def update_user_photo_url(
         self,
         user: User,
-        path,
+        path: str,
     ) -> IntentResult:
-        """TODO saves the path of the new uploaded profile photo"""
+        """Updates a user's profile photo path
+
+        Returns:
+            IntentResult:
+                was_intent_successful : bool
+                data : User  if was_intent_successful else None
+                log_message  : str  if an error or exception occurs
+                exception : Exception if an exception occurs
+        """
         try:
             user.profile_photo_path = path
             self.store(user)
 
-            return IntentResult(
-                was_intent_successful=True,
-            )
+            return IntentResult(was_intent_successful=True, data=user)
         except Exception as e:
             return IntentResult(
                 was_intent_successful=False,
-                log_message=f"An exception was raised @UserDataSource.update_user_photo_url {e}",
+                log_message=f"An exception was raised @UserDataSource.update_user_photo_url {e.__class__.__name__}",
+                exception=e,
             )

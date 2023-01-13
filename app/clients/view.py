@@ -19,7 +19,7 @@ from tuttle.model import Address
 from clients.intent import ClientsIntent
 from core.abstractions import DialogHandler, TuttleView
 from core import utils
-from core.models import IntentResult
+from core.intent_result import IntentResult
 from core import views
 from res import colors, dimens, fonts, res_utils
 
@@ -520,7 +520,7 @@ class ClientsListView(TuttleView, UserControl):
             self.update()
         except Exception as e:
             # log
-            print(f"exception raised @clients.did_mount {e}")
+            print(f"exception raised @clients.did_mount {e.__class__.__name__}")
 
     def build(self):
         view = Column(

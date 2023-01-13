@@ -125,7 +125,9 @@ class TuttleApp:
             self.file_picker.upload([upload_item])
             return f"{get_uploads_url(full_path = False)}/{file.name}"
         except Exception as e:
-            print(f"Exception @app.upload_file_callback raised during file upload {e}")
+            print(
+                f"Exception @app.upload_file_callback raised during file upload {e.__class__.__name__}"
+            )
             return None
 
     def on_theme_mode_changed(self, selected_theme: str):

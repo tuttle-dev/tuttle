@@ -15,7 +15,7 @@ from flet import (
     margin,
     dropdown,
 )
-from core.models import IntentResult
+from core.intent_result import IntentResult
 from core.abstractions import TuttleView
 from core.views import (
     update_dropdown_items,
@@ -249,7 +249,9 @@ class PreferencesScreen(TuttleView, UserControl):
             self.update()
         except Exception as e:
             # log
-            print(f"Exception raised @preferences_screen.did_mount {e}")
+            print(
+                f"Exception raised @preferences_screen.did_mount {e.__class__.__name__}"
+            )
 
     def will_unmount(self):
         # save changes

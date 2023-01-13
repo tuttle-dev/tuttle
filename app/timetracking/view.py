@@ -15,7 +15,7 @@ from .model import CloudCalendarInfo
 from .intent import TimeTrackingIntent
 from core.abstractions import DialogHandler, TuttleView
 from core.utils import AUTO_SCROLL, AlertDialogControls, KEYBOARD_PASSWORD, is_empty_str
-from core.models import IntentResult
+from core.intent_result import IntentResult
 from core.views import (
     get_headline_txt,
     get_std_txt_field,
@@ -350,7 +350,9 @@ class TimeTrackingView(TuttleView, UserControl):
             if self.mounted:
                 self.update()
         except Exception as e:
-            print(f"exception raised @timetracking.TimetracksView.did_mount {e}")
+            print(
+                f"exception raised @timetracking.TimetracksView.did_mount {e.__class__.__name__}"
+            )
 
     def build(self):
 

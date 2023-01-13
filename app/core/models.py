@@ -1,6 +1,5 @@
 import enum
 import datetime
-import textwrap
 from flet import View
 from typing import Callable
 from dataclasses import dataclass
@@ -74,32 +73,6 @@ def get_time_unit_from_value(value: str) -> Optional[TimeUnit]:
         return TimeUnit.minute
     else:
         return None
-
-
-# TODO: should this class be here?
-class IntentResult:
-    """Wraps the result of a view's intent
-
-    data - the result else None
-    was_intent_successful - True if the operation did not encounter any error
-    error_msg_if_err - error message to be shown to the user, typically set by the intent instance
-    log_message - optional message to be logged, typically set by data_source instance, is not shown to the user
-    """
-
-    def __init__(
-        self,
-        data: Optional[any] = None,
-        was_intent_successful: bool = False,
-        error_msg: str = "",
-        log_message: str = "",
-        exception: Optional[Exception] = None,
-    ):
-        super().__init__()
-        self.error_msg = error_msg
-        self.data = data
-        self.was_intent_successful = was_intent_successful
-        self.log_message = log_message
-        self.exception = exception
 
 
 @dataclass

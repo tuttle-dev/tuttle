@@ -21,7 +21,7 @@ from flet import (
 )
 
 from core.abstractions import DialogHandler, TuttleView, TuttleViewParams
-from core.models import IntentResult
+from core.intent_result import IntentResult
 from core import utils, views
 
 from res import colors, dimens, fonts, res_utils

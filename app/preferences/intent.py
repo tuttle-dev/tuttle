@@ -1,6 +1,6 @@
 from .model import Preferences, PreferencesStorageKeys
 from core.abstractions import ClientStorage
-from core.models import IntentResult
+from core.intent_result import IntentResult
 
 
 class PreferencesIntent:
@@ -54,7 +54,7 @@ class PreferencesIntent:
                 was_intent_successful=False,
                 data=None,
                 error_msg="Failed to save preferences",
-                log_message=f"An exception was raised @PreferencesIntent.save_preferences {e}",
+                log_message=f"An exception was raised @PreferencesIntent.save_preferences {e.__class__.__name__}",
             )
 
     def get_preference(self, preference_key: PreferencesStorageKeys) -> IntentResult:
@@ -67,7 +67,7 @@ class PreferencesIntent:
                 was_intent_successful=False,
                 data=None,
                 error_msg="Failed to load that preference item",
-                log_message=f"Exception was raised @PreferencesIntent.get_preference f{e}",
+                log_message=f"Exception was raised @PreferencesIntent.get_preference f{e.__class__.__name__}",
             )
 
     def set_preference(
@@ -85,5 +85,5 @@ class PreferencesIntent:
                 was_intent_successful=False,
                 data=None,
                 error_msg="Saving preferences failed!",
-                log_message=f"Exception was raised @PreferencesIntent.set_preference f{e}",
+                log_message=f"Exception was raised @PreferencesIntent.set_preference f{e.__class__.__name__}",
             )

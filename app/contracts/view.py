@@ -7,9 +7,8 @@ from core.abstractions import TuttleView, DialogHandler, TuttleViewParams
 from res import colors, dimens, fonts, res_utils
 from contracts.intent import ContractsIntent
 from core import utils, views
-
+from core.intent_result import IntentResult
 from core.models import (
-    IntentResult,
     get_cycle_from_value,
     get_cycle_values_as_list,
     get_time_unit_values_as_list,
@@ -1101,7 +1100,7 @@ class ContractsListView(TuttleView, flet.UserControl):
                 self.update()
         except Exception as e:
             # log error
-            print(f"exception raised @contracts.did_mount {e}")
+            print(f"exception raised @contracts.did_mount {e.__class__.__name__}")
 
     def build(self):
         view = flet.Column(

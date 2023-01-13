@@ -1,6 +1,6 @@
 from typing import Mapping
 
-from core.models import IntentResult
+from core.intent_result import IntentResult
 from .data_source import ClientDataSource
 from contacts.intent import ContactsIntent
 from tuttle.model import (
@@ -22,7 +22,9 @@ class ClientsIntent:
                 return clients_map
             return {}
         except Exception as e:
-            print(f"Exception raised @clients.intent_impl.get_all_clients_as_map {e}")
+            print(
+                f"Exception raised @clients.intent_impl.get_all_clients_as_map {e.__class__.__name__}"
+            )
             return {}
 
     def save_client(

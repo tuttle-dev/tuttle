@@ -1,6 +1,6 @@
 from typing import Mapping
 from tuttle.dev import deprecated
-from core.models import IntentResult
+from core.intent_result import IntentResult
 from .data_source import ContactDataSource
 
 from tuttle.model import (

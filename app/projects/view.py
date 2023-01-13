@@ -28,7 +28,7 @@ from core.abstractions import TuttleView
 from core.charts import BarChart
 from core import utils
 from core.date_time_utils import get_last_seven_days
-from core.models import IntentResult
+from core.intent_result import IntentResult
 from core import views
 from projects.intent import ProjectsIntent
 from res import colors, dimens, fonts, res_utils
@@ -304,7 +304,9 @@ class ViewProjectScreen(TuttleView, UserControl):
             if self.mounted:
                 self.update()
         except Exception as e:
-            logger.exception(f"Exception raised @view_project_screen.did_mount {e}")
+            logger.exception(
+                f"Exception raised @view_project_screen.did_mount {e.__class__.__name__}"
+            )
 
     def on_view_client_clicked(self, e):
         self.show_snack("Coming soon", False)
@@ -649,7 +651,9 @@ class ProjectsListView(TuttleView, UserControl):
             if self.mounted:
                 self.update()
         except Exception as e:
-            logger.exception(f"exception raised @projects.did_mount {e}")
+            logger.exception(
+                f"exception raised @projects.did_mount {e.__class__.__name__}"
+            )
 
     def build(self):
         return Column(

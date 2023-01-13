@@ -34,7 +34,9 @@ class ClientStorageImpl(ClientStorage):
             )
             self.th.start()
         except Exception as e:
-            print(f"ClientStorageImpl.set_value threw an exception {e}")
+            print(
+                f"ClientStorageImpl.set_value threw an exception {e.__class__.__name__}"
+            )
 
     def get_value(self, key: str):
         prefixedKey = self.keys_prefix + key

@@ -1,7 +1,7 @@
 """  """
 from loguru import logger
 from typing import Mapping
-from core.abstractions import IntentResult
+from core.intent_result import IntentResult
 
 from .data_source import InvoicingDataSource
 from tuttle.model import Invoice, Project, InvoiceStatus

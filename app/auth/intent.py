@@ -1,6 +1,5 @@
 from .data_source import UserDataSource
-from core.abstractions import ClientStorage
-from core.models import IntentResult
+from core.intent_result import IntentResult
 
 from tuttle.model import User
 

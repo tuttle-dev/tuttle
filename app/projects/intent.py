@@ -1,6 +1,6 @@
 from typing import List, Optional, Mapping
 import datetime
-from core.models import IntentResult
+from core.intent_result import IntentResult
 from .data_source import ProjectDataSource
 
 from loguru import logger

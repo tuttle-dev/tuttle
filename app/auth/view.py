@@ -28,7 +28,7 @@ from core.utils import (
     TXT_ALIGN_CENTER,
     is_empty_str,
 )
-from core.models import IntentResult
+from core.intent_result import IntentResult
 from core import views
 from res import dimens, fonts, image_paths, res_utils
 
@@ -299,7 +299,9 @@ class SplashScreen(TuttleView, UserControl):
             self.show_login_if_signed_out_else_redirect()
         except Exception as e:
             self.mounted = False
-            logger.exception(f"exception raised @splash_screen.did_mount {e}")
+            logger.exception(
+                f"exception raised @splash_screen.did_mount {e.__class__.__name__}"
+            )
 
     def build(self):
         """Called when page is built"""
