@@ -41,7 +41,7 @@ class ContactCard(UserControl):
     ):
         super().__init__()
         self.contact = contact
-        self.product_info_container = Column(
+        self.contact_info_container = Column(
             spacing=0,
             run_spacing=0,
         )
@@ -49,11 +49,13 @@ class ContactCard(UserControl):
         self.on_deleted_clicked = on_deleted_clicked
 
     def build(self):
-        self.product_info_container.controls = [
+        self.contact_info_container.controls = [
             ListTile(
-                leading=Icon(icons.CONTACT_MAIL),
-                title=Text(self.contact.name),
-                subtitle=Text(self.contact.company, color=colors.GRAY_COLOR),
+                leading=Icon(utils.TuttleComponentIcons.contact_icon),
+                title=views.get_body_txt(utils.truncate_str(self.contact.name)),
+                subtitle=views.get_body_txt(
+                    utils.truncate_str(self.contact.company), color=colors.GRAY_COLOR
+                ),
                 trailing=views.view_edit_delete_pop_up(
                     on_click_edit=lambda e: self.on_edit_clicked(self.contact),
                     on_click_delete=lambda e: self.on_deleted_clicked(self.contact),
@@ -108,7 +110,7 @@ class ContactCard(UserControl):
                 expand=True,
                 padding=padding.all(dimens.SPACE_STD),
                 border_radius=border_radius.all(12),
-                content=self.product_info_container,
+                content=self.contact_info_container,
             ),
         )
         return card

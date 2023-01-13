@@ -1,5 +1,6 @@
 from enum import Enum
 import base64
+from flet import icons
 
 
 class AlertDialogControls(Enum):
@@ -69,7 +70,38 @@ def is_empty_str(txt: str) -> bool:
     return len(txt.strip()) == 0
 
 
+def truncate_str(txt: str, max_chars: int = 25) -> str:
+    if len(txt) <= max_chars:
+        return txt
+    else:
+        return f"{txt[0:max_chars]}..."
+
+
 def image_to_base64(image_path):
     with open(image_path, "rb") as image_file:
         encoded_string = base64.b64encode(image_file.read()).decode("utf-8")
     return encoded_string
+
+
+class TuttleComponentIcons(Enum):
+    """ "Defines the icons used for different components throughout the app"""
+
+    dashboard_icon = icons.SPEED
+    dashboard_selected_icon = icons.SPEED_ROUNDED
+    project_icon = icons.WORK_OUTLINE
+    project_selected_icon = icons.WORK_ROUNDED
+    contact_icon = icons.CONTACT_MAIL_OUTLINED
+    contact_selected_icon = icons.CONTACT_MAIL_ROUNDED
+    client_icon = icons.CONTACTS_OUTLINED
+    client_selected_icon = icons.CONTACTS_ROUNDED
+    contract_icon = icons.HANDSHAKE_OUTLINED
+    contract_selected_icon = icons.HANDSHAKE_ROUNDED
+    timetracking_icon = icons.TIMER_OUTLINED
+    timetracking_selected_icon = icons.TIMER_ROUNDED
+    invoicing_icon = icons.ATTACH_MONEY_SHARP
+    invoicing_selected_icon = icons.ATTACH_MONEY_ROUNDED
+    datatable_icon = icons.TABLE_CHART
+    datatable_selected_icon = icons.TABLE_CHART_ROUNDED
+
+    def __str__(self) -> str:
+        return str(self.value)

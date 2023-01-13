@@ -10,8 +10,7 @@ from flet import (
     GridView,
     Icon,
     IconButton,
-    PopupMenuButton,
-    PopupMenuItem,
+    ListTile,
     ResponsiveRow,
     Row,
     Text,
@@ -46,115 +45,124 @@ class ProjectCard(UserControl):
     ):
         super().__init__()
         self.project: Project = project
-        self.productInfoContainer = Column()
+        self.project_info_container = Column(run_spacing=0, spacing=0)
         self.on_view_details_clicked = on_view_details_clicked
         self.on_delete_clicked = on_delete_clicked
         self.on_edit_clicked = on_edit_clicked
 
     def build(self):
-        self.productInfoContainer.controls = [
-            views.get_headline_with_subtitle(
-                title=self.project.title,
-                subtitle=self.project.get_brief_description(),
-                titleSize=fonts.HEADLINE_4_SIZE,
-                subtitleColor=colors.GRAY_COLOR,
+        self.project_info_container.controls = [
+            ListTile(
+                leading=Icon(utils.TuttleComponentIcons.project_icon),
+                title=views.get_body_txt(utils.truncate_str(self.project.title)),
+                subtitle=views.get_body_txt(
+                    utils.truncate_str(f"client: {self.project.client.name}"),
+                    color=colors.GRAY_COLOR,
+                ),
+                trailing=views.view_edit_delete_pop_up(
+                    on_click_view=lambda e: self.on_view_details_clicked(
+                        self.project.id
+                    ),
+                    on_click_delete=lambda e: self.on_delete_clicked(self.project.id),
+                    on_click_edit=lambda e: self.on_edit_clicked(self.project.id),
+                ),
             ),
+            views.mdSpace,
+            ResponsiveRow(
+                controls=[
+                    Text(
+                        "Brief Description",
+                        color=colors.GRAY_COLOR,
+                        size=fonts.BODY_2_SIZE,
+                        col={"xs": "12"},
+                    ),
+                    Text(
+                        self.project.get_brief_description(),
+                        size=fonts.BODY_2_SIZE,
+                        col={"xs": "12"},
+                    ),
+                ],
+                spacing=dimens.SPACE_XS,
+                run_spacing=0,
+                vertical_alignment=utils.CENTER_ALIGNMENT,
+            ),
+            views.mdSpace,
             ResponsiveRow(
                 controls=[
                     Text(
                         "Contract",
                         color=colors.GRAY_COLOR,
                         size=fonts.BODY_2_SIZE,
-                        col={"xs": "12", "sm": "5", "md": "3"},
+                        col={"xs": "12"},
                     ),
-                    Text(
-                        self.project.contract.title,
-                        size=fonts.BODY_2_SIZE,
-                        col={"xs": "12", "sm": "7", "md": "9"},
+                    Container(
+                        Text(
+                            self.project.contract.title,
+                            size=fonts.BODY_2_SIZE,
+                            col={"xs": "12"},
+                        ),
                     ),
                 ],
+                alignment=utils.START_ALIGNMENT,
+                vertical_alignment=utils.START_ALIGNMENT,
                 spacing=dimens.SPACE_XS,
                 run_spacing=0,
-                vertical_alignment=utils.CENTER_ALIGNMENT,
             ),
+            views.mdSpace,
             ResponsiveRow(
                 controls=[
                     Text(
-                        "Client",
+                        "Start date",
                         color=colors.GRAY_COLOR,
                         size=fonts.BODY_2_SIZE,
-                        col={"xs": "12", "sm": "5", "md": "3"},
+                        col={"xs": "12"},
                     ),
-                    Text(
-                        self.project.contract.client.name,
-                        size=fonts.BODY_2_SIZE,
-                        col={"xs": "12", "sm": "7", "md": "9"},
-                    ),
-                ],
-                spacing=dimens.SPACE_XS,
-                run_spacing=0,
-                vertical_alignment=utils.CENTER_ALIGNMENT,
-            ),
-            ResponsiveRow(
-                controls=[
-                    Text(
-                        "Start Date",
-                        color=colors.GRAY_COLOR,
-                        size=fonts.BODY_2_SIZE,
-                        col={"xs": "12", "sm": "5", "md": "3"},
-                    ),
-                    Text(
-                        self.project.start_date.strftime("%d/%m/%Y"),
-                        size=fonts.BODY_2_SIZE,
-                        col={"xs": "12", "sm": "7", "md": "9"},
+                    Container(
+                        Text(
+                            self.project.start_date.strftime("%d/%m/%Y")
+                            if self.project.start_date
+                            else "",
+                            size=fonts.BODY_2_SIZE,
+                            col={"xs": "12"},
+                        ),
                     ),
                 ],
+                alignment=utils.START_ALIGNMENT,
+                vertical_alignment=utils.START_ALIGNMENT,
                 spacing=dimens.SPACE_XS,
                 run_spacing=0,
-                vertical_alignment=utils.CENTER_ALIGNMENT,
             ),
+            views.mdSpace,
             ResponsiveRow(
                 controls=[
                     Text(
                         "End date",
                         color=colors.GRAY_COLOR,
                         size=fonts.BODY_2_SIZE,
-                        col={"xs": "12", "sm": "5", "md": "3"},
+                        col={"xs": "12"},
                     ),
-                    Text(
-                        self.project.end_date.strftime("%d/%m/%Y")
-                        if self.project.end_date
-                        else "",
-                        size=fonts.BODY_2_SIZE,
-                        color=colors.ERROR_COLOR,
-                        col={"xs": "12", "sm": "7", "md": "9"},
+                    Container(
+                        Text(
+                            self.project.end_date.strftime("%d/%m/%Y")
+                            if self.project.end_date
+                            else "-",
+                            size=fonts.BODY_2_SIZE,
+                            col={"xs": "12"},
+                            color=colors.ERROR_COLOR,
+                        ),
                     ),
                 ],
+                alignment=utils.START_ALIGNMENT,
+                vertical_alignment=utils.START_ALIGNMENT,
                 spacing=dimens.SPACE_XS,
                 run_spacing=0,
-                vertical_alignment=utils.CENTER_ALIGNMENT,
             ),
+            views.mdSpace,
             Row(
-                alignment=utils.SPACE_BETWEEN_ALIGNMENT,
-                vertical_alignment=utils.END_ALIGNMENT,
-                expand=True,
+                spacing=0,
                 controls=[
-                    Row(
-                        spacing=0,
-                        controls=[
-                            Text(f"#", color=colors.PRIMARY_COLOR),
-                            Text(f"{self.project.tag}", color=colors.GRAY_COLOR),
-                        ],
-                    ),
-                    views.view_edit_delete_pop_up(
-                        on_click_view=lambda e: self.on_view_details_clicked(
-                            self.project.id
-                        ),
-                        on_click_delete=lambda e: self.on_delete_clicked(
-                            self.project.id
-                        ),
-                        on_click_edit=lambda e: self.on_edit_clicked(self.project.id),
-                    ),
+                    views.get_body_txt(f"#", color=colors.PRIMARY_COLOR),
+                    views.get_body_txt(f"{self.project.tag}", color=colors.GRAY_COLOR),
                 ],
             ),
         ]
@@ -165,7 +173,7 @@ class ProjectCard(UserControl):
                 expand=True,
                 padding=padding.all(dimens.SPACE_STD),
                 border_radius=border_radius.all(12),
-                content=self.productInfoContainer,
+                content=self.project_info_container,
             ),
         )
         return card

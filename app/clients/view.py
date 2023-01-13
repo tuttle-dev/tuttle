@@ -7,6 +7,9 @@ from flet import (
     Container,
     GridView,
     ResponsiveRow,
+    ListTile,
+    Icon,
+    icons,
     Row,
     Text,
     UserControl,
@@ -33,7 +36,7 @@ class ClientCard(UserControl):
     def __init__(self, client: Client, on_edit, on_delete):
         super().__init__()
         self.client = client
-        self.product_info_container = Column()
+        self.client_info_container = Column(spacing=0, run_spacing=0)
         self.on_edit_clicked = on_edit
         self.on_delete_clicked = on_delete
 
@@ -42,11 +45,17 @@ class ClientCard(UserControl):
             invoicing_contact_info = self.client.invoicing_contact.print_address()
         else:
             invoicing_contact_info = "*not specified"
-        self.product_info_container.controls = [
-            views.get_headline_txt(
-                txt=self.client.name,
-                size=fonts.SUBTITLE_1_SIZE,
+
+        self.client_info_container.controls = [
+            ListTile(
+                leading=Icon(utils.TuttleComponentIcons.client_icon),
+                title=views.get_body_txt(utils.truncate_str(self.client.name)),
+                trailing=views.view_edit_delete_pop_up(
+                    on_click_delete=lambda e: self.on_delete_clicked(self.client),
+                    on_click_edit=lambda e: self.on_edit_clicked(self.client),
+                ),
             ),
+            views.mdSpace,
             ResponsiveRow(
                 controls=[
                     Text(
@@ -65,11 +74,8 @@ class ClientCard(UserControl):
                 run_spacing=0,
                 vertical_alignment=utils.CENTER_ALIGNMENT,
             ),
-            views.view_edit_delete_pop_up(
-                on_click_delete=lambda e: self.on_delete_clicked(self.client),
-                on_click_edit=lambda e: self.on_edit_clicked(self.client),
-            ),
         ]
+
         card = Card(
             elevation=2,
             expand=True,
@@ -77,7 +83,7 @@ class ClientCard(UserControl):
                 expand=True,
                 padding=padding.all(dimens.SPACE_STD),
                 border_radius=border_radius.all(12),
-                content=self.product_info_container,
+                content=self.client_info_container,
             ),
         )
         return card

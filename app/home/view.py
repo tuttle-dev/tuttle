@@ -2,7 +2,7 @@ from typing import Callable, Optional
 
 import webbrowser
 from dataclasses import dataclass
-
+from core.utils import TuttleComponentIcons
 from flet import (
     Column,
     Container,
@@ -221,16 +221,16 @@ class MainMenuItemsHandler:
             MenuItem(
                 index=0,
                 label="Dashboard",
-                icon=icons.SPEED,
-                selected_icon=icons.SPEED_ROUNDED,
+                icon=TuttleComponentIcons.dashboard_icon,
+                selected_icon=TuttleComponentIcons.dashboard_selected_icon,
                 destination=Container(),
                 on_new_screen_route="/404",
             ),
             MenuItem(
                 index=1,
                 label="Projects",
-                icon=icons.WORK_OUTLINE,
-                selected_icon=icons.WORK_ROUNDED,
+                icon=TuttleComponentIcons.project_icon,
+                selected_icon=TuttleComponentIcons.project_selected_icon,
                 destination=self.projects_view,
                 on_new_screen_route=res_utils.PROJECT_CREATOR_SCREEN_ROUTE,
                 on_new_intent=None,
@@ -238,8 +238,8 @@ class MainMenuItemsHandler:
             MenuItem(
                 index=2,
                 label="Contacts",
-                icon=icons.CONTACT_MAIL_OUTLINED,
-                selected_icon=icons.CONTACT_MAIL_ROUNDED,
+                icon=TuttleComponentIcons.contact_icon,
+                selected_icon=TuttleComponentIcons.contact_selected_icon,
                 destination=self.contacts_view,
                 on_new_screen_route=None,
                 on_new_intent=res_utils.ADD_CONTACT_INTENT,
@@ -247,8 +247,8 @@ class MainMenuItemsHandler:
             MenuItem(
                 index=3,
                 label="Clients",
-                icon=icons.CONTACTS_OUTLINED,
-                selected_icon=icons.CONTACTS_ROUNDED,
+                icon=TuttleComponentIcons.client_icon,
+                selected_icon=TuttleComponentIcons.client_selected_icon,
                 destination=self.clients_view,
                 on_new_screen_route=None,
                 on_new_intent=res_utils.ADD_CLIENT_INTENT,
@@ -256,8 +256,8 @@ class MainMenuItemsHandler:
             MenuItem(
                 index=4,
                 label="Contracts",
-                icon=icons.HANDSHAKE_OUTLINED,
-                selected_icon=icons.HANDSHAKE_ROUNDED,
+                icon=TuttleComponentIcons.contract_icon,
+                selected_icon=TuttleComponentIcons.contract_selected_icon,
                 destination=self.contracts_view,
                 on_new_screen_route=res_utils.CONTRACT_CREATOR_SCREEN_ROUTE,
                 on_new_intent=None,
@@ -279,8 +279,8 @@ class SecondaryMenuHandler:
             MenuItem(
                 index=0,
                 label="Time Tracking",
-                icon=icons.TIMER_OUTLINED,
-                selected_icon=icons.TIMER_ROUNDED,
+                icon=TuttleComponentIcons.timetracking_icon,
+                selected_icon=TuttleComponentIcons.timetracking_selected_icon,
                 destination=self.timetrack_view,
                 on_new_screen_route=None,
                 on_new_intent=res_utils.NEW_TIME_TRACK_INTENT,
@@ -288,8 +288,8 @@ class SecondaryMenuHandler:
             MenuItem(
                 index=1,
                 label="Invoicing",
-                icon=icons.ATTACH_MONEY_SHARP,
-                selected_icon=icons.ATTACH_MONEY_ROUNDED,
+                icon=TuttleComponentIcons.invoicing_icon,
+                selected_icon=TuttleComponentIcons.invoicing_selected_icon,
                 destination=self.invoicing_view,
                 on_new_screen_route=None,
                 on_new_intent=res_utils.CREATE_INVOICE_INTENT,
@@ -297,8 +297,8 @@ class SecondaryMenuHandler:
             MenuItem(
                 index=2,
                 label="Datatable",
-                icon=icons.TABLE_CHART,
-                selected_icon=icons.TABLE_CHART_ROUNDED,
+                icon=TuttleComponentIcons.datatable_icon,
+                selected_icon=TuttleComponentIcons.datatable_selected_icon,
                 destination=Container(),
                 on_new_screen_route="/404",
             ),

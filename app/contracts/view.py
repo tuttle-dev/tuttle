@@ -1,7 +1,27 @@
 from enum import Enum
 from typing import Callable, Optional
 from clients.view import ClientEditorPopUp
-import flet
+from flet import (
+    AlertDialog,
+    TextButton,
+    margin,
+    ElevatedButton,
+    ButtonStyle,
+    Card,
+    Column,
+    Container,
+    GridView,
+    IconButton,
+    ResponsiveRow,
+    Row,
+    Text,
+    UserControl,
+    border_radius,
+    Icon,
+    icons,
+    padding,
+    ListTile,
+)
 from contracts.intent import ContractsIntent
 from core.abstractions import TuttleView, DialogHandler, TuttleViewParams
 from res import colors, dimens, fonts, res_utils
@@ -21,100 +41,118 @@ from tuttle.model import (
 LABEL_WIDTH = 80
 
 
-class ContractCard(flet.UserControl):
-    """Formats a single contract info into a flet.Card ui display"""
+class ContractCard(UserControl):
+    """Formats a single contract info into a Card ui display"""
 
     def __init__(
         self, contract: Contract, on_click_view, on_click_edit, on_click_delete
     ):
         super().__init__()
         self.contract = contract
-        self.product_info_container = flet.Column()
+        self.contract_info_container = Column(run_spacing=0, spacing=0)
         self.on_click_view = on_click_view
         self.on_click_edit = on_click_edit
         self.on_click_delete = on_click_delete
 
     def build(self):
-        self.product_info_container.controls = [
-            views.get_headline_txt(txt=self.contract.title, size=fonts.SUBTITLE_1_SIZE),
-            flet.ResponsiveRow(
+        self.contract_info_container.controls = [
+            ListTile(
+                leading=Icon(utils.TuttleComponentIcons.contract_icon),
+                title=views.get_body_txt(utils.truncate_str(self.contract.title)),
+                subtitle=views.get_body_txt(
+                    utils.truncate_str(
+                        f"client: {self.contract.client.name}", max_chars=20
+                    ),
+                    color=colors.GRAY_COLOR,
+                ),
+                trailing=views.view_edit_delete_pop_up(
+                    on_click_view=lambda e: self.on_click_view(self.contract.id),
+                    on_click_edit=lambda e: self.on_click_edit(self.contract.id),
+                    on_click_delete=lambda e: self.on_click_delete(self.contract.id),
+                ),
+            ),
+            views.mdSpace,
+            ResponsiveRow(
                 controls=[
-                    flet.Text(
+                    Text(
                         "Billing Cycle",
                         color=colors.GRAY_COLOR,
                         size=fonts.BODY_2_SIZE,
-                        col={"xs": "12", "sm": "5", "md": "3"},
+                        col={"xs": "12"},
                     ),
-                    flet.Text(
+                    Text(
                         self.contract.billing_cycle,
                         size=fonts.BODY_2_SIZE,
-                        col={"xs": "12", "sm": "7", "md": "9"},
+                        col={"xs": "12"},
                     ),
                 ],
                 spacing=dimens.SPACE_XS,
                 run_spacing=0,
                 vertical_alignment=utils.CENTER_ALIGNMENT,
             ),
-            flet.ResponsiveRow(
+            views.mdSpace,
+            ResponsiveRow(
                 controls=[
-                    flet.Text(
+                    Text(
                         "Start date",
                         color=colors.GRAY_COLOR,
                         size=fonts.BODY_2_SIZE,
-                        col={"xs": "12", "sm": "5", "md": "3"},
+                        col={"xs": "12"},
                     ),
-                    flet.Text(
-                        self.contract.start_date.strftime("%d/%m/%Y")
-                        if self.contract.start_date
-                        else "",
-                        size=fonts.BODY_2_SIZE,
-                        col={"xs": "12", "sm": "7", "md": "9"},
+                    Container(
+                        Text(
+                            self.contract.start_date.strftime("%d/%m/%Y")
+                            if self.contract.start_date
+                            else "",
+                            size=fonts.BODY_2_SIZE,
+                            col={"xs": "12"},
+                        ),
                     ),
                 ],
+                alignment=utils.START_ALIGNMENT,
+                vertical_alignment=utils.START_ALIGNMENT,
                 spacing=dimens.SPACE_XS,
                 run_spacing=0,
-                vertical_alignment=utils.CENTER_ALIGNMENT,
             ),
-            flet.ResponsiveRow(
+            views.mdSpace,
+            ResponsiveRow(
                 controls=[
-                    flet.Text(
+                    Text(
                         "End date",
                         color=colors.GRAY_COLOR,
                         size=fonts.BODY_2_SIZE,
-                        col={"xs": "12", "sm": "5", "md": "3"},
+                        col={"xs": "12"},
                     ),
-                    flet.Text(
-                        self.contract.end_date.strftime("%d/%m/%Y")
-                        if self.contract.end_date
-                        else "",
-                        size=fonts.BODY_2_SIZE,
-                        color=colors.ERROR_COLOR,
-                        col={"xs": "12", "sm": "7", "md": "9"},
+                    Container(
+                        Text(
+                            self.contract.end_date.strftime("%d/%m/%Y")
+                            if self.contract.end_date
+                            else "-",
+                            size=fonts.BODY_2_SIZE,
+                            col={"xs": "12"},
+                            color=colors.ERROR_COLOR,
+                        ),
                     ),
                 ],
+                alignment=utils.START_ALIGNMENT,
+                vertical_alignment=utils.START_ALIGNMENT,
                 spacing=dimens.SPACE_XS,
                 run_spacing=0,
-                vertical_alignment=utils.CENTER_ALIGNMENT,
-            ),
-            views.view_edit_delete_pop_up(
-                on_click_view=lambda e: self.on_click_view(self.contract.id),
-                on_click_edit=lambda e: self.on_click_edit(self.contract.id),
-                on_click_delete=lambda e: self.on_click_delete(self.contract.id),
             ),
         ]
-        return flet.Card(
+        return Card(
             elevation=2,
             expand=True,
-            content=flet.Container(
+            content=Container(
                 expand=True,
-                padding=flet.padding.all(dimens.SPACE_STD),
-                border_radius=flet.border_radius.all(12),
-                content=self.product_info_container,
+                padding=padding.all(dimens.SPACE_STD),
+                border_radius=border_radius.all(12),
+                content=self.contract_info_container,
             ),
         )
 
 
-class ContractEditorScreen(TuttleView, flet.UserControl):
+class ContractEditorScreen(TuttleView, UserControl):
     def __init__(
         self,
         params: TuttleViewParams,
@@ -424,20 +462,20 @@ class ContractEditorScreen(TuttleView, flet.UserControl):
         self.submit_btn = views.get_primary_btn(
             label="Create Contract", on_click=self.on_save
         )
-        view = flet.Container(
+        view = Container(
             expand=True,
-            padding=flet.padding.all(dimens.SPACE_MD),
-            margin=flet.margin.symmetric(vertical=dimens.SPACE_MD),
-            content=flet.Card(
+            padding=padding.all(dimens.SPACE_MD),
+            margin=margin.symmetric(vertical=dimens.SPACE_MD),
+            content=Card(
                 expand=True,
-                content=flet.Container(
-                    flet.Column(
+                content=Container(
+                    Column(
                         expand=True,
                         controls=[
-                            flet.Row(
+                            Row(
                                 controls=[
-                                    flet.IconButton(
-                                        icon=flet.icons.CHEVRON_LEFT_ROUNDED,
+                                    IconButton(
+                                        icon=icons.CHEVRON_LEFT_ROUNDED,
                                         on_click=self.on_navigate_back,
                                     ),
                                     views.get_headline_with_subtitle(
@@ -457,14 +495,14 @@ class ContractEditorScreen(TuttleView, flet.UserControl):
                             self.vatRate_field,
                             self.volume_field,
                             views.smSpace,
-                            flet.Row(
+                            Row(
                                 alignment=utils.SPACE_BETWEEN_ALIGNMENT,
                                 vertical_alignment=utils.CENTER_ALIGNMENT,
                                 spacing=dimens.SPACE_STD,
                                 controls=[
                                     self.clients_field,
-                                    flet.IconButton(
-                                        icon=flet.icons.ADD_CIRCLE_OUTLINE,
+                                    IconButton(
+                                        icon=icons.ADD_CIRCLE_OUTLINE,
                                         on_click=self.on_add_client_clicked,
                                     ),
                                 ],
@@ -483,7 +521,7 @@ class ContractEditorScreen(TuttleView, flet.UserControl):
                             self.submit_btn,
                         ],
                     ),
-                    padding=flet.padding.all(dimens.SPACE_MD),
+                    padding=padding.all(dimens.SPACE_MD),
                     width=dimens.MIN_WINDOW_WIDTH,
                 ),
             ),
@@ -504,7 +542,7 @@ class ContractStates(Enum):
     UPCOMING = 4
 
 
-class ContractFiltersView(flet.UserControl):
+class ContractFiltersView(UserControl):
     """Create and Handles contracts view filtering buttons"""
 
     def __init__(self, onStateChanged: Callable[[ContractStates], None]):
@@ -519,7 +557,7 @@ class ContractFiltersView(flet.UserControl):
         label: str,
         onClick: Callable[[ContractStates], None],
     ):
-        button = flet.ElevatedButton(
+        button = ElevatedButton(
             text=label,
             col={"xs": 6, "sm": 3, "lg": 2},
             on_click=lambda e: onClick(state),
@@ -527,7 +565,7 @@ class ContractFiltersView(flet.UserControl):
             color=colors.PRIMARY_COLOR
             if state == self.current_state
             else colors.GRAY_COLOR,
-            style=flet.ButtonStyle(
+            style=ButtonStyle(
                 elevation={
                     utils.PRESSED: 3,
                     utils.SELECTED: 3,
@@ -570,13 +608,13 @@ class ContractFiltersView(flet.UserControl):
             # set the buttons
             self.set_filter_buttons()
 
-        self.filters = flet.ResponsiveRow(
+        self.filters = ResponsiveRow(
             controls=list(self.state_to_filter_btns_map.values())
         )
         return self.filters
 
 
-class CreateContractScreen(TuttleView, flet.UserControl):
+class CreateContractScreen(TuttleView, UserControl):
     def __init__(self, params):
         super().__init__(params=params)
         self.horizontal_alignment_in_parent = utils.CENTER_ALIGNMENT
@@ -854,20 +892,20 @@ class CreateContractScreen(TuttleView, flet.UserControl):
         self.submit_btn = views.get_primary_btn(
             label="Create Contract", on_click=self.on_save
         )
-        view = flet.Container(
+        view = Container(
             expand=True,
-            padding=flet.padding.all(dimens.SPACE_MD),
-            margin=flet.margin.symmetric(vertical=dimens.SPACE_MD),
-            content=flet.Card(
+            padding=padding.all(dimens.SPACE_MD),
+            margin=margin.symmetric(vertical=dimens.SPACE_MD),
+            content=Card(
                 expand=True,
-                content=flet.Container(
-                    flet.Column(
+                content=Container(
+                    Column(
                         expand=True,
                         controls=[
-                            flet.Row(
+                            Row(
                                 controls=[
-                                    flet.IconButton(
-                                        icon=flet.icons.CHEVRON_LEFT_ROUNDED,
+                                    IconButton(
+                                        icon=icons.CHEVRON_LEFT_ROUNDED,
                                         on_click=self.on_navigate_back,
                                     ),
                                     views.get_headline_with_subtitle(
@@ -887,14 +925,14 @@ class CreateContractScreen(TuttleView, flet.UserControl):
                             self.vat_rate_field,
                             self.volume_field,
                             views.smSpace,
-                            flet.Row(
+                            Row(
                                 alignment=utils.SPACE_BETWEEN_ALIGNMENT,
                                 vertical_alignment=utils.CENTER_ALIGNMENT,
                                 spacing=dimens.SPACE_STD,
                                 controls=[
                                     self.clients_field,
-                                    flet.IconButton(
-                                        icon=flet.icons.ADD_CIRCLE_OUTLINE,
+                                    IconButton(
+                                        icon=icons.ADD_CIRCLE_OUTLINE,
                                         on_click=self.on_add_client_clicked,
                                     ),
                                 ],
@@ -913,7 +951,7 @@ class CreateContractScreen(TuttleView, flet.UserControl):
                             self.submit_btn,
                         ],
                     ),
-                    padding=flet.padding.all(dimens.SPACE_MD),
+                    padding=padding.all(dimens.SPACE_MD),
                     width=dimens.MIN_WINDOW_WIDTH,
                 ),
             ),
@@ -929,19 +967,19 @@ class CreateContractScreen(TuttleView, flet.UserControl):
             print(e)
 
 
-class ContractsListView(TuttleView, flet.UserControl):
+class ContractsListView(TuttleView, UserControl):
     def __init__(self, params: TuttleViewParams):
         super().__init__(params)
         self.intent = ContractsIntent()
         self.loading_indicator = views.horizontal_progress
-        self.no_contracts_control = flet.Text(
+        self.no_contracts_control = Text(
             value="You have not added any contracts yet",
             color=colors.ERROR_COLOR,
             visible=False,
         )
-        self.title_control = flet.ResponsiveRow(
+        self.title_control = ResponsiveRow(
             controls=[
-                flet.Column(
+                Column(
                     col={"xs": 12},
                     controls=[
                         views.get_headline_txt(
@@ -953,7 +991,7 @@ class ContractsListView(TuttleView, flet.UserControl):
                 )
             ]
         )
-        self.contracts_container = flet.GridView(
+        self.contracts_container = GridView(
             expand=False,
             max_extent=540,
             child_aspect_ratio=1.0,
@@ -1038,13 +1076,13 @@ class ContractsListView(TuttleView, flet.UserControl):
         self.update_self()
 
     def build(self):
-        view = flet.Column(
+        view = Column(
             controls=[
                 self.title_control,
                 views.mdSpace,
                 ContractFiltersView(onStateChanged=self.on_filter_contracts),
                 views.mdSpace,
-                flet.Container(self.contracts_container, expand=True),
+                Container(self.contracts_container, expand=True),
             ]
         )
         return view
@@ -1055,7 +1093,7 @@ class ContractsListView(TuttleView, flet.UserControl):
             self.pop_up_handler.dimiss_open_dialogs()
 
 
-class ViewContractScreen(TuttleView, flet.UserControl):
+class ViewContractScreen(TuttleView, UserControl):
     def __init__(
         self,
         params: TuttleViewParams,
@@ -1132,9 +1170,9 @@ class ViewContractScreen(TuttleView, flet.UserControl):
             self.on_navigate_back()
 
     def get_body_element(self, label, control):
-        return flet.ResponsiveRow(
+        return ResponsiveRow(
             controls=[
-                flet.Text(
+                Text(
                     label,
                     color=colors.GRAY_COLOR,
                     size=fonts.BODY_2_SIZE,
@@ -1151,92 +1189,90 @@ class ViewContractScreen(TuttleView, flet.UserControl):
 
     def build(self):
         """Called when page is built"""
-        self.edit_contract_btn = flet.IconButton(
-            icon=flet.icons.EDIT_OUTLINED,
+        self.edit_contract_btn = IconButton(
+            icon=icons.EDIT_OUTLINED,
             tooltip="Edit contract",
             on_click=self.on_edit_clicked,
         )
-        self.mark_as_complete_btn = flet.IconButton(
-            icon=flet.icons.CHECK_CIRCLE_OUTLINE,
+        self.mark_as_complete_btn = IconButton(
+            icon=icons.CHECK_CIRCLE_OUTLINE,
             icon_color=colors.PRIMARY_COLOR,
             tooltip="Mark contract as completed",
             on_click=self.on_mark_as_complete_clicked,
         )
-        self.delete_contract_btn = flet.IconButton(
-            icon=flet.icons.DELETE_OUTLINE_ROUNDED,
+        self.delete_contract_btn = IconButton(
+            icon=icons.DELETE_OUTLINE_ROUNDED,
             icon_color=colors.ERROR_COLOR,
             tooltip="Delete contract",
             on_click=self.on_delete_clicked,
         )
 
-        self.client_control = flet.Text(
+        self.client_control = Text(
             size=fonts.SUBTITLE_2_SIZE,
         )
-        self.contract_title_control = flet.Text(
+        self.contract_title_control = Text(
             size=fonts.SUBTITLE_1_SIZE,
         )
-        self.billing_cycle_control = flet.Text(
+        self.billing_cycle_control = Text(
             size=fonts.BODY_1_SIZE,
             text_align=utils.TXT_ALIGN_JUSTIFY,
         )
-        self.rate_control = flet.Text(
+        self.rate_control = Text(
             size=fonts.BODY_1_SIZE,
             text_align=utils.TXT_ALIGN_JUSTIFY,
         )
-        self.currency_control = flet.Text(
+        self.currency_control = Text(
             size=fonts.BODY_1_SIZE,
             text_align=utils.TXT_ALIGN_JUSTIFY,
         )
-        self.vat_rate_control = flet.Text(
+        self.vat_rate_control = Text(
             size=fonts.BODY_1_SIZE,
             text_align=utils.TXT_ALIGN_JUSTIFY,
         )
-        self.unit_control = flet.Text(
+        self.unit_control = Text(
             size=fonts.BODY_1_SIZE,
             text_align=utils.TXT_ALIGN_JUSTIFY,
         )
-        self.units_per_workday_control = flet.Text(
+        self.units_per_workday_control = Text(
             size=fonts.BODY_1_SIZE,
             text_align=utils.TXT_ALIGN_JUSTIFY,
         )
-        self.volume_control = flet.Text(
+        self.volume_control = Text(
             size=fonts.BODY_1_SIZE,
             text_align=utils.TXT_ALIGN_JUSTIFY,
         )
-        self.term_of_payment_control = flet.Text(
-            size=fonts.BODY_1_SIZE,
-            text_align=utils.TXT_ALIGN_JUSTIFY,
-        )
-
-        self.signature_date_control = flet.Text(
-            size=fonts.BODY_1_SIZE,
-            text_align=utils.TXT_ALIGN_JUSTIFY,
-        )
-        self.start_date_control = flet.Text(
-            size=fonts.BODY_1_SIZE,
-            text_align=utils.TXT_ALIGN_JUSTIFY,
-        )
-        self.end_date_control = flet.Text(
+        self.term_of_payment_control = Text(
             size=fonts.BODY_1_SIZE,
             text_align=utils.TXT_ALIGN_JUSTIFY,
         )
 
-        self.status_control = flet.Text(
-            size=fonts.BUTTON_SIZE, color=colors.PRIMARY_COLOR
+        self.signature_date_control = Text(
+            size=fonts.BODY_1_SIZE,
+            text_align=utils.TXT_ALIGN_JUSTIFY,
+        )
+        self.start_date_control = Text(
+            size=fonts.BODY_1_SIZE,
+            text_align=utils.TXT_ALIGN_JUSTIFY,
+        )
+        self.end_date_control = Text(
+            size=fonts.BODY_1_SIZE,
+            text_align=utils.TXT_ALIGN_JUSTIFY,
         )
 
-        page_view = flet.Row(
+        self.status_control = Text(size=fonts.BUTTON_SIZE, color=colors.PRIMARY_COLOR)
+
+        page_view = Row(
             [
-                flet.Container(
-                    padding=flet.padding.all(dimens.SPACE_STD),
+                Container(
+                    padding=padding.all(dimens.SPACE_STD),
                     width=int(dimens.MIN_WINDOW_WIDTH * 0.3),
-                    content=flet.Column(
+                    content=Column(
                         controls=[
-                            flet.IconButton(
-                                icon=flet.icons.KEYBOARD_ARROW_LEFT,
+                            IconButton(
+                                icon=icons.KEYBOARD_ARROW_LEFT,
                                 on_click=self.on_navigate_back,
                             ),
-                            flet.TextButton(
+                            TextButton(
                                 "Client",
                                 tooltip="View contract's client",
                                 on_click=self.on_view_client_clicked,
@@ -1244,31 +1280,31 @@ class ViewContractScreen(TuttleView, flet.UserControl):
                         ]
                     ),
                 ),
-                flet.Container(
+                Container(
                     expand=True,
-                    padding=flet.padding.all(dimens.SPACE_MD),
-                    content=flet.Column(
+                    padding=padding.all(dimens.SPACE_MD),
+                    content=Column(
                         controls=[
                             self.loading_indicator,
-                            flet.Row(
+                            Row(
                                 controls=[
-                                    flet.Icon(flet.icons.HANDSHAKE_ROUNDED),
-                                    flet.Column(
+                                    Icon(icons.HANDSHAKE_ROUNDED),
+                                    Column(
                                         expand=True,
                                         spacing=0,
                                         run_spacing=0,
                                         controls=[
-                                            flet.Row(
+                                            Row(
                                                 vertical_alignment=utils.CENTER_ALIGNMENT,
                                                 alignment=utils.SPACE_BETWEEN_ALIGNMENT,
                                                 controls=[
-                                                    flet.Text(
+                                                    Text(
                                                         "Contract",
                                                         size=fonts.HEADLINE_4_SIZE,
                                                         font_family=fonts.HEADLINE_FONT,
                                                         color=colors.PRIMARY_COLOR,
                                                     ),
-                                                    flet.Row(
+                                                    Row(
                                                         vertical_alignment=utils.CENTER_ALIGNMENT,
                                                         alignment=utils.SPACE_BETWEEN_ALIGNMENT,
                                                         spacing=dimens.SPACE_STD,
@@ -1316,16 +1352,16 @@ class ViewContractScreen(TuttleView, flet.UserControl):
                             ),
                             self.get_body_element("End Date", self.end_date_control),
                             views.mdSpace,
-                            flet.Row(
+                            Row(
                                 spacing=dimens.SPACE_STD,
                                 run_spacing=dimens.SPACE_STD,
                                 alignment=utils.START_ALIGNMENT,
                                 vertical_alignment=utils.CENTER_ALIGNMENT,
                                 controls=[
-                                    flet.Card(
-                                        flet.Container(
+                                    Card(
+                                        Container(
                                             self.status_control,
-                                            padding=flet.padding.all(dimens.SPACE_SM),
+                                            padding=padding.all(dimens.SPACE_SM),
                                         ),
                                         elevation=2,
                                     ),
