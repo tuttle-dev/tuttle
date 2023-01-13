@@ -353,8 +353,8 @@ class ViewProjectScreen(TuttleView, UserControl):
             # go back
             self.on_navigate_back()
 
-    def on_window_resized(self, desired_width, height):
-        super().on_window_resized(desired_width, height)
+    def on_window_resized_listener(self, desired_width, height):
+        super().on_window_resized_listener(desired_width, height)
         desired_width = self.page_width * 0.4
         min_chart_width = dimens.MIN_WINDOW_WIDTH * 0.7
         chart_width = (

@@ -94,8 +94,8 @@ class PreferencesScreen(TuttleView, UserControl):
             if self.mounted:
                 self.update()
 
-    def on_window_resized(self, width, height):
-        super().on_window_resized(width, height)
+    def on_window_resized_listener(self, width, height):
+        super().on_window_resized_listener(width, height)
         self.body_width = width - self.sideBar.width - SPACE_MD * 2
         self.body.width = self.body_width
         self.tabs.width = self.body_width - SPACE_MD

@@ -482,10 +482,10 @@ class HomeScreen(TuttleView, UserControl):
         if self.dialog:
             self.dialog.dimiss_open_dialogs()
 
-    def on_window_resized(self, width, height):
+    def on_window_resized_listener(self, width, height):
         if not self.mounted:
             return
-        super().on_window_resized(width, height)
+        super().on_window_resized_listener(width, height)
         self.view.height = self.page_height
         DESTINATION_CONTENT_PERCENT_HEIGHT = self.page_height - (
             self.action_bar.height + self.footer.height + 50
