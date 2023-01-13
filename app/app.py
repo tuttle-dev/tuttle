@@ -5,9 +5,11 @@ from loguru import logger
 from pathlib import Path
 import sqlmodel
 
-import flet
+
 from flet import (
+    app,
     Page,
+    FilePicker,
     FilePickerUploadFile,
     AlertDialog,
     SnackBar,
@@ -75,7 +77,7 @@ class TuttleApp:
         self.page.window_min_height = MIN_WINDOW_HEIGHT
         self.page.window_width = MIN_WINDOW_WIDTH * 2
         self.page.window_height = MIN_WINDOW_HEIGHT * 2
-        self.file_picker = flet.FilePicker()
+        self.file_picker = FilePicker()
         self.page.overlay.append(self.file_picker)
 
         """holds the RouteView object associated with a route
@@ -391,6 +393,4 @@ def main(page: Page):
 
 
 if __name__ == "__main__":
-    flet.app(
-        name="Tuttle", target=main, assets_dir="assets", upload_dir=get_uploads_url()
-    )
+    app(name="Tuttle", target=main, assets_dir="assets", upload_dir=get_uploads_url())
