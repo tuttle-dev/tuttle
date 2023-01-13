@@ -121,7 +121,7 @@ class InvoicingEditorPopUp(DialogHandler, UserControl):
 class InvoicingListView(TuttleView, UserControl):
     def __init__(self, params: TuttleViewParams):
         super().__init__(params=params)
-        self.intent_handler = InvoicingIntent()
+        self.intent = InvoicingIntent()
         self.invoices_to_display = {}
         self.contacts = {}
         self.active_projects = {}
@@ -164,12 +164,12 @@ class InvoicingListView(TuttleView, UserControl):
         self.editor.open_dialog()
 
     def on_mail_invoice(self, invoice: Invoice):
-        result = self.intent_handler.mail_an_invoice(invoice)
+        result = self.intent.send_invoice_by_mail_intent(invoice)
         if not result.was_intent_successful:
             self.show_snack(result.error_msg, is_error=True)
 
     def on_print_invoice(self, invoice: Invoice):
-        result = self.intent_handler.print_an_invoice(invoice)
+        result = self.intent.generate_invoice_doc_intent(invoice)
         if not result.was_intent_successful:
             self.show_snack(result.error_msg, is_error=True)
 
@@ -190,7 +190,7 @@ class InvoicingListView(TuttleView, UserControl):
         self.loading_indicator.visible = True
         if self.mounted:
             self.update()
-        result = self.intent_handler.delete_invoice_by_id(invoice_id)
+        result = self.intent.delete_invoice_by_id_intent(invoice_id)
         is_error = not result.was_intent_successful
         msg = result.error_msg if is_error else "Invoice deleted!"
         self.show_snack(msg, is_error)
@@ -206,7 +206,7 @@ class InvoicingListView(TuttleView, UserControl):
         self.loading_indicator.visible = True
         if self.mounted:
             self.update()
-        result: IntentResult = self.intent_handler.save_invoice(invoice, project)
+        result: IntentResult = self.intent.save_invoice_intent(invoice, project)
         if not result.was_intent_successful:
             self.show_snack(result.error_msg, True)
         else:
@@ -226,7 +226,7 @@ class InvoicingListView(TuttleView, UserControl):
         self.loading_indicator.visible = True
         if self.mounted:
             self.update()
-        result: IntentResult = self.intent_handler.toggle_invoice_status(
+        result: IntentResult = self.intent.toggle_invoice_status_intent(
             invoice, status_to_toggle
         )
         if not result.was_intent_successful:
@@ -243,8 +243,8 @@ class InvoicingListView(TuttleView, UserControl):
     def did_mount(self):
         self.mounted = True
         self.loading_indicator.visible = True
-        self.active_projects = self.intent_handler.get_all_projects_as_map()
-        self.invoices_to_display = self.intent_handler.get_all_invoices_as_map()
+        self.active_projects = self.intent.get_active_projects_as_map_intent()
+        self.invoices_to_display = self.intent.get_all_invoices_as_map_intent()
         count = len(self.invoices_to_display)
         self.loading_indicator.visible = False
         if count == 0:

@@ -1,5 +1,3 @@
-"""  """
-from loguru import logger
 from typing import Mapping
 from core.intent_result import IntentResult
 
@@ -9,74 +7,95 @@ from projects.intent import ProjectsIntent
 
 
 class InvoicingIntent:
+    """Handles Invoicing C_R_U_D intents
+
+    Intents handled (Methods)
+    ---------------
+    toggle_invoice_status_intent
+        toggles a status related property of an invoice
+    generate_invoice_doc_intent
+        generating a pdf document given an invoice
+    send_invoice_by_mail_intent
+        sending an invoice as attachment via a mail client
+    save_invoice_intent
+        saving or updating an invoice
+    delete_invoice_by_id_intent
+        deleting an invoice given it's id
+    get_all_invoices_as_map_intent
+        fetching all existing invoices as a map of invoice IDs to invoices
+    get_invoices_for_project_as_map_intent
+        fetching all existing invoices that correspond to a specific project as a map of invoice IDs to invoices
+    get_active_projects_as_map_intent
+        fetching all currently active projects
+    """
+
     def __init__(self):
-        self.projects_intent = ProjectsIntent()
-        self.data_source = InvoicingDataSource()
+        """
+        Attributes
+        ----------
+        _data_source : InvoicingDataSource
+            reference to the invoicing data source
+        _projects_intent : ProjectsIntent
+            reference to the ProjectsIntent for forwarding project related intents
+        """
+        self._projects_intent = ProjectsIntent()
+        self._data_source = InvoicingDataSource()
 
-    def get_all_projects_as_map(self) -> Mapping[int, Project]:
-        """if successful returns a map of active projects"""
-        return self.projects_intent.get_active_projects()
+    def get_active_projects_as_map_intent(self) -> Mapping[int, Project]:
+        return self._projects_intent.get_active_projects_as_map_intent()
 
-    def get_invoices_for_project_as_map(self, project_id) -> IntentResult:
-        """returns data as a map of invoices associated with a given project
-        or an empty map if none exists"""
-        result = self.data_source.get_invoices_for_project(project_id)
+    def get_invoices_for_project_as_map_intent(self, project_id) -> IntentResult:
+        result = self._data_source.get_invoices_for_project(project_id)
         if result.was_intent_successful and result.data:
             invoices_list = result.data
             invoices_map = {invoice.id: invoice for invoice in invoices_list}
             return invoices_map
         else:
             if not result.was_intent_successful:
-                logger.error(result.log_message)
-                logger.exception(result.exception)
+                result.log_message_if_any()
             return {}
 
-    def get_all_invoices_as_map(self) -> Mapping[int, Invoice]:
-        """returns data as a map of all invoices in the database"""
-        result = self.data_source.get_all_invoices()
+    def get_all_invoices_as_map_intent(self) -> Mapping[int, Invoice]:
+        result = self._data_source.get_all_invoices()
         if result.was_intent_successful:
             invoices = result.data
             invoices_map = {invoice.id: invoice for invoice in invoices}
             return invoices_map
         else:
-            logger.error(result.log_message)
-            logger.exception(result.exception)
+            result.log_message_if_any()
             return {}
 
-    def delete_invoice_by_id(self, invoice_id) -> IntentResult:
-        result: IntentResult = self.data_source.delete_invoice_by_id(invoice_id)
+    def delete_invoice_by_id_intent(self, invoice_id) -> IntentResult:
+        result: IntentResult = self._data_source.delete_invoice_by_id(invoice_id)
         if not result.was_intent_successful:
-            logger.error(result.log_message)
-            logger.exception(result.exception)
+            result.log_message_if_any()
             result.error_msg = "Deleting invoice failed! Please retry"
         return result
 
-    def save_invoice(self, invoice: Invoice, project: Project) -> IntentResult:
-        """Handles creating or updating an invoice
-        if successful returns data as the saved invoice
-        """
-        result: IntentResult = self.data_source.create_or_update_invoice(
+    def save_invoice_intent(self, invoice: Invoice, project: Project) -> IntentResult:
+        result: IntentResult = self._data_source.create_or_update_invoice(
             invoice, project
         )
         if not result.was_intent_successful:
-            logger.error(result.log_message)
-            logger.exception(result.exception)
+            result.log_message_if_any()
             result.error_msg = "failed to save the invoice! Please retry"
         return result
 
-    def mail_an_invoice(self, invoice: Invoice) -> IntentResult:
+    def send_invoice_by_mail_intent(self, invoice: Invoice) -> IntentResult:
         """TODO attempts to trigger the mail client to send the intent as attachment"""
         return IntentResult(
             was_intent_successful=False, error_msg="Un Implemented Error"
         )
 
-    def print_an_invoice(self, invoice: Invoice) -> IntentResult:
+    def generate_invoice_doc_intent(self, invoice: Invoice) -> IntentResult:
         """TODO Attempts to generate the invoice as a pdf and open the location"""
         return IntentResult(
             was_intent_successful=False, error_msg="Un Implemented Error"
         )
 
-    def toggle_invoice_status(self, invoice: Invoice, status_to_toggle: InvoiceStatus):
+    def toggle_invoice_status_intent(
+        self, invoice: Invoice, status_to_toggle: InvoiceStatus
+    ) -> IntentResult:
         if status_to_toggle.value == InvoiceStatus.SENT.value:
             invoice.sent = not invoice.sent
         elif status_to_toggle.value == InvoiceStatus.PAID.value:
@@ -85,9 +104,8 @@ class InvoicingIntent:
             invoice.cancelled = not invoice.cancelled
         else:
             return
-        result: IntentResult = self.data_source.update_invoice(invoice)
+        result: IntentResult = self._data_source.update_invoice(invoice)
         if not result.was_intent_successful:
             result.error_msg = "Failed to update status of the invoice. Please retry"
-            logger.error(result.log_message)
-            logger.exception(result.exception)
+            result.log_message_if_any()
         return result

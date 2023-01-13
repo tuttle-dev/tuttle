@@ -381,7 +381,7 @@ class ClientEditorPopUp(DialogHandler, UserControl):
 class ClientsListView(TuttleView, UserControl):
     def __init__(self, params: TuttleViewParams):
         super().__init__(params=params)
-        self.intent_handler = ClientsIntent()
+        self.intent = ClientsIntent()
         self.loading_indicator = views.horizontal_progress
         self.no_clients_control = Text(
             value="You have not added any clients yet.",
@@ -426,10 +426,10 @@ class ClientsListView(TuttleView, UserControl):
         return
 
     def load_all_clients(self):
-        self.clients_to_display = self.intent_handler.get_all_clients_as_map()
+        self.clients_to_display = self.intent.get_all_clients_as_map_intent()
 
     def load_all_contacts(self):
-        self.contacts = self.intent_handler.get_all_contacts_as_map()
+        self.contacts = self.intent.get_all_contacts_as_map_intent()
 
     def refresh_clients(self):
         self.clients_container.controls.clear()
@@ -470,7 +470,7 @@ class ClientsListView(TuttleView, UserControl):
         self.loading_indicator.visible = True
         if self.mounted:
             self.update()
-        result = self.intent_handler.delete_client_by_id(client_id)
+        result = self.intent.delete_client_by_id_intent(client_id)
         is_error = not result.was_intent_successful
         msg = result.error_msg if is_error else "Client deleted!"
         self.show_snack(msg, is_error)
@@ -486,7 +486,7 @@ class ClientsListView(TuttleView, UserControl):
         self.loading_indicator.visible = True
         if self.mounted:
             self.update()
-        result: IntentResult = self.intent_handler.save_client(client_to_save)
+        result: IntentResult = self.intent.save_client_intent(client_to_save)
         if not result.was_intent_successful:
             self.show_snack(result.error_msg, True)
         else:

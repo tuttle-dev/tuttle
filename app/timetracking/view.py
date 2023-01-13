@@ -182,7 +182,7 @@ class TimeTrackingView(TuttleView, UserControl):
 
     def __init__(self, params):
         super().__init__(params)
-        self.intent_handler = TimeTrackingIntent(local_storage=params.local_storage)
+        self.intent = TimeTrackingIntent(local_storage=params.local_storage)
         self.loading_indicator = ProgressRing(
             width=32,
             height=32,
@@ -263,7 +263,7 @@ class TimeTrackingView(TuttleView, UserControl):
 
         if e.progress == 1.0:
             self.set_progress_hint(f"Upload complete, processing file...")
-            result = self.intent_handler.process_timetracking_file(
+            result = self.intent.process_timetracking_file_intent(
                 self.uploaded_file_url, e.file_name
             )
             msg = (
@@ -296,7 +296,7 @@ class TimeTrackingView(TuttleView, UserControl):
         self.set_progress_hint(f"Loading data from your calendar...")
 
         save_cloud_acc_as_preferred = is_empty_str(self.preferred_cloud_acc)
-        result = self.intent_handler.configure_account_and_load_calendar(
+        result = self.intent.configure_account_and_load_calendar_intent(
             info,
             save_cloud_acc_as_preferred,
         )
@@ -322,7 +322,7 @@ class TimeTrackingView(TuttleView, UserControl):
         self.no_timetrack_control.visible = True
 
     def load_preferred_cloud_acc(self):
-        result = self.intent_handler.get_preferred_cloud_account()
+        result = self.intent.get_preferred_cloud_account_intent()
         if result.was_intent_successful:
             self.preferred_cloud_provider = result.data[0]
             self.preferred_cloud_acc = result.data[1]

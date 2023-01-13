@@ -124,7 +124,7 @@ class ContractEditorScreen(TuttleView, flet.UserControl):
             params,
         )
         self.horizontal_alignment_in_parent = utils.CENTER_ALIGNMENT
-        self.intent_handler = ContractsIntent()
+        self.intent = ContractsIntent()
 
         self.loading_indicator = views.horizontal_progress
         self.new_client_pop_up = None
@@ -239,7 +239,7 @@ class ContractEditorScreen(TuttleView, flet.UserControl):
     ):
         if self.contract_id is None:
             return
-        result = self.intent_handler.get_contract_by_id(self.contract_id)
+        result = self.intent.get_contract_by_id_intent(self.contract_id)
         if result.was_intent_successful:
             self.contract_to_edit = result.data
         else:
@@ -248,14 +248,14 @@ class ContractEditorScreen(TuttleView, flet.UserControl):
             )
 
     def load_clients(self):
-        self.clients_map = self.intent_handler.get_all_clients_as_map()
+        self.clients_map = self.intent.get_all_clients_as_map_intent()
         self.clients_field.error_text = (
             "Please create a new client" if len(self.clients_map) == 0 else None
         )
         views.update_dropdown_items(self.clients_field, self.get_clients_as_list())
 
     def load_contacts(self):
-        self.contacts_map = self.intent_handler.get_all_contacts_as_map()
+        self.contacts_map = self.intent.get_all_contacts_as_map_intent()
 
     def get_clients_as_list(self):
         """transforms a map of id-client_title to a list for dropdown options"""
@@ -300,7 +300,7 @@ class ContractEditorScreen(TuttleView, flet.UserControl):
 
     def on_client_set_from_pop_up(self, client):
         if client:
-            result: IntentResult = self.intent_handler.save_client(client)
+            result: IntentResult = self.intent.save_client_intent(client)
             if result.was_intent_successful:
                 self.selected_client: Client = result.data
                 self.clients_map[self.selected_client.id] = self.selected_client
@@ -349,7 +349,7 @@ class ContractEditorScreen(TuttleView, flet.UserControl):
             return
 
         self.show_progress_bar_disable_action()
-        result: IntentResult = self.intent_handler.save_contract(
+        result: IntentResult = self.intent.save_contract_intent(
             title=self.title,
             signature_date=signatureDate,
             start_date=startDate,
@@ -615,7 +615,7 @@ class CreateContractScreen(TuttleView, flet.UserControl):
     def __init__(self, params):
         super().__init__(params=params)
         self.horizontal_alignment_in_parent = utils.CENTER_ALIGNMENT
-        self.intent_handler = ContractsIntent()
+        self.intent = ContractsIntent()
 
         self.loading_indicator = views.horizontal_progress
         self.new_client_pop_up: Optional[DialogHandler] = None
@@ -714,14 +714,14 @@ class CreateContractScreen(TuttleView, flet.UserControl):
             self.update()
 
     def load_clients(self):
-        self.clients_map = self.intent_handler.get_all_clients_as_map()
+        self.clients_map = self.intent.get_all_clients_as_map_intent()
         self.clients_field.error_text = (
             "Please create a new client" if len(self.clients_map) == 0 else None
         )
         views.update_dropdown_items(self.clients_field, self.get_clients_as_list())
 
     def load_contacts(self):
-        self.contacts_map = self.intent_handler.get_all_contacts_as_map()
+        self.contacts_map = self.intent.get_all_contacts_as_map_intent()
 
     def get_clients_as_list(self):
         """transforms a map of id-client_title to a list for dropdown options"""
@@ -765,7 +765,7 @@ class CreateContractScreen(TuttleView, flet.UserControl):
 
     def on_client_set_from_pop_up(self, client):
         if client:
-            result: IntentResult = self.intent_handler.save_client(client)
+            result: IntentResult = self.intent.save_client_intent(client)
             if result.was_intent_successful:
                 self.client: Client = result.data
                 self.clients_map[self.client.id] = self.client
@@ -814,7 +814,7 @@ class CreateContractScreen(TuttleView, flet.UserControl):
             return
 
         self.show_progress_bar_disable_action()
-        result: IntentResult = self.intent_handler.save_contract(
+        result: IntentResult = self.intent.save_contract_intent(
             title=self.title,
             signature_date=signatureDate,
             start_date=startDate,
@@ -989,7 +989,7 @@ class CreateContractScreen(TuttleView, flet.UserControl):
 class ContractsListView(TuttleView, flet.UserControl):
     def __init__(self, params: TuttleViewParams):
         super().__init__(params)
-        self.intent_handler = ContractsIntent()
+        self.intent = ContractsIntent()
         self.loading_indicator = views.horizontal_progress
         self.no_contracts_control = flet.Text(
             value="You have not added any contracts yet",
@@ -1058,7 +1058,7 @@ class ContractsListView(TuttleView, flet.UserControl):
         self.loading_indicator.visible = True
         if self.mounted:
             self.update()
-        result = self.intent_handler.delete_contract_by_id(contract_id=contract_id)
+        result = self.intent.delete_contract_by_id_intent(contract_id=contract_id)
         is_error = not result.was_intent_successful
         msg = "Contract deleted!" if not is_error else result.error_msg
         self.show_snack(msg, is_error)
@@ -1071,13 +1071,13 @@ class ContractsListView(TuttleView, flet.UserControl):
 
     def on_filter_contracts(self, filterByState: ContractStates):
         if filterByState.value == ContractStates.ACTIVE.value:
-            self.contracts_to_display = self.intent_handler.get_active_contracts()
+            self.contracts_to_display = self.intent.get_active_contracts_intent()
         elif filterByState.value == ContractStates.UPCOMING.value:
-            self.contracts_to_display = self.intent_handler.get_upcoming_contracts()
+            self.contracts_to_display = self.intent.get_upcoming_contracts_intent()
         elif filterByState.value == ContractStates.COMPLETED.value:
-            self.contracts_to_display = self.intent_handler.get_completed_contracts()
+            self.contracts_to_display = self.intent.get_completed_contracts_intent()
         else:
-            self.contracts_to_display = self.intent_handler.get_all_contracts_as_map()
+            self.contracts_to_display = self.intent.get_all_contracts_as_map_intent()
         self.display_currently_filtered_contracts()
         if self.mounted:
             self.update()
@@ -1089,7 +1089,7 @@ class ContractsListView(TuttleView, flet.UserControl):
         try:
             self.mounted = True
             self.loading_indicator.visible = True
-            self.contracts_to_display = self.intent_handler.get_all_contracts_as_map()
+            self.contracts_to_display = self.intent.get_all_contracts_as_map_intent()
             count = len(self.contracts_to_display)
             self.loading_indicator.visible = False
             if count == 0:
@@ -1127,7 +1127,7 @@ class ViewContractScreen(TuttleView, flet.UserControl):
         contract_id: str,
     ):
         super().__init__(params)
-        self.intent_handler = ContractsIntent()
+        self.intent = ContractsIntent()
         self.contract_id = contract_id
         self.loading_indicator = views.horizontal_progress
         self.contract: Optional[Contract] = None
@@ -1152,7 +1152,7 @@ class ViewContractScreen(TuttleView, flet.UserControl):
 
     def did_mount(self):
         self.mounted = True
-        result: IntentResult = self.intent_handler.get_contract_by_id(self.contract_id)
+        result: IntentResult = self.intent.get_contract_by_id_intent(self.contract_id)
         if not result.was_intent_successful:
             self.show_snack(result.error_msg, True)
         else:
@@ -1189,7 +1189,7 @@ class ViewContractScreen(TuttleView, flet.UserControl):
         self.pop_up_handler.open_dialog()
 
     def on_delete_confirmed(self, contract_id):
-        result = self.intent_handler.delete_contract_by_id(contract_id)
+        result = self.intent.delete_contract_by_id_intent(contract_id)
         is_err = not result.was_intent_successful
         msg = result.error_msg if is_err else "Contract deleted!"
         self.show_snack(msg, is_err)

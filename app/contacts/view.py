@@ -306,7 +306,7 @@ class ContactEditorPopUp(DialogHandler):
 class ContactsListView(TuttleView, UserControl):
     def __init__(self, params: TuttleViewParams):
         super().__init__(params)
-        self.intent_handler = ContactsIntent()
+        self.intent = ContactsIntent()
         self.loading_indicator = views.horizontal_progress
         self.no_contacts_control = Text(
             value="You have not added any contacts yet",
@@ -352,7 +352,7 @@ class ContactsListView(TuttleView, UserControl):
         self.loading_indicator.visible = True
         if self.mounted:
             self.update()
-        result: IntentResult = self.intent_handler.save_contact(contact)
+        result: IntentResult = self.intent.save_contact_intent(contact)
         if not result.was_intent_successful:
             self.show_snack(result.error_msg, True)
         else:
@@ -365,7 +365,7 @@ class ContactsListView(TuttleView, UserControl):
             self.update()
 
     def load_all_contacts(self):
-        self.contacts_to_display = self.intent_handler.get_all_contacts_as_map()
+        self.contacts_to_display = self.intent.get_all_contacts_as_map_intent()
 
     def refresh_list(self):
         self.contacts_container.controls.clear()
@@ -407,7 +407,7 @@ class ContactsListView(TuttleView, UserControl):
         self.loading_indicator.visible = True
         if self.mounted:
             self.update()
-        result = self.intent_handler.delete_contact_by_id(contact_id)
+        result = self.intent.delete_contact_by_id_intent(contact_id)
         is_error = False if result.was_intent_successful else True
         msg = "Contact deleted!" if not is_error else result.error_msg
         self.show_snack(msg, is_error)
@@ -422,7 +422,7 @@ class ContactsListView(TuttleView, UserControl):
         self.loading_indicator.visible = True
         if self.mounted:
             self.update()
-        result = self.intent_handler.save_contact(contact)
+        result = self.intent.save_contact_intent(contact)
         is_error = False if result.was_intent_successful else True
         msg = (
             "The contact's info has been updated" if not is_error else result.error_msg

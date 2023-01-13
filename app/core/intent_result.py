@@ -33,7 +33,8 @@ class IntentResult:
         self.log_message = log_message
         self.exception = exception
 
-    def log_message(self):
+    def log_message_if_any(self):
+        """Logs the log_message and exception if any"""
         if self.log_message:
             logger.error(self.log_message)
         if self.exception:

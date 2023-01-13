@@ -49,7 +49,7 @@ class PreferencesScreen(TuttleView, UserControl):
         on_theme_changed,
     ):
         super().__init__(params=params)
-        self.intent_handler = PreferencesIntent(client_storage=params.local_storage)
+        self.intent = PreferencesIntent(client_storage=params.local_storage)
         self.on_theme_changed_callback = on_theme_changed
         self.preferences: Optional[Preferences] = None
         self.currencies = []
@@ -238,7 +238,7 @@ class PreferencesScreen(TuttleView, UserControl):
             self.loading_indicator.visible = True
             self.update()
             self.set_available_currencies()
-            result: IntentResult = self.intent_handler.get_preferences()
+            result: IntentResult = self.intent.get_preferences_intent()
             if result.was_intent_successful:
                 self.preferences = result.data
                 self.refresh_preferences_items()
@@ -256,5 +256,5 @@ class PreferencesScreen(TuttleView, UserControl):
     def will_unmount(self):
         # save changes
         if self.preferences:
-            self.intent_handler.save_preferences(self.preferences)
+            self.intent.save_preferences_intent(self.preferences)
         self.mounted = False

@@ -5,10 +5,34 @@ from tuttle.model import User
 
 
 class AuthIntent:
-    def __init__(self):
-        self.data_source = UserDataSource()
+    """Handles User C_R_U_D intents
 
-    def create_user(
+    Intents handled (Methods)
+    ---------------
+
+    create_user_intent
+        creating the user
+
+    get_user_if_exists_intent
+        fetching the current user if exists
+
+    update_user_intent
+        updating a user's info
+
+    update_user_photo_path_intent
+        updating the photo path attr of the user
+    """
+
+    def __init__(self):
+        """
+        Attributes
+        ----------
+        _data_source : UserDatasource
+            reference to the user's data source
+        """
+        self._data_source = UserDataSource()
+
+    def create_user_intent(
         self,
         title: str,
         name: str,
@@ -20,20 +44,22 @@ class AuthIntent:
         city: str,
         country: str,
     ) -> IntentResult:
-        result = self.data_source.create_user(
+        result = self._data_source.create_user(
             title, name, email, phone, street, street_num, postal_code, city, country
         )
         if not result.was_intent_successful:
             result.error_msg = "Login failed! Please check the info and re-try"
+            result.log_message_if_any()
         return result
 
-    def get_user(self) -> IntentResult:
-        result = self.data_source.get_user()
+    def get_user_if_exists_intent(self) -> IntentResult:
+        result = self._data_source.get_user()
         if not result.was_intent_successful:
             result.error_msg = "Checking auth status failed! Please restart the app"
+            result.log_message_if_any()
         return result
 
-    def update_user(
+    def update_user_intent(
         self,
         user: User,
         title: str,
@@ -46,7 +72,7 @@ class AuthIntent:
         city: str,
         country: str,
     ) -> IntentResult:
-        result = self.data_source.update_user(
+        result = self._data_source.update_user(
             user,
             title,
             name,
@@ -60,17 +86,19 @@ class AuthIntent:
         )
         if not result.was_intent_successful:
             result.error_msg = "Failed to update your info! Please retry"
+            result.log_message_if_any()
         return result
 
-    def update_user_photo(
+    def update_user_photo_path_intent(
         self,
         user: User,
-        upload_url,
-    ):
-        result = self.data_source.update_user_photo_url(
+        photo_path,
+    ) -> IntentResult:
+        result = self._data_source.update_user_photo_path(
             user,
-            upload_url,
+            photo_path,
         )
         if not result.was_intent_successful:
             result.error_msg = "Setting profile photo failed. Please re-try"
+            result.log_message_if_any()
         return result

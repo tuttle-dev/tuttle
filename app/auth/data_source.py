@@ -132,7 +132,7 @@ class UserDataSource(SQLModelDataSourceMixin):
                 exception=e,
             )
 
-    def update_user_photo_url(
+    def update_user_photo_path(
         self,
         user: User,
         path: str,
