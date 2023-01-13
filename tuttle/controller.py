@@ -342,7 +342,7 @@ class Controller:
         invoice: Invoice,
     ):
         """Open an invoice in the preview application for PDF files"""
-        invoice_file_path = (
+        invoice_file_path = ( 
             self.home
             / self.preferences.invoice_dir
             / Path(invoice.prefix)

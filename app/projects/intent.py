@@ -81,6 +81,8 @@ class ProjectsIntent:
         return self.all_projects_cache
 
     def get_completed_projects(self) -> Mapping[int, Project]:
+        if not self.all_projects_cache:
+            self.get_all_projects_as_map()
         if not self.completed_projects_cache:
             self.completed_projects_cache = {}
             for key in self.all_projects_cache:
@@ -90,6 +92,8 @@ class ProjectsIntent:
         return self.completed_projects_cache
 
     def get_active_projects(self) -> Mapping[int, Project]:
+        if not self.all_projects_cache:
+            self.get_all_projects_as_map()
         if not self.active_projects_cache:
             self.active_projects_cache = {}
             for key in self.all_projects_cache:
@@ -99,6 +103,8 @@ class ProjectsIntent:
         return self.active_projects_cache
 
     def get_upcoming_projects(self) -> Mapping[int, Project]:
+        if not self.all_projects_cache:
+            self.get_all_projects_as_map()
         if not self.upcoming_projects_cache:
             self.upcoming_projects_cache = {}
             for key in self.all_projects_cache:

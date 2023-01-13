@@ -351,7 +351,7 @@ class StandardDropdown(Dropdown):
 class DateSelector(UserControl):
     """Date selector."""
 
-    def __init__(self, label: str):
+    def __init__(self, label: str, initialDate: Optional[datetime.date]):
         super().__init__()
         self.label = label
         self.initialDate = datetime.date.today()
@@ -541,7 +541,7 @@ class ConfirmDisplayPopUp(DialogHandler):
         self.on_proceed_callback(self.data_on_confirmed)
 
 
-def view_edit_delete_pop_up_item(icon, txt, on_click, is_delete: bool = False):
+def pop_up_menu_item(icon, txt, on_click, is_delete: bool = False):
     return PopupMenuItem(
         content=Row(
             [
@@ -564,24 +564,47 @@ def view_edit_delete_pop_up(
     delete_item_lbl="Delete",
     edit_item_lbl="Edit",
     on_click_view: Optional[Callable] = None,
+    prefix_menu_items: Optional[list[PopupMenuItem]] = None,
+    suffix_menu_items: Optional[list[PopupMenuItem]] = None,
 ):
     """Returns a pop up menu button with view (optional), edit and delete options"""
-    items = items = [
-        view_edit_delete_pop_up_item(
-            icons.EDIT_OUTLINED, txt=edit_item_lbl, on_click=on_click_edit
-        ),
-        view_edit_delete_pop_up_item(
-            icons.DELETE_OUTLINE,
-            txt=delete_item_lbl,
-            on_click=on_click_delete,
-            is_delete=True,
-        ),
-    ]
+    items = []
+    if prefix_menu_items:
+        items.extend(prefix_menu_items)
+    items.extend(
+        [
+            pop_up_menu_item(
+                icons.EDIT_OUTLINED, txt=edit_item_lbl, on_click=on_click_edit
+            ),
+            pop_up_menu_item(
+                icons.DELETE_OUTLINE,
+                txt=delete_item_lbl,
+                on_click=on_click_delete,
+                is_delete=True,
+            ),
+        ]
+    )
     if on_click_view:
         items.insert(
             0,
-            view_edit_delete_pop_up_item(
+            pop_up_menu_item(
                 icons.REMOVE_RED_EYE, txt=view_item_lbl, on_click=on_click_view
             ),
         )
+    if suffix_menu_items:
+        items.extend(suffix_menu_items)
     return PopupMenuButton(items=items)
+
+
+def status_label(txt: str, is_done: bool):
+    """Returns a text with a checked prefix icon"""
+    return Row(
+        controls=[
+            Icon(
+                icons.CHECK_CIRCLE_OUTLINE if is_done else icons.CHECK_BOX_OUTLINED,
+                size=14,
+                color=colors.PRIMARY_COLOR if is_done else colors.GRAY_COLOR,
+            ),
+            get_body_txt(txt),
+        ]
+    )

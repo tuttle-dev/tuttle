@@ -3,7 +3,7 @@
 import email
 from typing import Optional, List, Dict, Type
 from pydantic import constr, BaseModel, condecimal
-
+from enum import Enum
 import datetime
 import hashlib
 import uuid
@@ -426,6 +426,17 @@ class Timesheet(SQLModel, table=True):
         return len(self.items) == 0
 
 
+class InvoiceStatus(Enum):
+    """Status parameters of an Invoice item"""
+
+    SENT = "sent"
+    PAID = "paid"
+    CANCELLED = "cancelled"
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+
 class Invoice(SQLModel, table=True):
     """An invoice is a bill for a client."""
 
@@ -443,10 +454,10 @@ class Invoice(SQLModel, table=True):
     contract: Contract = Relationship(
         back_populates="invoices", sa_relationship_kwargs={"lazy": "subquery"}
     )
-    # status
-    sent: Optional[bool]
-    paid: Optional[bool]
-    cancelled: Optional[bool]
+    # status -- corresponds to InvoiceStatus enum above
+    sent: Optional[bool] = Field(default=False)
+    paid: Optional[bool] = Field(default=False)
+    cancelled: Optional[bool] = Field(default=False)
     # payment: Optional["Payment"] = Relationship(back_populates="invoice")
     # invoice items
     items: List["InvoiceItem"] = Relationship(

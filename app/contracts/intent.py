@@ -96,6 +96,8 @@ class ContractsIntent:
         return self.all_contracts_cache
 
     def get_completed_contracts(self) -> Mapping[str, Contract]:
+        if not self.all_contracts_cache:
+            self.get_all_contracts_as_map()
         if not self.completed_contracts_cache:
             self.completed_contracts_cache = {}
             for key in self.all_contracts_cache:
@@ -105,6 +107,8 @@ class ContractsIntent:
         return self.completed_contracts_cache
 
     def get_active_contracts(self):
+        if not self.all_contracts_cache:
+            self.get_all_contracts_as_map()
         if not self.active_contracts_cache:
             self.active_contracts_cache = {}
             for key in self.all_contracts_cache:
@@ -114,6 +118,8 @@ class ContractsIntent:
         return self.active_contracts_cache
 
     def get_upcoming_contracts(self):
+        if not self.all_contracts_cache:
+            self.get_all_contracts_as_map()
         if not self.upcoming_contracts_cache:
             self.upcoming_contracts_cache = {}
             for key in self.all_contracts_cache:

@@ -43,7 +43,7 @@ from core.views import (
     get_headline_with_subtitle,
     get_std_txt_field,
 )
-from invoicing.view import InvoicingView
+from invoicing.view import InvoicingListView
 from projects.view import ProjectsListView
 from res.colors import (
     BLACK_COLOR,
@@ -61,25 +61,15 @@ from res.dimens import (
     SPACE_SM,
     SPACE_STD,
     SPACE_XL,
-    SPACE_XS,
     TOOLBAR_HEIGHT,
 )
 from res.fonts import (
     BODY_2_SIZE,
     HEADLINE_4_SIZE,
     HEADLINE_FONT,
-    SUBTITLE_1_SIZE,
     SUBTITLE_2_SIZE,
 )
-from res.res_utils import (
-    ADD_CLIENT_INTENT,
-    ADD_CONTACT_INTENT,
-    CONTRACT_CREATOR_SCREEN_ROUTE,
-    NEW_TIME_TRACK_INTENT,
-    PREFERENCES_SCREEN_ROUTE,
-    PROFILE_SCREEN_ROUTE,
-    PROJECT_CREATOR_SCREEN_ROUTE,
-)
+from res import res_utils
 from timetracking.view import TimeTrackingView
 
 MIN_SIDE_BAR_WIDTH = int(MIN_WINDOW_WIDTH * 0.3)
@@ -242,7 +232,7 @@ class MainMenuItemsHandler:
                 icon=icons.WORK_OUTLINE,
                 selected_icon=icons.WORK_ROUNDED,
                 destination=self.projects_view,
-                on_new_screen_route=PROJECT_CREATOR_SCREEN_ROUTE,
+                on_new_screen_route=res_utils.PROJECT_CREATOR_SCREEN_ROUTE,
                 on_new_intent=None,
             ),
             MenuItem(
@@ -252,7 +242,7 @@ class MainMenuItemsHandler:
                 selected_icon=icons.CONTACT_MAIL_ROUNDED,
                 destination=self.contacts_view,
                 on_new_screen_route=None,
-                on_new_intent=ADD_CONTACT_INTENT,
+                on_new_intent=res_utils.ADD_CONTACT_INTENT,
             ),
             MenuItem(
                 index=3,
@@ -261,7 +251,7 @@ class MainMenuItemsHandler:
                 selected_icon=icons.CONTACTS_ROUNDED,
                 destination=self.clients_view,
                 on_new_screen_route=None,
-                on_new_intent=ADD_CLIENT_INTENT,
+                on_new_intent=res_utils.ADD_CLIENT_INTENT,
             ),
             MenuItem(
                 index=4,
@@ -269,7 +259,7 @@ class MainMenuItemsHandler:
                 icon=icons.HANDSHAKE_OUTLINED,
                 selected_icon=icons.HANDSHAKE_ROUNDED,
                 destination=self.contracts_view,
-                on_new_screen_route=CONTRACT_CREATOR_SCREEN_ROUTE,
+                on_new_screen_route=res_utils.CONTRACT_CREATOR_SCREEN_ROUTE,
                 on_new_intent=None,
             ),
         ]
@@ -283,7 +273,7 @@ class SecondaryMenuHandler:
         self.menu_title = "Workflows"
 
         self.timetrack_view = TimeTrackingView(params)
-        self.invoicing_view = InvoicingView(params)
+        self.invoicing_view = InvoicingListView(params)
 
         self.items = [
             MenuItem(
@@ -293,7 +283,7 @@ class SecondaryMenuHandler:
                 selected_icon=icons.TIMER_ROUNDED,
                 destination=self.timetrack_view,
                 on_new_screen_route=None,
-                on_new_intent=NEW_TIME_TRACK_INTENT,
+                on_new_intent=res_utils.NEW_TIME_TRACK_INTENT,
             ),
             MenuItem(
                 index=1,
@@ -301,7 +291,8 @@ class SecondaryMenuHandler:
                 icon=icons.ATTACH_MONEY_SHARP,
                 selected_icon=icons.ATTACH_MONEY_ROUNDED,
                 destination=self.invoicing_view,
-                on_new_screen_route="/404",
+                on_new_screen_route=None,
+                on_new_intent=res_utils.CREATE_INVOICE_INTENT,
             ),
             MenuItem(
                 index=2,
@@ -415,10 +406,10 @@ class HomeScreen(TuttleView, UserControl):
         self.show_snack("not implemented", True)
 
     def on_view_settings_clicked(self, e):
-        self.navigate_to_route(PREFERENCES_SCREEN_ROUTE)
+        self.navigate_to_route(res_utils.PREFERENCES_SCREEN_ROUTE)
 
     def on_click_profile(self, e):
-        self.navigate_to_route(PROFILE_SCREEN_ROUTE)
+        self.navigate_to_route(res_utils.PROFILE_SCREEN_ROUTE)
 
     def build(self):
         self.destination_content_container = Container(
