@@ -59,7 +59,7 @@ class InvoicingEditorPopUp(DialogHandler, UserControl):
         ]
         title = "Edit Invoice" if invoice is not None else "New Invoice"
         self.date_field = views.DateSelector(
-            label="Date", initialDate=self.invoice.date
+            label="Date", initial_date=self.invoice.date
         )
         dialog = AlertDialog(
             content=Container(
@@ -188,8 +188,7 @@ class InvoicingListView(TuttleView, UserControl):
 
     def on_delete_confirmed(self, invoice_id):
         self.loading_indicator.visible = True
-        if self.mounted:
-            self.update()
+        self.update_self()
         result = self.intent.delete_invoice_by_id_intent(invoice_id)
         is_error = not result.was_intent_successful
         msg = result.error_msg if is_error else "Invoice deleted!"
@@ -198,14 +197,12 @@ class InvoicingListView(TuttleView, UserControl):
             del self.invoices_to_display[invoice_id]
             self.refresh_invoices()
         self.loading_indicator.visible = False
-        if self.mounted:
-            self.update()
+        self.update_self()
 
     def on_save_invoice(self, invoice: Invoice, project: Project):
         is_updating = invoice.id is not None
         self.loading_indicator.visible = True
-        if self.mounted:
-            self.update()
+        self.update_self()
         result: IntentResult = self.intent.save_invoice_intent(invoice, project)
         if not result.was_intent_successful:
             self.show_snack(result.error_msg, True)
@@ -219,13 +216,11 @@ class InvoicingListView(TuttleView, UserControl):
             )
             self.show_snack(msg, False)
         self.loading_indicator.visible = False
-        if self.mounted:
-            self.update()
+        self.update_self()
 
     def toggle_invoice_status(self, invoice: Invoice, status_to_toggle: InvoiceStatus):
         self.loading_indicator.visible = True
-        if self.mounted:
-            self.update()
+        self.update_self()
         result: IntentResult = self.intent.toggle_invoice_status_intent(
             invoice, status_to_toggle
         )
@@ -237,8 +232,7 @@ class InvoicingListView(TuttleView, UserControl):
             msg = "Invoice status updated."
             self.show_snack(msg, False)
         self.loading_indicator.visible = False
-        if self.mounted:
-            self.update()
+        self.update_self()
 
     def did_mount(self):
         self.mounted = True
@@ -251,7 +245,7 @@ class InvoicingListView(TuttleView, UserControl):
             self.no_invoices_control.visible = True
         else:
             self.refresh_invoices()
-        self.update()
+        self.update_self()
 
     def build(self):
         self.loading_indicator = views.horizontal_progress

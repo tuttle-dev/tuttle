@@ -350,8 +350,7 @@ class ContactsListView(TuttleView, UserControl):
 
     def on_new_contact_added(self, contact):
         self.loading_indicator.visible = True
-        if self.mounted:
-            self.update()
+        self.update_self()
         result: IntentResult = self.intent.save_contact_intent(contact)
         if not result.was_intent_successful:
             self.show_snack(result.error_msg, True)
@@ -361,8 +360,7 @@ class ContactsListView(TuttleView, UserControl):
             self.refresh_list()
             self.show_snack("A new contact has been added", False)
         self.loading_indicator.visible = False
-        if self.mounted:
-            self.update()
+        self.update_self()
 
     def load_all_contacts(self):
         self.contacts_to_display = self.intent.get_all_contacts_as_map_intent()
@@ -405,8 +403,7 @@ class ContactsListView(TuttleView, UserControl):
 
     def on_delete_confirmed(self, contact_id):
         self.loading_indicator.visible = True
-        if self.mounted:
-            self.update()
+        self.update_self()
         result = self.intent.delete_contact_by_id_intent(contact_id)
         is_error = False if result.was_intent_successful else True
         msg = "Contact deleted!" if not is_error else result.error_msg
@@ -415,13 +412,11 @@ class ContactsListView(TuttleView, UserControl):
         if not is_error and contact_id in self.contacts_to_display:
             del self.contacts_to_display[contact_id]
             self.refresh_list()
-        if self.mounted:
-            self.update()
+        self.update_self()
 
     def on_update_contact(self, contact):
         self.loading_indicator.visible = True
-        if self.mounted:
-            self.update()
+        self.update_self()
         result = self.intent.save_contact_intent(contact)
         is_error = False if result.was_intent_successful else True
         msg = (
@@ -434,31 +429,22 @@ class ContactsListView(TuttleView, UserControl):
             updated_contact: Contact = result.data
             self.contacts_to_display[updated_contact.id] = updated_contact
             self.refresh_list()
-        if self.mounted:
-            self.update()
+        self.update_self()
 
     def show_no_contacts(self):
         self.no_contacts_control.visible = True
 
     def did_mount(self):
-        try:
-            self.mounted = True
-            self.loading_indicator.visible = True
-            self.load_all_contacts()
-            count = len(self.contacts_to_display)
-            self.loading_indicator.visible = False
-            if count == 0:
-                self.show_no_contacts()
-            else:
-                self.refresh_list()
-            if self.mounted:
-                self.update()
-        except Exception as e:
-            print(f"exception raised @contacts.did_mount {e.__class__.__name__}")
-            self.show_snack("Loading contacts failed.")
-            self.loading_indicator.visible = False
-            if self.mounted:
-                self.update()
+        self.mounted = True
+        self.loading_indicator.visible = True
+        self.load_all_contacts()
+        count = len(self.contacts_to_display)
+        self.loading_indicator.visible = False
+        if count == 0:
+            self.show_no_contacts()
+        else:
+            self.refresh_list()
+        self.update_self()
 
     def build(self):
         view = Column(

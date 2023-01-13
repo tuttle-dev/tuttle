@@ -332,27 +332,21 @@ class TimeTrackingView(TuttleView, UserControl):
             self.loading_indicator.visible = not hide_progress
             self.ongoing_action_hint.value = msg
             self.ongoing_action_hint.visible = not hide_progress
-            self.update()
+            self.update_self()
 
     def did_mount(self):
-        try:
-            self.mounted = True
-            self.loading_indicator.visible = True
-            self.load_recorded_timetracks()
-            count = len(self.timetracks_recorded)
-            self.loading_indicator.visible = False
-            if count == 0:
-                self.show_no_recorded_timetracks()
-            else:
-                self.refresh_records()
+        self.mounted = True
+        self.loading_indicator.visible = True
+        self.load_recorded_timetracks()
+        count = len(self.timetracks_recorded)
+        self.loading_indicator.visible = False
+        if count == 0:
+            self.show_no_recorded_timetracks()
+        else:
+            self.refresh_records()
 
-            self.load_preferred_cloud_acc()
-            if self.mounted:
-                self.update()
-        except Exception as e:
-            print(
-                f"exception raised @timetracking.TimetracksView.did_mount {e.__class__.__name__}"
-            )
+        self.load_preferred_cloud_acc()
+        self.update_self()
 
     def build(self):
 

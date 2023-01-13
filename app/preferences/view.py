@@ -91,8 +91,7 @@ class PreferencesScreen(TuttleView, UserControl):
         if selected:
             self.preferences.theme_mode = selected
             self.on_theme_changed_callback(selected)
-            if self.mounted:
-                self.update()
+            self.update_self()
 
     def on_window_resized_listener(self, width, height):
         super().on_window_resized_listener(width, height)
@@ -100,8 +99,7 @@ class PreferencesScreen(TuttleView, UserControl):
         self.body.width = self.body_width
         self.tabs.width = self.body_width - SPACE_MD
         self.tabs.height = height - SPACE_MD * 2
-        if self.mounted:
-            self.update()
+        self.update_self()
 
     def on_language_selected(self, e):
         if not self.preferences:
@@ -233,25 +231,19 @@ class PreferencesScreen(TuttleView, UserControl):
         return page_view
 
     def did_mount(self):
-        try:
-            self.mounted = True
-            self.loading_indicator.visible = True
-            self.update()
-            self.set_available_currencies()
-            result: IntentResult = self.intent.get_preferences_intent()
-            if result.was_intent_successful:
-                self.preferences = result.data
-                self.refresh_preferences_items()
-            else:
-                self.show_snack(result.error_msg, True)
+        self.mounted = True
+        self.loading_indicator.visible = True
+        self.update_self()
+        self.set_available_currencies()
+        result: IntentResult = self.intent.get_preferences_intent()
+        if result.was_intent_successful:
+            self.preferences = result.data
+            self.refresh_preferences_items()
+        else:
+            self.show_snack(result.error_msg, True)
 
-            self.loading_indicator.visible = False
-            self.update()
-        except Exception as e:
-            # log
-            print(
-                f"Exception raised @preferences_screen.did_mount {e.__class__.__name__}"
-            )
+        self.loading_indicator.visible = False
+        self.update_self()
 
     def will_unmount(self):
         # save changes

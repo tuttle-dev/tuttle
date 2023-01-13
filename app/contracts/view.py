@@ -172,47 +172,20 @@ class ContractEditorScreen(TuttleView, flet.UserControl):
     def on_billing_cycle_selected(self, e):
         self.billing_cycle = get_cycle_from_value(e.control.value)
 
-    def clear_title_error(self, e):
-        if self.title_field.error_text:
-            self.title_field.error_text = None
-            if self.mounted:
-                self.update()
-
-    def clear_rate_error(self, e):
-        if self.rate_field.error_text:
-            self.rate_field.error_text = None
-            if self.mounted:
-                self.update()
-
-    def clear_currency_error(self, e):
-        if self.currency_field.error_text:
-            self.currency_field.error_text = None
-            if self.mounted:
-                self.update()
-
-    def clear_volume_error(self, e):
-        if self.volume_field.error_text:
-            self.volume_field.error_text = None
-            if self.mounted:
-                self.update()
-
-    def clear_top_error(self, e):
-        if self.termOfPayment_field.error_text:
-            self.termOfPayment_field.error_text = None
-            if self.mounted:
-                self.update()
-
-    def clear_upw_error(self, e):
-        if self.unitPW_field.error_text:
-            self.unitPW_field.error_text = None
-            if self.mounted:
-                self.update()
-
-    def clear_vat_rate_error(self, e):
-        if self.vatRate_field.error_text:
-            self.vatRate_field.error_text = None
-            if self.mounted:
-                self.update()
+    def clear_field_errors(self, e):
+        fields = [
+            self.title_field,
+            self.rate_field,
+            self.currency_field,
+            self.volume_field,
+            self.termOfPayment_field,
+            self.unitPW_field,
+            self.vatRate_field,
+        ]
+        for field in fields:
+            if field.error_text:
+                field.error_text = None
+        self.update_self()
 
     def show_progress_bar_disable_action(self):
         self.loading_indicator.visible = True
@@ -229,10 +202,7 @@ class ContractEditorScreen(TuttleView, flet.UserControl):
         self.load_clients()
         self.load_contacts()
         self.enable_action_remove_progress_bar()
-        if self.mounted:
-            self.update()
-
-    """ LOADING DATA """
+        self.update_self()
 
     def load_contract(
         self,
@@ -280,8 +250,7 @@ class ContractEditorScreen(TuttleView, flet.UserControl):
 
         if self.clients_field.error_text:
             self.clients_field.error_text = None
-            if self.mounted:
-                self.update()
+            self.update_self()
         if int(id) in self.clients_map:
             self.selected_client = self.clients_map[int(id)]
 
@@ -311,20 +280,19 @@ class ContractEditorScreen(TuttleView, flet.UserControl):
                 self.clients_field.value = item
             else:
                 self.show_snack(result.error_msg, True)
-        if self.mounted:
-            self.update()
+            self.update_self()
 
     """ SAVING """
 
     def on_save(self, e):
         if not self.title:
             self.title_field.error_text = "Contract title is required"
-            self.update()
+            self.update_self()
             return
 
         if self.selected_client is None:
             self.clients_field.error_text = "Please select a client"
-            self.update()
+            self.update_self()
             return
 
         signatureDate = self.signatureDate_field.get_date()
@@ -383,14 +351,14 @@ class ContractEditorScreen(TuttleView, flet.UserControl):
             label="Title",
             hint="Contract's title",
             on_change=self.on_title_changed,
-            on_focus=self.clear_title_error,
+            on_focus=self.clear_field_errors,
         )
 
         self.rate_field = views.get_std_txt_field(
             label="Rate",
             hint="Contract's rate",
             on_change=self.on_rate_changed,
-            on_focus=self.clear_rate_error,
+            on_focus=self.clear_field_errors,
             keyboard_type=utils.KEYBOARD_NUMBER,
         )
 
@@ -398,14 +366,14 @@ class ContractEditorScreen(TuttleView, flet.UserControl):
             label="Currency",
             hint="Payment currency",
             on_change=self.on_currency_changed,
-            on_focus=self.clear_currency_error,
+            on_focus=self.clear_field_errors,
         )
 
         self.vatRate_field = views.get_std_txt_field(
             label="Vat",
             hint="Vat rate",
             on_change=self.on_vat_rate_changed,
-            on_focus=self.clear_vat_rate_error,
+            on_focus=self.clear_field_errors,
             keyboard_type=utils.KEYBOARD_NUMBER,
         )
 
@@ -413,7 +381,7 @@ class ContractEditorScreen(TuttleView, flet.UserControl):
             label="Units per workday",
             hint="",
             on_change=self.on_upw_changed,
-            on_focus=self.clear_upw_error,
+            on_focus=self.clear_field_errors,
             keyboard_type=utils.KEYBOARD_NUMBER,
         )
 
@@ -421,7 +389,7 @@ class ContractEditorScreen(TuttleView, flet.UserControl):
             label="Volume (optional)",
             hint="",
             on_change=self.on_volume_changed,
-            on_focus=self.clear_volume_error,
+            on_focus=self.clear_field_errors,
             keyboard_type=utils.KEYBOARD_NUMBER,
         )
 
@@ -429,7 +397,7 @@ class ContractEditorScreen(TuttleView, flet.UserControl):
             label="Term of payment (optional)",
             hint="",
             on_change=self.on_top_changed,
-            on_focus=self.clear_top_error,
+            on_focus=self.clear_field_errors,
             keyboard_type=utils.KEYBOARD_NUMBER,
         )
 
@@ -524,12 +492,9 @@ class ContractEditorScreen(TuttleView, flet.UserControl):
         return view
 
     def will_unmount(self):
-        try:
-            self.mounted = False
-            if self.new_client_pop_up:
-                self.new_client_pop_up.dimiss_open_dialogs()
-        except Exception as e:
-            print(e)
+        self.mounted = False
+        if self.new_client_pop_up:
+            self.new_client_pop_up.dimiss_open_dialogs()
 
 
 class ContractStates(Enum):
@@ -544,9 +509,9 @@ class ContractFiltersView(flet.UserControl):
 
     def __init__(self, onStateChanged: Callable[[ContractStates], None]):
         super().__init__()
-        self.currentState = ContractStates.ALL
-        self.stateTofilterButtonsMap = {}
-        self.onStateChangedCallback = onStateChanged
+        self.current_state = ContractStates.ALL
+        self.state_to_filter_btns_map = {}
+        self.on_state_changed_callback = onStateChanged
 
     def filter_button(
         self,
@@ -560,7 +525,7 @@ class ContractFiltersView(flet.UserControl):
             on_click=lambda e: onClick(state),
             height=dimens.CLICKABLE_PILL_HEIGHT,
             color=colors.PRIMARY_COLOR
-            if state == self.currentState
+            if state == self.current_state
             else colors.GRAY_COLOR,
             style=flet.ButtonStyle(
                 elevation={
@@ -575,11 +540,11 @@ class ContractFiltersView(flet.UserControl):
 
     def on_filter_button_clicked(self, state: ContractStates):
         """sets the new state and updates selected button"""
-        self.stateTofilterButtonsMap[self.currentState].color = colors.GRAY_COLOR
-        self.currentState = state
-        self.stateTofilterButtonsMap[self.currentState].color = colors.PRIMARY_COLOR
+        self.state_to_filter_btns_map[self.current_state].color = colors.GRAY_COLOR
+        self.current_state = state
+        self.state_to_filter_btns_map[self.current_state].color = colors.PRIMARY_COLOR
         self.update()
-        self.onStateChangedCallback(state)
+        self.on_state_changed_callback(state)
 
     def get_filter_button_label(self, state: ContractStates):
         if state.value == ContractStates.ACTIVE.value:
@@ -598,15 +563,15 @@ class ContractFiltersView(flet.UserControl):
                 state=state,
                 onClick=self.on_filter_button_clicked,
             )
-            self.stateTofilterButtonsMap[state] = button
+            self.state_to_filter_btns_map[state] = button
 
     def build(self):
-        if len(self.stateTofilterButtonsMap) == 0:
+        if len(self.state_to_filter_btns_map) == 0:
             # set the buttons
             self.set_filter_buttons()
 
         self.filters = flet.ResponsiveRow(
-            controls=list(self.stateTofilterButtonsMap.values())
+            controls=list(self.state_to_filter_btns_map.values())
         )
         return self.filters
 
@@ -661,40 +626,20 @@ class CreateContractScreen(TuttleView, flet.UserControl):
     def on_billing_cycle_selected(self, e):
         self.billing_cycle = get_cycle_from_value(e.control.value)
 
-    def clear_title_error(self, e):
-        if self.title_field.error_text:
-            self.title_field.error_text = None
-            self.update()
-
-    def clear_rate_error(self, e):
-        if self.rate_field.error_text:
-            self.rate_field.error_text = None
-            self.update()
-
-    def clear_currency_error(self, e):
-        if self.currency_field.error_text:
-            self.currency_field.error_text = None
-            self.update()
-
-    def clear_volume_error(self, e):
-        if self.volume_field.error_text:
-            self.volume_field.error_text = None
-            self.update()
-
-    def clear_top_error(self, e):
-        if self.term_of_payment_field.error_text:
-            self.term_of_payment_field.error_text = None
-            self.update()
-
-    def clear_upw_error(self, e):
-        if self.unit_PW_field.error_text:
-            self.unit_PW_field.error_text = None
-            self.update()
-
-    def clear_vat_rate_error(self, e):
-        if self.vat_rate_field.error_text:
-            self.vat_rate_field.error_text = None
-            self.update()
+    def clear_field_errors(self, e):
+        fields = [
+            self.title_field,
+            self.rate_field,
+            self.currency_field,
+            self.volume_field,
+            self.term_of_payment_field,
+            self.unit_PW_field,
+            self.vat_rate_field,
+        ]
+        for field in fields:
+            if field.error_text:
+                field.error_text = None
+        self.update_self()
 
     def show_progress_bar_disable_action(self):
         self.loading_indicator.visible = True
@@ -710,8 +655,7 @@ class CreateContractScreen(TuttleView, flet.UserControl):
         self.load_clients()
         self.load_contacts()
         self.enable_action_remove_progress_bar()
-        if self.mounted:
-            self.update()
+        self.update_self()
 
     def load_clients(self):
         self.clients_map = self.intent.get_all_clients_as_map_intent()
@@ -746,7 +690,7 @@ class CreateContractScreen(TuttleView, flet.UserControl):
 
         if self.clients_field.error_text:
             self.clients_field.error_text = None
-            self.update()
+            self.update_self()
         if int(id) in self.clients_map:
             self.client = self.clients_map[int(id)]
 
@@ -776,20 +720,19 @@ class CreateContractScreen(TuttleView, flet.UserControl):
                 self.clients_field.value = item
             else:
                 self.show_snack(result.error_msg, True)
-            if self.mounted:
-                self.update()
+            self.update_self()
 
     """ SAVING """
 
     def on_save(self, e):
         if not self.title:
             self.title_field.error_text = "Contract title is required"
-            self.update()
+            self.update_self()
             return
 
         if self.client is None:
             self.clients_field.error_text = "Please select a client"
-            self.update()
+            self.update_self()
             return
 
         signatureDate = self.signature_date_field.get_date()
@@ -847,47 +790,47 @@ class CreateContractScreen(TuttleView, flet.UserControl):
             label="Title",
             hint="Contract's title",
             on_change=self.on_title_changed,
-            on_focus=self.clear_title_error,
+            on_focus=self.clear_field_errors,
         )
         self.rate_field = views.get_std_txt_field(
             label="Rate",
             hint="Contract's rate",
             on_change=self.on_rate_changed,
-            on_focus=self.clear_rate_error,
+            on_focus=self.clear_field_errors,
             keyboard_type=utils.KEYBOARD_NUMBER,
         )
         self.currency_field = views.get_std_txt_field(
             label="Currency",
             hint="Payment currency",
             on_change=self.on_currency_changed,
-            on_focus=self.clear_currency_error,
+            on_focus=self.clear_field_errors,
         )
         self.vat_rate_field = views.get_std_txt_field(
             label="Vat",
             hint="Vat rate",
             on_change=self.on_vat_rate_changed,
-            on_focus=self.clear_vat_rate_error,
+            on_focus=self.clear_field_errors,
             keyboard_type=utils.KEYBOARD_NUMBER,
         )
         self.unit_PW_field = views.get_std_txt_field(
             label="Units per workday",
             hint="",
             on_change=self.on_upw_changed,
-            on_focus=self.clear_upw_error,
+            on_focus=self.clear_field_errors,
             keyboard_type=utils.KEYBOARD_NUMBER,
         )
         self.volume_field = views.get_std_txt_field(
             label="Volume (optional)",
             hint="",
             on_change=self.on_volume_changed,
-            on_focus=self.clear_volume_error,
+            on_focus=self.clear_field_errors,
             keyboard_type=utils.KEYBOARD_NUMBER,
         )
         self.term_of_payment_field = views.get_std_txt_field(
             label="Term of payment (optional)",
             hint="",
             on_change=self.on_top_changed,
-            on_focus=self.clear_top_error,
+            on_focus=self.clear_field_errors,
             keyboard_type=utils.KEYBOARD_NUMBER,
         )
         self.clients_field = views.get_dropdown(
@@ -1056,8 +999,7 @@ class ContractsListView(TuttleView, flet.UserControl):
 
     def on_delete_contract_confirmed(self, contract_id: str):
         self.loading_indicator.visible = True
-        if self.mounted:
-            self.update()
+        self.update_self()
         result = self.intent.delete_contract_by_id_intent(contract_id=contract_id)
         is_error = not result.was_intent_successful
         msg = "Contract deleted!" if not is_error else result.error_msg
@@ -1066,8 +1008,7 @@ class ContractsListView(TuttleView, flet.UserControl):
             del self.contracts_to_display[contract_id]
             self.display_currently_filtered_contracts()
         self.loading_indicator.visible = False
-        if self.mounted:
-            self.update()
+        self.update_self()
 
     def on_filter_contracts(self, filterByState: ContractStates):
         if filterByState.value == ContractStates.ACTIVE.value:
@@ -1079,28 +1020,22 @@ class ContractsListView(TuttleView, flet.UserControl):
         else:
             self.contracts_to_display = self.intent.get_all_contracts_as_map_intent()
         self.display_currently_filtered_contracts()
-        if self.mounted:
-            self.update()
+        self.update_self()
 
     def show_no_contracts(self):
         self.no_contracts_control.visible = True
 
     def did_mount(self):
-        try:
-            self.mounted = True
-            self.loading_indicator.visible = True
-            self.contracts_to_display = self.intent.get_all_contracts_as_map_intent()
-            count = len(self.contracts_to_display)
-            self.loading_indicator.visible = False
-            if count == 0:
-                self.show_no_contracts()
-            else:
-                self.display_currently_filtered_contracts()
-            if self.mounted:
-                self.update()
-        except Exception as e:
-            # log error
-            print(f"exception raised @contracts.did_mount {e.__class__.__name__}")
+        self.mounted = True
+        self.loading_indicator.visible = True
+        self.contracts_to_display = self.intent.get_all_contracts_as_map_intent()
+        count = len(self.contracts_to_display)
+        self.loading_indicator.visible = False
+        if count == 0:
+            self.show_no_contracts()
+        else:
+            self.display_currently_filtered_contracts()
+        self.update_self()
 
     def build(self):
         view = flet.Column(
@@ -1159,8 +1094,7 @@ class ViewContractScreen(TuttleView, flet.UserControl):
             self.contract = result.data
             self.display_contract_data()
         self.loading_indicator.visible = False
-        if self.mounted:
-            self.update()
+        self.update_self()
 
     def on_view_client_clicked(self, e):
         self.show_snack("Coming soon", False)

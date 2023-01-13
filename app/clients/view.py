@@ -1,4 +1,4 @@
-from typing import Callable, Optional
+from typing import Callable, Optional, Mapping
 from core.abstractions import TuttleViewParams
 from flet import (
     AlertDialog,
@@ -6,13 +6,11 @@ from flet import (
     Column,
     Container,
     GridView,
-    IconButton,
     ResponsiveRow,
     Row,
     Text,
     UserControl,
     border_radius,
-    icons,
     padding,
 )
 from tuttle.model import Address
@@ -92,14 +90,15 @@ class ClientEditorPopUp(DialogHandler, UserControl):
         self,
         dialog_controller: Callable[[any, utils.AlertDialogControls], None],
         on_submit: Callable,
-        contacts_map,
+        contacts_map: Mapping[int, Contact],
         client: Optional[Client] = None,
     ):
-        self.dialog_height = dimens.MIN_WINDOW_HEIGHT
-        self.dialog_width = int(dimens.MIN_WINDOW_WIDTH * 0.8)
-        self.half_of_dialog_width = int(dimens.MIN_WINDOW_WIDTH * 0.35)
+        # dimensions of the pop up and the elements inside
+        # accounting for margins and paddings
+        pop_up_height = dimens.MIN_WINDOW_HEIGHT
+        pop_up_width = int(dimens.MIN_WINDOW_WIDTH * 0.8)
+        half_of_pop_up_width = int(dimens.MIN_WINDOW_WIDTH * 0.35)
 
-        # initialize the data
         self.client = client if client is not None else Client()
         self.invoicing_contact = (
             self.client.invoicing_contact
@@ -153,28 +152,28 @@ class ClientEditorPopUp(DialogHandler, UserControl):
             label="Street",
             hint=self.invoicing_contact.address.street,
             initial_value=self.invoicing_contact.address.street,
-            width=self.half_of_dialog_width,
+            width=half_of_pop_up_width,
         )
         self.street_num_field = views.get_std_txt_field(
             on_change=self.on_street_num_changed,
             label="Street No.",
             hint=self.invoicing_contact.address.number,
             initial_value=self.invoicing_contact.address.number,
-            width=self.half_of_dialog_width,
+            width=half_of_pop_up_width,
         )
         self.postal_code_field = views.get_std_txt_field(
             on_change=self.on_postal_code_changed,
             label="Postal code",
             hint=self.invoicing_contact.address.postal_code,
             initial_value=self.invoicing_contact.address.postal_code,
-            width=self.half_of_dialog_width,
+            width=half_of_pop_up_width,
         )
         self.city_field = views.get_std_txt_field(
             on_change=self.on_city_changed,
             label="City",
             hint=self.invoicing_contact.address.city,
             initial_value=self.invoicing_contact.address.city,
-            width=self.half_of_dialog_width,
+            width=half_of_pop_up_width,
         )
         self.country_field = views.get_std_txt_field(
             on_change=self.on_country_changed,
@@ -185,7 +184,7 @@ class ClientEditorPopUp(DialogHandler, UserControl):
 
         dialog = AlertDialog(
             content=Container(
-                height=self.dialog_height,
+                height=pop_up_height,
                 content=Column(
                     scroll=utils.AUTO_SCROLL,
                     controls=[
@@ -230,7 +229,7 @@ class ClientEditorPopUp(DialogHandler, UserControl):
                         views.xsSpace,
                     ],
                 ),
-                width=self.dialog_width,
+                width=pop_up_width,
             ),
             actions=[
                 views.get_primary_btn(
@@ -468,8 +467,7 @@ class ClientsListView(TuttleView, UserControl):
 
     def on_delete_confirmed(self, client_id):
         self.loading_indicator.visible = True
-        if self.mounted:
-            self.update()
+        self.update_self()
         result = self.intent.delete_client_by_id_intent(client_id)
         is_error = not result.was_intent_successful
         msg = result.error_msg if is_error else "Client deleted!"
@@ -478,14 +476,12 @@ class ClientsListView(TuttleView, UserControl):
             del self.clients_to_display[client_id]
             self.refresh_clients()
         self.loading_indicator.visible = False
-        if self.mounted:
-            self.update()
+        self.update_self()
 
     def on_save_client(self, client_to_save: Client):
         is_updating = client_to_save.id is not None
         self.loading_indicator.visible = True
-        if self.mounted:
-            self.update()
+        self.update_self()
         result: IntentResult = self.intent.save_client_intent(client_to_save)
         if not result.was_intent_successful:
             self.show_snack(result.error_msg, True)
@@ -499,28 +495,23 @@ class ClientsListView(TuttleView, UserControl):
             )
             self.show_snack(msg, False)
         self.loading_indicator.visible = False
-        if self.mounted:
-            self.update()
+        self.update_self()
 
     def show_no_clients(self):
         self.no_clients_control.visible = True
 
     def did_mount(self):
-        try:
-            self.mounted = True
-            self.loading_indicator.visible = True
-            self.load_all_clients()
-            count = len(self.clients_to_display)
-            self.loading_indicator.visible = False
-            if count == 0:
-                self.show_no_clients()
-            else:
-                self.refresh_clients()
-            self.load_all_contacts()
-            self.update()
-        except Exception as e:
-            # log
-            print(f"exception raised @clients.did_mount {e.__class__.__name__}")
+        self.mounted = True
+        self.loading_indicator.visible = True
+        self.load_all_clients()
+        count = len(self.clients_to_display)
+        self.loading_indicator.visible = False
+        if count == 0:
+            self.show_no_clients()
+        else:
+            self.refresh_clients()
+        self.load_all_contacts()
+        self.update_self()
 
     def build(self):
         view = Column(

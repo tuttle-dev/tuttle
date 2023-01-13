@@ -384,7 +384,7 @@ class HomeScreen(TuttleView, UserControl):
                 self.secondary_menu.selected_index = None
             else:
                 self.main_menu.selected_index = None
-            self.update()
+            self.update_self()
 
     # ACTION BUTTONS
     def on_click_add_new(self, e):
@@ -491,4 +491,4 @@ class HomeScreen(TuttleView, UserControl):
             self.action_bar.height + self.footer.height + 50
         )
         self.destination_content_container.height = DESTINATION_CONTENT_PERCENT_HEIGHT
-        self.update()
+        self.update_self()

@@ -1,7 +1,6 @@
 from enum import Enum
 from typing import Callable, Optional
 from core.abstractions import TuttleViewParams
-from loguru import logger
 from flet import (
     ButtonStyle,
     Card,
@@ -290,21 +289,15 @@ class ViewProjectScreen(TuttleView, UserControl):
         self.chart_container.content = self.chart
 
     def did_mount(self):
-        try:
-            self.mounted = True
-            result: IntentResult = self.intent.get_project_by_id_intent(self.project_id)
-            if not result.was_intent_successful:
-                self.show_snack(result.error_msg, True)
-            else:
-                self.project = result.data
-                self.display_project_data()
-            self.loading_indicator.visible = False
-            if self.mounted:
-                self.update()
-        except Exception as e:
-            logger.exception(
-                f"Exception raised @view_project_screen.did_mount {e.__class__.__name__}"
-            )
+        self.mounted = True
+        result: IntentResult = self.intent.get_project_by_id_intent(self.project_id)
+        if not result.was_intent_successful:
+            self.show_snack(result.error_msg, True)
+        else:
+            self.project = result.data
+            self.display_project_data()
+        self.loading_indicator.visible = False
+        self.update_self()
 
     def on_view_client_clicked(self, e):
         self.show_snack("Coming soon", False)
@@ -361,8 +354,7 @@ class ViewProjectScreen(TuttleView, UserControl):
             desired_width if desired_width > min_chart_width else min_chart_width
         )
         self.chart_container.width = chart_width
-        if self.mounted:
-            self.update()
+        self.update_self()
 
     def build(self):
         """Called when page is built"""
@@ -604,8 +596,7 @@ class ProjectsListView(TuttleView, UserControl):
 
     def on_delete_confirmed(self, project_id):
         self.loading_indicator.visible = True
-        if self.mounted:
-            self.update()
+        self.update_self()
         result = self.intent.delete_project_by_id_intent(project_id)
         is_err = not result.was_intent_successful
         if not is_err and project_id in self.projects_to_display:
@@ -614,8 +605,7 @@ class ProjectsListView(TuttleView, UserControl):
         msg = result.error_msg if is_err else "Project deleted!"
         self.show_snack(msg, is_err)
         self.loading_indicator.visible = False
-        if self.mounted:
-            self.update()
+        self.update_self()
 
     def on_edit_project_clicked(self, project_id: str):
         self.navigate_to_route(res_utils.PROJECT_EDITOR_SCREEN_ROUTE, project_id)
@@ -632,28 +622,22 @@ class ProjectsListView(TuttleView, UserControl):
         else:
             self.projects_to_display = self.intent.get_all_projects_as_map_intent()
         self.display_currently_filtered_projects()
-        self.update()
+        self.update_self()
 
     def show_no_projects(self):
         self.no_projects_control.visible = True
 
     def did_mount(self):
-        try:
-            self.mounted = True
-            self.loading_indicator.visible = True
-            self.projects_to_display = self.intent.get_all_projects_as_map_intent()
-            count = len(self.projects_to_display)
-            self.loading_indicator.visible = False
-            if count == 0:
-                self.show_no_projects()
-            else:
-                self.display_currently_filtered_projects()
-            if self.mounted:
-                self.update()
-        except Exception as e:
-            logger.exception(
-                f"exception raised @projects.did_mount {e.__class__.__name__}"
-            )
+        self.mounted = True
+        self.loading_indicator.visible = True
+        self.projects_to_display = self.intent.get_all_projects_as_map_intent()
+        count = len(self.projects_to_display)
+        self.loading_indicator.visible = False
+        if count == 0:
+            self.show_no_projects()
+        else:
+            self.display_currently_filtered_projects()
+        self.update_self()
 
     def build(self):
         return Column(
@@ -704,12 +688,12 @@ class EditProjectScreen(TuttleView, UserControl):
     def clear_title_error(self, e):
         if self.title_field.error_text:
             self.title_field.error_text = None
-            self.update()
+            self.update_self()
 
     def clear_description_error(self, e):
         if self.description_field.error_text:
             self.description_field.error_text = None
-            self.update()
+            self.update_self()
 
     # LOADING DATA
     def did_mount(self):
@@ -722,8 +706,7 @@ class EditProjectScreen(TuttleView, UserControl):
         else:
             self.show_snack(result.error_msg, True)
         self.enable_action_remove_progress_bar()
-        if self.mounted:
-            self.update()
+        self.update_self()
 
     def show_progress_bar_disable_action(self):
         self.loading_indicator.visible = True
@@ -754,12 +737,12 @@ class EditProjectScreen(TuttleView, UserControl):
     def on_save(self, e):
         if not self.title:
             self.title_field.error_text = "Project title is required"
-            self.update()
+            self.update_self()
             return
 
         if not self.description:
             self.description_field.error_text = "Project description is required"
-            self.update()
+            self.update_self()
             return
 
         start_date_value = self.start_date_field.get_date()
@@ -934,17 +917,17 @@ class CreateProjectScreen(TuttleView, UserControl):
             self.contract = self.contracts_map[int(contract_id)]
         if self.contracts_field.error_text:
             self.contracts_field.error_text = None
-            self.update()
+            self.update_self()
 
     def clear_title_error(self, e):
         if self.title_field.error_text:
             self.title_field.error_text = None
-            self.update()
+            self.update_self()
 
     def clear_description_error(self, e):
         if self.description_field.error_text:
             self.description_field.error_text = None
-            self.update()
+            self.update_self()
 
     # LOADING DATA
     def did_mount(self):
@@ -952,8 +935,7 @@ class CreateProjectScreen(TuttleView, UserControl):
         self.show_progress_bar_disable_action()
         self.reload_load_contracts()
         self.enable_action_remove_progress_bar()
-        if self.mounted:
-            self.update()
+        self.update_self()
 
     def show_progress_bar_disable_action(self):
         self.loading_indicator.visible = True
@@ -979,12 +961,12 @@ class CreateProjectScreen(TuttleView, UserControl):
     def on_save(self, e):
         if not self.title:
             self.title_field.error_text = "Project title is required"
-            self.update()
+            self.update_self()
             return
 
         if not self.description:
             self.description_field.error_text = "Project description is required"
-            self.update()
+            self.update_self()
             return
 
         self.start_date = self.start_date_field.get_date()
@@ -1005,7 +987,7 @@ class CreateProjectScreen(TuttleView, UserControl):
 
         if self.contract is None:
             self.contracts_field.error_text = "Please specify the contract"
-            self.update()
+            self.update_self()
             return
 
         self.show_progress_bar_disable_action()
