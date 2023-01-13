@@ -301,8 +301,11 @@ class Contract(SQLModel, table=True):
         return self.volume * self.unit.to_timedelta()
 
     def is_active(self) -> bool:
-        today = datetime.date.today()
-        return self.end_date > today
+        if self.end_date:
+            today = datetime.date.today()
+            return self.end_date > today
+        else:
+            return True
 
     def is_upcoming(self) -> bool:
         today = datetime.date.today()
@@ -358,8 +361,11 @@ class Project(SQLModel, table=True):
             return f"{self.description[0:108]}..."
 
     def is_active(self) -> bool:
-        today = datetime.date.today()
-        return self.end_date > today
+        if self.end_date:
+            today = datetime.date.today()
+            return self.end_date > today
+        else:
+            return True
 
     def is_upcoming(self) -> bool:
         today = datetime.date.today()

@@ -86,6 +86,7 @@ class ContractsIntent:
         result = self._data_source.get_contract_by_id(contractId)
         if not result.was_intent_successful:
             result.error_msg = "Failed to load contract details. Please retry"
+            result.log_message_if_any()
         return result
 
     def get_all_clients_as_map_intent(self) -> Mapping[int, Client]:
