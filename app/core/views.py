@@ -42,6 +42,7 @@ from .utils import (
     TXT_ALIGN_CENTER,
     CENTER_ALIGNMENT,
     SPACE_BETWEEN_ALIGNMENT,
+    KEYBOARD_NONE,
 )
 
 stdSpace = Container(
@@ -97,14 +98,15 @@ def get_headline_with_subtitle(
 
 
 def get_std_txt_field(
-    on_change,
-    label: str,
+    on_change: typing.Optional[Callable] = None,
+    label: str = "",
     hint: str = "",
     keyboard_type: str = KEYBOARD_TEXT,
     on_focus: typing.Optional[Callable] = None,
     initial_value: typing.Optional[str] = None,
     expand: typing.Optional[int] = None,
     width: typing.Optional[int] = None,
+    show: bool = True,
 ):
     """Displays commonly used text field in app forms"""
     txtFieldPad = padding.symmetric(horizontal=dimens.SPACE_XS)
@@ -122,9 +124,11 @@ def get_std_txt_field(
         password=keyboard_type == KEYBOARD_PASSWORD,
         expand=expand,
         width=width,
+        disabled=keyboard_type == KEYBOARD_NONE,
         text_size=fonts.BODY_1_SIZE,
         label_style=TextStyle(size=fonts.BODY_2_SIZE),
         error_style=TextStyle(size=fonts.BODY_2_SIZE, color=colors.ERROR_COLOR),
+        visible=show,
     )
 
 

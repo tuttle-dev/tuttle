@@ -47,17 +47,16 @@ class InvoicingEditorPopUp(DialogHandler, UserControl):
         self.half_of_dialog_width = int(dimens.MIN_WINDOW_WIDTH * 0.35)
 
         # initialize the data
+        is_editing = invoice is not None
         self.invoice = (
-            invoice
-            if invoice is not None
-            else Invoice(number="", date=datetime.date.today())
+            invoice if is_editing else Invoice(number="", date=datetime.date.today())
         )
         self.projects_as_map = projects_map
         project_options = [
             f"{id} {project.title}".strip()
             for id, project in self.projects_as_map.items()
         ]
-        title = "Edit Invoice" if invoice is not None else "New Invoice"
+        title = "Edit Invoice" if is_editing else "New Invoice"
         self.date_field = views.DateSelector(
             label="Date", initial_date=self.invoice.date
         )
@@ -74,6 +73,8 @@ class InvoicingEditorPopUp(DialogHandler, UserControl):
                             label="Invoice Number",
                             hint=self.invoice.number,
                             initial_value=self.invoice.number,
+                            keyboard_type=utils.KEYBOARD_NONE,
+                            show=is_editing,
                         ),
                         views.xsSpace,
                         views.get_dropdown(
