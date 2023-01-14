@@ -32,14 +32,24 @@ class TimeTrackingIntent:
         self._data_source = TimeTrackingDataSource()
         self._preferences_intent = PreferencesIntent(local_storage)
 
-    def process_timetracking_file_intent(self, upload_url, file_name) -> IntentResult:
-        """TODO processes a time tracking spreadsheet or ics file in the uploads folder"""
-        result = IntentResult(
-            was_intent_successful=False,
-            error_msg="Processing file failed",
-            log_message=f"Un Implemented error TimeTrackingIntent.process_timetracking_file",
+    def process_timetracking_file_intent(self, file_path, file_name) -> IntentResult:
+        """processes a time tracking spreadsheet or ics file in the uploads folder
+
+        Returns
+        -------
+            IntentResult
+                data : FileCalendar instance if was_intent_successful else None
+                error_msg  : text to display to the user if an error occurs else is empty
+        """
+        result = self._data_source.load_from_timetracking_file(
+            file_name=file_name,
+            file_path=file_path,
         )
-        result.log_message_if_any()
+        if not result.was_intent_successful:
+            result.error_msg = (
+                "Failed to process the file! Please make sure it has a valid format."
+            )
+            result.log_message_if_any()
         return result
 
     def get_preferred_cloud_account_intent(self):

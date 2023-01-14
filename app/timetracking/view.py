@@ -1,5 +1,5 @@
 from typing import Callable, Optional
-
+from pathlib import Path
 from flet import (
     AlertDialog,
     FilePickerResultEvent,
@@ -11,11 +11,14 @@ from flet import (
     UserControl,
     ProgressRing,
 )
+from tuttle.calendar import FileCalendar
 from .model import CloudCalendarInfo, CloudConfigurationResult
 from .intent import TimeTrackingIntent
 from core.abstractions import DialogHandler, TuttleView
 from core import views, utils
 from res import colors, fonts, res_utils, dimens
+
+from core import tabular
 
 
 class TwoFAPopUp(DialogHandler):
@@ -170,10 +173,11 @@ class TimeTrackingView(TuttleView, UserControl):
     def __init__(self, params):
         super().__init__(params)
         self.intent = TimeTrackingIntent(local_storage=params.local_storage)
-        self.timetracks_recorded = {}
+
         self.preferred_cloud_acc = ""
         self.preferred_cloud_provider = ""
         self.pop_up_handler = None
+        self.file_calendar_to_display: FileCalendar = None
 
     def close_pop_up_if_open(self):
         if self.pop_up_handler:
@@ -224,7 +228,8 @@ class TimeTrackingView(TuttleView, UserControl):
         if e.files and len(e.files) > 0:
             file = e.files[0]
             self.set_progress_hint(f"Uploading file {file.name}")
-            upload_url = self.upload_file_callback(file)
+            self.upload_file_callback(file)
+            upload_url = Path(file.path)
             if upload_url:
                 self.uploaded_file_url = upload_url
         else:
@@ -234,16 +239,20 @@ class TimeTrackingView(TuttleView, UserControl):
 
         if e.progress == 1.0:
             self.set_progress_hint(f"Upload complete, processing file...")
-            result = self.intent.process_timetracking_file_intent(
+            intent_result = self.intent.process_timetracking_file_intent(
                 self.uploaded_file_url, e.file_name
             )
             msg = (
                 "New work progress recorded."
-                if result.was_intent_successful
-                else result.error_msg
+                if intent_result.was_intent_successful
+                else intent_result.error_msg
             )
-            is_error = not result.was_intent_successful
+            is_error = not intent_result.was_intent_successful
             self.show_snack(msg, is_error)
+            if intent_result.was_intent_successful:
+                data: FileCalendar = intent_result.data
+                self.file_calendar_to_display = data
+                self.refresh_records()
             self.set_progress_hint(hide_progress=True)
 
     """Cloud calendar setup"""
@@ -325,14 +334,13 @@ class TimeTrackingView(TuttleView, UserControl):
             self.show_snack(feedback_msg, is_error)
         self.set_progress_hint(hide_progress=True)
 
-    def load_recorded_timetracks(self):
-        self.timetracks_recorded = {}
-
     def refresh_records(self):
-        self.timetracked_container.controls.clear()
-        for key in self.timetracks_recorded:
-            timetrack_data = self.timetracks_recorded[key]
-            # TODO create card and add to list?
+        if not self.file_calendar_to_display:
+            return
+        data_table = tabular.data_frame_to_data_table(
+            data_frame=self.file_calendar_to_display.to_data()
+        )
+        self.timetracked_container.content = data_table
 
     def show_no_recorded_timetracks(self):
         self.no_timetrack_control.visible = True
@@ -353,15 +361,8 @@ class TimeTrackingView(TuttleView, UserControl):
     def did_mount(self):
         self.mounted = True
         self.loading_indicator.visible = True
-        self.load_recorded_timetracks()
-        count = len(self.timetracks_recorded)
-        self.loading_indicator.visible = False
-        if count == 0:
-            self.show_no_recorded_timetracks()
-        else:
-            self.refresh_records()
-
         self.load_preferred_cloud_acc()
+        self.loading_indicator.visible = False
         self.update_self()
 
     def build(self):
@@ -390,12 +391,12 @@ class TimeTrackingView(TuttleView, UserControl):
                 )
             ]
         )
-        self.timetracked_container = Column()
+        self.timetracked_container = Container(expand=True)
         return Column(
             controls=[
                 self.title_control,
                 views.mdSpace,
-                Container(self.timetracked_container, expand=True),
+                self.timetracked_container,
             ]
         )
 

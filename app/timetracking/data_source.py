@@ -1,5 +1,5 @@
 from core.abstractions import SQLModelDataSourceMixin
-
+from tuttle.calendar import FileCalendar
 from core.intent_result import IntentResult
 from .model import CloudCalendarInfo, CloudConfigurationResult
 
@@ -12,23 +12,23 @@ class TimeTrackingDataSource(SQLModelDataSourceMixin):
     def __init__(self):
         super().__init__()
 
-    def load_from_timetracking_file(self, file_path) -> IntentResult:
-        """TODO load the time tracking data
+    def load_from_timetracking_file(self, file_name: str, file_path) -> IntentResult:
+        """load the time tracking data
 
         Arguments:
+            file_name : name of the uploaded file
             file_path : path to an uploaded ics or spreadsheet file
 
         Returns:
             IntentResult:
                 was_intent_successful : bool
-                data :  #TODO? was_intent_successful else None
+                data : FileCalendar if was_intent_successful else None
                 log_message  : str  if an error or exception occurs
                 exception : Exception if an exception occurs
         """
         try:
-            return IntentResult(
-                was_intent_successful=False, log_message="Un Implemented error"
-            )
+            file_calendar = FileCalendar(name=file_name, path=file_path)
+            return IntentResult(was_intent_successful=True, data=file_calendar)
         except Exception as e:
             return IntentResult(
                 was_intent_successful=False,

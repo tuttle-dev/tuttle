@@ -22,6 +22,7 @@ from flet import (
     padding,
     ListTile,
 )
+
 from contracts.intent import ContractsIntent
 from core.abstractions import TuttleView, DialogHandler, TuttleViewParams
 from res import colors, dimens, fonts, res_utils
@@ -959,12 +960,9 @@ class CreateContractScreen(TuttleView, UserControl):
         return view
 
     def will_unmount(self):
-        try:
-            self.mounted = True
-            if self.new_client_pop_up:
-                self.new_client_pop_up.dimiss_open_dialogs()
-        except Exception as e:
-            print(e)
+        self.mounted = True
+        if self.new_client_pop_up:
+            self.new_client_pop_up.dimiss_open_dialogs()
 
 
 class ContractsListView(TuttleView, UserControl):

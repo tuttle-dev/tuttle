@@ -54,7 +54,10 @@ xsSpace = Container(height=dimens.SPACE_XS, width=dimens.SPACE_XS, padding=0, ma
 
 
 def get_headline_txt(
-    txt: str, size: int = fonts.SUBTITLE_1_SIZE, color: Optional[str] = None
+    txt: str,
+    size: int = fonts.SUBTITLE_1_SIZE,
+    color: Optional[str] = None,
+    align: str = TXT_ALIGN_LEFT,
 ):
     """Displays text formatted as a headline"""
     return Text(
@@ -63,6 +66,7 @@ def get_headline_txt(
         weight=fonts.BOLD_FONT,
         size=size,
         color=color,
+        text_align=align,
     )
 
 
@@ -176,11 +180,11 @@ def get_body_txt(
     color: Optional[str] = None,
     show: bool = True,
     col: Optional[dict] = None,
-    alignment: str = TXT_ALIGN_LEFT,
+    align: str = TXT_ALIGN_LEFT,
 ):
     """Displays text formatted for body"""
     return Text(
-        col=col, value=txt, color=color, size=size, visible=show, text_align=alignment
+        col=col, value=txt, color=color, size=size, visible=show, text_align=align
     )
 
 
@@ -635,7 +639,7 @@ def get_or_txt(show_lines: Optional[bool] = True):
                 alignment=alignment.center,
                 visible=show_lines,
             ),
-            get_body_txt("OR", alignment=TXT_ALIGN_CENTER, color=colors.GRAY_COLOR),
+            get_body_txt("OR", align=TXT_ALIGN_CENTER, color=colors.GRAY_COLOR),
             Container(
                 height=2,
                 bgcolor=colors.GRAY_COLOR,

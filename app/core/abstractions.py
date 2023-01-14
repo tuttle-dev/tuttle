@@ -7,6 +7,7 @@ from pathlib import Path
 from dataclasses import dataclass
 from core.intent_result import IntentResult
 from .utils import AlertDialogControls, START_ALIGNMENT, AUTO_SCROLL
+from flet import file_picker
 
 
 class ClientStorage(ABC):
@@ -49,7 +50,7 @@ class TuttleViewParams:
     show_snack: Callable
     dialog_controller: Callable
     upload_file_callback: Callable
-    pick_file_callback: Callable
+    pick_file_callback: Callable[[file_picker.FilePickerFile], str]
     local_storage: Optional[ClientStorage] = None
     vertical_alignment_in_parent: str = START_ALIGNMENT
     horizontal_alignment_in_parent: str = START_ALIGNMENT
@@ -98,6 +99,10 @@ class TuttleView(ABC):
             callback function that is triggered to upload a picked file
         pick_file_callback
             callback function that is triggered to pick a file
+            params
+            ------
+            file : FilePickerFile
+                the file to upload
         mounted
             flag that keeps track of whether or not the view has been mounted
         """

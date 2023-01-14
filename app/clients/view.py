@@ -530,9 +530,6 @@ class ClientsListView(TuttleView, UserControl):
         return view
 
     def will_unmount(self):
-        try:
-            self.mounted = False
-            if self.editor:
-                self.editor.dimiss_open_dialogs()
-        except Exception as e:
-            print(e)
+        self.mounted = False
+        if self.editor:
+            self.editor.dimiss_open_dialogs()

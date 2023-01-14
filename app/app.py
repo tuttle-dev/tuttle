@@ -119,17 +119,20 @@ class TuttleApp:
 
     def upload_file_callback(self, file):
         try:
-            tmp_upload_url = self.page.get_upload_url(file.name, 600)
+            upload_to = self.page.get_upload_url(file.name, 600)
             upload_item = FilePickerUploadFile(
                 file.name,
-                upload_url=tmp_upload_url,
+                upload_url=upload_to,
             )
             self.file_picker.upload([upload_item])
-            return f"{get_uploads_url(full_path = False)}/{file.name}"
+
+            upload_path_in_assets = f"{get_assets_uploads_url()}/{file.name}"
+            return upload_path_in_assets
         except Exception as e:
-            print(
+            logger.error(
                 f"Exception @app.upload_file_callback raised during file upload {e.__class__.__name__}"
             )
+            logger.exception(e)
             return None
 
     def on_theme_mode_changed(self, selected_theme: str):
@@ -378,8 +381,12 @@ class TuttleRoutes:
         return self.get_page_route_view(routePath.route, view=screen)
 
 
-def get_uploads_url(full_path: bool = True):
-    return "assets/uploads" if full_path else "/uploads"
+def get_assets_uploads_url(with_parent_dir: bool = False):
+    uploads_parent_dir = "assets"
+    uploads_dir = "uploads"
+    if with_parent_dir:
+        return f"{uploads_parent_dir}/{uploads_dir}"
+    return uploads_dir
 
 
 def main(page: Page):
@@ -393,4 +400,9 @@ def main(page: Page):
 
 
 if __name__ == "__main__":
-    app(name="Tuttle", target=main, assets_dir="assets", upload_dir=get_uploads_url())
+    app(
+        name="Tuttle",
+        target=main,
+        assets_dir="assets",
+        upload_dir=get_assets_uploads_url(with_parent_dir=True),
+    )
