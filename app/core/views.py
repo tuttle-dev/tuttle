@@ -459,11 +459,11 @@ class AlertDisplayPopUp(DialogHandler):
         button_label: str = "Got it",
         is_error: bool = True,
     ):
-        self.dialog_height = 150
-        self.dialog_width = int(dimens.MIN_WINDOW_WIDTH * 0.8)
+        pop_up_height = 150
+        pop_up_width = int(dimens.MIN_WINDOW_WIDTH * 0.8)
         dialog = AlertDialog(
             content=Container(
-                height=self.dialog_height,
+                height=pop_up_height,
                 content=Column(
                     scroll=AUTO_SCROLL,
                     controls=[
@@ -509,11 +509,11 @@ class ConfirmDisplayPopUp(DialogHandler):
         proceed_button_label: str = "Proceed",
         cancel_button_label: str = "Cancel",
     ):
-        self.dialog_height = 150
-        self.dialog_width = int(dimens.MIN_WINDOW_WIDTH * 0.8)
+        pop_up_height = 150
+        pop_up_width = int(dimens.MIN_WINDOW_WIDTH * 0.8)
         dialog = AlertDialog(
             content=Container(
-                height=self.dialog_height,
+                height=pop_up_height,
                 content=Column(
                     scroll=AUTO_SCROLL,
                     controls=[

@@ -1,6 +1,6 @@
 from typing import Mapping
 from core.intent_result import IntentResult
-
+from core.models import TuttleDateRange
 from .data_source import InvoicingDataSource
 from tuttle.model import Invoice, Project, InvoiceStatus
 from projects.intent import ProjectsIntent
@@ -72,9 +72,11 @@ class InvoicingIntent:
             result.error_msg = "Deleting invoice failed! Please retry"
         return result
 
-    def save_invoice_intent(self, invoice: Invoice, project: Project) -> IntentResult:
+    def save_invoice_intent(
+        self, invoice: Invoice, project: Project, time_range: TuttleDateRange
+    ) -> IntentResult:
         result: IntentResult = self._data_source.create_or_update_invoice(
-            invoice, project
+            invoice, project, time_range
         )
         if not result.was_intent_successful:
             result.log_message_if_any()

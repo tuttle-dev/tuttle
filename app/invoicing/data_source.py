@@ -1,6 +1,6 @@
 from core.abstractions import SQLModelDataSourceMixin
 from core.intent_result import IntentResult
-
+from core.models import TuttleDateRange
 from tuttle.model import Invoice, Project
 
 
@@ -78,7 +78,10 @@ class InvoicingDataSource(SQLModelDataSourceMixin):
             )
 
     def create_or_update_invoice(
-        self, invoice: Invoice, project: Project
+        self,
+        invoice: Invoice,
+        project: Project,
+        time_range,
     ) -> IntentResult:
         """TODO Creates or updates an invoice with given invoice and project info
 

@@ -125,9 +125,9 @@ class ContactEditorPopUp(DialogHandler):
         on_submit: Callable,
         contact: Optional[Contact] = None,
     ):
-        self.dialog_height = 550
-        self.dialog_width = int(dimens.MIN_WINDOW_WIDTH * 0.8)
-        self.half_of_dialog_width = int(dimens.MIN_WINDOW_WIDTH * 0.35)
+        pop_up_height = 550
+        pop_up_width = int(dimens.MIN_WINDOW_WIDTH * 0.8)
+        width_spanning_half_of_container = int(dimens.MIN_WINDOW_WIDTH * 0.35)
         self.contact = contact
         if not self.contact:
             # user is creating a new contact
@@ -139,7 +139,7 @@ class ContactEditorPopUp(DialogHandler):
 
         dialog = AlertDialog(
             content=Container(
-                height=self.dialog_height,
+                height=pop_up_height,
                 content=Column(
                     scroll=utils.AUTO_SCROLL,
                     controls=[
@@ -177,14 +177,14 @@ class ContactEditorPopUp(DialogHandler):
                                     label="Street",
                                     hint=self.contact.address.street,
                                     initial_value=self.contact.address.street,
-                                    width=self.half_of_dialog_width,
+                                    width=width_spanning_half_of_container,
                                 ),
                                 views.get_std_txt_field(
                                     on_change=self.on_street_num_changed,
                                     label="Street No.",
                                     hint=self.contact.address.number,
                                     initial_value=self.contact.address.number,
-                                    width=self.half_of_dialog_width,
+                                    width=width_spanning_half_of_container,
                                 ),
                             ],
                         ),
@@ -196,14 +196,14 @@ class ContactEditorPopUp(DialogHandler):
                                     label="Postal code",
                                     hint=self.contact.address.postal_code,
                                     initial_value=self.contact.address.postal_code,
-                                    width=self.half_of_dialog_width,
+                                    width=width_spanning_half_of_container,
                                 ),
                                 views.get_std_txt_field(
                                     on_change=self.on_city_changed,
                                     label="City",
                                     hint=self.contact.address.city,
                                     initial_value=self.contact.address.city,
-                                    width=self.half_of_dialog_width,
+                                    width=width_spanning_half_of_container,
                                 ),
                             ],
                         ),
@@ -216,7 +216,7 @@ class ContactEditorPopUp(DialogHandler):
                         views.xsSpace,
                     ],
                 ),
-                width=self.dialog_width,
+                width=pop_up_width,
             ),
             actions=[
                 views.get_primary_btn(

@@ -1,5 +1,5 @@
 from typing import Callable, Optional
-import datetime
+from datetime import datetime, timedelta
 from flet import (
     AlertDialog,
     Card,
@@ -23,7 +23,7 @@ from flet import (
 from core.abstractions import DialogHandler, TuttleView, TuttleViewParams
 from core.intent_result import IntentResult
 from core import utils, views
-
+from core.models import TuttleDateRange
 from res import colors, dimens, fonts, res_utils
 
 
@@ -42,15 +42,14 @@ class InvoicingEditorPopUp(DialogHandler, UserControl):
         invoice: Optional[Invoice] = None,
     ):
 
-        self.dialog_height = dimens.MIN_WINDOW_HEIGHT * 0.8
-        self.dialog_width = int(dimens.MIN_WINDOW_WIDTH * 0.8)
-        self.half_of_dialog_width = int(dimens.MIN_WINDOW_WIDTH * 0.35)
+        pop_up_height = dimens.MIN_WINDOW_HEIGHT * 0.9
+        pop_up_width = int(dimens.MIN_WINDOW_WIDTH * 0.8)
 
         # initialize the data
+        today = datetime.today()
+        yesterday = datetime.now() - timedelta(1)
         is_editing = invoice is not None
-        self.invoice = (
-            invoice if is_editing else Invoice(number="", date=datetime.date.today())
-        )
+        self.invoice = invoice if is_editing else Invoice(number="", date=today)
         self.projects_as_map = projects_map
         project_options = [
             f"{id} {project.title}".strip()
@@ -58,11 +57,21 @@ class InvoicingEditorPopUp(DialogHandler, UserControl):
         ]
         title = "Edit Invoice" if is_editing else "New Invoice"
         self.date_field = views.DateSelector(
-            label="Date", initial_date=self.invoice.date
+            label="Invoice Date",
+            initial_date=self.invoice.date,
+        )
+        self.from_date_field = views.DateSelector(
+            label="Time Tracked From Date",
+            initial_date=yesterday,
+        )
+        self.to_date_field = views.DateSelector(
+            label="Time Tracked Up-to Date",
+            initial_date=today,
         )
         dialog = AlertDialog(
             content=Container(
-                height=self.dialog_height,
+                height=pop_up_height,
+                width=pop_up_width,
                 content=Column(
                     scroll=utils.AUTO_SCROLL,
                     controls=[
@@ -77,17 +86,19 @@ class InvoicingEditorPopUp(DialogHandler, UserControl):
                             show=is_editing,
                         ),
                         views.xsSpace,
+                        self.date_field,
+                        views.xsSpace,
                         views.get_dropdown(
                             on_change=self.on_project_selected,
                             label="Select project",
                             items=project_options,
                         ),
                         views.xsSpace,
-                        self.date_field,
+                        self.from_date_field,
+                        self.to_date_field,
                         views.xsSpace,
                     ],
                 ),
-                width=self.dialog_width,
             ),
             actions=[
                 views.get_primary_btn(
@@ -115,8 +126,11 @@ class InvoicingEditorPopUp(DialogHandler, UserControl):
         date = self.date_field.get_date()
         if date:
             self.invoice.date = date
+        from_date = self.from_date_field.get_date()
+        to_date = self.to_date_field.get_date()
+        time_range = TuttleDateRange(from_date=from_date, to_date=to_date)
         self.close_dialog()
-        self.on_submit(self.invoice, self.project)
+        self.on_submit(self.invoice, self.project, time_range)
 
 
 class InvoicingListView(TuttleView, UserControl):
@@ -200,11 +214,31 @@ class InvoicingListView(TuttleView, UserControl):
         self.loading_indicator.visible = False
         self.update_self()
 
-    def on_save_invoice(self, invoice: Invoice, project: Project):
+    def on_save_invoice(
+        self,
+        invoice: Invoice,
+        project: Project,
+        time_range: TuttleDateRange,
+    ):
+        if not invoice:
+            return
+
+        if not project:
+            self.show_snack("Please specify the project")
+            return
+
+        if not time_range.is_valid():
+            self.show_snack("The start date cannot be after the end date")
+            return
+
         is_updating = invoice.id is not None
         self.loading_indicator.visible = True
         self.update_self()
-        result: IntentResult = self.intent.save_invoice_intent(invoice, project)
+        result: IntentResult = self.intent.save_invoice_intent(
+            invoice,
+            project,
+            time_range,
+        )
         if not result.was_intent_successful:
             self.show_snack(result.error_msg, True)
         else:
