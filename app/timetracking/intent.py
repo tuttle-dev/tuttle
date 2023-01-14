@@ -3,8 +3,8 @@ from core.abstractions import ClientStorage
 from core.intent_result import IntentResult
 from preferences.model import PreferencesStorageKeys
 from preferences.intent import PreferencesIntent
-from .model import CloudCalendarInfo
-from tuttle import calendar
+from .model import CloudCalendarInfo, CloudConfigurationResult
+from typing import Optional
 
 
 class TimeTrackingIntent:
@@ -76,12 +76,23 @@ class TimeTrackingIntent:
         )
 
     def configure_account_and_load_calendar_intent(
-        self, info: CloudCalendarInfo, save_as_preferred
+        self,
+        calendar_info: CloudCalendarInfo,
+        two_factor_code: Optional[str] = "",
+        prev_un_verified_login_res: Optional[CloudConfigurationResult] = None,
     ) -> IntentResult:
-        result = self._data_source.configure_account_and_load_calendar(info)
-        if result.was_intent_successful and save_as_preferred:
-            # saves this account if to preferences
-            self._set_preferred_cloud_account_intent(info.account, info.provider)
-        else:
+        """
+        Returns:
+            data : CloudConfigurationResult if was_intent_successful else None
+        """
+        result: IntentResult = (
+            self._data_source.configure_cloud_acc_and_load_calendar_data(
+                calendar_info=calendar_info,
+                two_factor_code=two_factor_code,
+                prev_un_verified_login_res=prev_un_verified_login_res,
+            )
+        )
+        if not result.was_intent_successful:
+            result.error_msg = "Loading calendar data failed! Please retry"
             result.log_message_if_any()
         return result

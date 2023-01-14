@@ -484,7 +484,7 @@ class InvoicingPage(AppPage):
             ),
         ]
         self.update()
- a
+
 
 def main(page: Page):
 

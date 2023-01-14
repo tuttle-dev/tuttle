@@ -11,12 +11,58 @@ from flet import (
     UserControl,
     ProgressRing,
 )
-from preferences.model import CloudAccounts
-from .model import CloudCalendarInfo
+from .model import CloudCalendarInfo, CloudConfigurationResult
 from .intent import TimeTrackingIntent
 from core.abstractions import DialogHandler, TuttleView
 from core import views, utils
 from res import colors, fonts, res_utils, dimens
+
+
+class TwoFAPopUp(DialogHandler):
+    """Prompts user for the two_factor_verification_code during cloud configuration"""
+
+    def __init__(
+        self,
+        dialog_controller: Callable[[any, utils.AlertDialogControls], None],
+        on_submit: Callable,
+        title: Optional[str] = "Enter the verification code",
+    ):
+
+        dialog_width = int(dimens.MIN_WINDOW_WIDTH * 0.8)
+        title = title
+        dialog = AlertDialog(
+            content=Container(
+                content=Column(
+                    scroll=utils.AUTO_SCROLL,
+                    controls=[
+                        views.get_headline_txt(txt=title, size=fonts.HEADLINE_4_SIZE),
+                        views.xsSpace,
+                        views.get_std_txt_field(
+                            label="Code",
+                            on_change=self.on_code_changed,
+                        ),
+                        views.xsSpace,
+                    ],
+                ),
+                width=dialog_width,
+            ),
+            actions=[
+                views.get_primary_btn(
+                    label="Verify",
+                    on_click=self.on_submit_btn_clicked,
+                ),
+            ],
+        )
+        super().__init__(dialog=dialog, dialog_controller=dialog_controller)
+        self.on_submit_callback = on_submit
+        self.code = ""
+
+    def on_code_changed(self, e):
+        self.code = e.control.value
+
+    def on_submit_btn_clicked(self, e):
+        self.close_dialog()
+        self.on_submit_callback(self.code)
 
 
 class NewTimeTrackPopUp(DialogHandler):
@@ -29,7 +75,7 @@ class NewTimeTrackPopUp(DialogHandler):
         preferred_cloud_acc: str,
         preferred_acc_provider: str,
     ):
-
+        # TODO check if preferences are set
         dialog_width = int(dimens.MIN_WINDOW_WIDTH * 0.8)
         title = "Track your progress"
         dialog = AlertDialog(
@@ -39,18 +85,7 @@ class NewTimeTrackPopUp(DialogHandler):
                     controls=[
                         views.get_headline_txt(txt=title, size=fonts.HEADLINE_4_SIZE),
                         views.xsSpace,
-                        views.get_dropdown(
-                            label="Cloud Provider",
-                            items=[item.value for item in CloudAccounts],
-                            initial_value=preferred_acc_provider,
-                            on_change=self.on_cloud_provider_changed,
-                        ),
-                        views.xsSpace,
-                        views.get_std_txt_field(
-                            label="Cloud Acc",
-                            initial_value=preferred_cloud_acc,
-                            on_change=self.on_cloud_acc_changed,
-                        ),
+                        views.get_body_txt(f"Use calendar from {preferred_cloud_acc}"),
                         views.xsSpace,
                         views.get_std_txt_field(
                             label="Calendar Name",
@@ -71,7 +106,7 @@ class NewTimeTrackPopUp(DialogHandler):
                             width=int(dialog_width * 0.9),
                         ),
                         views.xsSpace,
-                        views.get_or_txt(),
+                        views.get_or_txt(show_lines=False),
                         views.xsSpace,
                         views.get_secondary_btn(
                             label="Upload a spreadsheet",
@@ -81,6 +116,8 @@ class NewTimeTrackPopUp(DialogHandler):
                             ),
                             width=int(dialog_width * 0.9),
                         ),
+                        views.xsSpace,
+                        views.get_or_txt(show_lines=False),
                         views.xsSpace,
                         views.get_secondary_btn(
                             label="Upload a calendar (.ics) file",
@@ -99,12 +136,6 @@ class NewTimeTrackPopUp(DialogHandler):
         self.provider = preferred_acc_provider
         self.password = ""
         self.calendar_name = ""
-
-    def on_cloud_provider_changed(self, e):
-        self.provider = e.control.value
-
-    def on_cloud_acc_changed(self, e):
-        self.acc = e.control.value
 
     def on_calendar_name_changed(self, e):
         self.calendar_name = e.control.value
@@ -217,7 +248,29 @@ class TimeTrackingView(TuttleView, UserControl):
 
     """Cloud calendar setup"""
 
-    def on_load_from_calendar(self, info: CloudCalendarInfo):
+    def request_2fa_auth_code(
+        self,
+        info: CloudCalendarInfo,
+        prev_un_verified_login_res: CloudConfigurationResult,
+    ):
+        self.close_pop_up_if_open()
+        self.pop_up_handler = TwoFAPopUp(
+            self.dialog_controller,
+            on_submit=lambda code: self.on_load_from_calendar(
+                info=info,
+                two_factor_auth_code=code,
+                prev_un_verified_login_res=prev_un_verified_login_res,
+            ),
+        )
+        self.pop_up_handler.open_dialog()
+
+    def on_load_from_calendar(
+        self,
+        info: CloudCalendarInfo,
+        two_factor_auth_code: Optional[str] = "",
+        prev_un_verified_login_res: Optional[CloudConfigurationResult] = None,
+    ):
+
         if utils.is_empty_str(info.account):
             self.show_snack("No Cloud account was specified")
             return
@@ -230,20 +283,46 @@ class TimeTrackingView(TuttleView, UserControl):
             self.show_snack("Your Cloud password is required")
             return
 
-        self.set_progress_hint(f"Authenticating your account...")
+        progress_msg = (
+            "Authenticating your account..."
+            if not two_factor_auth_code
+            else "Verifying your account..."
+        )
+        self.set_progress_hint(progress_msg)
 
-        save_cloud_acc_as_preferred = utils.is_empty_str(self.preferred_cloud_acc)
         result = self.intent.configure_account_and_load_calendar_intent(
             info,
-            save_cloud_acc_as_preferred,
+            two_factor_code=two_factor_auth_code,
+            prev_un_verified_login_res=prev_un_verified_login_res,
         )
-        msg = (
-            "Processed your calendar info"
-            if result.was_intent_successful
-            else "Failed to load calendar info"
-        )
-        is_error = not result.was_intent_successful
-        self.show_snack(msg, is_error)
+        if not result.was_intent_successful:
+            # the intent failed
+            self.show_snack(result.error_msg, is_error=True)
+            self.set_progress_hint(hide_progress=True)
+            return
+        # if we get here, then intent was a success
+        # Case 1 - a 2fa is needed
+        result_data: CloudConfigurationResult = result.data
+        if result_data.request_2fa_code:
+            if result_data.provided_2fa_code_is_invalid:
+                self.show_snack(
+                    "The code you provided is invalid. Please retry", is_error=True
+                )
+            """prompt user for the 2fa code, then call this method again"""
+            self.request_2fa_auth_code(info=info)
+        else:
+            feedback_msg = ""
+            is_error = False
+            if result_data.calendar_loaded_successfully:
+                feedback_msg = "Processed your calendar info"
+            elif result_data.auth_error_occurred:
+                feedback_msg = "Invalid credentials. Your account name or password might be incorrect."
+                is_error = True
+            else:
+                feedback_msg = "Failed to load calendar info"
+                is_error = True
+            is_error = not result_data.calendar_loaded_successfully
+            self.show_snack(feedback_msg, is_error)
         self.set_progress_hint(hide_progress=True)
 
     def load_recorded_timetracks(self):

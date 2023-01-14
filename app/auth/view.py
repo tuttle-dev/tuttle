@@ -258,6 +258,7 @@ class SplashScreen(TuttleView, UserControl):
         self.keep_back_stack = False  # User cannot go back from this screen
         self.intent = AuthIntent()
         self.install_demo_data_callback = install_demo_data_callback
+        self.local_storage = params.local_storage
 
     def show_login_if_signed_out_else_redirect(self):
         result = self.intent.get_user_if_exists_intent()
@@ -265,6 +266,8 @@ class SplashScreen(TuttleView, UserControl):
             if result.data is not None:
                 self.navigate_to_route(res_utils.HOME_SCREEN_ROUTE)
             else:
+                # clear preferences if any
+                self.local_storage.clear_preferences()
                 self.set_login_form()
         else:
             self.show_snack(result.error_msg)

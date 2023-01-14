@@ -35,6 +35,13 @@ class ClientStorage(ABC):
         """appends an identifier prefix to the key and removes associated key-value pair if exists"""
         pass
 
+    @abstractmethod
+    def clear_preferences(
+        self,
+    ):
+        """Deletes all of preferences permanently"""
+        pass
+
 
 @dataclass
 class TuttleViewParams:

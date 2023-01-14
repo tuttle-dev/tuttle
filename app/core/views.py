@@ -5,6 +5,7 @@ from .abstractions import DialogHandler
 from .utils import AlertDialogControls, KEYBOARD_PASSWORD
 from flet import (
     AlertDialog,
+    alignment,
     ResponsiveRow,
     Column,
     Container,
@@ -617,14 +618,26 @@ def status_label(txt: str, is_done: bool):
     )
 
 
-def get_or_txt():
+def get_or_txt(show_lines: Optional[bool] = True):
     """Returns a view representing ---- OR ----"""
-    return ResponsiveRow(
-        alignment=SPACE_BETWEEN_ALIGNMENT,
+    return Row(
+        alignment=SPACE_BETWEEN_ALIGNMENT if show_lines else CENTER_ALIGNMENT,
         vertical_alignment=CENTER_ALIGNMENT,
         controls=[
-            Container(col={"xs": 4}, height=2, bgcolor=colors.GRAY_COLOR),
-            get_body_txt("OR", col={"xs": 4}, alignment=TXT_ALIGN_CENTER),
-            Container(col={"xs": 4}, height=2, bgcolor=colors.GRAY_COLOR),
+            Container(
+                height=2,
+                bgcolor=colors.GRAY_COLOR,
+                width=100,
+                alignment=alignment.center,
+                visible=show_lines,
+            ),
+            get_body_txt("OR", alignment=TXT_ALIGN_CENTER, color=colors.GRAY_COLOR),
+            Container(
+                height=2,
+                bgcolor=colors.GRAY_COLOR,
+                width=100,
+                alignment=alignment.center,
+                visible=show_lines,
+            ),
         ],
     )
