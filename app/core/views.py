@@ -5,6 +5,7 @@ from .abstractions import DialogHandler
 from .utils import AlertDialogControls, KEYBOARD_PASSWORD
 from flet import (
     AlertDialog,
+    ResponsiveRow,
     Column,
     Container,
     Dropdown,
@@ -37,7 +38,9 @@ from .utils import (
     KEYBOARD_TEXT,
     START_ALIGNMENT,
     TXT_ALIGN_LEFT,
+    TXT_ALIGN_CENTER,
     CENTER_ALIGNMENT,
+    SPACE_BETWEEN_ALIGNMENT,
 )
 
 stdSpace = Container(
@@ -64,7 +67,7 @@ def get_headline_txt(
 def get_headline_with_subtitle(
     title: str,
     subtitle: str,
-    alignmentInContainer: str = START_ALIGNMENT,
+    alignment_in_container: str = START_ALIGNMENT,
     txtAlignment: str = TXT_ALIGN_LEFT,
     titleSize: int = fonts.SUBTITLE_1_SIZE,
     subtitleSize: int = fonts.SUBTITLE_2_SIZE,
@@ -73,7 +76,7 @@ def get_headline_with_subtitle(
     """Displays text formatted as a headline with a subtitle below it"""
     return Column(
         spacing=0,
-        horizontal_alignment=alignmentInContainer,
+        horizontal_alignment=alignment_in_container,
         controls=[
             Text(
                 title,
@@ -167,9 +170,13 @@ def get_body_txt(
     size: int = fonts.BODY_1_SIZE,
     color: Optional[str] = None,
     show: bool = True,
+    col: Optional[dict] = None,
+    alignment: str = TXT_ALIGN_LEFT,
 ):
     """Displays text formatted for body"""
-    return Text(txt, color=color, size=size, visible=show)
+    return Text(
+        col=col, value=txt, color=color, size=size, visible=show, text_align=alignment
+    )
 
 
 def get_primary_btn(
@@ -226,7 +233,7 @@ def get_app_logo(width: int = 12):
 def get_labelled_logo():
     """Returns app logo with app name next to it"""
     return Row(
-        vertical_alignment="center",
+        vertical_alignment=CENTER_ALIGNMENT,
         controls=[
             get_app_logo(),
             get_headline_txt(
@@ -607,4 +614,17 @@ def status_label(txt: str, is_done: bool):
             ),
             get_body_txt(txt),
         ]
+    )
+
+
+def get_or_txt():
+    """Returns a view representing ---- OR ----"""
+    return ResponsiveRow(
+        alignment=SPACE_BETWEEN_ALIGNMENT,
+        vertical_alignment=CENTER_ALIGNMENT,
+        controls=[
+            Container(col={"xs": 4}, height=2, bgcolor=colors.GRAY_COLOR),
+            get_body_txt("OR", col={"xs": 4}, alignment=TXT_ALIGN_CENTER),
+            Container(col={"xs": 4}, height=2, bgcolor=colors.GRAY_COLOR),
+        ],
     )

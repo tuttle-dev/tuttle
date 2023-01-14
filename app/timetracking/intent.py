@@ -4,6 +4,7 @@ from core.intent_result import IntentResult
 from preferences.model import PreferencesStorageKeys
 from preferences.intent import PreferencesIntent
 from .model import CloudCalendarInfo
+from tuttle import calendar
 
 
 class TimeTrackingIntent:

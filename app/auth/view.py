@@ -334,7 +334,7 @@ class SplashScreen(TuttleView, UserControl):
                             views.get_headline_with_subtitle(
                                 "Tuttle",
                                 "Time and money management for freelancers",
-                                alignmentInContainer=utils.CENTER_ALIGNMENT,
+                                alignment_in_container=utils.CENTER_ALIGNMENT,
                                 txtAlignment=utils.TXT_ALIGN_CENTER,
                                 titleSize=fonts.HEADLINE_3_SIZE,
                                 subtitleSize=fonts.HEADLINE_4_SIZE,
