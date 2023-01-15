@@ -294,14 +294,6 @@ class SecondaryMenuHandler:
                 on_new_screen_route=None,
                 on_new_intent=res_utils.CREATE_INVOICE_INTENT,
             ),
-            MenuItem(
-                index=2,
-                label="Datatable",
-                icon=TuttleComponentIcons.datatable_icon,
-                selected_icon=TuttleComponentIcons.datatable_selected_icon,
-                destination=Container(),
-                on_new_screen_route="/404",
-            ),
         ]
 
 
