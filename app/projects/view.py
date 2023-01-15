@@ -806,7 +806,7 @@ class EditProjectScreen(TuttleView, UserControl):
         )
         self.tag_field = views.get_std_txt_field(
             label="Tag",
-            hint="an optional tag",
+            hint="a unique #tag for the project",
             on_change=self.on_tag_changed,
         )
         self.start_date_field = views.DateSelector(label="Start Date")
