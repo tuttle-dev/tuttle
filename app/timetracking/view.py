@@ -217,10 +217,10 @@ class TimeTrackingView(TuttleView, UserControl):
         is_cloud=False,
         cloud_calendar_info: Optional[CloudCalendarInfo] = None,
     ):
-
+        """Spreadsheet and ics uploads"""
         self.close_pop_up_if_open()
         if is_spreadsheet or is_ics:
-            exts = ["ics"] if is_ics else ["xlsx"]
+            exts = ["ics"] if is_ics else ["xlsx", "csv", "xls", "tsv", "ods"]
             title = "Select .ics file" if is_ics else "Select excel file"
             self.pick_file_callback(
                 on_file_picker_result=self.on_file_picker_result,
@@ -233,8 +233,6 @@ class TimeTrackingView(TuttleView, UserControl):
 
         elif is_cloud:
             self.on_load_from_calendar(info=cloud_calendar_info)
-
-    """Spreadsheet and ics uploads"""
 
     def on_file_picker_result(self, e: FilePickerResultEvent):
         if e.files and len(e.files) > 0:

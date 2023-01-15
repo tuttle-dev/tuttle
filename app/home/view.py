@@ -218,14 +218,14 @@ class MainMenuItemsHandler:
         self.clients_view = ClientsListView(params)
         self.contracts_view = ContractsListView(params)
         self.items = [
-            MenuItem(
-                index=0,
-                label="Dashboard",
-                icon=TuttleComponentIcons.dashboard_icon,
-                selected_icon=TuttleComponentIcons.dashboard_selected_icon,
-                destination=Container(),
-                on_new_screen_route="/404",
-            ),
+            # MenuItem(
+            #     index=0,
+            #     label="Dashboard",
+            #     icon=TuttleComponentIcons.dashboard_icon,
+            #     selected_icon=TuttleComponentIcons.dashboard_selected_icon,
+            #     destination=Container(),
+            #     on_new_screen_route="/404",
+            # ),
             MenuItem(
                 index=1,
                 label="Projects",
