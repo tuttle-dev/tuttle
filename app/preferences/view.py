@@ -156,7 +156,7 @@ class PreferencesScreen(TuttleView, UserControl):
         )
         self.cloud_account_id_control = get_std_txt_field(
             label="Cloud Account Name",
-            hint="to load time tracking info from calendar",
+            hint="Your cloud account name",
             on_change=self.on_cloud_account_id_changed,
         )
         self.currencies_control = get_dropdown(
