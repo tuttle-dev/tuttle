@@ -25,26 +25,31 @@ from tuttle.model import (
 def create_fake_contact(
     fake: faker.Faker,
 ):
-    street_line, city_line = fake.address().splitlines()
-    a = Address(
-        id=id,
-        street=street_line.split(" ")[0],
-        number=street_line.split(" ")[1],
-        city=city_line.split(" ")[1],
-        postal_code=city_line.split(" ")[0],
-        country=fake.country(),
-    )
-    first_name, last_name = fake.name().split(" ", 1)
-    contact = Contact(
-        id=id,
-        first_name=first_name,
-        last_name=last_name,
-        email=fake.email(),
-        company=fake.company(),
-        address_id=a.id,
-        address=a,
-    )
-    return contact
+    try:
+        street_line, city_line = fake.address().splitlines()
+        a = Address(
+            id=id,
+            street=street_line.split(" ")[0],
+            number=street_line.split(" ")[1],
+            city=city_line.split(" ")[1],
+            postal_code=city_line.split(" ")[0],
+            country=fake.country(),
+        )
+        first_name, last_name = fake.name().split(" ", 1)
+        contact = Contact(
+            id=id,
+            first_name=first_name,
+            last_name=last_name,
+            email=fake.email(),
+            company=fake.company(),
+            address_id=a.id,
+            address=a,
+        )
+        return contact
+    except Exception as ex:
+        logger.error(ex)
+        logger.error(f"Failed to create fake contact, trying again")
+        return create_fake_contact(fake)
 
 
 def create_fake_client(
@@ -67,7 +72,7 @@ def create_fake_contract(
     Create a fake contract for the given client.
     """
     return Contract(
-        title=fake.sentence(),
+        title=f"{client.name} service contract",
         client=client,
         signature_date=fake.date_this_year(before_today=True),
         start_date=fake.date_this_year(after_today=True),
@@ -118,8 +123,23 @@ def create_fake_invoice(project: Project, fake: faker.Faker) -> Invoice:
 def create_fake_data(
     n: int = 10,
 ):
-    locales = ["de_DE", "en_US", "es_ES", "fr_FR", "it_IT", "sv_SE"]
-    fake = faker.Faker()
+    locales = [
+        "de_DE",
+        "de_CH",
+        "de_AT",
+        "en_US",
+        "en_GB",
+        "es_ES",
+        "fr_FR",
+        "it_IT",
+        "sv_SE",
+        "cz_CZ",
+        "nl_NL",
+        "pt_BR",
+        "tr_TR",
+    ]
+    fake = faker.Faker(locale=locales)
+
     contacts = [create_fake_contact(fake) for _ in range(n)]
     clients = [create_fake_client(contact, fake) for contact in contacts]
     contracts = [create_fake_contract(client, fake) for client in clients]
