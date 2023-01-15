@@ -69,7 +69,7 @@ class TuttleApp:
         )
         theme = (
             preferences_result.data
-            if preferences_result.was_intent_successful
+            if preferences_result.data
             else THEME_MODES.dark.value
         )
         self.page.theme_mode = theme
