@@ -26,6 +26,7 @@ class TimeTrackingDataSource(SQLModelDataSourceMixin):
                 log_message  : str  if an error or exception occurs
                 exception : Exception if an exception occurs
         """
+        # TODO: this should be specific for loading from a calendar file, there should be another method for the spreadsheet
         try:
             file_calendar = FileCalendar(name=file_name, path=file_path)
             return IntentResult(was_intent_successful=True, data=file_calendar)

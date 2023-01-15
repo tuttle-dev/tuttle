@@ -329,7 +329,10 @@ class TimeTrackingView(TuttleView, UserControl):
                     "The code you provided is invalid. Please retry", is_error=True
                 )
             """prompt user for the 2fa code, then call this method again"""
-            self.request_2fa_auth_code(info=info)
+            self.request_2fa_auth_code(
+                info=info,
+                prev_un_verified_login_res=result_data,
+            )
         else:
             feedback_msg = ""
             is_error = False
