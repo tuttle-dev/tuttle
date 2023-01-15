@@ -1116,9 +1116,11 @@ class ViewContractScreen(TuttleView, UserControl):
         self.currency_control.value = self.contract.currency
         self.vat_rate_control.value = self.contract.VAT_rate
         self.unit_control.value = self.contract.unit
-        self.units_per_workday_control.value = self.contract.units_per_workday
-        self.volume_control.value = self.contract.volume
-        self.term_of_payment_control.value = self.contract.term_of_payment
+        self.units_per_workday_control.value = (
+            f"{self.contract.units_per_workday} {self.contract.unit}s"
+        )
+        self.volume_control.value = f"{self.contract.volume} {self.contract.unit}s"
+        self.term_of_payment_control.value = f"{self.contract.term_of_payment} days"
         self.signature_date_control.value = self.contract.signature_date
 
     def did_mount(self):

@@ -42,7 +42,7 @@ class ContractDataSource(SQLModelDataSourceMixin):
                 exception : Exception if an exception occurs
         """
         try:
-            contract = self.query(Contract).where(id=contract_id).first()
+            contract = self.query_by_id(Contract, contract_id)
             return IntentResult(was_intent_successful=True, data=contract)
         except Exception as e:
             return IntentResult(
