@@ -23,7 +23,7 @@ class InvoicingDataSource(SQLModelDataSourceMixin):
         try:
             return IntentResult(
                 was_intent_successful=False,
-                log_message="Un Implemented error @InvoicingDataSource.get_invoices_for_project",
+                log_message="NotImplementedError @InvoicingDataSource.get_invoices_for_project",
             )
         except Exception as e:
             return IntentResult(
@@ -68,7 +68,7 @@ class InvoicingDataSource(SQLModelDataSourceMixin):
         try:
             return IntentResult(
                 was_intent_successful=False,
-                log_message="Un Implemented error @InvoicingDataSource.delete_invoice_by_id",
+                log_message="NotImplementedError @InvoicingDataSource.delete_invoice_by_id",
             )
         except Exception as e:
             return IntentResult(
@@ -120,7 +120,7 @@ class InvoicingDataSource(SQLModelDataSourceMixin):
         try:
             return IntentResult(
                 was_intent_successful=False,
-                log_message="Un Implemented error @InvoicingDataSource.update_invoice",
+                log_message="NotImplementedError @InvoicingDataSource.update_invoice",
             )
         except Exception as e:
             return IntentResult(

@@ -59,7 +59,7 @@ class TimeTrackingDataSource(SQLModelDataSourceMixin):
         try:
             return IntentResult(
                 was_intent_successful=False,
-                log_message="Un Implemented error",
+                log_message="Not implemented",
             )
         except Exception as e:
             return IntentResult(
@@ -125,7 +125,7 @@ class TimeTrackingDataSource(SQLModelDataSourceMixin):
         # TODO
         return IntentResult(
             was_intent_successful=False,
-            log_message="Un Implemented error",
+            log_message="Not implemented",
         )
 
     def verify_google_with_2fa(
@@ -136,5 +136,5 @@ class TimeTrackingDataSource(SQLModelDataSourceMixin):
         # TODO
         return IntentResult(
             was_intent_successful=False,
-            log_message="Un Implemented error",
+            log_message="Not implemented",
         )

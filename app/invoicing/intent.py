@@ -90,15 +90,11 @@ class InvoicingIntent:
 
     def send_invoice_by_mail_intent(self, invoice: Invoice) -> IntentResult:
         """TODO attempts to trigger the mail client to send the intent as attachment"""
-        return IntentResult(
-            was_intent_successful=False, error_msg="Un Implemented Error"
-        )
+        return IntentResult(was_intent_successful=False, error_msg="Not implemented")
 
     def generate_invoice_doc_intent(self, invoice: Invoice) -> IntentResult:
         """TODO Attempts to generate the invoice as a pdf and open the location"""
-        return IntentResult(
-            was_intent_successful=False, error_msg="Un Implemented Error"
-        )
+        return IntentResult(was_intent_successful=False, error_msg="Not implemented")
 
     def toggle_invoice_status_intent(
         self, invoice: Invoice, status_to_toggle: InvoiceStatus
