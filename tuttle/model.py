@@ -134,7 +134,10 @@ class User(SQLModel, table=True):
     # google_account: Optional["GoogleAccount"] = Relationship(back_populates="user")
     # User 1:1 business BankAccount
     bank_account_id: Optional[int] = Field(default=None, foreign_key="bankaccount.id")
-    bank_account: Optional["BankAccount"] = Relationship(back_populates="user")
+    bank_account: Optional["BankAccount"] = Relationship(
+        back_populates="user",
+        sa_relationship_kwargs={"lazy": "subquery"},
+    )
     # TODO: path to logo image
     logo: Optional[str]
 
@@ -347,7 +350,13 @@ class Project(SQLModel, table=True):
     )
     # Project 1:n Timesheet
     timesheets: List["Timesheet"] = Relationship(
-        back_populates="project", sa_relationship_kwargs={"lazy": "subquery"}
+        back_populates="project",
+        sa_relationship_kwargs={"lazy": "subquery"},
+    )
+    # Project 1:n Invoice
+    invoices: List["Invoice"] = Relationship(
+        back_populates="project",
+        sa_relationship_kwargs={"lazy": "subquery"},
     )
 
     @property
@@ -407,7 +416,10 @@ class Timesheet(SQLModel, table=True):
     # table: Dict = Field(default={}, sa_column=sqlalchemy.Column(sqlalchemy.JSON))
     # Timesheet n:1 Project
     project_id: Optional[int] = Field(default=None, foreign_key="project.id")
-    project: Project = Relationship(back_populates="timesheets")
+    project: Project = Relationship(
+        back_populates="timesheets",
+        sa_relationship_kwargs={"lazy": "subquery"},
+    )
     # invoice: "Invoice" = Relationship(back_populates="timesheet")
     # period: str
     comment: Optional[str]
@@ -458,7 +470,14 @@ class Invoice(SQLModel, table=True):
     # Invoice n:1 Contract ?
     contract_id: Optional[int] = Field(default=None, foreign_key="contract.id")
     contract: Contract = Relationship(
-        back_populates="invoices", sa_relationship_kwargs={"lazy": "subquery"}
+        back_populates="invoices",
+        sa_relationship_kwargs={"lazy": "subquery"},
+    )
+    # Invoice n:1 Project
+    project_id: Optional[int] = Field(default=None, foreign_key="project.id")
+    project: Project = Relationship(
+        back_populates="invoices",
+        sa_relationship_kwargs={"lazy": "subquery"},
     )
     # status -- corresponds to InvoiceStatus enum above
     sent: Optional[bool] = Field(default=False)
@@ -467,7 +486,8 @@ class Invoice(SQLModel, table=True):
     # payment: Optional["Payment"] = Relationship(back_populates="invoice")
     # invoice items
     items: List["InvoiceItem"] = Relationship(
-        back_populates="invoice", sa_relationship_kwargs={"lazy": "subquery"}
+        back_populates="invoice",
+        sa_relationship_kwargs={"lazy": "subquery"},
     )
     rendered: bool = Field(default=False)
 
@@ -534,7 +554,10 @@ class InvoiceItem(SQLModel, table=True):
     VAT_rate: Decimal
     # invoice
     invoice_id: Optional[int] = Field(default=None, foreign_key="invoice.id")
-    invoice: Invoice = Relationship(back_populates="items")
+    invoice: Invoice = Relationship(
+        back_populates="items",
+        sa_relationship_kwargs={"lazy": "subquery"},
+    )
 
     @property
     def subtotal(self) -> Decimal:

@@ -93,9 +93,12 @@ class InvoicingDataSource(SQLModelDataSourceMixin):
                 exception : Exception if an exception occurs
         """
         try:
+            # TODO: do we need project and time_range?
+            self.store(invoice)
             return IntentResult(
-                was_intent_successful=False,
-                log_message="Un Implemented error @InvoicingDataSource.create_or_update_invoice",
+                was_intent_successful=True,
+                log_message="Successfulyl created invoice",
+                data=invoice,  # needs to be returned to the intent to obtain the invoice id
             )
         except Exception as e:
             return IntentResult(

@@ -114,9 +114,14 @@ class ContractsIntent:
         term_of_payment: Optional[str],
         billing_cycle: Cycle = Cycle.hourly,
         is_completed: bool = False,
-        contract: Optional[Contract] = None,
+        contract_to_update: Optional[Contract] = None,
     ) -> IntentResult:
-        return self._data_source.save_contract(
+        if contract_to_update:
+            _id = contract_to_update.id
+        else:
+            _id = None
+        contract = Contract(
+            id=_id,
             title=title,
             signature_date=signature_date,
             start_date=start_date,
@@ -131,8 +136,9 @@ class ContractsIntent:
             term_of_payment=term_of_payment,
             billing_cycle=billing_cycle,
             is_completed=is_completed,
-            contract=contract,
         )
+
+        return self._data_source.save_contract(contract=contract)
 
     def get_all_contracts_as_map_intent(self) -> Mapping[int, Contract]:
         if self._all_contracts_cache:

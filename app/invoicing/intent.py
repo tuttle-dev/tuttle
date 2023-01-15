@@ -73,8 +73,13 @@ class InvoicingIntent:
         return result
 
     def save_invoice_intent(
-        self, invoice: Invoice, project: Project, time_range: TuttleDateRange
+        self,
+        invoice: Invoice,
+        project: Project,
+        time_range: TuttleDateRange,
     ) -> IntentResult:
+        invoice.contract = project.contract
+        invoice.project = project
         result: IntentResult = self._data_source.create_or_update_invoice(
             invoice, project, time_range
         )

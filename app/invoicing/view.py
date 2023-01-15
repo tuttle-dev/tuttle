@@ -1,5 +1,8 @@
 from typing import Callable, Optional
 from datetime import datetime, timedelta
+
+from loguru import logger
+
 from flet import (
     AlertDialog,
     Card,
@@ -117,9 +120,10 @@ class InvoicingEditorPopUp(DialogHandler, UserControl):
     def on_project_selected(self, e):
         selected_project = e.control.value
         # extract id
-        id = selected_project.split(" ")[0]
-        if id in self.projects_as_map:
-            self.project = self.projects_as_map[id]
+        id_ = int(selected_project.split(" ")[0])
+        if id_ in self.projects_as_map:
+            self.project = self.projects_as_map[id_]
+            logger.debug(f"Selected project: {self.project.title} with id {id_}")
 
     def on_submit_btn_clicked(self, e):
         self.invoice.number = self.number
@@ -162,7 +166,7 @@ class InvoicingListView(TuttleView, UserControl):
                 on_edit_clicked=self.on_edit_invoice_clicked,
                 on_delete_clicked=self.on_delete_invoice_clicked,
                 on_mail_invoice=self.on_mail_invoice,
-                on_print_invoice=self.on_print_invoice,
+                on_view_invoice=self.on_print_invoice,
                 toggle_invoice_status=self.toggle_invoice_status,
             )
             self.invoices_list_control.controls.append(invoiceItemControl)
@@ -332,14 +336,14 @@ class InvoiceTile(UserControl):
         on_edit_clicked,
         on_delete_clicked,
         on_mail_invoice,
-        on_print_invoice,
+        on_view_invoice,
         toggle_invoice_status,
     ):
         super().__init__()
         self.invoice = invoice
         self.on_edit_clicked = on_edit_clicked
         self.on_delete_clicked = on_delete_clicked
-        self.on_print_invoice = on_print_invoice
+        self.on_view_invoice = on_view_invoice
         self.on_mail_invoice = on_mail_invoice
         self.toggle_invoice_status = toggle_invoice_status
 
@@ -399,14 +403,14 @@ class InvoiceTile(UserControl):
                         ),
                     ),
                     views.pop_up_menu_item(
+                        icon=icons.VISIBILITY_OUTLINED,
+                        txt="View",
+                        on_click=lambda e: self.on_view_invoice(self.invoice),
+                    ),
+                    views.pop_up_menu_item(
                         icon=icons.OUTGOING_MAIL,
                         txt="Send",
                         on_click=lambda e: self.on_mail_invoice(self.invoice),
-                    ),
-                    views.pop_up_menu_item(
-                        icon=icons.PRINT_OUTLINED,
-                        txt="Print",
-                        on_click=lambda e: self.on_print_invoice(self.invoice),
                     ),
                 ],
             ),

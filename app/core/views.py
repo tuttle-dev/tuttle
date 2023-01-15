@@ -605,7 +605,7 @@ def view_edit_delete_pop_up(
         items.insert(
             0,
             pop_up_menu_item(
-                icons.REMOVE_RED_EYE, txt=view_item_lbl, on_click=on_click_view
+                icons.VISIBILITY_OUTLINED, txt=view_item_lbl, on_click=on_click_view
             ),
         )
     if suffix_menu_items:

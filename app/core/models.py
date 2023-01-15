@@ -5,6 +5,8 @@ from typing import Callable
 from dataclasses import dataclass
 from typing import Optional
 
+from tuttle.dev import deprecated
+
 
 class Cycle(enum.Enum):
     hourly = "Hourly"
@@ -84,8 +86,11 @@ class RouteView:
     on_window_resized: Callable
 
 
+@deprecated
 class TuttleDateRange:
     """ "Wraps a start and from date"""
+
+    # TODO: remove this class, a tuple will do
 
     def __init__(self, from_date: datetime.date, to_date: datetime.date) -> None:
         self.from_date: datetime.date = from_date
