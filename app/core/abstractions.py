@@ -17,7 +17,7 @@ class ClientStorage(ABC):
         self,
     ):
         super().__init__()
-        self.keys_prefix = "tuttle_app"
+        self.keys_prefix = "tuttle_app_"
 
     @abstractmethod
     def set_value(self, key: str, value: any):

@@ -30,6 +30,8 @@ class PreferencesIntent:
         preferences = Preferences()
         for item in PreferencesStorageKeys:
             preference_item_result = self.get_preference_by_key_intent(item)
+            if not preference_item_result.data:
+                continue
             if not preference_item_result.was_intent_successful:
                 preference_item_result.log_message_if_any()
                 return IntentResult(
@@ -44,6 +46,8 @@ class PreferencesIntent:
                 preferences.cloud_acc_id = preference_item_result.data
             elif item.value == PreferencesStorageKeys.cloud_provider_key.value:
                 preferences.cloud_acc_provider = preference_item_result.data
+            elif item.value == PreferencesStorageKeys.language_key.value:
+                preferences.language = preference_item_result.data
 
         return IntentResult(
             was_intent_successful=True,
@@ -65,6 +69,10 @@ class PreferencesIntent:
             self.set_preference_key_value_pair_intent(
                 PreferencesStorageKeys.default_currency_key,
                 preferences.default_currency,
+            )
+            self.set_preference_key_value_pair_intent(
+                PreferencesStorageKeys.language_key,
+                preferences.language,
             )
         except Exception as e:
             result = IntentResult(

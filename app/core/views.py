@@ -193,9 +193,10 @@ def get_primary_btn(
     label: str,
     width: int = 200,
     icon: Optional[str] = None,
+    show: bool = True,
 ):
     """An elevated button with primary styling"""
-    return FilledButton(label, width=width, on_click=on_click, icon=icon)
+    return FilledButton(label, width=width, on_click=on_click, icon=icon, visible=show)
 
 
 def get_secondary_btn(
@@ -626,9 +627,10 @@ def status_label(txt: str, is_done: bool):
     )
 
 
-def get_or_txt(show_lines: Optional[bool] = True):
+def get_or_txt(show_lines: Optional[bool] = True, show: bool = True):
     """Returns a view representing ---- OR ----"""
     return Row(
+        visible=show,
         alignment=SPACE_BETWEEN_ALIGNMENT if show_lines else CENTER_ALIGNMENT,
         vertical_alignment=CENTER_ALIGNMENT,
         controls=[

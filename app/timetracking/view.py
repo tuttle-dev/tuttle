@@ -78,7 +78,12 @@ class NewTimeTrackPopUp(DialogHandler):
         preferred_cloud_acc: str,
         preferred_acc_provider: str,
     ):
-        # TODO check if preferences are set
+        display_cloud_option = (
+            True if preferred_cloud_acc and preferred_acc_provider else False
+        )
+
+        space_between_cloud_controls = views.xsSpace
+        space_between_cloud_controls.visible = display_cloud_option
         dialog_width = int(dimens.MIN_WINDOW_WIDTH * 0.8)
         title = "Track your progress"
         dialog = AlertDialog(
@@ -88,29 +93,35 @@ class NewTimeTrackPopUp(DialogHandler):
                     controls=[
                         views.get_headline_txt(txt=title, size=fonts.HEADLINE_4_SIZE),
                         views.xsSpace,
-                        views.get_body_txt(f"Use calendar from {preferred_cloud_acc}"),
-                        views.xsSpace,
+                        views.get_body_txt(
+                            f"Use calendar from {preferred_cloud_acc}",
+                            show=display_cloud_option,
+                        ),
+                        space_between_cloud_controls,
                         views.get_std_txt_field(
                             label="Calendar Name",
                             on_change=self.on_calendar_name_changed,
+                            show=display_cloud_option,
                         ),
-                        views.xsSpace,
+                        space_between_cloud_controls,
                         views.get_std_txt_field(
                             label="Cloud Password",
                             keyboard_type=utils.KEYBOARD_PASSWORD,
                             on_change=self.on_password_changed,
+                            show=display_cloud_option,
                         ),
-                        views.xsSpace,
+                        space_between_cloud_controls,
                         views.get_primary_btn(
                             label="Load from cloud calendar",
                             on_click=lambda e: self.on_submit_btn_clicked(
                                 is_cloud=True
                             ),
                             width=int(dialog_width * 0.9),
+                            show=display_cloud_option,
                         ),
-                        views.xsSpace,
-                        views.get_or_txt(show_lines=False),
-                        views.xsSpace,
+                        space_between_cloud_controls,
+                        views.get_or_txt(show_lines=False, show=display_cloud_option),
+                        space_between_cloud_controls,
                         views.get_secondary_btn(
                             label="Upload a spreadsheet",
                             icon="table_view",

@@ -83,6 +83,7 @@ class PreferencesScreen(TuttleView, UserControl):
         self.cloud_provider_control.value = self.preferences.cloud_acc_provider
         self.cloud_account_id_control.value = self.preferences.cloud_acc_id
         self.currencies_control.value = self.preferences.default_currency
+        self.languages_control.value = self.preferences.language
 
     def on_theme_changed(self, e):
         if not self.preferences:
