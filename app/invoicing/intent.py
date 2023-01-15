@@ -1,9 +1,14 @@
 from typing import Mapping
+
+from pathlib import Path
+from loguru import logger
+
 from core.intent_result import IntentResult
 from core.models import TuttleDateRange
 from .data_source import InvoicingDataSource
 from tuttle.model import Invoice, Project, InvoiceStatus
 from projects.intent import ProjectsIntent
+from tuttle.os_functions import preview_pdf
 
 
 class InvoicingIntent:
@@ -115,4 +120,17 @@ class InvoicingIntent:
 
     def view_invoice(self, invoice: Invoice) -> IntentResult:
         """TODO Attempts to open the invoice in the default pdf viewer"""
+        try:
+            assert invoice.rendered
+            pdf_path = Path().home() / "Invoices" / invoice.file_name
+            assert pdf_path.exists()
+            preview_pdf(pdf_path)
+            return IntentResult(was_intent_successful=True)
+        except Exception as ex:
+            logger.error(f"Failed to open the invoice: {ex}")
+            logger.exception(ex)
+            return IntentResult(
+                was_intent_successful=False,
+                error_msg=f"Failed to open the invoice: {str(ex)}",
+            )
         return IntentResult(was_intent_successful=False, error_msg="Not implemented")
