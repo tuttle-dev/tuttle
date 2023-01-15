@@ -353,7 +353,7 @@ class ContactsListView(TuttleView, UserControl):
     def on_new_contact_added(self, contact):
         self.loading_indicator.visible = True
         self.update_self()
-        result: IntentResult = self.intent.save_contact_intent(contact)
+        result: IntentResult = self.intent.save_contact(contact)
         if not result.was_intent_successful:
             self.show_snack(result.error_msg, True)
         else:
@@ -365,7 +365,7 @@ class ContactsListView(TuttleView, UserControl):
         self.update_self()
 
     def load_all_contacts(self):
-        self.contacts_to_display = self.intent.get_all_contacts_as_map_intent()
+        self.contacts_to_display = self.intent.get_all_contacts_as_map()
 
     def refresh_list(self):
         self.contacts_container.controls.clear()
@@ -406,7 +406,7 @@ class ContactsListView(TuttleView, UserControl):
     def on_delete_confirmed(self, contact_id):
         self.loading_indicator.visible = True
         self.update_self()
-        result = self.intent.delete_contact_by_id_intent(contact_id)
+        result = self.intent.delete_contact_by_id(contact_id)
         is_error = False if result.was_intent_successful else True
         msg = "Contact deleted!" if not is_error else result.error_msg
         self.show_snack(msg, is_error)
@@ -419,7 +419,7 @@ class ContactsListView(TuttleView, UserControl):
     def on_update_contact(self, contact):
         self.loading_indicator.visible = True
         self.update_self()
-        result = self.intent.save_contact_intent(contact)
+        result = self.intent.save_contact(contact)
         is_error = False if result.was_intent_successful else True
         msg = (
             "The contact's info has been updated" if not is_error else result.error_msg

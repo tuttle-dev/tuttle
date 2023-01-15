@@ -64,7 +64,7 @@ class TuttleApp:
         self.page.theme = APP_THEME
         self.local_storage = ClientStorageImpl(page=self.page)
         preferences = PreferencesIntent(self.local_storage)
-        preferences_result = preferences.get_preference_by_key_intent(
+        preferences_result = preferences.get_preference_by_key(
             PreferencesStorageKeys.theme_mode_key
         )
         theme = (

@@ -298,7 +298,7 @@ class ViewProjectScreen(TuttleView, UserControl):
 
     def did_mount(self):
         self.mounted = True
-        result: IntentResult = self.intent.get_project_by_id_intent(self.project_id)
+        result: IntentResult = self.intent.get_project_by_id(self.project_id)
         if not result.was_intent_successful:
             self.show_snack(result.error_msg, True)
         else:
@@ -346,7 +346,7 @@ class ViewProjectScreen(TuttleView, UserControl):
         self.pop_up_handler.open_dialog()
 
     def on_delete_confirmed(self, project_id):
-        result = self.intent.delete_project_by_id_intent(project_id)
+        result = self.intent.delete_project_by_id(project_id)
         is_err = not result.was_intent_successful
         msg = result.error_msg if is_err else "Project deleted!"
         self.show_snack(msg, is_err)
@@ -605,7 +605,7 @@ class ProjectsListView(TuttleView, UserControl):
     def on_delete_confirmed(self, project_id):
         self.loading_indicator.visible = True
         self.update_self()
-        result = self.intent.delete_project_by_id_intent(project_id)
+        result = self.intent.delete_project_by_id(project_id)
         is_err = not result.was_intent_successful
         if not is_err and project_id in self.projects_to_display:
             del self.projects_to_display[project_id]
@@ -620,15 +620,13 @@ class ProjectsListView(TuttleView, UserControl):
 
     def on_filter_projects(self, filterByState: ProjectStates):
         if filterByState.value == ProjectStates.ACTIVE.value:
-            self.projects_to_display = self.intent.get_active_projects_as_map_intent()
+            self.projects_to_display = self.intent.get_active_projects_as_map()
         elif filterByState.value == ProjectStates.UPCOMING.value:
-            self.projects_to_display = self.intent.get_upcoming_projects_as_map_intent()
+            self.projects_to_display = self.intent.get_upcoming_projects_as_map()
         elif filterByState.value == ProjectStates.COMPLETED.value:
-            self.projects_to_display = (
-                self.intent.get_completed_projects_as_map_intent()
-            )
+            self.projects_to_display = self.intent.get_completed_projects_as_map()
         else:
-            self.projects_to_display = self.intent.get_all_projects_as_map_intent()
+            self.projects_to_display = self.intent.get_all_projects_as_map()
         self.display_currently_filtered_projects()
         self.update_self()
 
@@ -638,7 +636,7 @@ class ProjectsListView(TuttleView, UserControl):
     def did_mount(self):
         self.mounted = True
         self.loading_indicator.visible = True
-        self.projects_to_display = self.intent.get_all_projects_as_map_intent()
+        self.projects_to_display = self.intent.get_all_projects_as_map()
         count = len(self.projects_to_display)
         self.loading_indicator.visible = False
         if count == 0:
@@ -707,7 +705,7 @@ class EditProjectScreen(TuttleView, UserControl):
     def did_mount(self):
         self.mounted = True
         self.show_progress_bar_disable_action()
-        result: IntentResult = self.intent.get_project_by_id_intent(self.project_id)
+        result: IntentResult = self.intent.get_project_by_id(self.project_id)
         if result.was_intent_successful:
             self.project = result.data
             self.set_project_fields()
@@ -770,7 +768,7 @@ class EditProjectScreen(TuttleView, UserControl):
             return
 
         self.show_progress_bar_disable_action()
-        result: IntentResult = self.intent.save_project_intent(
+        result: IntentResult = self.intent.save_project(
             title=self.title,
             description=self.description,
             start_date=start_date_value,
@@ -956,7 +954,7 @@ class CreateProjectScreen(TuttleView, UserControl):
     def reload_load_contracts(
         self,
     ):
-        self.contracts_map = self.intent.get_all_contracts_as_map_intent()
+        self.contracts_map = self.intent.get_all_contracts_as_map()
         self.contracts_field.error_text = (
             "Please create a new contract" if len(self.contracts_map) == 0 else None
         )
@@ -999,7 +997,7 @@ class CreateProjectScreen(TuttleView, UserControl):
             return
 
         self.show_progress_bar_disable_action()
-        result: IntentResult = self.intent.save_project_intent(
+        result: IntentResult = self.intent.save_project(
             title=self.title,
             description=self.description,
             start_date=self.start_date,

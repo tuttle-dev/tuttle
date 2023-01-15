@@ -32,7 +32,7 @@ class TimeTrackingIntent:
         self._data_source = TimeTrackingDataSource()
         self._preferences_intent = PreferencesIntent(local_storage)
 
-    def process_timetracking_file_intent(self, file_path, file_name) -> IntentResult:
+    def process_timetracking_file(self, file_path, file_name) -> IntentResult:
         """processes a time tracking spreadsheet or ics file in the uploads folder
 
         Returns
@@ -52,15 +52,15 @@ class TimeTrackingIntent:
             result.log_message_if_any()
         return result
 
-    def get_preferred_cloud_account_intent(self):
+    def get_preferred_cloud_account(self):
         """
         Returns:
             IntentResult
                 data as [provider_name, account_name] list if successful else None"""
-        provider_result = self._preferences_intent.get_preference_by_key_intent(
+        provider_result = self._preferences_intent.get_preference_by_key(
             PreferencesStorageKeys.cloud_provider_key
         )
-        acc_result = self._preferences_intent.get_preference_by_key_intent(
+        acc_result = self._preferences_intent.get_preference_by_key(
             PreferencesStorageKeys.cloud_acc_id_key
         )
         if (
@@ -75,17 +75,17 @@ class TimeTrackingIntent:
             was_intent_successful=True, data=[provider_result.data, acc_result.data]
         )
 
-    def _set_preferred_cloud_account_intent(self, cloud_acc_id, cloud_provider):
-        result = self._preferences_intent.set_preference_key_value_pair_intent(
+    def _set_preferred_cloud_account(self, cloud_acc_id, cloud_provider):
+        result = self._preferences_intent.set_preference_key_value_pair(
             PreferencesStorageKeys.cloud_provider_key, cloud_provider
         )
         if not result.was_intent_successful:
             return result  # do not proceed
-        return self._preferences_intent.set_preference_key_value_pair_intent(
+        return self._preferences_intent.set_preference_key_value_pair(
             PreferencesStorageKeys.cloud_acc_id_key, cloud_acc_id
         )
 
-    def configure_account_and_load_calendar_intent(
+    def configure_account_and_load_calendar(
         self,
         calendar_info: CloudCalendarInfo,
         two_factor_code: Optional[str] = "",

@@ -26,10 +26,10 @@ class PreferencesIntent:
 
         self._client_storage = client_storage
 
-    def get_preferences_intent(self) -> IntentResult:
+    def get_preferences(self) -> IntentResult:
         preferences = Preferences()
         for item in PreferencesStorageKeys:
-            preference_item_result = self.get_preference_by_key_intent(item)
+            preference_item_result = self.get_preference_by_key(item)
             if not preference_item_result.data:
                 continue
             if not preference_item_result.was_intent_successful:
@@ -54,23 +54,23 @@ class PreferencesIntent:
             data=preferences,
         )
 
-    def save_preferences_intent(self, preferences: Preferences) -> IntentResult:
+    def save_preferences(self, preferences: Preferences) -> IntentResult:
         try:
-            self.set_preference_key_value_pair_intent(
+            self.set_preference_key_value_pair(
                 PreferencesStorageKeys.theme_mode_key, preferences.theme_mode
             )
-            self.set_preference_key_value_pair_intent(
+            self.set_preference_key_value_pair(
                 PreferencesStorageKeys.cloud_acc_id_key, preferences.cloud_acc_id
             )
-            self.set_preference_key_value_pair_intent(
+            self.set_preference_key_value_pair(
                 PreferencesStorageKeys.cloud_provider_key,
                 preferences.cloud_acc_provider,
             )
-            self.set_preference_key_value_pair_intent(
+            self.set_preference_key_value_pair(
                 PreferencesStorageKeys.default_currency_key,
                 preferences.default_currency,
             )
-            self.set_preference_key_value_pair_intent(
+            self.set_preference_key_value_pair(
                 PreferencesStorageKeys.language_key,
                 preferences.language,
             )
@@ -84,7 +84,7 @@ class PreferencesIntent:
             result.log_message_if_any()
             return result
 
-    def get_preference_by_key_intent(
+    def get_preference_by_key(
         self, preference_key: PreferencesStorageKeys
     ) -> IntentResult:
         try:
@@ -100,7 +100,7 @@ class PreferencesIntent:
             result.log_message_if_any()
             return result
 
-    def set_preference_key_value_pair_intent(
+    def set_preference_key_value_pair(
         self, preference_key: PreferencesStorageKeys, value: any
     ) -> IntentResult:
         try:

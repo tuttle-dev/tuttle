@@ -248,7 +248,7 @@ class ContractEditorScreen(TuttleView, UserControl):
     ):
         if self.contract_id is None:
             return
-        result = self.intent.get_contract_by_id_intent(self.contract_id)
+        result = self.intent.get_contract_by_id(self.contract_id)
         if result.was_intent_successful:
             self.contract_to_edit = result.data
         else:
@@ -257,14 +257,14 @@ class ContractEditorScreen(TuttleView, UserControl):
             )
 
     def load_clients(self):
-        self.clients_map = self.intent.get_all_clients_as_map_intent()
+        self.clients_map = self.intent.get_all_clients_as_map()
         self.clients_field.error_text = (
             "Please create a new client" if len(self.clients_map) == 0 else None
         )
         views.update_dropdown_items(self.clients_field, self.get_clients_as_list())
 
     def load_contacts(self):
-        self.contacts_map = self.intent.get_all_contacts_as_map_intent()
+        self.contacts_map = self.intent.get_all_contacts_as_map()
 
     def get_clients_as_list(self):
         """transforms a map of id-client_title to a list for dropdown options"""
@@ -308,7 +308,7 @@ class ContractEditorScreen(TuttleView, UserControl):
 
     def on_client_set_from_pop_up(self, client):
         if client:
-            result: IntentResult = self.intent.save_client_intent(client)
+            result: IntentResult = self.intent.save_client(client)
             if result.was_intent_successful:
                 self.selected_client: Client = result.data
                 self.clients_map[self.selected_client.id] = self.selected_client
@@ -356,7 +356,7 @@ class ContractEditorScreen(TuttleView, UserControl):
             return
 
         self.show_progress_bar_disable_action()
-        result: IntentResult = self.intent.save_contract_intent(
+        result: IntentResult = self.intent.save_contract(
             title=self.title,
             signature_date=signatureDate,
             start_date=startDate,
@@ -697,14 +697,14 @@ class CreateContractScreen(TuttleView, UserControl):
         self.update_self()
 
     def load_clients(self):
-        self.clients_map = self.intent.get_all_clients_as_map_intent()
+        self.clients_map = self.intent.get_all_clients_as_map()
         self.clients_field.error_text = (
             "Please create a new client" if len(self.clients_map) == 0 else None
         )
         views.update_dropdown_items(self.clients_field, self.get_clients_as_list())
 
     def load_contacts(self):
-        self.contacts_map = self.intent.get_all_contacts_as_map_intent()
+        self.contacts_map = self.intent.get_all_contacts_as_map()
 
     def get_clients_as_list(self):
         """transforms a map of id-client_title to a list for dropdown options"""
@@ -748,7 +748,7 @@ class CreateContractScreen(TuttleView, UserControl):
 
     def on_client_set_from_pop_up(self, client):
         if client:
-            result: IntentResult = self.intent.save_client_intent(client)
+            result: IntentResult = self.intent.save_client(client)
             if result.was_intent_successful:
                 self.client: Client = result.data
                 self.clients_map[self.client.id] = self.client
@@ -796,7 +796,7 @@ class CreateContractScreen(TuttleView, UserControl):
             return
 
         self.show_progress_bar_disable_action()
-        result: IntentResult = self.intent.save_contract_intent(
+        result: IntentResult = self.intent.save_contract(
             title=self.title,
             signature_date=signatureDate,
             start_date=startDate,
@@ -1036,7 +1036,7 @@ class ContractsListView(TuttleView, UserControl):
     def on_delete_contract_confirmed(self, contract_id: str):
         self.loading_indicator.visible = True
         self.update_self()
-        result = self.intent.delete_contract_by_id_intent(contract_id=contract_id)
+        result = self.intent.delete_contract_by_id(contract_id=contract_id)
         is_error = not result.was_intent_successful
         msg = "Contract deleted!" if not is_error else result.error_msg
         self.show_snack(msg, is_error)
@@ -1048,13 +1048,13 @@ class ContractsListView(TuttleView, UserControl):
 
     def on_filter_contracts(self, filterByState: ContractStates):
         if filterByState.value == ContractStates.ACTIVE.value:
-            self.contracts_to_display = self.intent.get_active_contracts_intent()
+            self.contracts_to_display = self.intent.get_active_contracts()
         elif filterByState.value == ContractStates.UPCOMING.value:
-            self.contracts_to_display = self.intent.get_upcoming_contracts_intent()
+            self.contracts_to_display = self.intent.get_upcoming_contracts()
         elif filterByState.value == ContractStates.COMPLETED.value:
-            self.contracts_to_display = self.intent.get_completed_contracts_intent()
+            self.contracts_to_display = self.intent.get_completed_contracts()
         else:
-            self.contracts_to_display = self.intent.get_all_contracts_as_map_intent()
+            self.contracts_to_display = self.intent.get_all_contracts_as_map()
         self.display_currently_filtered_contracts()
         self.update_self()
 
@@ -1064,7 +1064,7 @@ class ContractsListView(TuttleView, UserControl):
     def did_mount(self):
         self.mounted = True
         self.loading_indicator.visible = True
-        self.contracts_to_display = self.intent.get_all_contracts_as_map_intent()
+        self.contracts_to_display = self.intent.get_all_contracts_as_map()
         count = len(self.contracts_to_display)
         self.loading_indicator.visible = False
         if count == 0:
@@ -1123,7 +1123,7 @@ class ViewContractScreen(TuttleView, UserControl):
 
     def did_mount(self):
         self.mounted = True
-        result: IntentResult = self.intent.get_contract_by_id_intent(self.contract_id)
+        result: IntentResult = self.intent.get_contract_by_id(self.contract_id)
         if not result.was_intent_successful:
             self.show_snack(result.error_msg, True)
         else:
@@ -1159,7 +1159,7 @@ class ViewContractScreen(TuttleView, UserControl):
         self.pop_up_handler.open_dialog()
 
     def on_delete_confirmed(self, contract_id):
-        result = self.intent.delete_contract_by_id_intent(contract_id)
+        result = self.intent.delete_contract_by_id(contract_id)
         is_err = not result.was_intent_successful
         msg = result.error_msg if is_err else "Contract deleted!"
         self.show_snack(msg, is_err)

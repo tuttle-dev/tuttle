@@ -39,7 +39,7 @@ class ClientsIntent:
         self._contacts_intent = ContactsIntent()
         self._data_source = ClientDataSource()
 
-    def get_all_clients_as_map_intent(self) -> Mapping[int, Client]:
+    def get_all_clients_as_map(self) -> Mapping[int, Client]:
         result = self._data_source.get_all_clients()
         if result.was_intent_successful:
             clients = result.data
@@ -49,7 +49,7 @@ class ClientsIntent:
             result.log_message_if_any()
         return {}
 
-    def save_client_intent(
+    def save_client(
         self,
         client: Client = None,
     ) -> IntentResult:
@@ -79,10 +79,10 @@ class ClientsIntent:
             result.error_msg = "Failed to save the client! Please retry"
         return result
 
-    def get_all_contacts_as_map_intent(self) -> IntentResult:
-        return self._contacts_intent.get_all_contacts_as_map_intent()
+    def get_all_contacts_as_map(self) -> IntentResult:
+        return self._contacts_intent.get_all_contacts_as_map()
 
-    def delete_client_by_id_intent(self, client_id):
+    def delete_client_by_id(self, client_id):
         result: IntentResult = self._data_source.delete_client_by_id(client_id)
         if not result.was_intent_successful:
             result.error_msg = "Failed to delete the client! please retry"

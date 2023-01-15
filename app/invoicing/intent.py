@@ -41,10 +41,10 @@ class InvoicingIntent:
         self._projects_intent = ProjectsIntent()
         self._data_source = InvoicingDataSource()
 
-    def get_active_projects_as_map_intent(self) -> Mapping[int, Project]:
-        return self._projects_intent.get_active_projects_as_map_intent()
+    def get_active_projects_as_map(self) -> Mapping[int, Project]:
+        return self._projects_intent.get_active_projects_as_map()
 
-    def get_invoices_for_project_as_map_intent(self, project_id) -> IntentResult:
+    def get_invoices_for_project_as_map(self, project_id) -> IntentResult:
         result = self._data_source.get_invoices_for_project(project_id)
         if result.was_intent_successful and result.data:
             invoices_list = result.data
@@ -55,7 +55,7 @@ class InvoicingIntent:
                 result.log_message_if_any()
             return {}
 
-    def get_all_invoices_as_map_intent(self) -> Mapping[int, Invoice]:
+    def get_all_invoices_as_map(self) -> Mapping[int, Invoice]:
         result = self._data_source.get_all_invoices()
         if result.was_intent_successful:
             invoices = result.data
@@ -65,14 +65,14 @@ class InvoicingIntent:
             result.log_message_if_any()
             return {}
 
-    def delete_invoice_by_id_intent(self, invoice_id) -> IntentResult:
+    def delete_invoice_by_id(self, invoice_id) -> IntentResult:
         result: IntentResult = self._data_source.delete_invoice_by_id(invoice_id)
         if not result.was_intent_successful:
             result.log_message_if_any()
             result.error_msg = "Deleting invoice failed! Please retry"
         return result
 
-    def save_invoice_intent(
+    def save_invoice(
         self,
         invoice: Invoice,
         project: Project,
@@ -88,15 +88,15 @@ class InvoicingIntent:
             result.error_msg = "failed to save the invoice! Please retry"
         return result
 
-    def send_invoice_by_mail_intent(self, invoice: Invoice) -> IntentResult:
+    def send_invoice_by_mail(self, invoice: Invoice) -> IntentResult:
         """TODO attempts to trigger the mail client to send the intent as attachment"""
         return IntentResult(was_intent_successful=False, error_msg="Not implemented")
 
-    def generate_invoice_doc_intent(self, invoice: Invoice) -> IntentResult:
+    def generate_invoice_doc(self, invoice: Invoice) -> IntentResult:
         """TODO Attempts to generate the invoice as a pdf and open the location"""
         return IntentResult(was_intent_successful=False, error_msg="Not implemented")
 
-    def toggle_invoice_status_intent(
+    def toggle_invoice_status(
         self, invoice: Invoice, status_to_toggle: InvoiceStatus
     ) -> IntentResult:
         if status_to_toggle.value == InvoiceStatus.SENT.value:
@@ -112,3 +112,7 @@ class InvoicingIntent:
             result.error_msg = "Failed to update status of the invoice. Please retry"
             result.log_message_if_any()
         return result
+
+    def view_invoice(self, invoice: Invoice) -> IntentResult:
+        """TODO Attempts to open the invoice in the default pdf viewer"""
+        return IntentResult(was_intent_successful=False, error_msg="Not implemented")

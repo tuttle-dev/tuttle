@@ -82,23 +82,23 @@ class ContractsIntent:
         self._active_contracts_cache: Mapping[str, Contract] = None
         self._upcoming_contracts_cache: Mapping[str, Contract] = None
 
-    def get_contract_by_id_intent(self, contractId) -> IntentResult:
+    def get_contract_by_id(self, contractId) -> IntentResult:
         result = self._data_source.get_contract_by_id(contractId)
         if not result.was_intent_successful:
             result.error_msg = "Failed to load contract details. Please retry"
             result.log_message_if_any()
         return result
 
-    def get_all_clients_as_map_intent(self) -> Mapping[int, Client]:
-        return self._clients_intent.get_all_clients_as_map_intent()
+    def get_all_clients_as_map(self) -> Mapping[int, Client]:
+        return self._clients_intent.get_all_clients_as_map()
 
-    def get_all_contacts_as_map_intent(self) -> Mapping[int, Contact]:
-        return self._contacts_intent.get_all_contacts_as_map_intent()
+    def get_all_contacts_as_map(self) -> Mapping[int, Contact]:
+        return self._contacts_intent.get_all_contacts_as_map()
 
-    def save_client_intent(self, client: Client) -> IntentResult:
-        return self._clients_intent.save_client_intent(client=client)
+    def save_client(self, client: Client) -> IntentResult:
+        return self._clients_intent.save_client(client=client)
 
-    def save_contract_intent(
+    def save_contract(
         self,
         title: str,
         signature_date: datetime.date,
@@ -140,7 +140,7 @@ class ContractsIntent:
 
         return self._data_source.save_contract(contract=contract)
 
-    def get_all_contracts_as_map_intent(self) -> Mapping[int, Contract]:
+    def get_all_contracts_as_map(self) -> Mapping[int, Contract]:
         if self._all_contracts_cache:
             # return cached results
             return self._all_contracts_cache
@@ -155,9 +155,9 @@ class ContractsIntent:
             self._all_contracts_cache = {}
         return self._all_contracts_cache
 
-    def get_completed_contracts_intent(self) -> Mapping[str, Contract]:
+    def get_completed_contracts(self) -> Mapping[str, Contract]:
         if not self._all_contracts_cache:
-            self.get_all_contracts_as_map_intent()
+            self.get_all_contracts_as_map()
         if not self._completed_contracts_cache:
             self._completed_contracts_cache = {}
             for key in self._all_contracts_cache:
@@ -166,9 +166,9 @@ class ContractsIntent:
                     self._completed_contracts_cache[key] = c
         return self._completed_contracts_cache
 
-    def get_active_contracts_intent(self):
+    def get_active_contracts(self):
         if not self._all_contracts_cache:
-            self.get_all_contracts_as_map_intent()
+            self.get_all_contracts_as_map()
         if not self._active_contracts_cache:
             self._active_contracts_cache = {}
             for key in self._all_contracts_cache:
@@ -177,9 +177,9 @@ class ContractsIntent:
                     self._active_contracts_cache[key] = c
         return self._active_contracts_cache
 
-    def get_upcoming_contracts_intent(self):
+    def get_upcoming_contracts(self):
         if not self._all_contracts_cache:
-            self.get_all_contracts_as_map_intent()
+            self.get_all_contracts_as_map()
         if not self._upcoming_contracts_cache:
             self._upcoming_contracts_cache = {}
             for key in self._all_contracts_cache:
@@ -188,7 +188,7 @@ class ContractsIntent:
                     self._upcoming_contracts_cache[key] = c
         return self._upcoming_contracts_cache
 
-    def delete_contract_by_id_intent(self, contract_id: str):
+    def delete_contract_by_id(self, contract_id: str):
         result: IntentResult = self._data_source.delete_contract_by_id(contract_id)
         if not result.was_intent_successful:
             result.error_msg = "Failed to delete that contract! Please retry"

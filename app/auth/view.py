@@ -261,7 +261,7 @@ class SplashScreen(TuttleView, UserControl):
         self.local_storage = params.local_storage
 
     def show_login_if_signed_out_else_redirect(self):
-        result = self.intent.get_user_if_exists_intent()
+        result = self.intent.get_user_if_exists()
         if result.was_intent_successful:
             if result.data is not None:
                 self.navigate_to_route(res_utils.HOME_SCREEN_ROUTE)
@@ -277,7 +277,7 @@ class SplashScreen(TuttleView, UserControl):
             on_submit_success=lambda _: self.navigate_to_route(
                 res_utils.HOME_SCREEN_ROUTE
             ),
-            on_form_submit=lambda title, name, email, phone, street, street_num, postal_code, city, country: self.intent.create_user_intent(
+            on_form_submit=lambda title, name, email, phone, street, street_num, postal_code, city, country: self.intent.create_user(
                 title=title,
                 name=name,
                 email=email,
@@ -405,7 +405,7 @@ class ProfileScreen(TuttleView, UserControl):
         if e.progress == 1.0:
             self.toggle_progress_bar(f"Upload complete, processing file...")
             if self.uploaded_photo_path:
-                result = self.intent.update_user_photo_path_intent(
+                result = self.intent.update_user_photo_path(
                     self.user_profile,
                     self.uploaded_photo_path,
                 )
@@ -437,7 +437,7 @@ class ProfileScreen(TuttleView, UserControl):
             label="Update photo", on_click=self.on_update_photo_clicked
         )
         self.user_data_form = UserDataForm(
-            on_form_submit=lambda title, name, email, phone, street, street_num, postal_code, city, country: self.intent.update_user_intent(
+            on_form_submit=lambda title, name, email, phone, street, street_num, postal_code, city, country: self.intent.update_user(
                 title=title,
                 name=name,
                 email=email,
@@ -497,7 +497,7 @@ class ProfileScreen(TuttleView, UserControl):
     def did_mount(self):
         self.mounted = True
         self.toggle_progress_bar()
-        result: IntentResult = self.intent.get_user_if_exists_intent()
+        result: IntentResult = self.intent.get_user_if_exists()
         if not result.was_intent_successful:
             self.show_snack(result.error_msg, True)
         else:

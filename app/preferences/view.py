@@ -236,7 +236,7 @@ class PreferencesScreen(TuttleView, UserControl):
         self.loading_indicator.visible = True
         self.update_self()
         self.set_available_currencies()
-        result: IntentResult = self.intent.get_preferences_intent()
+        result: IntentResult = self.intent.get_preferences()
         if result.was_intent_successful:
             self.preferences = result.data
             self.refresh_preferences_items()
@@ -249,5 +249,5 @@ class PreferencesScreen(TuttleView, UserControl):
     def will_unmount(self):
         # save changes
         if self.preferences:
-            self.intent.save_preferences_intent(self.preferences)
+            self.intent.save_preferences(self.preferences)
         self.mounted = False

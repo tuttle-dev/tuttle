@@ -431,10 +431,10 @@ class ClientsListView(TuttleView, UserControl):
         return
 
     def load_all_clients(self):
-        self.clients_to_display = self.intent.get_all_clients_as_map_intent()
+        self.clients_to_display = self.intent.get_all_clients_as_map()
 
     def load_all_contacts(self):
-        self.contacts = self.intent.get_all_contacts_as_map_intent()
+        self.contacts = self.intent.get_all_contacts_as_map()
 
     def refresh_clients(self):
         self.clients_container.controls.clear()
@@ -474,7 +474,7 @@ class ClientsListView(TuttleView, UserControl):
     def on_delete_confirmed(self, client_id):
         self.loading_indicator.visible = True
         self.update_self()
-        result = self.intent.delete_client_by_id_intent(client_id)
+        result = self.intent.delete_client_by_id(client_id)
         is_error = not result.was_intent_successful
         msg = result.error_msg if is_error else "Client deleted!"
         self.show_snack(msg, is_error)
@@ -488,7 +488,7 @@ class ClientsListView(TuttleView, UserControl):
         is_updating = client_to_save.id is not None
         self.loading_indicator.visible = True
         self.update_self()
-        result: IntentResult = self.intent.save_client_intent(client_to_save)
+        result: IntentResult = self.intent.save_client(client_to_save)
         if not result.was_intent_successful:
             self.show_snack(result.error_msg, True)
         else:

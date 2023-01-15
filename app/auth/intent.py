@@ -32,7 +32,7 @@ class AuthIntent:
         """
         self._data_source = UserDataSource()
 
-    def create_user_intent(
+    def create_user(
         self,
         title: str,
         name: str,
@@ -52,14 +52,14 @@ class AuthIntent:
             result.log_message_if_any()
         return result
 
-    def get_user_if_exists_intent(self) -> IntentResult:
+    def get_user_if_exists(self) -> IntentResult:
         result = self._data_source.get_user()
         if not result.was_intent_successful:
             result.error_msg = "Checking auth status failed! Please restart the app"
             result.log_message_if_any()
         return result
 
-    def update_user_intent(
+    def update_user(
         self,
         user: User,
         title: str,
@@ -89,7 +89,7 @@ class AuthIntent:
             result.log_message_if_any()
         return result
 
-    def update_user_photo_path_intent(
+    def update_user_photo_path(
         self,
         user: User,
         photo_path,

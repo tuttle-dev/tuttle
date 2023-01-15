@@ -251,7 +251,7 @@ class TimeTrackingView(TuttleView, UserControl):
 
         if e.progress == 1.0:
             self.set_progress_hint(f"Upload complete, processing file...")
-            intent_result = self.intent.process_timetracking_file_intent(
+            intent_result = self.intent.process_timetracking_file(
                 self.uploaded_file_url, e.file_name
             )
             msg = (
@@ -311,7 +311,7 @@ class TimeTrackingView(TuttleView, UserControl):
         )
         self.set_progress_hint(progress_msg)
 
-        result = self.intent.configure_account_and_load_calendar_intent(
+        result = self.intent.configure_account_and_load_calendar(
             info,
             two_factor_code=two_factor_auth_code,
             prev_un_verified_login_res=prev_un_verified_login_res,
@@ -366,7 +366,7 @@ class TimeTrackingView(TuttleView, UserControl):
         self.no_timetrack_control.visible = True
 
     def load_preferred_cloud_acc(self):
-        result = self.intent.get_preferred_cloud_account_intent()
+        result = self.intent.get_preferred_cloud_account()
         if result.was_intent_successful:
             self.preferred_cloud_provider = result.data[0]
             self.preferred_cloud_acc = result.data[1]

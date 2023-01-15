@@ -34,7 +34,7 @@ class ContactsIntent:
         """
         self._data_source = ContactDataSource()
 
-    def get_all_contacts_as_map_intent(self) -> Mapping[int, Contact]:
+    def get_all_contacts_as_map(self) -> Mapping[int, Contact]:
         result = self._data_source.get_all_contacts()
         if result.was_intent_successful:
             contacts = result.data
@@ -44,7 +44,7 @@ class ContactsIntent:
             result.log_message_if_any()
             return {}
 
-    def save_contact_intent(self, contact: Contact) -> IntentResult:
+    def save_contact(self, contact: Contact) -> IntentResult:
         if not contact.first_name or not contact.last_name:
             return IntentResult(
                 was_intent_successful=False,
@@ -61,7 +61,7 @@ class ContactsIntent:
             result.log_message_if_any()
         return result
 
-    def delete_contact_by_id_intent(self, contact_id):
+    def delete_contact_by_id(self, contact_id):
         result: IntentResult = self._data_source.delete_contact_by_id(contact_id)
         if not result.was_intent_successful:
             result.error_msg = "Failed to delete the contact! please retry"
