@@ -618,7 +618,7 @@ def status_label(txt: str, is_done: bool):
     return Row(
         controls=[
             Icon(
-                icons.CHECK_CIRCLE_OUTLINE if is_done else icons.CHECK_BOX_OUTLINED,
+                icons.CHECK_CIRCLE_OUTLINE if is_done else icons.RADIO_BUTTON_UNCHECKED,
                 size=14,
                 color=colors.PRIMARY_COLOR if is_done else colors.GRAY_COLOR,
             ),
