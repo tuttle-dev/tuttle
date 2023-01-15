@@ -10,6 +10,7 @@ from flet import (
     Text,
     UserControl,
     ProgressRing,
+    border,
 )
 from tuttle.calendar import FileCalendar
 from .model import CloudCalendarInfo, CloudConfigurationResult
@@ -351,8 +352,13 @@ class TimeTrackingView(TuttleView, UserControl):
     def refresh_records(self):
         if not self.file_calendar_to_display:
             return
+        timetracking_data = self.file_calendar_to_display.to_data()
         data_table = tabular.data_frame_to_data_table(
-            data_frame=self.file_calendar_to_display.to_data()
+            data_frame=timetracking_data.sort_index().reset_index(),
+            table_style={
+                "border": border.all(),
+                "border_radius": 10,
+            },
         )
         self.timetracked_container.content = data_table
 
