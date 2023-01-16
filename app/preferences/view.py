@@ -1,5 +1,5 @@
 from typing import Optional
-import pycountry
+
 from flet import (
     Tabs,
     Tab,
@@ -27,6 +27,7 @@ from core.views import (
     START_ALIGNMENT,
     CENTER_ALIGNMENT,
 )
+from core import utils
 from preferences.intent import PreferencesIntent
 from preferences.model import Preferences
 from res.dimens import (
@@ -55,10 +56,7 @@ class PreferencesScreen(TuttleView, UserControl):
         self.currencies = []
 
     def set_available_currencies(self):
-        currency_list = list(pycountry.currencies)
-        for currency in currency_list:
-            self.currencies.append(currency.name)
-        self.currencies.sort()
+        self.currencies = utils.get_currencies_list()
         update_dropdown_items(self.currencies_control, self.currencies)
 
     def on_currency_selected(self, e):

@@ -45,10 +45,12 @@ from .utils import (
     KEYBOARD_NONE,
 )
 
+
+lgSpace = Container(height=dimens.SPACE_LG, width=dimens.SPACE_STD, padding=0, margin=0)
+mdSpace = Container(height=dimens.SPACE_MD, width=dimens.SPACE_MD, padding=0, margin=0)
 stdSpace = Container(
     height=dimens.SPACE_STD, width=dimens.SPACE_STD, padding=0, margin=0
 )
-mdSpace = Container(height=dimens.SPACE_MD, width=dimens.SPACE_MD, padding=0, margin=0)
 smSpace = Container(height=dimens.SPACE_SM, width=dimens.SPACE_SM, padding=0, margin=0)
 xsSpace = Container(height=dimens.SPACE_XS, width=dimens.SPACE_XS, padding=0, margin=0)
 
@@ -375,13 +377,19 @@ class StandardDropdown(Dropdown):
 class DateSelector(UserControl):
     """Date selector."""
 
-    def __init__(self, label: str, initial_date: Optional[datetime.date] = None):
+    def __init__(
+        self,
+        label: str,
+        initial_date: Optional[datetime.date] = None,
+        label_color: Optional[str] = None,
+    ):
         super().__init__()
         self.label = label
         self.initial_date = initial_date if initial_date else datetime.date.today()
         self.date = str(self.initial_date.day)
         self.month = str(self.initial_date.month)
         self.year = str(self.initial_date.year)
+        self.label_color = label_color
 
         self.day_dropdown = get_dropdown(
             label="Day",
@@ -427,7 +435,7 @@ class DateSelector(UserControl):
         self.view = Container(
             content=Column(
                 controls=[
-                    Text(self.label, size=fonts.BODY_2_SIZE),
+                    get_body_txt(txt=self.label, color=self.label_color),
                     Row(
                         [
                             self.day_dropdown,

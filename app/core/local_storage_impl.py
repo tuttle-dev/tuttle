@@ -24,7 +24,6 @@ class ClientStorageImpl(ClientStorage):
         self.pending_saving_value = None
 
     def set_value(self, key: str, value: any):
-        # TODO fix bug assert jv is not None
         try:
             prefixedKey = self.keys_prefix + key
             self.pending_saving_data_key = prefixedKey

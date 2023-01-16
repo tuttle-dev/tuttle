@@ -57,6 +57,8 @@ class TuttleViewParams:
     keep_back_stack = True
     on_navigate_back: Optional[Callable] = None
     page_scroll_type: Optional[str] = AUTO_SCROLL
+    on_save_timetracking_dataframe: Optional[Callable] = None
+    on_get_timetracking_dataframe: Optional[Callable] = None
 
 
 class TuttleView(ABC):
@@ -116,10 +118,19 @@ class TuttleView(ABC):
         self.page_scroll_type = params.page_scroll_type
         self.upload_file_callback = params.upload_file_callback
         self.pick_file_callback = params.pick_file_callback
+        self.local_storage = params.local_storage
         self.mounted = False
 
     def parent_intent_listener(self, intent: str, data: any):
         """listens for an intent from parent view"""
+        return
+
+    def on_resume_after_back_pressed(
+        self,
+    ):
+        """listener for when a view has been resumed after user pressed back from another view
+        used by views whose self.keep_back_stack parameter is set to True
+        """
         return
 
     def on_window_resized_listener(self, width, height):

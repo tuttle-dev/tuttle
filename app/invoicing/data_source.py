@@ -3,6 +3,7 @@ from typing import List, Optional
 from core.abstractions import SQLModelDataSourceMixin
 from core.intent_result import IntentResult
 from tuttle.model import Invoice, Project
+import datetime
 
 
 class InvoicingDataSource(SQLModelDataSourceMixin):
@@ -53,7 +54,7 @@ class InvoicingDataSource(SQLModelDataSourceMixin):
             return IntentResult(
                 was_intent_successful=False,
                 log_message=f"Exception raised @InvoicingDataSource.get_all_invoices {ex}",
-                exception=e,
+                exception=ex,
             )
 
     def delete_invoice_by_id(self, invoice_id) -> IntentResult[None]:
@@ -82,7 +83,8 @@ class InvoicingDataSource(SQLModelDataSourceMixin):
         self,
         invoice: Invoice,
         project: Project,
-        time_range,
+        from_date: datetime.date,
+        to_date: datetime.date,
     ) -> IntentResult[Invoice]:
         """TODO Creates or updates an invoice with given invoice and project info
 

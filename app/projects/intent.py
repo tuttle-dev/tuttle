@@ -108,14 +108,16 @@ class ProjectsIntent:
             result.log_message_if_any()
         return result
 
-    def get_all_clients_as_map(self) -> Mapping[int, Client]:
+    def get_all_clients_as_map_intent(self) -> Mapping[int, Client]:
         return self._clients_intent.get_all_clients_as_map()
 
-    def get_all_contracts_as_map(self) -> Mapping[int, Contract]:
-        return self._contracts_intent.get_all_contracts_as_map()
+    def get_all_contracts_as_map_intent(self) -> Mapping[int, Contract]:
+        return self._contracts_intent.get_all_contracts_as_map(reload_cache=True)
 
-    def get_all_projects_as_map(self) -> Mapping[int, Project]:
-        if not self._all_projects_cache:
+    def get_all_projects_as_map(
+        self, reload_cache: bool = False
+    ) -> Mapping[int, Project]:
+        if reload_cache or not self._all_projects_cache:
             self._clear_cached_results()
             self._all_projects_cache = {}
             result = self._data_source.get_all_projects()
@@ -144,7 +146,7 @@ class ProjectsIntent:
         if not self._active_projects_cache:
             self._active_projects_cache = {}
             for key in self._all_projects_cache:
-                p = self._all_projects_cache[key]
+                p: Project = self._all_projects_cache[key]
                 if p.is_active():
                     self._active_projects_cache[key] = p
         return self._active_projects_cache

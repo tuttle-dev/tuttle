@@ -10,6 +10,7 @@ warnings.warn(
 from enum import Enum
 import base64
 from flet import icons
+import pycountry
 
 from tuttle.dev import deprecated
 
@@ -121,3 +122,13 @@ class TuttleComponentIcons(Enum):
 
     def __str__(self) -> str:
         return str(self.value)
+
+
+def get_currencies_list():
+    """Returns a list of available currencies sorted alphabetically"""
+    currencies = []
+    currency_list = list(pycountry.currencies)
+    for currency in currency_list:
+        currencies.append(currency.name)
+    currencies.sort()
+    return currencies

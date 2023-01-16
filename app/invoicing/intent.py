@@ -6,7 +6,7 @@ from datetime import date
 from loguru import logger
 
 from core.intent_result import IntentResult
-from core.models import TuttleDateRange
+import datetime
 from .data_source import InvoicingDataSource
 from tuttle.model import Invoice, Project, InvoiceStatus
 from projects.intent import ProjectsIntent
@@ -83,12 +83,13 @@ class InvoicingIntent:
         self,
         invoice: Invoice,
         project: Project,
-        time_range: TuttleDateRange,
+        from_date: datetime.date,
+        to_date: datetime.date,
     ) -> IntentResult:
         invoice.contract = project.contract
         invoice.project = project
         result: IntentResult = self._data_source.create_or_update_invoice(
-            invoice, project, time_range
+            invoice, project, from_date, to_date
         )
         if not result.was_intent_successful:
             result.log_message_if_any()

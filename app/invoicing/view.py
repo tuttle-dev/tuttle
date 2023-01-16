@@ -1,6 +1,6 @@
 from typing import Callable, Optional
 from datetime import datetime, timedelta
-
+from pandas import DataFrame
 from loguru import logger
 
 from flet import (
@@ -26,7 +26,6 @@ from flet import (
 from core.abstractions import DialogHandler, TuttleView, TuttleViewParams
 from core.intent_result import IntentResult
 from core import utils, views
-from core.models import TuttleDateRange
 from res import colors, dimens, fonts, res_utils
 
 
@@ -64,12 +63,10 @@ class InvoicingEditorPopUp(DialogHandler, UserControl):
             initial_date=self.invoice.date,
         )
         self.from_date_field = views.DateSelector(
-            label="Time Tracked From Date",
-            initial_date=yesterday,
+            label="From", initial_date=yesterday, label_color=colors.GRAY_COLOR
         )
         self.to_date_field = views.DateSelector(
-            label="Time Tracked Up-to Date",
-            initial_date=today,
+            label="To", initial_date=today, label_color=colors.GRAY_COLOR
         )
         dialog = AlertDialog(
             content=Container(
@@ -96,7 +93,8 @@ class InvoicingEditorPopUp(DialogHandler, UserControl):
                             label="Select project",
                             items=project_options,
                         ),
-                        views.xsSpace,
+                        views.stdSpace,
+                        views.get_body_txt(txt="Date range"),
                         self.from_date_field,
                         self.to_date_field,
                         views.xsSpace,
@@ -130,11 +128,10 @@ class InvoicingEditorPopUp(DialogHandler, UserControl):
         date = self.date_field.get_date()
         if date:
             self.invoice.date = date
-        from_date = self.from_date_field.get_date()
-        to_date = self.to_date_field.get_date()
-        time_range = TuttleDateRange(from_date=from_date, to_date=to_date)
+        from_date: Optional[datetime.date] = self.from_date_field.get_date()
+        to_date: Optional[datetime.date] = self.to_date_field.get_date()
         self.close_dialog()
-        self.on_submit(self.invoice, self.project, time_range)
+        self.on_submit(self.invoice, self.project, from_date, to_date)
 
 
 class InvoicingListView(TuttleView, UserControl):
@@ -145,9 +142,14 @@ class InvoicingListView(TuttleView, UserControl):
         self.contacts = {}
         self.active_projects = {}
         self.editor = None
+        self.get_timetracking_data = params.on_get_timetracking_dataframe
 
     def parent_intent_listener(self, intent: str, data: any):
         if intent == res_utils.CREATE_INVOICE_INTENT:
+            timetracking_data = self.get_timetracking_data()
+            if not isinstance(timetracking_data, DataFrame):
+                self.show_snack("Please set timetracking data!", is_error=True)
+                return
             if self.editor is not None:
                 self.editor.close_dialog()
             self.editor = InvoicingEditorPopUp(
@@ -222,7 +224,8 @@ class InvoicingListView(TuttleView, UserControl):
         self,
         invoice: Invoice,
         project: Project,
-        time_range: TuttleDateRange,
+        from_date: Optional[datetime.date],
+        to_date: Optional[datetime.date],
     ):
         if not invoice:
             return
@@ -231,7 +234,11 @@ class InvoicingListView(TuttleView, UserControl):
             self.show_snack("Please specify the project")
             return
 
-        if not time_range.is_valid():
+        if not from_date or not to_date:
+            self.show_snack("Please specify the date range")
+            return
+
+        if to_date < from_date:
             self.show_snack("The start date cannot be after the end date")
             return
 
@@ -239,9 +246,7 @@ class InvoicingListView(TuttleView, UserControl):
         self.loading_indicator.visible = True
         self.update_self()
         result: IntentResult = self.intent.save_invoice(
-            invoice,
-            project,
-            time_range,
+            invoice, project, from_date, to_date
         )
         if not result.was_intent_successful:
             self.show_snack(result.error_msg, True)
@@ -277,6 +282,7 @@ class InvoicingListView(TuttleView, UserControl):
         self.mounted = True
         self.loading_indicator.visible = True
         self.active_projects = self.intent.get_active_projects_as_map()
+
         self.invoices_to_display = self.intent.get_all_invoices_as_map()
         count = len(self.invoices_to_display)
         self.loading_indicator.visible = False

@@ -232,7 +232,7 @@ class MainMenuItemsHandler:
                 icon=TuttleComponentIcons.project_icon,
                 selected_icon=TuttleComponentIcons.project_selected_icon,
                 destination=self.projects_view,
-                on_new_screen_route=res_utils.PROJECT_CREATOR_SCREEN_ROUTE,
+                on_new_screen_route=res_utils.PROJECT_EDITOR_SCREEN_ROUTE,
                 on_new_intent=None,
             ),
             MenuItem(
@@ -241,7 +241,7 @@ class MainMenuItemsHandler:
                 icon=TuttleComponentIcons.contract_icon,
                 selected_icon=TuttleComponentIcons.contract_selected_icon,
                 destination=self.contracts_view,
-                on_new_screen_route=res_utils.CONTRACT_CREATOR_SCREEN_ROUTE,
+                on_new_screen_route=res_utils.CONTRACT_EDITOR_SCREEN_ROUTE,
                 on_new_intent=None,
             ),
             MenuItem(
@@ -298,7 +298,10 @@ class SecondaryMenuHandler:
 
 
 class HomeScreen(TuttleView, UserControl):
-    def __init__(self, params: TuttleViewParams):
+    def __init__(
+        self,
+        params: TuttleViewParams,
+    ):
         super().__init__(params)
         self.keep_back_stack = False
         self.page_scroll_type = None
@@ -389,9 +392,13 @@ class HomeScreen(TuttleView, UserControl):
         else:
             self.navigate_to_route(item.on_new_screen_route)
 
+    def on_resume_after_back_pressed(self):
+        if self.destination_view and isinstance(self.destination_view, TuttleView):
+            self.destination_view.on_resume_after_back_pressed()
+
     def pass_intent_to_destination(self, intent: str, data: str):
         """forwards an intent to a child destination view"""
-        if self.destination_view:
+        if self.destination_view and isinstance(self.destination_view, TuttleView):
             self.destination_view.parent_intent_listener(intent, data)
 
     def on_view_notifications_clicked(self, e):

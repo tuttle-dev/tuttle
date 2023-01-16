@@ -98,17 +98,3 @@ class RouteView:
     view: View
     keep_back_stack: bool
     on_window_resized: Callable
-
-
-@deprecated
-class TuttleDateRange:
-    """ "Wraps a start and from date"""
-
-    # TODO: remove this class, a tuple will do
-
-    def __init__(self, from_date: datetime.date, to_date: datetime.date) -> None:
-        self.from_date: datetime.date = from_date
-        self.to_date: datetime.date = to_date
-
-    def is_valid(self):
-        return self.from_date < self.to_date

@@ -4,7 +4,7 @@ from typing import Callable, Optional
 from loguru import logger
 from pathlib import Path
 import sqlmodel
-
+from pandera.typing import DataFrame
 
 from flet import (
     app,
@@ -22,7 +22,7 @@ import demo
 from auth.view import ProfileScreen, SplashScreen
 from contracts.view import (
     ContractEditorScreen,
-    CreateContractScreen,
+    ContractEditorScreen,
     ViewContractScreen,
 )
 from preferences.model import PreferencesStorageKeys
@@ -34,26 +34,23 @@ from core.models import RouteView
 from error_views.page_not_found_screen import Error404Screen
 from home.view import HomeScreen
 from preferences.view import PreferencesScreen
-from projects.view import CreateProjectScreen, EditProjectScreen, ViewProjectScreen
+from projects.view import ProjectEditorScreen, ViewProjectScreen
 from res.colors import BLACK_COLOR_ALT, ERROR_COLOR, PRIMARY_COLOR, WHITE_COLOR
 from res.dimens import MIN_WINDOW_HEIGHT, MIN_WINDOW_WIDTH
 from res.fonts import APP_FONTS, HEADLINE_4_SIZE, HEADLINE_FONT
 from res.theme import APP_THEME, THEME_MODES, get_theme_mode_from_value
 from res.res_utils import (
-    CONTRACT_CREATOR_SCREEN_ROUTE,
+    CONTRACT_EDITOR_SCREEN_ROUTE,
     CONTRACT_DETAILS_SCREEN_ROUTE,
     CONTRACT_EDITOR_SCREEN_ROUTE,
     HOME_SCREEN_ROUTE,
     PREFERENCES_SCREEN_ROUTE,
     PROFILE_SCREEN_ROUTE,
-    PROJECT_CREATOR_SCREEN_ROUTE,
     PROJECT_DETAILS_SCREEN_ROUTE,
     PROJECT_EDITOR_SCREEN_ROUTE,
     SPLASH_SCREEN_ROUTE,
 )
 from core.abstractions import TuttleViewParams
-
-from tuttle.calendar import Calendar, ICSCalendar
 
 
 class TuttleApp:
@@ -94,6 +91,10 @@ class TuttleApp:
         # database config
         self.app_dir = self.ensure_app_dir()
         self.db_path = self.app_dir / "tuttle.db"
+
+        # temp data cache and keys
+        self.data_cache = {}
+        self.cached_timetracking_data_key = "time_tracking_cache_key"
 
     def page_resize(self, e):
         if self.current_route_view:
@@ -196,13 +197,24 @@ class TuttleApp:
 
         self.page.go(newRoute)
 
-    def on_view_pop(self, view: Optional[any] = None):
+    def on_view_pop(self, view: Optional[View] = None):
         """invoked on back pressed"""
         if len(self.page.views) == 1:
             return
         self.page.views.pop()
-        top_view = self.page.views[-1]
-        self.page.go(top_view.route)
+        current_page_view: View = self.page.views[-1]
+        self.page.go(current_page_view.route)
+        if current_page_view.controls:
+            try:
+                # the controls should contain a TuttleView as first control
+                tuttle_view: TuttleView = current_page_view.controls[0]
+                # notify view that it has been resumed
+                tuttle_view.on_resume_after_back_pressed()
+            except Exception as e:
+                logger.error(
+                    f"Exception raised @TuttleApp.on_view_pop {e.__class__.__name__}"
+                )
+                logger.exception(e)
 
     def on_route_change(self, route):
         """auto invoked when the route changes
@@ -271,17 +283,11 @@ class TuttleApp:
             demo.install_demo_data(
                 n=10,
                 db_path=self.db_path,
+                on_cache_timetracking_dataframe=self.store_timetracking_dataframe_in_cache,
             )
         except Exception as ex:
             logger.exception(ex)
             logger.error("Failed to install demo data")
-        # create a fake calendar and add time tracking data from it
-        # calendar: Calendar = ICSCalendar(
-        #     ics_calendar=demo.create_fake_calendar(
-        #         project_list=projects,
-        #     )
-        # )
-        # TODO: add time tracking data from calendar - intent?
 
     def ensure_app_dir(self) -> Path:
         """Ensures that the user directory exists"""
@@ -295,6 +301,18 @@ class TuttleApp:
         if not uploads_dir.exists():
             uploads_dir.mkdir(parents=True)
         return uploads_dir
+
+    def store_timetracking_dataframe_in_cache(
+        self,
+        data: DataFrame,
+    ):
+
+        self.data_cache[self.cached_timetracking_data_key] = data
+
+    def fetch_timetracking_dataframe_from_cache(self) -> Optional[DataFrame]:
+        if not self.cached_timetracking_data_key in self.data_cache:
+            return None
+        return self.data_cache[self.cached_timetracking_data_key]
 
     def build(self):
         self.page.go(self.page.route)
@@ -314,6 +332,8 @@ class TuttleRoutes:
             local_storage=app.local_storage,
             upload_file_callback=app.upload_file_callback,
             pick_file_callback=app.pick_file_callback,
+            on_save_timetracking_dataframe=self.app.store_timetracking_dataframe_in_cache,
+            on_get_timetracking_dataframe=self.app.fetch_timetracking_dataframe_from_cache,
         )
 
     def get_page_route_view(
@@ -349,11 +369,13 @@ class TuttleRoutes:
                 install_demo_data_callback=self.app.install_demo_data,
             )
         elif routePath.match(HOME_SCREEN_ROUTE):
-            screen = HomeScreen(params=self.tuttle_view_params)
+            screen = HomeScreen(
+                params=self.tuttle_view_params,
+            )
         elif routePath.match(PROFILE_SCREEN_ROUTE):
             screen = ProfileScreen(params=self.tuttle_view_params)
-        elif routePath.match(CONTRACT_CREATOR_SCREEN_ROUTE):
-            screen = CreateContractScreen(params=self.tuttle_view_params)
+        elif routePath.match(CONTRACT_EDITOR_SCREEN_ROUTE):
+            screen = ContractEditorScreen(params=self.tuttle_view_params)
         elif routePath.match(f"{CONTRACT_DETAILS_SCREEN_ROUTE}/:contractId"):
             screen = ViewContractScreen(
                 params=self.tuttle_view_params, contract_id=routePath.contractId
@@ -363,14 +385,14 @@ class TuttleRoutes:
             if hasattr(routePath, "contractId"):
                 contractId = routePath.contractId
             screen = ContractEditorScreen(
-                params=self.tuttle_view_params, contract_id=contractId
+                params=self.tuttle_view_params, contract_id_if_editing=contractId
             )
         elif routePath.match(PREFERENCES_SCREEN_ROUTE):
             screen = PreferencesScreen(
                 params=self.tuttle_view_params, on_theme_changed=self.on_theme_changed
             )
-        elif routePath.match(PROJECT_CREATOR_SCREEN_ROUTE):
-            screen = CreateProjectScreen(params=self.tuttle_view_params)
+        elif routePath.match(PROJECT_EDITOR_SCREEN_ROUTE):
+            screen = ProjectEditorScreen(params=self.tuttle_view_params)
         elif routePath.match(f"{PROJECT_DETAILS_SCREEN_ROUTE}/:projectId"):
             screen = ViewProjectScreen(
                 params=self.tuttle_view_params, project_id=routePath.projectId
@@ -381,8 +403,8 @@ class TuttleRoutes:
             projectId = None
             if hasattr(routePath, "projectId"):
                 projectId = routePath.projectId
-            screen = EditProjectScreen(
-                params=self.tuttle_view_params, project_id=projectId
+            screen = ProjectEditorScreen(
+                params=self.tuttle_view_params, project_id_if_editing=projectId
             )
         else:
             screen = Error404Screen(params=self.tuttle_view_params)

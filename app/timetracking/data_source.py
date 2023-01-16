@@ -12,8 +12,12 @@ class TimeTrackingDataSource(SQLModelDataSourceMixin):
     def __init__(self):
         super().__init__()
 
-    def load_from_timetracking_file(self, file_name: str, file_path) -> IntentResult:
-        """load the time tracking data
+    def load_timetracking_data_from_spreadsheet(
+        self,
+        spreadsheet_file_name: str,
+        spreadsheet_file_path: str,
+    ):
+        """TODO loads time tracking data from a spreadsheet file
 
         Arguments:
             file_name : name of the uploaded file
@@ -22,13 +26,37 @@ class TimeTrackingDataSource(SQLModelDataSourceMixin):
         Returns:
             IntentResult:
                 was_intent_successful : bool
-                data : FileCalendar if was_intent_successful else None
+                data : Calendar if was_intent_successful else None
                 log_message  : str  if an error or exception occurs
                 exception : Exception if an exception occurs
         """
-        # TODO: this should be specific for loading from a calendar file, there should be another method for the spreadsheet
+        return IntentResult(
+            was_intent_successful=False,
+            log_message="Un impemented error @TimeTrackingDataSource.load_timetracking_data_from_spreadsheet",
+        )
+
+    def load_timetracking_data_from_ics_file(
+        self,
+        ics_file_name: str,
+        ics_file_path,
+    ) -> IntentResult:
+        """loads time tracking data from a .ics file
+
+        Arguments:
+            ics_file_name : name of the uploaded file
+            ics_file_path : path to an uploaded ics or spreadsheet file
+
+        Returns:
+            IntentResult:
+                was_intent_successful : bool
+                data : Calendar if was_intent_successful else None
+                log_message  : str  if an error or exception occurs
+                exception : Exception if an exception occurs
+        """
         try:
-            file_calendar = ICSCalendar(name=file_name, path=file_path)
+            file_calendar: ICSCalendar = ICSCalendar(
+                name=ics_file_name, path=ics_file_path
+            )
             return IntentResult(was_intent_successful=True, data=file_calendar)
         except Exception as e:
             return IntentResult(
@@ -40,7 +68,7 @@ class TimeTrackingDataSource(SQLModelDataSourceMixin):
     def load_cloud_calendar_data(
         self, info: CloudCalendarInfo, cloud_session: any
     ) -> IntentResult:
-        """TODO Attempts to load data given CloudCalendarInfo
+        """TODO Loads data given CloudCalendarInfo
 
         Params:
             info :
@@ -122,7 +150,7 @@ class TimeTrackingDataSource(SQLModelDataSourceMixin):
         self,
         calendar_info: CloudCalendarInfo,
     ):
-        # TODO
+        # TODO implement
         return IntentResult(
             was_intent_successful=False,
             log_message="Not implemented",
@@ -133,7 +161,7 @@ class TimeTrackingDataSource(SQLModelDataSourceMixin):
         login_result: CloudConfigurationResult,
         two_factor_code: str,
     ):
-        # TODO
+        # TODO implement
         return IntentResult(
             was_intent_successful=False,
             log_message="Not implemented",

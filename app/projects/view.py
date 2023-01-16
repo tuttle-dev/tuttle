@@ -288,13 +288,13 @@ class ViewProjectScreen(TuttleView, UserControl):
 
     def display_project_data(self):
         self.project_title_control.value = self.project.title
-        self.client_control.value = self.project.contract.client.name
-        self.contract_control.value = self.project.contract.title
+        self.client_control.value = f"Client {self.project.contract.client.name}"
+        self.contract_control.value = f"Contract Title: {self.project.contract.title}"
         self.project_description_control.value = self.project.description
         self.project_start_date_control.value = f"Start Date: {self.project.start_date}"
         self.project_end_date_control.value = f"End Date: {self.project.end_date}"
         self.project_status_control.value = f"Status {self.project.get_status()}"
-        self.project_tagline_control.value = f"#{self.project.tag}"
+        self.project_tagline_control.value = f"{self.project.tag}"
         # self.set_chart()
 
     def set_chart(self):
@@ -652,8 +652,16 @@ class ProjectsListView(TuttleView, UserControl):
 
     def did_mount(self):
         self.mounted = True
+        self.initialize_data()
+
+    def on_resume_after_back_pressed(self):
+        self.initialize_data()
+
+    def initialize_data(self):
         self.loading_indicator.visible = True
-        self.projects_to_display = self.intent.get_all_projects_as_map()
+        self.projects_to_display = self.intent.get_all_projects_as_map(
+            reload_cache=True
+        )
         count = len(self.projects_to_display)
         self.loading_indicator.visible = False
         if count == 0:
@@ -677,219 +685,19 @@ class ProjectsListView(TuttleView, UserControl):
         self.mounted = False
 
 
-class EditProjectScreen(TuttleView, UserControl):
+class ProjectEditorScreen(TuttleView, UserControl):
+    """Displays a form for creating or updating a project"""
+
     def __init__(
         self,
-        params,
-        project_id: str,
+        params: TuttleViewParams,
+        project_id_if_editing: Optional[str] = None,
     ):
-        super().__init__(
-            params,
-        )
-        self.horizontal_alignment_in_parent = utils.CENTER_ALIGNMENT
-        self.intent = ProjectsIntent()
-
-        self.contracts_map = {}
-        self.loading_indicator = views.horizontal_progress
-        # info of project being edited
-        self.project_id: int = int(project_id)
-        self.project: Optional[Project] = None
-        self.title = ""
-        self.description = ""
-        self.contract = None
-        self.tag = ""
-
-    def on_title_changed(self, e):
-        self.title = e.control.value
-
-    def on_description_changed(self, e):
-        self.description = e.control.value
-
-    def on_tag_changed(self, e):
-        self.tag = e.control.value
-
-    def clear_title_error(self, e):
-        if self.title_field.error_text:
-            self.title_field.error_text = None
-            self.update_self()
-
-    def clear_description_error(self, e):
-        if self.description_field.error_text:
-            self.description_field.error_text = None
-            self.update_self()
-
-    # LOADING DATA
-    def did_mount(self):
-        self.mounted = True
-        self.show_progress_bar_disable_action()
-        result: IntentResult = self.intent.get_project_by_id(self.project_id)
-        if result.was_intent_successful:
-            self.project = result.data
-            self.set_project_fields()
-        else:
-            self.show_snack(result.error_msg, True)
-        self.enable_action_remove_progress_bar()
-        self.update_self()
-
-    def show_progress_bar_disable_action(self):
-        self.loading_indicator.visible = True
-        self.submit_btn.disabled = True
-
-    def enable_action_remove_progress_bar(self):
-        self.loading_indicator.visible = False
-        self.submit_btn.disabled = False
-
-    def set_project_fields(self):
-        """if user is editing a project
-        set the data of the project as form values
-        """
-        if not self.project:
-            return
-
-        self.title = self.project.title
-        self.title_field.value = self.title
-        self.description = self.project.description
-        self.description_field.value = self.description
-        self.tag = self.project.tag
-        self.tag_field.value = self.tag
-        self.start_date_field.set_date(self.project.start_date)
-        self.end_date_field.set_date(self.project.end_date)
-        self.contract_title_view.value = f"Contract {self.project.contract.title}"
-        self.client_title_view.value = f"Client {self.project.contract.client.name}"
-
-    def on_save(self, e):
-        if not self.title:
-            self.title_field.error_text = "Project title is required"
-            self.update_self()
-            return
-
-        if not self.description:
-            self.description_field.error_text = "Project description is required"
-            self.update_self()
-            return
-
-        start_date_value = self.start_date_field.get_date()
-        if start_date_value is None:
-            self.show_snack("Please specify the start date", True)
-            return
-
-        end_date_value = self.end_date_field.get_date()
-        if end_date_value is None:
-            self.show_snack("Please specify the end date", True)
-            return
-
-        if start_date_value > end_date_value:
-            self.show_snack(
-                "The end date of the project cannot be before the start date", True
-            )
-            return
-
-        self.show_progress_bar_disable_action()
-        result: IntentResult = self.intent.save_project(
-            title=self.title,
-            description=self.description,
-            start_date=start_date_value,
-            end_date=end_date_value,
-            unique_tag=self.tag,
-            contract=self.project.contract,
-            project=self.project,
-        )
-
-        msg = (
-            "Updated project successfully"
-            if result.was_intent_successful
-            else result.error_msg
-        )
-        isError = not result.was_intent_successful
-        self.enable_action_remove_progress_bar()
-        self.show_snack(msg, isError)
-        if result.was_intent_successful:
-            self.on_navigate_back()
-
-    def build(self):
-        self.title_field = views.get_std_txt_field(
-            label="Title",
-            hint="Project's title",
-            on_change=self.on_title_changed,
-            on_focus=self.clear_title_error,
-        )
-        self.description_field = views.get_std_multiline_field(
-            label="Description",
-            hint="Project's description",
-            on_change=self.on_description_changed,
-            on_focus=self.clear_description_error,
-        )
-        self.tag_field = views.get_std_txt_field(
-            label="Tag",
-            hint="a unique #tag for the project",
-            on_change=self.on_tag_changed,
-        )
-        self.start_date_field = views.DateSelector(label="Start Date")
-        self.end_date_field = views.DateSelector(label="End Date")
-        self.submit_btn = views.get_primary_btn(
-            label="Create Project" if self.project_id is None else "Update Project",
-            on_click=self.on_save,
-        )
-        self.contract_title_view = Text(size=fonts.BODY_1_SIZE, color=colors.GRAY_COLOR)
-        self.client_title_view = Text(size=fonts.BODY_1_SIZE, color=colors.GRAY_COLOR)
-        view = Container(
-            expand=True,
-            padding=padding.all(dimens.SPACE_MD),
-            margin=margin.symmetric(vertical=dimens.SPACE_MD),
-            content=Card(
-                expand=True,
-                content=Container(
-                    Column(
-                        expand=True,
-                        controls=[
-                            Row(
-                                controls=[
-                                    IconButton(
-                                        icon=icons.CHEVRON_LEFT_ROUNDED,
-                                        on_click=self.on_navigate_back,
-                                    ),
-                                    views.get_headline_with_subtitle(
-                                        title="Edit Project",
-                                        subtitle="Update project",
-                                    ),
-                                ]
-                            ),
-                            self.loading_indicator,
-                            views.mdSpace,
-                            self.contract_title_view,
-                            self.client_title_view,
-                            views.smSpace,
-                            self.title_field,
-                            views.smSpace,
-                            self.description_field,
-                            views.smSpace,
-                            self.tag_field,
-                            views.mdSpace,
-                            self.start_date_field,
-                            views.mdSpace,
-                            self.end_date_field,
-                            views.mdSpace,
-                            self.submit_btn,
-                        ],
-                    ),
-                    padding=padding.all(dimens.SPACE_MD),
-                    width=dimens.MIN_WINDOW_WIDTH,
-                ),
-            ),
-        )
-
-        return view
-
-    def will_unmount(self):
-        self.mounted = False
-
-
-class CreateProjectScreen(TuttleView, UserControl):
-    def __init__(self, params):
         super().__init__(params)
         self.horizontal_alignment_in_parent = utils.CENTER_ALIGNMENT
         self.intent = ProjectsIntent()
-
+        self.project_id_if_editing = project_id_if_editing
+        self.old_project_if_editing: Optional[Project] = None
         self.contracts_map = {}
         self.loading_indicator = views.horizontal_progress
         self.title = ""
@@ -912,6 +720,16 @@ class CreateProjectScreen(TuttleView, UserControl):
         """given id and value, prepends a # symbol and returns as str"""
         return f"#{id} {value}"
 
+    def get_id_from_dropdown_selection(self, selected: str):
+        _id = ""
+        for c in selected:
+            if c == "#":
+                continue
+            if c == " ":
+                break
+            _id = _id + c
+        return _id
+
     def get_contracts_as_list(self):
         """transforms a map of id-contract_desc to a list for dropdown options"""
         contracts = []
@@ -922,16 +740,6 @@ class CreateProjectScreen(TuttleView, UserControl):
                 )
             )
         return contracts
-
-    def get_id_from_dropdown_selection(self, selected: str):
-        id = ""
-        for c in selected:
-            if c == "#":
-                continue
-            if c == " ":
-                break
-            id = id + c
-        return id
 
     def on_contract_selected(self, e):
         # parse selected value to extract id
@@ -952,34 +760,52 @@ class CreateProjectScreen(TuttleView, UserControl):
             self.description_field.error_text = None
             self.update_self()
 
-    # LOADING DATA
-    def did_mount(self):
-        self.mounted = True
-        self.show_progress_bar_disable_action()
-        self.reload_load_contracts()
-        self.enable_action_remove_progress_bar()
-        self.update_self()
+    def toggle_progress_indicator(self, is_action_ongoing: bool):
+        self.loading_indicator.visible = is_action_ongoing
+        self.submit_btn.disabled = is_action_ongoing
 
-    def show_progress_bar_disable_action(self):
-        self.loading_indicator.visible = True
-        self.submit_btn.disabled = True
+    def load_project_for_editing(self):
+        if not self.project_id_if_editing:
+            return  # user is not updating a project
 
-    def enable_action_remove_progress_bar(self):
-        self.loading_indicator.visible = False
-        self.submit_btn.disabled = False
+        result = self.intent.get_project_by_id(self.project_id_if_editing)
+        if not result.was_intent_successful or not result.data:
+            self.show_snack(result.error_msg)
+            return
+        self.old_project_if_editing = result.data
+        # set form values
+        self.set_form_values()
 
-    def reload_load_contracts(
+    def set_form_values(self):
+        """Sets form data with info of project being edited"""
+        self.title_field.value = self.title = self.old_project_if_editing.title
+        self.description_field.value = (
+            self.description
+        ) = self.old_project_if_editing.description
+        self.start_date = self.old_project_if_editing.start_date
+        self.start_date_field.set_date(self.start_date)
+        self.end_date = self.old_project_if_editing.end_date
+        self.end_date_field.set_date(self.end_date)
+        self.tag_field.value = self.tag = self.old_project_if_editing.tag
+        self.contract = self.old_project_if_editing.contract
+        if self.contract:
+            self.contracts_field.value = self.add_tag_to_dropdown_item_id(
+                id=self.contract.id, value=self.contract.title
+            )
+        self.form_title.value = "Edit Project"
+        self.submit_btn.text = "Update Project"
+
+    def reload_contracts(
         self,
     ):
-        self.contracts_map = self.intent.get_all_contracts_as_map()
+        self.contracts_map = self.intent.get_all_contracts_as_map_intent()
         self.contracts_field.error_text = (
             "Please create a new contract" if len(self.contracts_map) == 0 else None
         )
         views.update_dropdown_items(self.contracts_field, self.get_contracts_as_list())
 
     def on_add_contract(self, e):
-        # todo confirm? before re routing
-        self.navigate_to_route(res_utils.CONTRACT_CREATOR_SCREEN_ROUTE)
+        self.navigate_to_route(res_utils.CONTRACT_EDITOR_SCREEN_ROUTE)
 
     def on_save(self, e):
         if not self.title:
@@ -1013,7 +839,7 @@ class CreateProjectScreen(TuttleView, UserControl):
             self.update_self()
             return
 
-        self.show_progress_bar_disable_action()
+        self.toggle_progress_indicator(is_action_ongoing=True)
         result: IntentResult = self.intent.save_project(
             title=self.title,
             description=self.description,
@@ -1021,11 +847,16 @@ class CreateProjectScreen(TuttleView, UserControl):
             end_date=self.end_date,
             unique_tag=self.tag,
             contract=self.contract,
+            project=self.old_project_if_editing,
         )
-        successMsg = "New project created successfully"
+        successMsg = (
+            "Changes saved"
+            if self.old_project_if_editing
+            else "New project created successfully"
+        )
         msg = successMsg if result.was_intent_successful else result.error_msg
         isError = not result.was_intent_successful
-        self.enable_action_remove_progress_bar()
+        self.toggle_progress_indicator(is_action_ongoing=False)
         self.show_snack(msg, isError)
         if result.was_intent_successful:
             # re -route back
@@ -1046,7 +877,7 @@ class CreateProjectScreen(TuttleView, UserControl):
         )
         self.tag_field = views.get_std_txt_field(
             label="Tag",
-            hint="an optional tag",
+            hint="unique tag for your project",
             on_change=self.on_tag_changed,
         )
 
@@ -1057,12 +888,7 @@ class CreateProjectScreen(TuttleView, UserControl):
         )
         self.start_date_field = views.DateSelector(label="Start Date")
         self.end_date_field = views.DateSelector(label="End Date")
-        self.submit_btn = views.get_primary_btn(
-            label="Create Project",
-            on_click=self.on_save,
-        )
-
-        self.contractsEditor = Row(
+        self.contract_editor = Row(
             alignment=utils.SPACE_BETWEEN_ALIGNMENT,
             vertical_alignment=utils.CENTER_ALIGNMENT,
             spacing=dimens.SPACE_STD,
@@ -1075,10 +901,12 @@ class CreateProjectScreen(TuttleView, UserControl):
             ],
         )
 
-        """used to display contract id
-        for when editing the project"""
-        self.contract_title_view = Text(
-            size=fonts.BODY_1_SIZE, color=colors.GRAY_COLOR, visible=False
+        self.form_title = views.get_headline_txt(
+            txt="New Project",
+        )
+        self.submit_btn = views.get_primary_btn(
+            label="Create Project",
+            on_click=self.on_save,
         )
         view = Container(
             expand=True,
@@ -1096,27 +924,23 @@ class CreateProjectScreen(TuttleView, UserControl):
                                         icon=icons.CHEVRON_LEFT_ROUNDED,
                                         on_click=self.on_navigate_back,
                                     ),
-                                    views.get_headline_with_subtitle(
-                                        title="New Project",
-                                        subtitle="Create a new project",
-                                    ),
+                                    self.form_title,
                                 ]
                             ),
                             self.loading_indicator,
                             views.mdSpace,
                             self.title_field,
-                            views.smSpace,
+                            views.stdSpace,
                             self.description_field,
-                            views.smSpace,
-                            self.contractsEditor,
-                            self.contract_title_view,
-                            views.smSpace,
+                            views.stdSpace,
+                            self.contract_editor,
+                            views.stdSpace,
                             self.tag_field,
-                            views.mdSpace,
+                            views.lgSpace,
                             self.start_date_field,
-                            views.mdSpace,
+                            views.lgSpace,
                             self.end_date_field,
-                            views.mdSpace,
+                            views.lgSpace,
                             self.submit_btn,
                         ],
                     ),
@@ -1127,6 +951,21 @@ class CreateProjectScreen(TuttleView, UserControl):
         )
 
         return view
+
+    def did_mount(self):
+        self.mounted = True
+        self.initialize_data()
+
+    def on_resume_after_back_pressed(self):
+        self.initialize_data(skip_project_reload=True)
+
+    def initialize_data(self, skip_project_reload: bool = False):
+        self.toggle_progress_indicator(is_action_ongoing=True)
+        if not skip_project_reload:
+            self.load_project_for_editing()
+        self.reload_contracts()
+        self.toggle_progress_indicator(is_action_ongoing=False)
+        self.update_self()
 
     def will_unmount(self):
         self.mounted = False

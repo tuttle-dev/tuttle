@@ -1,8 +1,9 @@
 from core.abstractions import SQLModelDataSourceMixin
 from core.intent_result import IntentResult
-from tuttle.model import (
-    Contract,
-)
+from tuttle.model import Contract, Client
+import datetime
+from typing import Optional, Mapping
+from tuttle.time import Cycle, TimeUnit
 
 
 class ContractDataSource(SQLModelDataSourceMixin):
@@ -51,8 +52,25 @@ class ContractDataSource(SQLModelDataSourceMixin):
                 exception=e,
             )
 
-    def save_contract(self, contract: Contract) -> IntentResult:
-        """Stores the contract to the database
+    def save_or_update_contract(
+        self,
+        title: str,
+        signature_date: datetime.date,
+        start_date: datetime.date,
+        end_date: Optional[datetime.date],
+        client: Client,
+        rate: str,
+        currency: str,
+        VAT_rate: str,
+        unit: TimeUnit,
+        units_per_workday: str,
+        volume: Optional[str],
+        term_of_payment: Optional[str],
+        billing_cycle: Cycle = Cycle.hourly,
+        is_completed: bool = False,
+        contract: Optional[Contract] = None,
+    ) -> IntentResult:
+        """Creates or updates a contract in the database
 
         Returns:
             IntentResult:
@@ -62,6 +80,23 @@ class ContractDataSource(SQLModelDataSourceMixin):
                 exception : Exception if an exception occurs
         """
         try:
+            if not contract:
+                # Create a new contract
+                contract = Contract()
+            contract.title = title
+            contract.signature_date = signature_date
+            contract.start_date = start_date
+            contract.end_date = end_date
+            contract.client = client
+            contract.rate = rate
+            contract.currency = currency
+            contract.VAT_rate = VAT_rate
+            contract.unit = unit
+            contract.units_per_workday = units_per_workday
+            contract.volume = volume
+            contract.term_of_payment = term_of_payment
+            contract.billing_cycle = billing_cycle
+            contract.is_completed = is_completed
             self.store(contract)
             return IntentResult(
                 was_intent_successful=True,

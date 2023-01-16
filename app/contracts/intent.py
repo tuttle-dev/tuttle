@@ -1,15 +1,14 @@
 import datetime
 
 from typing import Optional, Mapping
-from core.models import Cycle, TimeUnit
-
-
+from tuttle.time import Cycle, TimeUnit
+from core.abstractions import ClientStorage
 from core.intent_result import IntentResult
-
+from preferences.model import PreferencesStorageKeys
 from .data_source import ContractDataSource
 from clients.intent import ClientsIntent
 from contacts.intent import ContactsIntent
-
+from preferences.intent import PreferencesIntent
 from tuttle.model import (
     Client,
     Contract,
@@ -53,9 +52,7 @@ class ContractsIntent:
         deleting a contract given it's id
     """
 
-    def __init__(
-        self,
-    ):
+    def __init__(self):
         """
         Attributes
         ----------
@@ -81,6 +78,14 @@ class ContractsIntent:
         self._completed_contracts_cache: Mapping[str, Contract] = None
         self._active_contracts_cache: Mapping[str, Contract] = None
         self._upcoming_contracts_cache: Mapping[str, Contract] = None
+
+    def get_preferred_currency_intent(
+        self, local_storage: ClientStorage
+    ) -> IntentResult:
+        _preferences_intent = PreferencesIntent(client_storage=local_storage)
+        return _preferences_intent.get_preference_by_key(
+            preference_key=PreferencesStorageKeys.default_currency_key
+        )
 
     def get_contract_by_id(self, contractId) -> IntentResult:
         result = self._data_source.get_contract_by_id(contractId)
@@ -116,12 +121,7 @@ class ContractsIntent:
         is_completed: bool = False,
         contract_to_update: Optional[Contract] = None,
     ) -> IntentResult:
-        if contract_to_update:
-            _id = contract_to_update.id
-        else:
-            _id = None
-        contract = Contract(
-            id=_id,
+        result: IntentResult = self._data_source.save_or_update_contract(
             title=title,
             signature_date=signature_date,
             start_date=start_date,
@@ -136,12 +136,17 @@ class ContractsIntent:
             term_of_payment=term_of_payment,
             billing_cycle=billing_cycle,
             is_completed=is_completed,
+            contract=contract_to_update,
         )
+        if not result.was_intent_successful:
+            result.error_msg = "Failed to save the contract. Verify the info and retry."
+            result.log_message_if_any()
+        return result
 
-        return self._data_source.save_contract(contract=contract)
-
-    def get_all_contracts_as_map(self) -> Mapping[int, Contract]:
-        if self._all_contracts_cache:
+    def get_all_contracts_as_map(
+        self, reload_cache: bool = False
+    ) -> Mapping[int, Contract]:
+        if self._all_contracts_cache and not reload_cache:
             # return cached results
             return self._all_contracts_cache
         self._clear_cached_results()
