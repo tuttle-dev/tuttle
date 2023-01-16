@@ -788,7 +788,7 @@ class ProjectEditorScreen(TuttleView, UserControl):
         views.update_dropdown_items(self.contracts_field, self.get_contracts_as_list())
 
     def on_add_contract(self, e):
-        self.navigate_to_route(res_utils.CONTRACT_CREATOR_SCREEN_ROUTE)
+        self.navigate_to_route(res_utils.CONTRACT_EDITOR_SCREEN_ROUTE)
 
     def on_save(self, e):
         if not self.title:
@@ -832,7 +832,11 @@ class ProjectEditorScreen(TuttleView, UserControl):
             contract=self.contract,
             project=self.old_project_if_editing,
         )
-        successMsg = "New project created successfully"
+        successMsg = (
+            "Changes saved"
+            if self.old_project_if_editing
+            else "New project created successfully"
+        )
         msg = successMsg if result.was_intent_successful else result.error_msg
         isError = not result.was_intent_successful
         self.toggle_progress_indicator(is_action_ongoing=False)

@@ -22,7 +22,7 @@ import demo
 from auth.view import ProfileScreen, SplashScreen
 from contracts.view import (
     ContractEditorScreen,
-    CreateContractScreen,
+    ContractEditorScreen,
     ViewContractScreen,
 )
 from preferences.model import PreferencesStorageKeys
@@ -40,13 +40,12 @@ from res.dimens import MIN_WINDOW_HEIGHT, MIN_WINDOW_WIDTH
 from res.fonts import APP_FONTS, HEADLINE_4_SIZE, HEADLINE_FONT
 from res.theme import APP_THEME, THEME_MODES, get_theme_mode_from_value
 from res.res_utils import (
-    CONTRACT_CREATOR_SCREEN_ROUTE,
+    CONTRACT_EDITOR_SCREEN_ROUTE,
     CONTRACT_DETAILS_SCREEN_ROUTE,
     CONTRACT_EDITOR_SCREEN_ROUTE,
     HOME_SCREEN_ROUTE,
     PREFERENCES_SCREEN_ROUTE,
     PROFILE_SCREEN_ROUTE,
-    PROJECT_CREATOR_SCREEN_ROUTE,
     PROJECT_DETAILS_SCREEN_ROUTE,
     PROJECT_EDITOR_SCREEN_ROUTE,
     SPLASH_SCREEN_ROUTE,
@@ -359,8 +358,8 @@ class TuttleRoutes:
             screen = HomeScreen(params=self.tuttle_view_params)
         elif routePath.match(PROFILE_SCREEN_ROUTE):
             screen = ProfileScreen(params=self.tuttle_view_params)
-        elif routePath.match(CONTRACT_CREATOR_SCREEN_ROUTE):
-            screen = CreateContractScreen(params=self.tuttle_view_params)
+        elif routePath.match(CONTRACT_EDITOR_SCREEN_ROUTE):
+            screen = ContractEditorScreen(params=self.tuttle_view_params)
         elif routePath.match(f"{CONTRACT_DETAILS_SCREEN_ROUTE}/:contractId"):
             screen = ViewContractScreen(
                 params=self.tuttle_view_params, contract_id=routePath.contractId
@@ -370,13 +369,13 @@ class TuttleRoutes:
             if hasattr(routePath, "contractId"):
                 contractId = routePath.contractId
             screen = ContractEditorScreen(
-                params=self.tuttle_view_params, contract_id=contractId
+                params=self.tuttle_view_params, contract_id_if_editing=contractId
             )
         elif routePath.match(PREFERENCES_SCREEN_ROUTE):
             screen = PreferencesScreen(
                 params=self.tuttle_view_params, on_theme_changed=self.on_theme_changed
             )
-        elif routePath.match(PROJECT_CREATOR_SCREEN_ROUTE):
+        elif routePath.match(PROJECT_EDITOR_SCREEN_ROUTE):
             screen = ProjectEditorScreen(params=self.tuttle_view_params)
         elif routePath.match(f"{PROJECT_DETAILS_SCREEN_ROUTE}/:projectId"):
             screen = ViewProjectScreen(

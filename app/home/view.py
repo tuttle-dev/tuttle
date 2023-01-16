@@ -232,7 +232,7 @@ class MainMenuItemsHandler:
                 icon=TuttleComponentIcons.project_icon,
                 selected_icon=TuttleComponentIcons.project_selected_icon,
                 destination=self.projects_view,
-                on_new_screen_route=res_utils.PROJECT_CREATOR_SCREEN_ROUTE,
+                on_new_screen_route=res_utils.PROJECT_EDITOR_SCREEN_ROUTE,
                 on_new_intent=None,
             ),
             MenuItem(
@@ -241,7 +241,7 @@ class MainMenuItemsHandler:
                 icon=TuttleComponentIcons.contract_icon,
                 selected_icon=TuttleComponentIcons.contract_selected_icon,
                 destination=self.contracts_view,
-                on_new_screen_route=res_utils.CONTRACT_CREATOR_SCREEN_ROUTE,
+                on_new_screen_route=res_utils.CONTRACT_EDITOR_SCREEN_ROUTE,
                 on_new_intent=None,
             ),
             MenuItem(

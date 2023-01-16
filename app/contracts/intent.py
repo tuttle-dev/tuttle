@@ -1,7 +1,7 @@
 import datetime
 
 from typing import Optional, Mapping
-from core.models import Cycle, TimeUnit
+from tuttle.time import Cycle, TimeUnit
 from core.abstractions import ClientStorage
 from core.intent_result import IntentResult
 from preferences.model import PreferencesStorageKeys
@@ -121,13 +121,7 @@ class ContractsIntent:
         is_completed: bool = False,
         contract_to_update: Optional[Contract] = None,
     ) -> IntentResult:
-
-        if contract_to_update:
-            _id = contract_to_update.id
-        else:
-            _id = None
-        contract = Contract(
-            id=_id,
+        result: IntentResult = self._data_source.save_or_update_contract(
             title=title,
             signature_date=signature_date,
             start_date=start_date,
@@ -142,9 +136,8 @@ class ContractsIntent:
             term_of_payment=term_of_payment,
             billing_cycle=billing_cycle,
             is_completed=is_completed,
+            contract=contract_to_update,
         )
-
-        result = self._data_source.save_contract(contract=contract)
         if not result.was_intent_successful:
             result.error_msg = "Failed to save the contract. Verify the info and retry."
             result.log_message_if_any()
