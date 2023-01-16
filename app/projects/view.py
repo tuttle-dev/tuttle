@@ -738,7 +738,7 @@ class EditProjectScreen(TuttleView, UserControl):
         self.start_date_field.set_date(self.project.start_date)
         self.end_date_field.set_date(self.project.end_date)
         self.contract_title_view.value = f"Contract {self.project.contract.title}"
-        self.client_title_view.value = f"Client {self.project.contract.client.name}"
+        self.client_name_view.value = f"Client {self.project.contract.client.name}"
 
     def on_save(self, e):
         if not self.title:
@@ -814,7 +814,7 @@ class EditProjectScreen(TuttleView, UserControl):
             on_click=self.on_save,
         )
         self.contract_title_view = Text(size=fonts.BODY_1_SIZE, color=colors.GRAY_COLOR)
-        self.client_title_view = Text(size=fonts.BODY_1_SIZE, color=colors.GRAY_COLOR)
+        self.client_name_view = Text(size=fonts.BODY_1_SIZE, color=colors.GRAY_COLOR)
         view = Container(
             expand=True,
             padding=padding.all(dimens.SPACE_MD),
@@ -840,7 +840,7 @@ class EditProjectScreen(TuttleView, UserControl):
                             self.loading_indicator,
                             views.mdSpace,
                             self.contract_title_view,
-                            self.client_title_view,
+                            self.client_name_view,
                             views.smSpace,
                             self.title_field,
                             views.smSpace,

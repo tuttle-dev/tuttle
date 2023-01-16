@@ -56,7 +56,7 @@ class ClientsIntent:
         if not client.name:
             return IntentResult(
                 was_intent_successful=False,
-                error_msg="Please provide the client's title",
+                error_msg="Please provide the client's name",
             )
         if (
             not client.invoicing_contact.first_name
