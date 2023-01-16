@@ -38,13 +38,19 @@ class TimeTrackingIntent:
         Returns
         -------
             IntentResult
-                data : FileCalendar instance if was_intent_successful else None
+                data : Calendar instance if was_intent_successful else None
                 error_msg  : text to display to the user if an error occurs else is empty
         """
-        result = self._data_source.load_from_timetracking_file(
-            file_name=file_name,
-            file_path=file_path,
-        )
+        is_ics = ".ics" in file_name
+        if is_ics:
+            result = self._data_source.load_timetracking_data_from_ics_file(
+                ics_file_name=file_name,
+                ics_file_path=file_path,
+            )
+        else:
+            result = self._data_source.load_timetracking_data_from_spreadsheet(
+                spreadsheet_file_name=file_name, spreadsheet_file_path=file_path
+            )
         if not result.was_intent_successful:
             result.error_msg = (
                 "Failed to process the file! Please make sure it has a valid format."

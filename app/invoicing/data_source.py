@@ -53,7 +53,7 @@ class InvoicingDataSource(SQLModelDataSourceMixin):
             return IntentResult(
                 was_intent_successful=False,
                 log_message=f"Exception raised @InvoicingDataSource.get_all_invoices {ex}",
-                exception=e,
+                exception=ex,
             )
 
     def delete_invoice_by_id(self, invoice_id) -> IntentResult[None]:

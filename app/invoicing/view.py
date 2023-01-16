@@ -1,6 +1,6 @@
 from typing import Callable, Optional
 from datetime import datetime, timedelta
-
+from pandas import DataFrame
 from loguru import logger
 
 from flet import (
@@ -144,9 +144,14 @@ class InvoicingListView(TuttleView, UserControl):
         self.contacts = {}
         self.active_projects = {}
         self.editor = None
+        self.get_timetracking_data = params.on_get_timetracking_dataframe
 
     def parent_intent_listener(self, intent: str, data: any):
         if intent == res_utils.CREATE_INVOICE_INTENT:
+            timetracking_data = self.get_timetracking_data()
+            if not isinstance(timetracking_data, DataFrame):
+                self.show_snack("Please set timetracking data!", is_error=True)
+                return
             if self.editor is not None:
                 self.editor.close_dialog()
             self.editor = InvoicingEditorPopUp(

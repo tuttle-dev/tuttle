@@ -4,7 +4,7 @@ from typing import Callable, Optional
 from loguru import logger
 from pathlib import Path
 import sqlmodel
-
+from pandera.typing import DataFrame
 
 from flet import (
     app,
@@ -93,6 +93,10 @@ class TuttleApp:
         # database config
         self.app_dir = self.ensure_app_dir()
         self.db_path = self.app_dir / "tuttle.db"
+
+        # temp data cache and keys
+        self.data_cache = {}
+        self.cached_timetracking_data_key = "time_tracking_cache_key"
 
     def page_resize(self, e):
         if self.current_route_view:
@@ -302,6 +306,17 @@ class TuttleApp:
             uploads_dir.mkdir(parents=True)
         return uploads_dir
 
+    def store_timetracking_dataframe_in_cache(
+        self,
+        data: DataFrame,
+    ):
+        self.data_cache[self.cached_timetracking_data_key] = data
+
+    def fetch_timetracking_dataframe_from_cache(self) -> Optional[DataFrame]:
+        if not self.cached_timetracking_data_key in self.data_cache:
+            return None
+        return self.data_cache[self.cached_timetracking_data_key]
+
     def build(self):
         self.page.go(self.page.route)
 
@@ -320,6 +335,8 @@ class TuttleRoutes:
             local_storage=app.local_storage,
             upload_file_callback=app.upload_file_callback,
             pick_file_callback=app.pick_file_callback,
+            on_save_timetracking_dataframe=self.app.store_timetracking_dataframe_in_cache,
+            on_get_timetracking_dataframe=self.app.fetch_timetracking_dataframe_from_cache,
         )
 
     def get_page_route_view(
@@ -355,7 +372,9 @@ class TuttleRoutes:
                 install_demo_data_callback=self.app.install_demo_data,
             )
         elif routePath.match(HOME_SCREEN_ROUTE):
-            screen = HomeScreen(params=self.tuttle_view_params)
+            screen = HomeScreen(
+                params=self.tuttle_view_params,
+            )
         elif routePath.match(PROFILE_SCREEN_ROUTE):
             screen = ProfileScreen(params=self.tuttle_view_params)
         elif routePath.match(CONTRACT_EDITOR_SCREEN_ROUTE):

@@ -57,6 +57,8 @@ class TuttleViewParams:
     keep_back_stack = True
     on_navigate_back: Optional[Callable] = None
     page_scroll_type: Optional[str] = AUTO_SCROLL
+    on_save_timetracking_dataframe: Optional[Callable] = None
+    on_get_timetracking_dataframe: Optional[Callable] = None
 
 
 class TuttleView(ABC):
