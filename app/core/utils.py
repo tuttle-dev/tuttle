@@ -2,6 +2,8 @@ from enum import Enum
 import base64
 from flet import icons
 
+from tuttle.dev import deprecated
+
 
 class AlertDialogControls(Enum):
     """Controls for the page's pop up dialog"""
@@ -70,7 +72,9 @@ def is_empty_str(txt: str) -> bool:
     return len(txt.strip()) == 0
 
 
+@deprecated
 def truncate_str(txt: str, max_chars: int = 25) -> str:
+    # TODO: square wheel reinvention antipattern: this is equivalent to txt[:max_chars] so remove this function
     if len(txt) <= max_chars:
         return txt
     else:

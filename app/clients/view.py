@@ -49,7 +49,7 @@ class ClientCard(UserControl):
         self.client_info_container.controls = [
             ListTile(
                 leading=Icon(utils.TuttleComponentIcons.client_icon),
-                title=views.get_body_txt(utils.truncate_str(self.client.name)),
+                title=views.get_body_txt(self.client.name),
                 trailing=views.view_edit_delete_pop_up(
                     on_click_delete=lambda e: self.on_delete_clicked(self.client),
                     on_click_edit=lambda e: self.on_edit_clicked(self.client),

@@ -59,7 +59,7 @@ class ContractCard(UserControl):
         self.contract_info_container.controls = [
             ListTile(
                 leading=Icon(utils.TuttleComponentIcons.contract_icon),
-                title=views.get_body_txt(utils.truncate_str(self.contract.title)),
+                title=views.get_body_txt(self.contract.title),
                 subtitle=views.get_body_txt(
                     utils.truncate_str(
                         f"client: {self.contract.client.name}", max_chars=20
