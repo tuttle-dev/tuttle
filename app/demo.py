@@ -88,7 +88,7 @@ def create_fake_contract(
         units_per_workday=random.randint(1, 12),
         volume=fake.random_int(1, 1000),
         term_of_payment=fake.random_int(1, 31),
-        billing_cycle=random.choice([Cycle.weekly, Cycle.MONTHLY, Cycle.QUARTERLY]),
+        billing_cycle=random.choice([Cycle.weekly, Cycle.monthly, Cycle.quarterly]),
     )
 
 
@@ -110,6 +110,16 @@ def create_fake_project(
     return project
 
 
+def invoice_number_counting():
+    count = 0
+    while True:
+        count += 1
+        yield count
+
+
+invoice_number_counter = invoice_number_counting()
+
+
 def create_fake_invoice(project: Project, fake: faker.Faker) -> Invoice:
     """
     Create a fake invoice object with random values.
@@ -121,7 +131,7 @@ def create_fake_invoice(project: Project, fake: faker.Faker) -> Invoice:
     Returns:
     Invoice: A fake invoice object.
     """
-    invoice_number = fake.random_int(min=1000, max=9999)
+    invoice_number = next(invoice_number_counter)
     invoice = Invoice(
         number=invoice_number,
         date=datetime.date.today(),

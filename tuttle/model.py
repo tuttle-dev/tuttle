@@ -21,13 +21,8 @@ import decimal
 from decimal import Decimal
 import pandas
 
-# TODO: support currencies
-# from money.money import Money
-# from money.currency import Currency
 
 from .time import Cycle, TimeUnit
-
-# TODO: created & modified time stamps
 
 
 def help(model_class):

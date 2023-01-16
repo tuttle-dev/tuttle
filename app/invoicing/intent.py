@@ -1,6 +1,8 @@
-from typing import Mapping
+from typing import Mapping, Optional
 
 from pathlib import Path
+from datetime import date
+
 from loguru import logger
 
 from core.intent_result import IntentResult
@@ -70,7 +72,7 @@ class InvoicingIntent:
             result.log_message_if_any()
             return {}
 
-    def delete_invoice_by_id(self, invoice_id) -> IntentResult:
+    def delete_invoice_by_id(self, invoice_id) -> IntentResult[None]:
         result: IntentResult = self._data_source.delete_invoice_by_id(invoice_id)
         if not result.was_intent_successful:
             result.log_message_if_any()
@@ -93,7 +95,7 @@ class InvoicingIntent:
             result.error_msg = "failed to save the invoice! Please retry"
         return result
 
-    def send_invoice_by_mail(self, invoice: Invoice) -> IntentResult:
+    def send_invoice_by_mail(self, invoice: Invoice) -> IntentResult[None]:
         """TODO attempts to trigger the mail client to send the intent as attachment"""
         return IntentResult(was_intent_successful=False, error_msg="Not implemented")
 
@@ -103,7 +105,7 @@ class InvoicingIntent:
 
     def toggle_invoice_status(
         self, invoice: Invoice, status_to_toggle: InvoiceStatus
-    ) -> IntentResult:
+    ) -> IntentResult[None]:
         if status_to_toggle.value == InvoiceStatus.SENT.value:
             invoice.sent = not invoice.sent
         elif status_to_toggle.value == InvoiceStatus.PAID.value:
@@ -118,7 +120,7 @@ class InvoicingIntent:
             result.log_message_if_any()
         return result
 
-    def view_invoice(self, invoice: Invoice) -> IntentResult:
+    def view_invoice(self, invoice: Invoice) -> IntentResult[None]:
         """TODO Attempts to open the invoice in the default pdf viewer"""
         try:
             assert invoice.rendered
@@ -133,4 +135,27 @@ class InvoicingIntent:
                 was_intent_successful=False,
                 error_msg=f"Failed to open the invoice: {str(ex)}",
             )
-        return IntentResult(was_intent_successful=False, error_msg="Not implemented")
+
+    def generate_invoice_number(
+        self,
+        invoice_date: Optional[date] = None,
+    ) -> IntentResult[str]:
+        """Creates a unique invoice number"""
+        # get the number of the most recent invoice
+        result: IntentResult[Invoice] = self._data_source.get_last_invoice()
+        if result.was_intent_successful:
+            last_invoice: Invoice = result.data
+            last_invoice_number: str = last_invoice.invoice_number
+            # increment the invoice number
+            invoice_number = last_invoice_number + 1
+            return IntentResult(
+                was_intent_successful=True,
+                data=f"{invoice_number:05d}",
+            )
+        else:
+            # create the first invoice number
+            invoice_number = 1
+            return IntentResult(
+                was_intent_successful=True,
+                data=f"{invoice_number:05d}",
+            )

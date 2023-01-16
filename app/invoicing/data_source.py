@@ -1,6 +1,7 @@
+from typing import List, Optional
+
 from core.abstractions import SQLModelDataSourceMixin
 from core.intent_result import IntentResult
-from core.models import TuttleDateRange
 from tuttle.model import Invoice, Project
 
 
@@ -10,7 +11,7 @@ class InvoicingDataSource(SQLModelDataSourceMixin):
     def __init__(self):
         super().__init__()
 
-    def get_invoices_for_project(self, project_id) -> IntentResult:
+    def get_invoices_for_project(self, project_id) -> IntentResult[List[Invoice]]:
         """TODO Get all invoices associated with a given project
 
         Returns:
@@ -32,7 +33,7 @@ class InvoicingDataSource(SQLModelDataSourceMixin):
                 exception=e,
             )
 
-    def get_all_invoices(self) -> IntentResult:
+    def get_all_invoices(self) -> IntentResult[List[Invoice]]:
         """Get all existing invoices
 
         Returns:
@@ -48,14 +49,14 @@ class InvoicingDataSource(SQLModelDataSourceMixin):
                 was_intent_successful=True,
                 data=invoices,
             )
-        except Exception as e:
+        except Exception as ex:
             return IntentResult(
                 was_intent_successful=False,
-                log_message=f"Exception raised @InvoicingDataSource.get_all_invoices {e.__class__.__name__}",
+                log_message=f"Exception raised @InvoicingDataSource.get_all_invoices {ex}",
                 exception=e,
             )
 
-    def delete_invoice_by_id(self, invoice_id) -> IntentResult:
+    def delete_invoice_by_id(self, invoice_id) -> IntentResult[None]:
         """TODO Deletes the invoice corresponding to the given id
 
         Returns:
@@ -82,7 +83,7 @@ class InvoicingDataSource(SQLModelDataSourceMixin):
         invoice: Invoice,
         project: Project,
         time_range,
-    ) -> IntentResult:
+    ) -> IntentResult[Invoice]:
         """TODO Creates or updates an invoice with given invoice and project info
 
         Returns:
@@ -107,7 +108,7 @@ class InvoicingDataSource(SQLModelDataSourceMixin):
                 exception=e,
             )
 
-    def update_invoice(self, invoice):
+    def update_invoice(self, invoice: Invoice) -> IntentResult:
         """TODO Updates a given invoice
 
         Returns:
@@ -126,5 +127,32 @@ class InvoicingDataSource(SQLModelDataSourceMixin):
             return IntentResult(
                 was_intent_successful=False,
                 log_message=f"Exception raised @InvoicingDataSource.update_invoice {e.__class__.__name__}",
+                exception=e,
+            )
+
+    def get_last_invoice(self) -> IntentResult[Invoice]:
+        """Get the last invoice.
+
+        Returns:
+            IntentResult:
+                was_intent_successful : bool
+                data : Invoice
+                log_message  : str  if an error or exception occurs
+                exception : Exception if an exception occurs
+        """
+        try:
+            # query the database to get the Invoice that was last added
+            with self.create_session() as session:
+                last_invoice = (
+                    session.query(Invoice).order_by(Invoice.id.desc()).first()
+                )
+            return IntentResult(
+                was_intent_successful=True,
+                data=last_invoice,
+            )
+        except Exception as e:
+            return IntentResult(
+                was_intent_successful=False,
+                log_message=f"Exception raised @InvoicingDataSource.get_last_invoice_number {e.__class__.__name__}",
                 exception=e,
             )

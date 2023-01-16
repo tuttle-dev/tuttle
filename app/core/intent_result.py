@@ -1,8 +1,12 @@
 from loguru import logger
 from typing import Optional
 
+from typing import TypeVar, Optional, Union, Generic
 
-class IntentResult:
+T = TypeVar("T")
+
+
+class IntentResult(Generic[T]):
     """Wraps the result of a view's intent and self logs
 
     Methods
@@ -11,7 +15,7 @@ class IntentResult:
         Logs the log_message and exception if any
 
     Params:
-        data - payload if any else None
+        data - payload if any else None, the type of data will be specified at instantiation
         was_intent_successful - True if no error or exception was raised, else False
         error_msg - message to display to the user
         log_message - message to log for debugging
@@ -20,7 +24,7 @@ class IntentResult:
 
     def __init__(
         self,
-        data: Optional[any] = None,
+        data: Optional[T] = None,
         was_intent_successful: bool = False,
         error_msg: str = "",
         log_message: str = "",
