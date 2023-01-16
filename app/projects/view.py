@@ -1045,7 +1045,7 @@ class CreateProjectScreen(TuttleView, UserControl):
             on_click=self.on_save,
         )
 
-        self.contractsEditor = Row(
+        self.contract_editor = Row(
             alignment=utils.SPACE_BETWEEN_ALIGNMENT,
             vertical_alignment=utils.CENTER_ALIGNMENT,
             spacing=dimens.SPACE_STD,
@@ -1091,7 +1091,7 @@ class CreateProjectScreen(TuttleView, UserControl):
                             views.smSpace,
                             self.description_field,
                             views.smSpace,
-                            self.contractsEditor,
+                            self.contract_editor,
                             self.contract_title_view,
                             views.smSpace,
                             self.tag_field,

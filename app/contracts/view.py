@@ -153,6 +153,85 @@ class ContractCard(UserControl):
         )
 
 
+class ContractStates(Enum):
+    ALL = 1
+    ACTIVE = 2
+    COMPLETED = 3
+    UPCOMING = 4
+
+
+class ContractFiltersView(UserControl):
+    """Create and Handles contracts view filtering buttons"""
+
+    def __init__(self, onStateChanged: Callable[[ContractStates], None]):
+        super().__init__()
+        self.current_state = ContractStates.ALL
+        self.state_to_filter_btns_map = {}
+        self.on_state_changed_callback = onStateChanged
+
+    def filter_button(
+        self,
+        state: ContractStates,
+        label: str,
+        onClick: Callable[[ContractStates], None],
+    ):
+        button = ElevatedButton(
+            text=label,
+            col={"xs": 6, "sm": 3, "lg": 2},
+            on_click=lambda e: onClick(state),
+            height=dimens.CLICKABLE_PILL_HEIGHT,
+            color=colors.PRIMARY_COLOR
+            if state == self.current_state
+            else colors.GRAY_COLOR,
+            style=ButtonStyle(
+                elevation={
+                    utils.PRESSED: 3,
+                    utils.SELECTED: 3,
+                    utils.HOVERED: 4,
+                    utils.OTHER_CONTROL_STATES: 2,
+                },
+            ),
+        )
+        return button
+
+    def on_filter_button_clicked(self, state: ContractStates):
+        """sets the new state and updates selected button"""
+        self.state_to_filter_btns_map[self.current_state].color = colors.GRAY_COLOR
+        self.current_state = state
+        self.state_to_filter_btns_map[self.current_state].color = colors.PRIMARY_COLOR
+        self.update()
+        self.on_state_changed_callback(state)
+
+    def get_filter_button_label(self, state: ContractStates):
+        if state.value == ContractStates.ACTIVE.value:
+            return "Active"
+        elif state.value == ContractStates.UPCOMING.value:
+            return "Upcoming"
+        elif state.value == ContractStates.COMPLETED.value:
+            return "Completed"
+        else:
+            return "All"
+
+    def set_filter_buttons(self):
+        for state in ContractStates:
+            button = self.filter_button(
+                label=self.get_filter_button_label(state),
+                state=state,
+                onClick=self.on_filter_button_clicked,
+            )
+            self.state_to_filter_btns_map[state] = button
+
+    def build(self):
+        if len(self.state_to_filter_btns_map) == 0:
+            # set the buttons
+            self.set_filter_buttons()
+
+        self.filters = ResponsiveRow(
+            controls=list(self.state_to_filter_btns_map.values())
+        )
+        return self.filters
+
+
 class ContractEditorScreen(TuttleView, UserControl):
     def __init__(
         self,
@@ -173,6 +252,7 @@ class ContractEditorScreen(TuttleView, UserControl):
         self.contract_to_edit: Optional[Contract] = None
         self.clients_map = {}
         self.contacts_map = {}
+        self.available_currencies = []
         self.title = ""
         self.selected_client = None
         self.rate = ""
@@ -226,22 +306,24 @@ class ContractEditorScreen(TuttleView, UserControl):
                 field.error_text = None
         self.update_self()
 
-    def show_progress_bar_disable_action(self):
-        self.loading_indicator.visible = True
-        self.submit_btn.disabled = True
-
-    def enable_action_remove_progress_bar(self):
-        self.loading_indicator.visible = False
-        self.submit_btn.disabled = False
+    def toggle_progress(self, is_on_going_action: bool):
+        """Hides or shows the progress bar and enables or disables the submit btn"""
+        self.loading_indicator.visible = is_on_going_action
+        self.submit_btn.disabled = is_on_going_action
 
     def did_mount(self):
         self.mounted = True
-        self.show_progress_bar_disable_action()
+        self.toggle_progress(is_on_going_action=True)
         self.load_contract()
         self.load_clients()
         self.load_contacts()
-        self.enable_action_remove_progress_bar()
+        self.load_currencies()
+        self.toggle_progress(is_on_going_action=False)()
         self.update_self()
+
+    def load_currencies(self):
+        self.available_currencies = utils.get_currencies_list()
+        views.update_dropdown_items(self.currency_field, self.available_currencies)
 
     def load_contract(
         self,
@@ -355,7 +437,7 @@ class ContractEditorScreen(TuttleView, UserControl):
             )
             return
 
-        self.show_progress_bar_disable_action()
+        self.toggle_progress(is_on_going_action=True)
         result: IntentResult = self.intent.save_contract(
             title=self.title,
             signature_date=signatureDate,
@@ -379,7 +461,7 @@ class ContractEditorScreen(TuttleView, UserControl):
             else result.error_msg
         )
         isError = not result.was_intent_successful
-        self.enable_action_remove_progress_bar()
+        self.toggle_progress(is_on_going_action=False)()
         self.show_snack(msg, isError)
         if not isError:
             # re route back
@@ -401,11 +483,11 @@ class ContractEditorScreen(TuttleView, UserControl):
             keyboard_type=utils.KEYBOARD_NUMBER,
         )
 
-        self.currency_field = views.get_std_txt_field(
+        self.currency_field = views.get_dropdown(
             label="Currency",
-            hint="Payment currency",
+            hint="Payment Currency",
             on_change=self.on_currency_changed,
-            on_focus=self.clear_field_errors,
+            items=self.available_currencies,
         )
 
         self.vatRate_field = views.get_std_txt_field(
@@ -536,85 +618,6 @@ class ContractEditorScreen(TuttleView, UserControl):
             self.new_client_pop_up.dimiss_open_dialogs()
 
 
-class ContractStates(Enum):
-    ALL = 1
-    ACTIVE = 2
-    COMPLETED = 3
-    UPCOMING = 4
-
-
-class ContractFiltersView(UserControl):
-    """Create and Handles contracts view filtering buttons"""
-
-    def __init__(self, onStateChanged: Callable[[ContractStates], None]):
-        super().__init__()
-        self.current_state = ContractStates.ALL
-        self.state_to_filter_btns_map = {}
-        self.on_state_changed_callback = onStateChanged
-
-    def filter_button(
-        self,
-        state: ContractStates,
-        label: str,
-        onClick: Callable[[ContractStates], None],
-    ):
-        button = ElevatedButton(
-            text=label,
-            col={"xs": 6, "sm": 3, "lg": 2},
-            on_click=lambda e: onClick(state),
-            height=dimens.CLICKABLE_PILL_HEIGHT,
-            color=colors.PRIMARY_COLOR
-            if state == self.current_state
-            else colors.GRAY_COLOR,
-            style=ButtonStyle(
-                elevation={
-                    utils.PRESSED: 3,
-                    utils.SELECTED: 3,
-                    utils.HOVERED: 4,
-                    utils.OTHER_CONTROL_STATES: 2,
-                },
-            ),
-        )
-        return button
-
-    def on_filter_button_clicked(self, state: ContractStates):
-        """sets the new state and updates selected button"""
-        self.state_to_filter_btns_map[self.current_state].color = colors.GRAY_COLOR
-        self.current_state = state
-        self.state_to_filter_btns_map[self.current_state].color = colors.PRIMARY_COLOR
-        self.update()
-        self.on_state_changed_callback(state)
-
-    def get_filter_button_label(self, state: ContractStates):
-        if state.value == ContractStates.ACTIVE.value:
-            return "Active"
-        elif state.value == ContractStates.UPCOMING.value:
-            return "Upcoming"
-        elif state.value == ContractStates.COMPLETED.value:
-            return "Completed"
-        else:
-            return "All"
-
-    def set_filter_buttons(self):
-        for state in ContractStates:
-            button = self.filter_button(
-                label=self.get_filter_button_label(state),
-                state=state,
-                onClick=self.on_filter_button_clicked,
-            )
-            self.state_to_filter_btns_map[state] = button
-
-    def build(self):
-        if len(self.state_to_filter_btns_map) == 0:
-            # set the buttons
-            self.set_filter_buttons()
-
-        self.filters = ResponsiveRow(
-            controls=list(self.state_to_filter_btns_map.values())
-        )
-        return self.filters
-
-
 class CreateContractScreen(TuttleView, UserControl):
     def __init__(self, params):
         super().__init__(params=params)
@@ -627,6 +630,7 @@ class CreateContractScreen(TuttleView, UserControl):
         # info of contract being edited / created
         self.clients_map = {}
         self.contacts_map = {}
+        self.available_currencies = []
         self.title = ""
         self.client = None
         self.rate = ""
@@ -680,21 +684,23 @@ class CreateContractScreen(TuttleView, UserControl):
                 field.error_text = None
         self.update_self()
 
-    def show_progress_bar_disable_action(self):
-        self.loading_indicator.visible = True
-        self.submit_btn.disabled = True
-
-    def enable_action_remove_progress_bar(self):
-        self.loading_indicator.visible = False
-        self.submit_btn.disabled = False
+    def toggle_progress(self, is_on_going_action: bool):
+        """Hides or shows the progress bar and enables or disables the submit btn"""
+        self.loading_indicator.visible = is_on_going_action
+        self.submit_btn.disabled = is_on_going_action
 
     def did_mount(self):
         self.mounted = True
-        self.show_progress_bar_disable_action()
+        self.toggle_progress(is_on_going_action=True)
         self.load_clients()
         self.load_contacts()
-        self.enable_action_remove_progress_bar()
+        self.load_currencies()
+        self.toggle_progress(is_on_going_action=False)
         self.update_self()
+
+    def load_currencies(self):
+        self.available_currencies = utils.get_currencies_list()
+        views.update_dropdown_items(self.currency_field, self.available_currencies)
 
     def load_clients(self):
         self.clients_map = self.intent.get_all_clients_as_map()
@@ -795,7 +801,7 @@ class CreateContractScreen(TuttleView, UserControl):
             )
             return
 
-        self.show_progress_bar_disable_action()
+        self.toggle_progress(is_on_going_action=True)
         result: IntentResult = self.intent.save_contract(
             title=self.title,
             signature_date=signatureDate,
@@ -816,9 +822,11 @@ class CreateContractScreen(TuttleView, UserControl):
             "New contract created successfully"
             if result.was_intent_successful
             else result.error_msg
+            if result.error_msg
+            else "Unkown error occurred. Failed to save the contract! Please retry"
         )
         isError = not result.was_intent_successful
-        self.enable_action_remove_progress_bar()
+        self.toggle_progress(is_on_going_action=False)
         self.show_snack(msg, isError)
         if not isError:
             # re route back
@@ -838,11 +846,11 @@ class CreateContractScreen(TuttleView, UserControl):
             on_focus=self.clear_field_errors,
             keyboard_type=utils.KEYBOARD_NUMBER,
         )
-        self.currency_field = views.get_std_txt_field(
+        self.currency_field = views.get_dropdown(
             label="Currency",
             hint="Payment currency",
             on_change=self.on_currency_changed,
-            on_focus=self.clear_field_errors,
+            items=self.available_currencies,
         )
         self.vat_rate_field = views.get_std_txt_field(
             label="Vat",
