@@ -1,4 +1,5 @@
 """Calendar integration."""
+from typing import Optional
 
 from pathlib import Path
 import io
@@ -40,14 +41,15 @@ class CloudCalendar(Calendar):
     pass
 
 
-class FileCalendar(Calendar):
-    """An .ics file based calendar."""
+class ICSCalendar(Calendar):
+    """An ICS data format based calendar."""
 
     def __init__(
         self,
         name: str,
-        path: str = None,
-        content: bytes = None,
+        path: Optional[str] = None,
+        content: Optional[bytes] = None,
+        ics_calendar: Optional[ics.Calendar] = None,
     ):
         super().__init__(name)
         if path is not None:
@@ -58,6 +60,8 @@ class FileCalendar(Calendar):
             self.content = content
             with io.TextIOWrapper(io.BytesIO(content), encoding="utf-8") as cal_file:
                 self.ical = ics.Calendar(cal_file.read())
+        elif ics_calendar is not None:
+            self.ical = ics_calendar
         else:
             raise ValueError(
                 "Either a path to or the content of an .ics file must be passed."

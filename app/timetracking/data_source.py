@@ -1,5 +1,5 @@
 from core.abstractions import SQLModelDataSourceMixin
-from tuttle.calendar import FileCalendar
+from tuttle.calendar import ICSCalendar
 from core.intent_result import IntentResult
 from .model import CloudCalendarInfo, CloudConfigurationResult
 
@@ -28,7 +28,7 @@ class TimeTrackingDataSource(SQLModelDataSourceMixin):
         """
         # TODO: this should be specific for loading from a calendar file, there should be another method for the spreadsheet
         try:
-            file_calendar = FileCalendar(name=file_name, path=file_path)
+            file_calendar = ICSCalendar(name=file_name, path=file_path)
             return IntentResult(was_intent_successful=True, data=file_calendar)
         except Exception as e:
             return IntentResult(

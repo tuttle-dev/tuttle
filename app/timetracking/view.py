@@ -12,7 +12,7 @@ from flet import (
     ProgressRing,
     border,
 )
-from tuttle.calendar import FileCalendar
+from tuttle.calendar import ICSCalendar
 from .model import CloudCalendarInfo, CloudConfigurationResult
 from .intent import TimeTrackingIntent
 from core.abstractions import DialogHandler, TuttleView
@@ -189,7 +189,7 @@ class TimeTrackingView(TuttleView, UserControl):
         self.preferred_cloud_acc = ""
         self.preferred_cloud_provider = ""
         self.pop_up_handler = None
-        self.file_calendar_to_display: FileCalendar = None
+        self.file_calendar_to_display: ICSCalendar = None
 
     def close_pop_up_if_open(self):
         if self.pop_up_handler:
@@ -260,7 +260,7 @@ class TimeTrackingView(TuttleView, UserControl):
             is_error = not intent_result.was_intent_successful
             self.show_snack(msg, is_error)
             if intent_result.was_intent_successful:
-                data: FileCalendar = intent_result.data
+                data: ICSCalendar = intent_result.data
                 self.file_calendar_to_display = data
                 self.refresh_records()
             self.set_progress_hint(hide_progress=True)

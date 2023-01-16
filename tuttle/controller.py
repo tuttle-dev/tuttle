@@ -247,12 +247,12 @@ class Controller:
             )
         elif timetracking_method == "file_calendar":
             if calendar_file_path:
-                timetracking_calendar = calendar.FileCalendar(
+                timetracking_calendar = calendar.ICSCalendar(
                     path=calendar_file_path,
                     name=calendar_file_path.stem,
                 )
             elif calendar_file_content:
-                timetracking_calendar = calendar.FileCalendar(
+                timetracking_calendar = calendar.ICSCalendar(
                     content=calendar_file_content,
                     name="TimeTracking",
                 )
@@ -342,7 +342,7 @@ class Controller:
         invoice: Invoice,
     ):
         """Open an invoice in the preview application for PDF files"""
-        invoice_file_path = ( 
+        invoice_file_path = (
             self.home
             / self.preferences.invoice_dir
             / Path(invoice.prefix)

@@ -143,7 +143,7 @@ def create_fake_invoice(project: Project, fake: faker.Faker) -> Invoice:
         rendered=fake.pybool(),
     )
     number_of_items = fake.random_int(min=1, max=5)
-    for i in range(number_of_items):
+    for _ in range(number_of_items):
         unit = fake.random_element(elements=("hours", "days"))
         if unit == "hours":
             unit_price = abs(round(numpy.random.normal(50, 20), 2))
@@ -190,6 +190,7 @@ def create_fake_data(
     projects = [create_fake_project(contract, fake) for contract in contracts]
 
     invoices = [create_fake_invoice(project, fake) for project in projects]
+
     return projects, invoices
 
 
@@ -216,6 +217,20 @@ def create_demo_user() -> User:
         ),
     )
     return user
+
+
+def create_fake_calendar(project_list: List[Project]) -> ics.Calendar:
+    # create a new calendar
+    calendar = ics.Calendar()
+
+    # populate the calendar with events
+    for project in project_list:
+        # create a new event
+        event = ics.Event()
+        event.name = f"Meeting for {project.tag}"
+        # randomly set the event duration between 1 and 8 hours
+        event.duration = random.randint(1, 8), "hours"
+        calendar.events.append(event)
 
 
 def install_demo_data(
@@ -250,22 +265,6 @@ def install_demo_data(
             session.add(project)
             session.commit()
     logger.info("Demo data installed.")
-
-
-def create_fake_calendar(project_list: List[Project]) -> ics.Calendar:
-    # create a new calendar
-    calendar = ics.Calendar()
-
-    # populate the calendar with events
-    for project in project_list:
-        # create a new event
-        event = ics.Event()
-        event.name = f"Meeting for {project.tag}"
-        # randomly set the event duration between 1 and 8 hours
-        event.duration = random.randint(1, 8), "hours"
-        calendar.events.append(event)
-
-    return calendar
 
 
 if __name__ == "__main__":

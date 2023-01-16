@@ -14,7 +14,7 @@ from pandas import DataFrame
 
 
 from . import schema
-from .calendar import Calendar, ICloudCalendar, FileCalendar
+from .calendar import Calendar, ICloudCalendar, ICSCalendar
 from .model import (
     TimeTrackingItem,
     User,
@@ -119,7 +119,7 @@ def import_from_calendar(cal: Calendar) -> DataFrame:
     if issubclass(type(cal), ICloudCalendar):
         timetracking_data = cal.to_data()
         return timetracking_data
-    elif issubclass(type(cal), FileCalendar):
+    elif issubclass(type(cal), ICSCalendar):
         timetracking_data = cal.to_data()
         return timetracking_data
     else:
