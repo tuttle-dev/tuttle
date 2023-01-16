@@ -1,12 +1,16 @@
 from typing import List
 
+import random
 from pathlib import Path
+
 import faker
 import random
 import datetime
+import ics
 from sqlmodel import Field, SQLModel, create_engine, Session, select
 import sqlalchemy
 from loguru import logger
+import numpy
 
 from tuttle.model import (
     Address,
@@ -19,6 +23,7 @@ from tuttle.model import (
     User,
     BankAccount,
     Invoice,
+    InvoiceItem,
 )
 
 
@@ -106,6 +111,16 @@ def create_fake_project(
 
 
 def create_fake_invoice(project: Project, fake: faker.Faker) -> Invoice:
+    """
+    Create a fake invoice object with random values.
+
+    Args:
+    project (Project): The project associated with the invoice.
+    fake (faker.Faker): An instance of the Faker class to generate random values.
+
+    Returns:
+    Invoice: A fake invoice object.
+    """
     invoice_number = fake.random_int(min=1000, max=9999)
     invoice = Invoice(
         number=invoice_number,
@@ -117,6 +132,25 @@ def create_fake_invoice(project: Project, fake: faker.Faker) -> Invoice:
         project=project,
         rendered=fake.pybool(),
     )
+    number_of_items = fake.random_int(min=1, max=5)
+    for i in range(number_of_items):
+        unit = fake.random_element(elements=("hours", "days"))
+        if unit == "hours":
+            unit_price = abs(round(numpy.random.normal(50, 20), 2))
+        elif unit == "days":
+            unit_price = abs(round(numpy.random.normal(500, 200), 2))
+        vat_rate = round(numpy.random.uniform(0.05, 0.25), 2)
+        invoice_item = InvoiceItem(
+            start_date=fake.date_this_decade(),
+            end_date=fake.date_this_decade(),
+            quantity=fake.random_int(min=1, max=10),
+            unit=unit,
+            unit_price=unit_price,
+            description=fake.sentence(),
+            VAT_rate=vat_rate,
+            invoice=invoice,
+        )
+        assert invoice_item.invoice == invoice
     return invoice
 
 
@@ -206,6 +240,22 @@ def install_demo_data(
             session.add(project)
             session.commit()
     logger.info("Demo data installed.")
+
+
+def create_fake_calendar(project_list: List[Project]) -> ics.Calendar:
+    # create a new calendar
+    calendar = ics.Calendar()
+
+    # populate the calendar with events
+    for project in project_list:
+        # create a new event
+        event = ics.Event()
+        event.name = f"Meeting for {project.tag}"
+        # randomly set the event duration between 1 and 8 hours
+        event.duration = random.randint(1, 8), "hours"
+        calendar.events.append(event)
+
+    return calendar
 
 
 if __name__ == "__main__":

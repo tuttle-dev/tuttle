@@ -363,7 +363,9 @@ class InvoiceTile(UserControl):
                     ),
                     Row(
                         controls=[
-                            views.get_body_txt(f"Total: {self.invoice.total}"),
+                            views.get_body_txt(
+                                f"Total: {self.invoice.total:.2f} {self.invoice.contract.currency}"
+                            ),
                             views.status_label(txt="Paid", is_done=self.invoice.paid),
                             views.status_label(
                                 txt="Cancelled", is_done=self.invoice.cancelled
