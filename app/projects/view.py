@@ -278,7 +278,7 @@ class ViewProjectScreen(TuttleView, UserControl):
         self.project_end_date_control.value = f"End Date: {self.project.end_date}"
         self.project_status_control.value = f"Status {self.project.get_status()}"
         self.project_tagline_control.value = f"#{self.project.tag}"
-        self.set_chart()
+        # self.set_chart()
 
     def set_chart(self):
         dummy_hours = []

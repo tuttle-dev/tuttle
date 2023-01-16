@@ -98,8 +98,8 @@ class TuttleComponentIcons(Enum):
     contract_selected_icon = icons.HANDSHAKE_ROUNDED
     timetracking_icon = icons.TIMER_OUTLINED
     timetracking_selected_icon = icons.TIMER_ROUNDED
-    invoicing_icon = icons.ATTACH_MONEY_SHARP
-    invoicing_selected_icon = icons.ATTACH_MONEY_ROUNDED
+    invoicing_icon = icons.RECEIPT_OUTLINED
+    invoicing_selected_icon = icons.RECEIPT_ROUNDED
     datatable_icon = icons.TABLE_CHART
     datatable_selected_icon = icons.TABLE_CHART_ROUNDED
 

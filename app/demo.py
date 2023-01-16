@@ -88,7 +88,7 @@ def create_fake_contract(
         units_per_workday=random.randint(1, 12),
         volume=fake.random_int(1, 1000),
         term_of_payment=fake.random_int(1, 31),
-        billing_cycle=random.choice(list(Cycle)),
+        billing_cycle=random.choice([Cycle.weekly, Cycle.MONTHLY, Cycle.QUARTERLY]),
     )
 
 
