@@ -1,3 +1,4 @@
+from typing import Type, Union
 from core.abstractions import SQLModelDataSourceMixin
 from core.intent_result import IntentResult
 from tuttle.model import Address, User
@@ -9,8 +10,9 @@ class UserDataSource(SQLModelDataSourceMixin):
     def __init__(self):
         super().__init__()
 
-    def get_user(self) -> IntentResult:
-        """Gets a user if exists
+    def get_user(self) -> IntentResult[Union[Type[User], None]]:
+        """
+        Get a user from the database
 
         Returns:
             IntentResult:
@@ -28,7 +30,7 @@ class UserDataSource(SQLModelDataSourceMixin):
         except Exception as e:
             return IntentResult(
                 was_intent_successful=False,
-                log_message=f"Exception raised @UserDataSource.get_user{e.__class__.__name__}",
+                log_message=f"An exception was raised @UserDataSource.get_user {e.__class__.__name__}",
                 exception=e,
             )
 
@@ -43,8 +45,20 @@ class UserDataSource(SQLModelDataSourceMixin):
         postal_code: str,
         city: str,
         country: str,
-    ) -> IntentResult:
-        """Creates and stores a user with given info
+    ) -> IntentResult[Type[User]]:
+        """
+        Create a new user and store it in the database
+
+        Args:
+            title (str): title of the user
+            name (str): name of the user
+            email (str): email of the user
+            phone (str): phone number of the user
+            street (str): street of the user's address
+            street_num (str): street number of the user's address
+            postal_code (str): postal code of the user's address
+            city (str): city of the user's address
+            country (str): country of the user's address
 
         Returns:
             IntentResult:
@@ -54,7 +68,7 @@ class UserDataSource(SQLModelDataSourceMixin):
                 exception : Exception if an exception occurs
         """
         try:
-            adddress = Address(
+            address = Address(
                 street=street,
                 number=street_num,
                 postal_code=postal_code,
@@ -66,7 +80,7 @@ class UserDataSource(SQLModelDataSourceMixin):
                 subtitle=title,
                 email=email,
                 phone_number=phone,
-                address=adddress,
+                address=address,
             )
 
             self.store(user)
@@ -78,13 +92,13 @@ class UserDataSource(SQLModelDataSourceMixin):
         except Exception as e:
             return IntentResult(
                 was_intent_successful=False,
-                log_message=f"An exception was raised @UserDataSource.create_user {e.__class__.__name__}",
+                log_message=f"An exception was raised @UserDataSource.create_user{e.__class__.__name__}",
                 exception=e,
             )
 
     def update_user(
         self,
-        user: User,
+        user: Type[User],
         title: str,
         name: str,
         email: str,
@@ -94,36 +108,45 @@ class UserDataSource(SQLModelDataSourceMixin):
         postal_code: str,
         city: str,
         country: str,
-    ) -> IntentResult:
-        """Updates a user with given info
+    ) -> IntentResult[Type[User]]:
+        """
+        Update an existing user in the database
+
+        Args:
+            user (Type[User]): The user object to be updated
+            title (str): title of the user
+            name (str): name of the user
+            email (str): email of the user
+            phone (str): phone number of the user
+            street (str): street of the user's address
+            street_num (str): street number of the user's address
+            postal_code (str): postal code of the user's address
+            city (str): city of the user's address
+            country (str): country of the user's address
 
         Returns:
             IntentResult:
                 was_intent_successful : bool
-                data : User  if was_intent_successful else None
+                data : User if was_intent_successful else None
                 log_message  : str  if an error or exception occurs
                 exception : Exception if an exception occurs
         """
         try:
-            address_id = user.address_id if user.address_id is not None else 123
-            add = Address(
-                id=address_id,
-                street=street,
-                number=street_num,
-                postal_code=postal_code,
-                city=city,
-                country=country,
-            )
-            user = User(
-                id=user.id,
-                name=name,
-                subtitle=title,
-                email=email,
-                phone_number=phone,
-                address_id=add.id,
-                address=add,
-                profile_photo_path=user.profile_photo_path,
-            )
+            address = user.address
+            address.street = street
+            address.number = street_num
+            address.postal_code = postal_code
+            address.city = city
+            address.country = country
+
+            user.name = name
+            user.subtitle = title
+            user.email = email
+            user.phone_number = phone
+            user.address = address
+            user.profile_photo_path = user.profile_photo_path
+
+            self.store(user)
             return IntentResult(was_intent_successful=True, data=user)
         except Exception as e:
             return IntentResult(
@@ -133,27 +156,29 @@ class UserDataSource(SQLModelDataSourceMixin):
             )
 
     def update_user_photo_path(
-        self,
-        user: User,
-        path: str,
-    ) -> IntentResult:
-        """Updates a user's profile photo path
+        self, user: Type[User], photo_path: str
+    ) -> IntentResult[Type[User]]:
+        """
+        Update the photo path of an user in the database
+
+        Args:
+            user (Type[User]): The user object to be updated
+            photo_path (str): the new photo path
 
         Returns:
             IntentResult:
                 was_intent_successful : bool
-                data : User  if was_intent_successful else None
+                data : User if was_intent_successful else None
                 log_message  : str  if an error or exception occurs
                 exception : Exception if an exception occurs
         """
         try:
-            user.profile_photo_path = path
+            user.profile_photo_path = photo_path
             self.store(user)
-
             return IntentResult(was_intent_successful=True, data=user)
         except Exception as e:
             return IntentResult(
                 was_intent_successful=False,
-                log_message=f"An exception was raised @UserDataSource.update_user_photo_url {e.__class__.__name__}",
+                log_message=f"An exception was raised @UserDataSource.update_user_photo_path {e.__class__.__name__}",
                 exception=e,
             )
