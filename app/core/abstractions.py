@@ -116,6 +116,7 @@ class TuttleView(ABC):
         self.page_scroll_type = params.page_scroll_type
         self.upload_file_callback = params.upload_file_callback
         self.pick_file_callback = params.pick_file_callback
+        self.local_storage = params.local_storage
         self.mounted = False
 
     def parent_intent_listener(self, intent: str, data: any):

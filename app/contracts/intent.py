@@ -2,14 +2,13 @@ import datetime
 
 from typing import Optional, Mapping
 from core.models import Cycle, TimeUnit
-
-
+from core.abstractions import ClientStorage
 from core.intent_result import IntentResult
-
+from preferences.model import PreferencesStorageKeys
 from .data_source import ContractDataSource
 from clients.intent import ClientsIntent
 from contacts.intent import ContactsIntent
-
+from preferences.intent import PreferencesIntent
 from tuttle.model import (
     Client,
     Contract,
@@ -53,9 +52,7 @@ class ContractsIntent:
         deleting a contract given it's id
     """
 
-    def __init__(
-        self,
-    ):
+    def __init__(self):
         """
         Attributes
         ----------
@@ -81,6 +78,14 @@ class ContractsIntent:
         self._completed_contracts_cache: Mapping[str, Contract] = None
         self._active_contracts_cache: Mapping[str, Contract] = None
         self._upcoming_contracts_cache: Mapping[str, Contract] = None
+
+    def get_preferred_currency_intent(
+        self, local_storage: ClientStorage
+    ) -> IntentResult:
+        _preferences_intent = PreferencesIntent(client_storage=local_storage)
+        return _preferences_intent.get_preference_by_key(
+            preference_key=PreferencesStorageKeys.default_currency_key
+        )
 
     def get_contract_by_id(self, contractId) -> IntentResult:
         result = self._data_source.get_contract_by_id(contractId)

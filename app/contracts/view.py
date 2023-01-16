@@ -324,6 +324,10 @@ class ContractEditorScreen(TuttleView, UserControl):
     def load_currencies(self):
         self.available_currencies = utils.get_currencies_list()
         views.update_dropdown_items(self.currency_field, self.available_currencies)
+        result = self.intent.get_preferred_currency_intent(self.local_storage)
+        if result.was_intent_successful:
+            preferred_currency = result.data
+            self.currency_field.value = preferred_currency
 
     def load_contract(
         self,
@@ -701,6 +705,10 @@ class CreateContractScreen(TuttleView, UserControl):
     def load_currencies(self):
         self.available_currencies = utils.get_currencies_list()
         views.update_dropdown_items(self.currency_field, self.available_currencies)
+        result = self.intent.get_preferred_currency_intent(self.local_storage)
+        if result.was_intent_successful:
+            preferred_currency = result.data
+            self.currency_field.value = preferred_currency
 
     def load_clients(self):
         self.clients_map = self.intent.get_all_clients_as_map()
@@ -817,7 +825,7 @@ class CreateContractScreen(TuttleView, UserControl):
             term_of_payment=self.term_of_payment,
             billing_cycle=self.billing_cycle,
         )
-        # TODO add contract if updating
+
         msg = (
             "New contract created successfully"
             if result.was_intent_successful
