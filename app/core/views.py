@@ -396,7 +396,13 @@ class DateSelector(UserControl):
         self.year_dropdown = get_dropdown(
             label="Year",
             on_change=self.on_year_set,
-            items=[str(year) for year in range(2022, 2027)],
+            # set items to a list of years -10 to + 10 years from now
+            items=[
+                str(year)
+                for year in range(
+                    datetime.date.today().year - 10, datetime.date.today().year + 10
+                )
+            ],
             width=100,
             initial_value=self.year,
         )
