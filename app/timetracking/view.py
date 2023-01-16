@@ -101,7 +101,7 @@ class NewTimeTrackPopUp(DialogHandler):
                         ),
                         space_between_cloud_controls,
                         views.get_std_txt_field(
-                            label="get_std_txt_field Name",
+                            label="Calendar Name",
                             on_change=self.on_calendar_name_changed,
                             show=display_cloud_option,
                         ),
