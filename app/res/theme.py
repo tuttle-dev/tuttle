@@ -5,6 +5,8 @@ from .fonts import DEFAULT_FONT
 from .colors import PRIMARY_COLOR
 from enum import Enum
 
+from tuttle.dev import deprecated
+
 
 class THEME_MODES(Enum):
     system = "system"
@@ -15,6 +17,7 @@ class THEME_MODES(Enum):
         return str(self.value)
 
 
+@deprecated("square wheel reinvention antipattern: use Enum[value] instead")
 def get_theme_mode_from_value(value: str):
     if value == THEME_MODES.system.value:
         return THEME_MODES.system

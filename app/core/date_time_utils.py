@@ -1,12 +1,23 @@
 """helper functions for manipulating dates"""
-# FIXME: make this module unnecessary
+import warnings
+
+warnings.warn(
+    "This module is deprecated and will be removed in the future",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 import datetime
+
+from tuttle.dev import deprecated
 
 
 DAYS_IN_A_WEEK = 7
 
 
+@deprecated(
+    "reinventing the square wheel antipattern: use existing functions in Python standard library"
+)
 def get_date_as_str(date: datetime.date, hide_year: bool = False):
     # FIXME: no need to reinvent the wheel here
     if hide_year:
@@ -15,6 +26,9 @@ def get_date_as_str(date: datetime.date, hide_year: bool = False):
         return f"{date.day} / {date.month} / {date.year}"
 
 
+@deprecated(
+    "reinventing the square wheel antipattern: use existing functions in Python standard library"
+)
 def get_last_seven_days():
     today = datetime.date.today()
     last_seven = []

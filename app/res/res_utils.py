@@ -1,5 +1,13 @@
 """defines misc utils used in resource files"""
 
+import warnings
+
+warnings.warn(
+    "wastebasket module, content should be moved to other modules",
+    DeprecationWarning,
+    stacklevel=2,
+)
+
 # route names
 SPLASH_SCREEN_ROUTE = "/"
 HOME_SCREEN_ROUTE = "/home"
