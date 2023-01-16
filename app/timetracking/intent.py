@@ -127,7 +127,7 @@ class TimeTrackingIntent:
             if calendar_info.provider == CloudAccounts.ICloud.value:
                 res = self._data_source.login_to_icloud(calendar_info=calendar_info)
             else:
-                # TODO other providers - we assume only google below?
+
                 res = self._data_source.login_to_google(calendar_info=calendar_info)
         else:
             # STEP 2 complete login with 2FA
@@ -137,7 +137,7 @@ class TimeTrackingIntent:
                     two_factor_code=two_factor_code,
                 )
             else:
-                # TODO other providers - we assume only google below?
+
                 res = self._data_source.verify_google_with_2fa(
                     login_result=prev_un_verified_login_res,
                     two_factor_code=two_factor_code,

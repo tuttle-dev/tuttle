@@ -52,8 +52,6 @@ from res.res_utils import (
 )
 from core.abstractions import TuttleViewParams
 
-from tuttle.calendar import Calendar, ICSCalendar
-
 
 class TuttleApp:
     """The main application class"""
@@ -285,13 +283,11 @@ class TuttleApp:
             demo.install_demo_data(
                 n=10,
                 db_path=self.db_path,
+                on_cache_timetracking_dataframe=self.store_timetracking_dataframe_in_cache,
             )
         except Exception as ex:
             logger.exception(ex)
             logger.error("Failed to install demo data")
-        # create a fake calendar and add time tracking data from it
-        calendar: Calendar = ICSCalendar(ics_calendar=demo.create_fake_calendar())
-        # TODO: add time tracking data from calendar - intent?
 
     def ensure_app_dir(self) -> Path:
         """Ensures that the user directory exists"""
@@ -310,6 +306,7 @@ class TuttleApp:
         self,
         data: DataFrame,
     ):
+
         self.data_cache[self.cached_timetracking_data_key] = data
 
     def fetch_timetracking_dataframe_from_cache(self) -> Optional[DataFrame]:

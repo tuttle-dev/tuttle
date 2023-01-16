@@ -68,7 +68,7 @@ class TimeTrackingDataSource(SQLModelDataSourceMixin):
     def load_cloud_calendar_data(
         self, info: CloudCalendarInfo, cloud_session: any
     ) -> IntentResult:
-        """TODO Attempts to load data given CloudCalendarInfo
+        """TODO Loads data given CloudCalendarInfo
 
         Params:
             info :
@@ -150,7 +150,7 @@ class TimeTrackingDataSource(SQLModelDataSourceMixin):
         self,
         calendar_info: CloudCalendarInfo,
     ):
-        # TODO
+        # TODO implement
         return IntentResult(
             was_intent_successful=False,
             log_message="Not implemented",
@@ -161,7 +161,7 @@ class TimeTrackingDataSource(SQLModelDataSourceMixin):
         login_result: CloudConfigurationResult,
         two_factor_code: str,
     ):
-        # TODO
+        # TODO implement
         return IntentResult(
             was_intent_successful=False,
             log_message="Not implemented",

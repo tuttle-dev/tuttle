@@ -1,8 +1,8 @@
-from typing import List
+from typing import List, Optional, Callable
 
 import random
 from pathlib import Path
-
+from tuttle.calendar import Calendar, ICSCalendar
 import faker
 import random
 import datetime
@@ -234,8 +234,7 @@ def create_fake_calendar(project_list: List[Project]) -> ics.Calendar:
 
 
 def install_demo_data(
-    n: int,
-    db_path: str,
+    n: int, db_path: str, on_cache_timetracking_dataframe: Optional[Callable] = None
 ):
     db_path = f"""sqlite:///{db_path}"""
     logger.info(f"Installing demo data in {db_path}...")
@@ -259,11 +258,20 @@ def install_demo_data(
             session.add(invoice)
             session.commit()
 
-    logger.info("Adding demo data to database...")
+    logger.info("Adding fake projects...")
     with Session(db_engine) as session:
         for project in projects:
             session.add(project)
             session.commit()
+
+    # create a fake calendar and add time tracking data from it
+    logger.info("Creating a fake calendar...")
+    calendar: Calendar = ICSCalendar(
+        ics_calendar=create_fake_calendar(project_list=projects)
+    )
+    time_tracking_data = calendar.to_data()
+    logger.info("Caching timetracking data")
+    on_cache_timetracking_dataframe(time_tracking_data)
     logger.info("Demo data installed.")
 
 
