@@ -34,7 +34,7 @@ from core.models import RouteView
 from error_views.page_not_found_screen import Error404Screen
 from home.view import HomeScreen
 from preferences.view import PreferencesScreen
-from projects.view import CreateProjectScreen, EditProjectScreen, ViewProjectScreen
+from projects.view import ProjectEditorScreen, ViewProjectScreen
 from res.colors import BLACK_COLOR_ALT, ERROR_COLOR, PRIMARY_COLOR, WHITE_COLOR
 from res.dimens import MIN_WINDOW_HEIGHT, MIN_WINDOW_WIDTH
 from res.fonts import APP_FONTS, HEADLINE_4_SIZE, HEADLINE_FONT
@@ -377,7 +377,7 @@ class TuttleRoutes:
                 params=self.tuttle_view_params, on_theme_changed=self.on_theme_changed
             )
         elif routePath.match(PROJECT_CREATOR_SCREEN_ROUTE):
-            screen = CreateProjectScreen(params=self.tuttle_view_params)
+            screen = ProjectEditorScreen(params=self.tuttle_view_params)
         elif routePath.match(f"{PROJECT_DETAILS_SCREEN_ROUTE}/:projectId"):
             screen = ViewProjectScreen(
                 params=self.tuttle_view_params, project_id=routePath.projectId
@@ -388,8 +388,8 @@ class TuttleRoutes:
             projectId = None
             if hasattr(routePath, "projectId"):
                 projectId = routePath.projectId
-            screen = EditProjectScreen(
-                params=self.tuttle_view_params, project_id=projectId
+            screen = ProjectEditorScreen(
+                params=self.tuttle_view_params, project_id_if_editing=projectId
             )
         else:
             screen = Error404Screen(params=self.tuttle_view_params)

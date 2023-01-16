@@ -318,7 +318,7 @@ class ContractEditorScreen(TuttleView, UserControl):
         self.load_clients()
         self.load_contacts()
         self.load_currencies()
-        self.toggle_progress(is_on_going_action=False)()
+        self.toggle_progress(is_on_going_action=False)
         self.update_self()
 
     def load_currencies(self):
@@ -360,7 +360,7 @@ class ContractEditorScreen(TuttleView, UserControl):
         return clients
 
     def get_client_dropdown_item(self, key):
-        return f"#{key} {self.clients_map[key].title}"
+        return f"#{key} {self.clients_map[key].name}"
 
     def on_client_selected(self, e):
         # parse selected value to extract id
@@ -465,7 +465,7 @@ class ContractEditorScreen(TuttleView, UserControl):
             else result.error_msg
         )
         isError = not result.was_intent_successful
-        self.toggle_progress(is_on_going_action=False)()
+        self.toggle_progress(is_on_going_action=False)
         self.show_snack(msg, isError)
         if not isError:
             # re route back
@@ -1137,15 +1137,18 @@ class ViewContractScreen(TuttleView, UserControl):
         self.start_date_control.value = self.contract.start_date
         self.end_date_control.value = self.contract.end_date
         self.status_control.value = f"Status {self.contract.get_status()}"
-        self.billing_cycle_control.value = self.contract.billing_cycle
+        self.billing_cycle_control.value = (
+            self.contract.billing_cycle.value if self.contract.billing_cycle else ""
+        )
         self.rate_control.value = self.contract.rate
         self.currency_control.value = self.contract.currency
         self.vat_rate_control.value = self.contract.VAT_rate
-        self.unit_control.value = self.contract.unit
+        time_unit = self.contract.unit.value if self.contract.unit else ""
+        self.unit_control.value = time_unit
         self.units_per_workday_control.value = (
-            f"{self.contract.units_per_workday} {self.contract.unit}s"
+            f"{self.contract.units_per_workday} {time_unit}"
         )
-        self.volume_control.value = f"{self.contract.volume} {self.contract.unit}s"
+        self.volume_control.value = f"{self.contract.volume} {time_unit}"
         self.term_of_payment_control.value = f"{self.contract.term_of_payment} days"
         self.signature_date_control.value = self.contract.signature_date
 

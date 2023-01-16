@@ -45,10 +45,12 @@ from .utils import (
     KEYBOARD_NONE,
 )
 
+
+lgSpace = Container(height=dimens.SPACE_LG, width=dimens.SPACE_STD, padding=0, margin=0)
+mdSpace = Container(height=dimens.SPACE_MD, width=dimens.SPACE_MD, padding=0, margin=0)
 stdSpace = Container(
     height=dimens.SPACE_STD, width=dimens.SPACE_STD, padding=0, margin=0
 )
-mdSpace = Container(height=dimens.SPACE_MD, width=dimens.SPACE_MD, padding=0, margin=0)
 smSpace = Container(height=dimens.SPACE_SM, width=dimens.SPACE_SM, padding=0, margin=0)
 xsSpace = Container(height=dimens.SPACE_XS, width=dimens.SPACE_XS, padding=0, margin=0)
 
