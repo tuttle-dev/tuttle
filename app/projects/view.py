@@ -635,6 +635,12 @@ class ProjectsListView(TuttleView, UserControl):
 
     def did_mount(self):
         self.mounted = True
+        self.initialize_data()
+
+    def on_resume_after_back_pressed(self):
+        self.initialize_data()
+
+    def initialize_data(self):
         self.loading_indicator.visible = True
         self.projects_to_display = self.intent.get_all_projects_as_map()
         count = len(self.projects_to_display)
@@ -704,23 +710,19 @@ class EditProjectScreen(TuttleView, UserControl):
     # LOADING DATA
     def did_mount(self):
         self.mounted = True
-        self.show_progress_bar_disable_action()
+        self.toggle_progress_indicator(is_action_ongoing=True)
         result: IntentResult = self.intent.get_project_by_id(self.project_id)
         if result.was_intent_successful:
             self.project = result.data
             self.set_project_fields()
         else:
             self.show_snack(result.error_msg, True)
-        self.enable_action_remove_progress_bar()
+        self.toggle_progress_indicator(is_action_ongoing=False)
         self.update_self()
 
-    def show_progress_bar_disable_action(self):
-        self.loading_indicator.visible = True
-        self.submit_btn.disabled = True
-
-    def enable_action_remove_progress_bar(self):
-        self.loading_indicator.visible = False
-        self.submit_btn.disabled = False
+    def toggle_progress_indicator(self, is_action_ongoing: bool):
+        self.loading_indicator.visible = is_action_ongoing
+        self.submit_btn.disabled = is_action_ongoing
 
     def set_project_fields(self):
         """if user is editing a project
@@ -767,7 +769,7 @@ class EditProjectScreen(TuttleView, UserControl):
             )
             return
 
-        self.show_progress_bar_disable_action()
+        self.toggle_progress_indicator(is_action_ongoing=True)
         result: IntentResult = self.intent.save_project(
             title=self.title,
             description=self.description,
@@ -784,7 +786,7 @@ class EditProjectScreen(TuttleView, UserControl):
             else result.error_msg
         )
         isError = not result.was_intent_successful
-        self.enable_action_remove_progress_bar()
+        self.toggle_progress_indicator(is_action_ongoing=False)
         self.show_snack(msg, isError)
         if result.was_intent_successful:
             self.on_navigate_back()
@@ -868,6 +870,8 @@ class EditProjectScreen(TuttleView, UserControl):
 
 
 class CreateProjectScreen(TuttleView, UserControl):
+    """Displays a form for creating a new project"""
+
     def __init__(self, params):
         super().__init__(params)
         self.horizontal_alignment_in_parent = utils.CENTER_ALIGNMENT
@@ -935,33 +939,20 @@ class CreateProjectScreen(TuttleView, UserControl):
             self.description_field.error_text = None
             self.update_self()
 
-    # LOADING DATA
-    def did_mount(self):
-        self.mounted = True
-        self.show_progress_bar_disable_action()
-        self.reload_load_contracts()
-        self.enable_action_remove_progress_bar()
-        self.update_self()
+    def toggle_progress_indicator(self, is_action_ongoing: bool):
+        self.loading_indicator.visible = is_action_ongoing
+        self.submit_btn.disabled = is_action_ongoing
 
-    def show_progress_bar_disable_action(self):
-        self.loading_indicator.visible = True
-        self.submit_btn.disabled = True
-
-    def enable_action_remove_progress_bar(self):
-        self.loading_indicator.visible = False
-        self.submit_btn.disabled = False
-
-    def reload_load_contracts(
+    def reload_contracts(
         self,
     ):
-        self.contracts_map = self.intent.get_all_contracts_as_map()
+        self.contracts_map = self.intent.get_all_contracts_as_map_intent()
         self.contracts_field.error_text = (
             "Please create a new contract" if len(self.contracts_map) == 0 else None
         )
         views.update_dropdown_items(self.contracts_field, self.get_contracts_as_list())
 
     def on_add_contract(self, e):
-        # todo confirm? before re routing
         self.navigate_to_route(res_utils.CONTRACT_CREATOR_SCREEN_ROUTE)
 
     def on_save(self, e):
@@ -996,7 +987,7 @@ class CreateProjectScreen(TuttleView, UserControl):
             self.update_self()
             return
 
-        self.show_progress_bar_disable_action()
+        self.toggle_progress_indicator(is_action_ongoing=True)
         result: IntentResult = self.intent.save_project(
             title=self.title,
             description=self.description,
@@ -1008,7 +999,7 @@ class CreateProjectScreen(TuttleView, UserControl):
         successMsg = "New project created successfully"
         msg = successMsg if result.was_intent_successful else result.error_msg
         isError = not result.was_intent_successful
-        self.enable_action_remove_progress_bar()
+        self.toggle_progress_indicator(is_action_ongoing=False)
         self.show_snack(msg, isError)
         if result.was_intent_successful:
             # re -route back
@@ -1110,6 +1101,20 @@ class CreateProjectScreen(TuttleView, UserControl):
         )
 
         return view
+
+    def did_mount(self):
+        self.mounted = True
+        self.initialize_data()
+
+    def on_resume_after_back_pressed(self):
+        # re- initalize data
+        self.initialize_data()
+
+    def initialize_data(self):
+        self.toggle_progress_indicator(is_action_ongoing=True)
+        self.reload_contracts()
+        self.toggle_progress_indicator(is_action_ongoing=False)
+        self.update_self()
 
     def will_unmount(self):
         self.mounted = False

@@ -830,8 +830,6 @@ class CreateContractScreen(TuttleView, UserControl):
             "New contract created successfully"
             if result.was_intent_successful
             else result.error_msg
-            if result.error_msg
-            else "Unkown error occurred. Failed to save the contract! Please retry"
         )
         isError = not result.was_intent_successful
         self.toggle_progress(is_on_going_action=False)
@@ -1079,14 +1077,26 @@ class ContractsListView(TuttleView, UserControl):
 
     def did_mount(self):
         self.mounted = True
+        self.initialize_data()
+
+    def on_resume_after_back_pressed(self):
+        self.mounted = True
+        self.initialize_data()
+
+    def initialize_data(self):
         self.loading_indicator.visible = True
-        self.contracts_to_display = self.intent.get_all_contracts_as_map()
+        self.update_self()
+
+        # fetch contracts
+        self.contracts_to_display = self.intent.get_all_contracts_as_map(
+            reload_cache=True
+        )
         count = len(self.contracts_to_display)
-        self.loading_indicator.visible = False
         if count == 0:
             self.show_no_contracts()
         else:
             self.display_currently_filtered_contracts()
+        self.loading_indicator.visible = False
         self.update_self()
 
     def build(self):

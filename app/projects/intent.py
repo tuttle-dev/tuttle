@@ -108,11 +108,11 @@ class ProjectsIntent:
             result.log_message_if_any()
         return result
 
-    def get_all_clients_as_map(self) -> Mapping[int, Client]:
+    def get_all_clients_as_map_intent(self) -> Mapping[int, Client]:
         return self._clients_intent.get_all_clients_as_map()
 
-    def get_all_contracts_as_map(self) -> Mapping[int, Contract]:
-        return self._contracts_intent.get_all_contracts_as_map()
+    def get_all_contracts_as_map_intent(self) -> Mapping[int, Contract]:
+        return self._contracts_intent.get_all_contracts_as_map(reload_cache=True)
 
     def get_all_projects_as_map(self) -> Mapping[int, Project]:
         if not self._all_projects_cache:

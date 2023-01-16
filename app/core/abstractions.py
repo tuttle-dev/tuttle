@@ -123,6 +123,14 @@ class TuttleView(ABC):
         """listens for an intent from parent view"""
         return
 
+    def on_resume_after_back_pressed(
+        self,
+    ):
+        """listener for when a view has been resumed after user pressed back from another view
+        used by views whose self.keep_back_stack parameter is set to True
+        """
+        return
+
     def on_window_resized_listener(self, width, height):
         """sets the page width and height"""
         self.page_width = width

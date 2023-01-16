@@ -196,13 +196,24 @@ class TuttleApp:
 
         self.page.go(newRoute)
 
-    def on_view_pop(self, view: Optional[any] = None):
+    def on_view_pop(self, view: Optional[View] = None):
         """invoked on back pressed"""
         if len(self.page.views) == 1:
             return
         self.page.views.pop()
-        top_view = self.page.views[-1]
-        self.page.go(top_view.route)
+        current_page_view: View = self.page.views[-1]
+        self.page.go(current_page_view.route)
+        if current_page_view.controls:
+            try:
+                # the controls should contain a TuttleView as first control
+                tuttle_view: TuttleView = current_page_view.controls[0]
+                # notify view that it has been resumed
+                tuttle_view.on_resume_after_back_pressed()
+            except Exception as e:
+                logger.error(
+                    f"Exception raised @TuttleApp.on_view_pop {e.__class__.__name__}"
+                )
+                logger.exception(e)
 
     def on_route_change(self, route):
         """auto invoked when the route changes

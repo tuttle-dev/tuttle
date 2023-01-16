@@ -389,9 +389,13 @@ class HomeScreen(TuttleView, UserControl):
         else:
             self.navigate_to_route(item.on_new_screen_route)
 
+    def on_resume_after_back_pressed(self):
+        if self.destination_view and isinstance(self.destination_view, TuttleView):
+            self.destination_view.on_resume_after_back_pressed()
+
     def pass_intent_to_destination(self, intent: str, data: str):
         """forwards an intent to a child destination view"""
-        if self.destination_view:
+        if self.destination_view and isinstance(self.destination_view, TuttleView):
             self.destination_view.parent_intent_listener(intent, data)
 
     def on_view_notifications_clicked(self, e):

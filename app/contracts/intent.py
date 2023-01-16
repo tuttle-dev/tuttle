@@ -121,6 +121,7 @@ class ContractsIntent:
         is_completed: bool = False,
         contract_to_update: Optional[Contract] = None,
     ) -> IntentResult:
+
         if contract_to_update:
             _id = contract_to_update.id
         else:
@@ -143,10 +144,16 @@ class ContractsIntent:
             is_completed=is_completed,
         )
 
-        return self._data_source.save_contract(contract=contract)
+        result = self._data_source.save_contract(contract=contract)
+        if not result.was_intent_successful:
+            result.error_msg = "Failed to save the contract. Verify the info and retry."
+            result.log_message_if_any()
+        return result
 
-    def get_all_contracts_as_map(self) -> Mapping[int, Contract]:
-        if self._all_contracts_cache:
+    def get_all_contracts_as_map(
+        self, reload_cache: bool = False
+    ) -> Mapping[int, Contract]:
+        if self._all_contracts_cache and not reload_cache:
             # return cached results
             return self._all_contracts_cache
         self._clear_cached_results()
