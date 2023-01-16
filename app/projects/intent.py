@@ -146,7 +146,7 @@ class ProjectsIntent:
         if not self._active_projects_cache:
             self._active_projects_cache = {}
             for key in self._all_projects_cache:
-                p = self._all_projects_cache[key]
+                p: Project = self._all_projects_cache[key]
                 if p.is_active():
                     self._active_projects_cache[key] = p
         return self._active_projects_cache

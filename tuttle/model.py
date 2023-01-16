@@ -367,7 +367,7 @@ class Project(SQLModel, table=True):
     def is_active(self) -> bool:
         if self.end_date:
             today = datetime.date.today()
-            return self.end_date > today
+            return self.end_date >= today
         else:
             return True
 

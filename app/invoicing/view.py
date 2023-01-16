@@ -64,12 +64,10 @@ class InvoicingEditorPopUp(DialogHandler, UserControl):
             initial_date=self.invoice.date,
         )
         self.from_date_field = views.DateSelector(
-            label="Time Tracked From Date",
-            initial_date=yesterday,
+            label="From", initial_date=yesterday, label_color=colors.GRAY_COLOR
         )
         self.to_date_field = views.DateSelector(
-            label="Time Tracked Up-to Date",
-            initial_date=today,
+            label="To", initial_date=today, label_color=colors.GRAY_COLOR
         )
         dialog = AlertDialog(
             content=Container(
@@ -96,7 +94,8 @@ class InvoicingEditorPopUp(DialogHandler, UserControl):
                             label="Select project",
                             items=project_options,
                         ),
-                        views.xsSpace,
+                        views.stdSpace,
+                        views.get_body_txt(txt="Date range"),
                         self.from_date_field,
                         self.to_date_field,
                         views.xsSpace,
@@ -277,6 +276,7 @@ class InvoicingListView(TuttleView, UserControl):
         self.mounted = True
         self.loading_indicator.visible = True
         self.active_projects = self.intent.get_active_projects_as_map()
+
         self.invoices_to_display = self.intent.get_all_invoices_as_map()
         count = len(self.invoices_to_display)
         self.loading_indicator.visible = False

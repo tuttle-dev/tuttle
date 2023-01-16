@@ -370,13 +370,19 @@ class StandardDropdown(Dropdown):
 class DateSelector(UserControl):
     """Date selector."""
 
-    def __init__(self, label: str, initial_date: Optional[datetime.date] = None):
+    def __init__(
+        self,
+        label: str,
+        initial_date: Optional[datetime.date] = None,
+        label_color: Optional[str] = None,
+    ):
         super().__init__()
         self.label = label
         self.initial_date = initial_date if initial_date else datetime.date.today()
         self.date = str(self.initial_date.day)
         self.month = str(self.initial_date.month)
         self.year = str(self.initial_date.year)
+        self.label_color = label_color
 
         self.day_dropdown = get_dropdown(
             label="Day",
@@ -422,7 +428,7 @@ class DateSelector(UserControl):
         self.view = Container(
             content=Column(
                 controls=[
-                    Text(self.label, size=fonts.BODY_2_SIZE),
+                    get_body_txt(txt=self.label, color=self.label_color),
                     Row(
                         [
                             self.day_dropdown,
