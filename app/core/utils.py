@@ -1,3 +1,12 @@
+import warnings
+
+warnings.warn(
+    "wastebasket module, content will be moved to other modules",
+    DeprecationWarning,
+    stacklevel=2,
+)
+
+
 from enum import Enum
 import base64
 from flet import icons
@@ -68,7 +77,9 @@ PRESSED = "pressed"
 OTHER_CONTROL_STATES = ""
 
 
+@deprecated
 def is_empty_str(txt: str) -> bool:
+    # TODO: equivalent to txt.strip() == "", so remove function
     return len(txt.strip()) == 0
 
 
@@ -82,6 +93,7 @@ def truncate_str(txt: str, max_chars: int = 25) -> str:
 
 
 def image_to_base64(image_path):
+    """Converts an image to a base64-encoded string."""
     with open(image_path, "rb") as image_file:
         encoded_string = base64.b64encode(image_file.read()).decode("utf-8")
     return encoded_string
