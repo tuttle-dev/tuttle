@@ -20,6 +20,7 @@ from flet import (
     icons,
     margin,
     padding,
+    FontWeight,
 )
 
 from core.abstractions import TuttleView
@@ -54,10 +55,11 @@ class ProjectCard(UserControl):
         self.project_info_container.controls = [
             ListTile(
                 leading=Icon(utils.TuttleComponentIcons.project_icon),
-                title=views.get_body_txt(utils.truncate_str(self.project.title)),
+                title=views.get_body_txt(self.project.title),
                 subtitle=views.get_body_txt(
-                    utils.truncate_str(f"client: {self.project.client.name}"),
+                    f"#{self.project.tag}",
                     color=colors.GRAY_COLOR,
+                    weight=FontWeight.BOLD,
                 ),
                 trailing=views.view_edit_delete_pop_up(
                     on_click_view=lambda e: self.on_view_details_clicked(
@@ -85,6 +87,28 @@ class ProjectCard(UserControl):
                 spacing=dimens.SPACE_XS,
                 run_spacing=0,
                 vertical_alignment=utils.CENTER_ALIGNMENT,
+            ),
+            views.mdSpace,
+            ResponsiveRow(
+                controls=[
+                    Text(
+                        "Client",
+                        color=colors.GRAY_COLOR,
+                        size=fonts.BODY_2_SIZE,
+                        col={"xs": "12"},
+                    ),
+                    Container(
+                        Text(
+                            self.project.client.name,
+                            size=fonts.BODY_2_SIZE,
+                            col={"xs": "12"},
+                        ),
+                    ),
+                ],
+                alignment=utils.START_ALIGNMENT,
+                vertical_alignment=utils.START_ALIGNMENT,
+                spacing=dimens.SPACE_XS,
+                run_spacing=0,
             ),
             views.mdSpace,
             ResponsiveRow(
@@ -158,13 +182,6 @@ class ProjectCard(UserControl):
                 run_spacing=0,
             ),
             views.mdSpace,
-            Row(
-                spacing=0,
-                controls=[
-                    views.get_body_txt(f"#", color=colors.PRIMARY_COLOR),
-                    views.get_body_txt(f"{self.project.tag}", color=colors.GRAY_COLOR),
-                ],
-            ),
         ]
         card = Card(
             elevation=2,

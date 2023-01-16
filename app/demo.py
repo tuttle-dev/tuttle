@@ -99,7 +99,7 @@ def create_fake_project(
     project_title = fake.bs()
     project = Project(
         title=project_title,
-        tag=project_title.replace(" ", "-").lower(),
+        tag="-".join(project_title.split(" ")[:2]).lower(),
         description=fake.paragraph(nb_sentences=2),
         unique_tag=project_title.split(" ")[0].lower(),
         is_completed=fake.pybool(),

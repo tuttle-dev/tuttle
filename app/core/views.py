@@ -181,10 +181,17 @@ def get_body_txt(
     show: bool = True,
     col: Optional[dict] = None,
     align: str = TXT_ALIGN_LEFT,
+    **kwargs,
 ):
     """Displays text formatted for body"""
     return Text(
-        col=col, value=txt, color=color, size=size, visible=show, text_align=align
+        col=col,
+        value=txt,
+        color=color,
+        size=size,
+        visible=show,
+        text_align=align,
+        **kwargs,
     )
 
 

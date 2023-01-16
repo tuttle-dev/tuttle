@@ -276,7 +276,11 @@ class TuttleApp:
             logger.exception(ex)
             logger.error("Failed to install demo data")
         # create a fake calendar and add time tracking data from it
-        calendar: Calendar = ICSCalendar(ics_calendar=demo.create_fake_calendar())
+        # calendar: Calendar = ICSCalendar(
+        #     ics_calendar=demo.create_fake_calendar(
+        #         project_list=projects,
+        #     )
+        # )
         # TODO: add time tracking data from calendar - intent?
 
     def ensure_app_dir(self) -> Path:
