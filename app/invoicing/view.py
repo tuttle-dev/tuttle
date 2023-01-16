@@ -26,7 +26,6 @@ from flet import (
 from core.abstractions import DialogHandler, TuttleView, TuttleViewParams
 from core.intent_result import IntentResult
 from core import utils, views
-from core.models import TuttleDateRange
 from res import colors, dimens, fonts, res_utils
 
 
@@ -129,11 +128,10 @@ class InvoicingEditorPopUp(DialogHandler, UserControl):
         date = self.date_field.get_date()
         if date:
             self.invoice.date = date
-        from_date = self.from_date_field.get_date()
-        to_date = self.to_date_field.get_date()
-        time_range = TuttleDateRange(from_date=from_date, to_date=to_date)
+        from_date: Optional[datetime.date] = self.from_date_field.get_date()
+        to_date: Optional[datetime.date] = self.to_date_field.get_date()
         self.close_dialog()
-        self.on_submit(self.invoice, self.project, time_range)
+        self.on_submit(self.invoice, self.project, from_date, to_date)
 
 
 class InvoicingListView(TuttleView, UserControl):
@@ -226,7 +224,8 @@ class InvoicingListView(TuttleView, UserControl):
         self,
         invoice: Invoice,
         project: Project,
-        time_range: TuttleDateRange,
+        from_date: Optional[datetime.date],
+        to_date: Optional[datetime.date],
     ):
         if not invoice:
             return
@@ -235,7 +234,11 @@ class InvoicingListView(TuttleView, UserControl):
             self.show_snack("Please specify the project")
             return
 
-        if not time_range.is_valid():
+        if not from_date or not to_date:
+            self.show_snack("Please specify the date range")
+            return
+
+        if to_date < from_date:
             self.show_snack("The start date cannot be after the end date")
             return
 
@@ -243,9 +246,7 @@ class InvoicingListView(TuttleView, UserControl):
         self.loading_indicator.visible = True
         self.update_self()
         result: IntentResult = self.intent.save_invoice(
-            invoice,
-            project,
-            time_range,
+            invoice, project, from_date, to_date
         )
         if not result.was_intent_successful:
             self.show_snack(result.error_msg, True)
