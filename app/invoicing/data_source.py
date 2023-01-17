@@ -79,12 +79,10 @@ class InvoicingDataSource(SQLModelDataSourceMixin):
                 exception=e,
             )
 
-    def create_or_update_invoice(
+    def create_invoice(
         self,
         invoice: Invoice,
         project: Project,
-        from_date: datetime.date,
-        to_date: datetime.date,
     ) -> IntentResult[Invoice]:
         """TODO Creates or updates an invoice with given invoice and project info
 

@@ -24,6 +24,8 @@ import pandas
 
 from .time import Cycle, TimeUnit
 
+from .dev import deprecated
+
 
 def help(model_class):
     return pandas.DataFrame(
@@ -439,6 +441,7 @@ class Timesheet(SQLModel, table=True):
         return len(self.items) == 0
 
 
+@deprecated
 class InvoiceStatus(Enum):
     """Status parameters of an Invoice item"""
 

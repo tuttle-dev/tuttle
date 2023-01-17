@@ -12,6 +12,8 @@ from tuttle.model import Invoice, Project, InvoiceStatus
 from projects.intent import ProjectsIntent
 from tuttle.os_functions import preview_pdf
 
+from tuttle.dev import deprecated
+
 
 class InvoicingIntent:
     """Handles Invoicing C_R_U_D intents
@@ -79,21 +81,30 @@ class InvoicingIntent:
             result.error_msg = "Deleting invoice failed! Please retry"
         return result
 
-    def save_invoice(
+    def create_invoice(
         self,
-        invoice: Invoice,
+        invoice_date: date,
         project: Project,
-        from_date: datetime.date,
-        to_date: datetime.date,
+        from_date: date,
+        to_date: date,
     ) -> IntentResult:
-        invoice.contract = project.contract
-        invoice.project = project
-        result: IntentResult = self._data_source.create_or_update_invoice(
-            invoice, project, from_date, to_date
-        )
+        """Create a new invoice from time tracking data."""
+
+        # TODO: get the time tracking data
+
         if not result.was_intent_successful:
             result.log_message_if_any()
             result.error_msg = "failed to save the invoice! Please retry"
+        return result
+
+    def update_invoice(
+        self,
+        invoice: Invoice,
+    ) -> IntentResult:
+        result: IntentResult = self._data_source.update_invoice(invoice)
+        if not result.was_intent_successful:
+            result.log_message_if_any()
+            result.error_msg = "Failed to update the invoice."
         return result
 
     def send_invoice_by_mail(self, invoice: Invoice) -> IntentResult[None]:
@@ -104,8 +115,12 @@ class InvoicingIntent:
         """TODO Attempts to generate the invoice as a pdf and open the location"""
         return IntentResult(was_intent_successful=False, error_msg="Not implemented")
 
+    # TODO: remove
+    @deprecated
     def toggle_invoice_status(
-        self, invoice: Invoice, status_to_toggle: InvoiceStatus
+        self,
+        invoice: Invoice,
+        status_to_toggle: InvoiceStatus,
     ) -> IntentResult[None]:
         if status_to_toggle.value == InvoiceStatus.SENT.value:
             invoice.sent = not invoice.sent
@@ -120,6 +135,29 @@ class InvoicingIntent:
             result.error_msg = "Failed to update status of the invoice. Please retry"
             result.log_message_if_any()
         return result
+
+    def toggle_invoice_paid_status(self, invoice: Invoice) -> IntentResult[Invoice]:
+        """"""
+        invoice.paid = not invoice.paid
+        result: IntentResult = self._data_source.update_invoice(invoice)
+        if not result.was_intent_successful:
+            result.log_message_if_any()
+            invoice.paid = not invoice.paid
+            return IntentResult(
+                data=invoice,
+                was_intent_successful=False,
+                error_msg="Failed to update status of the invoice",
+            )
+        else:
+            return result
+
+    def toggle_invoice_cancelled_status(self, invoice: Invoice) -> IntentResult[None]:
+        """"""
+        raise NotImplementedError()
+
+    def toggle_invoice_sent_status(self, invoice: Invoice) -> IntentResult[None]:
+        """"""
+        raise NotImplementedError()
 
     def view_invoice(self, invoice: Invoice) -> IntentResult[None]:
         """TODO Attempts to open the invoice in the default pdf viewer"""
