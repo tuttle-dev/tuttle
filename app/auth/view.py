@@ -30,14 +30,14 @@ class UserDataForm(UserControl):
         self,
         on_submit_success: Callable,
         on_form_submit: Callable,
-        submit_btn_label: Callable,
+        submit_btn_label: str,
     ):
         super().__init__()
         """
         Parameters
         ----------
         on_submit_success : Callable
-            Callback function to handle when the form submission is succesful
+            Callback function to handle when the form submission is successful
         on_form_submit : Callable
             Callback function to handle when the form's submit button  is clicked
         submit_btn_label : str

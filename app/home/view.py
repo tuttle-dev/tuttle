@@ -84,6 +84,15 @@ def get_action_bar(
     on_click_profile_btn: Callable,
     on_view_settings_clicked: Callable,
 ):
+    """
+    Returns the action bar containing various buttons for application functionality.
+
+    :param on_click_new_btn: Callable function to be called when the 'New' button is clicked.
+    :param on_click_notifications_btn: Callable function to be called when the 'Notifications' button is clicked.
+    :param on_click_profile_btn: Callable function to be called when the 'Profile' button is clicked.
+    :param on_view_settings_clicked: Callable function to be called when the 'Settings' button is clicked.
+    :return: A Container widget containing the action bar.
+    """
     return Container(
         alignment=alignment.center,
         height=TOOLBAR_HEIGHT,
@@ -95,14 +104,12 @@ def get_action_bar(
             controls=[
                 Row(
                     controls=[
-                        # TODO: replace with actual app logo
-                        # get_app_logo(width=10),
                         Text(
                             "Tuttle",
                             size=HEADLINE_4_SIZE,
                             font_family=HEADLINE_FONT,
                             color=WHITE_COLOR,
-                        ),
+                        )
                     ],
                     alignment=CENTER_ALIGNMENT,
                     vertical_alignment=CENTER_ALIGNMENT,
@@ -170,6 +177,16 @@ def create_and_get_navigation_menu(
     destinations=[],
     menu_height: int = 300,
 ):
+    """
+    Returns a navigation menu for the application.
+
+    :param title: Title of the navigation menu.
+    :param on_change: Callable function to be called when the selected item in the menu changes.
+    :param selected_index: The index of the selected item in the menu.
+    :param destinations: List of destinations in the menu.
+    :param menu_height: The height of the menu.
+    :return: A NavigationRail widget containing the navigation menu.
+    """
     return NavigationRail(
         leading=Container(
             content=Text(
@@ -232,7 +249,7 @@ class MainMenuItemsHandler:
                 icon=TuttleComponentIcons.project_icon,
                 selected_icon=TuttleComponentIcons.project_selected_icon,
                 destination=self.projects_view,
-                on_new_screen_route=res_utils.PROJECT_CREATOR_SCREEN_ROUTE,
+                on_new_screen_route=res_utils.PROJECT_EDITOR_SCREEN_ROUTE,
                 on_new_intent=None,
             ),
             MenuItem(
@@ -241,7 +258,7 @@ class MainMenuItemsHandler:
                 icon=TuttleComponentIcons.contract_icon,
                 selected_icon=TuttleComponentIcons.contract_selected_icon,
                 destination=self.contracts_view,
-                on_new_screen_route=res_utils.CONTRACT_CREATOR_SCREEN_ROUTE,
+                on_new_screen_route=res_utils.CONTRACT_EDITOR_SCREEN_ROUTE,
                 on_new_intent=None,
             ),
             MenuItem(
@@ -298,7 +315,10 @@ class SecondaryMenuHandler:
 
 
 class HomeScreen(TuttleView, UserControl):
-    def __init__(self, params: TuttleViewParams):
+    def __init__(
+        self,
+        params: TuttleViewParams,
+    ):
         super().__init__(params)
         self.keep_back_stack = False
         self.page_scroll_type = None
@@ -389,9 +409,13 @@ class HomeScreen(TuttleView, UserControl):
         else:
             self.navigate_to_route(item.on_new_screen_route)
 
+    def on_resume_after_back_pressed(self):
+        if self.destination_view and isinstance(self.destination_view, TuttleView):
+            self.destination_view.on_resume_after_back_pressed()
+
     def pass_intent_to_destination(self, intent: str, data: str):
         """forwards an intent to a child destination view"""
-        if self.destination_view:
+        if self.destination_view and isinstance(self.destination_view, TuttleView):
             self.destination_view.parent_intent_listener(intent, data)
 
     def on_view_notifications_clicked(self, e):

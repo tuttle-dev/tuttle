@@ -1,4 +1,4 @@
-from typing import Optional, Mapping
+from typing import Optional, Mapping, Union
 import datetime
 from core.intent_result import IntentResult
 from .data_source import ProjectDataSource
@@ -14,59 +14,11 @@ from tuttle.model import (
 
 
 class ProjectsIntent:
-    """Handles Project C_R_U_D intents
-
-    Intents handled (Methods)
-    ---------------
-    get_project_by_id_intent
-        reading a project info given it's id
-
-    get_all_clients_as_map_intent
-        fetching existing clients as a map of client IDs to client
-
-    get_all_contracts_as_map_intent
-        fetching existing contracts as a map of contract IDs to contract
-
-    get_upcoming_projects_as_map_intent
-        fetching upcoming projects as a map of project IDs to project
-
-    get_completed_projects_as_map_intent
-        fetching completed projects as a map of project IDs to project
-
-    get_active_projects_as_map_intent
-        fetching active projects as a map of project IDs to project
-
-    get_all_projects_as_map_intent
-        fetching existing projects as a map of project IDs to project
-
-    save_project_intent
-        saving the project
-
-    delete_project_by_id_intent
-        deleting a project given it's id
-    """
+    """Handles Project C_R_U_D intents"""
 
     def __init__(
         self,
     ):
-        """
-        Attributes
-        ----------
-        _data_source : ProjectDataSource
-            reference to the project's data source
-        _clients_intent :  ClientsIntent
-            reference to the client's Intent handler for forwarding client related intents
-        _contracts_intent  : ContractsIntent
-            reference to the contract's Intent handler for forwarding contact related intents
-        _all_projects_cache : Mapping[str, Contract]
-            caches fetched projects to reduce unnecessary database calls
-        _completed_projects_cache : Mapping[str, Contract]
-            caches completed projects to reduce unnecessary database calls
-        _active_projects_cache  :   Mapping[str, Contract]
-            caches active projects to reduce unnecessary database calls
-        _upcoming_projects_cache : Mapping[str, Contract]
-            caches upcoming projects to reduce unnecessary database calls
-        """
         self._data_source = ProjectDataSource()
         self._clients_intent = ClientsIntent()
         self._contracts_intent = ContractsIntent()
@@ -85,7 +37,26 @@ class ProjectsIntent:
         is_completed: bool = False,
         contract: Optional[Contract] = None,
         project: Optional[Project] = None,
-    ) -> IntentResult:
+    ) -> IntentResult[Union[Project, None]]:
+        """Save or Update the project
+
+        Args:
+        title (str): Title of the project
+        description (str): Description of the project
+        unique_tag (str): Unique tag of the project
+        start_date (datetime.date): Start date of the project
+        end_date (datetime.date): End date of the project
+        is_completed (bool): Whether the project is completed
+        contract (Optional[Contract]): Contract to which the project belongs
+        project (Optional[Project]): Project to be updated
+
+        Returns:
+        IntentResult:
+            was_intent_successful : bool
+            data :  Project if was_intent_successful else None
+            log_message  : str  if an error or exception occurs
+            exception : Exception if an exception occurs
+        """
         result = self._data_source.save_project(
             title=title,
             description=description,
@@ -101,21 +72,48 @@ class ProjectsIntent:
             result.log_message_if_any()
         return result
 
-    def get_project_by_id(self, projectId) -> IntentResult:
+    def get_project_by_id(self, projectId) -> IntentResult[Union[Project, None]]:
+        """
+        Get the project by id
+
+        Args:
+        project_id (int): ID of the project
+
+        Returns:
+        IntentResult:
+            was_intent_successful : bool
+            data :  Project if was_intent_successful else None
+            log_message  : str  if an error or exception occurs
+            exception : Exception if an exception occurs
+        """
         result = self._data_source.get_project_by_id(projectId=projectId)
         if not result.was_intent_successful:
             result.error_msg = "Something went wrong, failed to load the project"
             result.log_message_if_any()
         return result
 
-    def get_all_clients_as_map(self) -> Mapping[int, Client]:
+    def get_all_clients_as_map_intent(self) -> Mapping[int, Client]:
+        """
+        Get all clients as a map of client_id to client object
+
+        Returns:
+            Mapping[int, Client]: Map of client_id to client object
+        """
         return self._clients_intent.get_all_clients_as_map()
 
-    def get_all_contracts_as_map(self) -> Mapping[int, Contract]:
-        return self._contracts_intent.get_all_contracts_as_map()
+    def get_all_contracts_as_map_intent(self) -> Mapping[int, Contract]:
+        """
+        Get all contracts as a map of contract_id to contract object
 
-    def get_all_projects_as_map(self) -> Mapping[int, Project]:
-        if not self._all_projects_cache:
+        Returns:
+        Mapping[int, Contract]: Map of contract_id to contract object
+        """
+        return self._contracts_intent.get_all_contracts_as_map(reload_cache=True)
+
+    def get_all_projects_as_map(
+        self, reload_cache: bool = False
+    ) -> Mapping[int, Project]:
+        if reload_cache or not self._all_projects_cache:
             self._clear_cached_results()
             self._all_projects_cache = {}
             result = self._data_source.get_all_projects()
@@ -144,7 +142,7 @@ class ProjectsIntent:
         if not self._active_projects_cache:
             self._active_projects_cache = {}
             for key in self._all_projects_cache:
-                p = self._all_projects_cache[key]
+                p: Project = self._all_projects_cache[key]
                 if p.is_active():
                     self._active_projects_cache[key] = p
         return self._active_projects_cache
@@ -161,6 +159,19 @@ class ProjectsIntent:
         return self._upcoming_projects_cache
 
     def delete_project_by_id(self, project_id: str):
+        """
+        Delete the project by id
+
+        Args:
+        project_id (int): ID of the project to be deleted
+
+        Returns:
+        IntentResult:
+            was_intent_successful : bool
+            data : None
+            log_message  : str  if an error or exception occurs
+            exception : Exception if an exception occurs
+        """
         result: IntentResult = self._data_source.delete_project_by_id(project_id)
         if not result.was_intent_successful:
             result.error_msg = "Failed to delete that project! Please retry"

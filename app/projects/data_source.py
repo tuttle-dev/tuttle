@@ -1,7 +1,7 @@
 import datetime
 
 from core.intent_result import IntentResult
-from typing import Optional
+from typing import Optional, List, Union
 from core.abstractions import SQLModelDataSourceMixin
 from tuttle.model import (
     Contract,
@@ -17,7 +17,7 @@ class ProjectDataSource(SQLModelDataSourceMixin):
 
     def get_all_projects(
         self,
-    ) -> IntentResult:
+    ) -> IntentResult[List[Project]]:
         """Fetches all existing projects from the database
 
         Returns:
@@ -47,7 +47,7 @@ class ProjectDataSource(SQLModelDataSourceMixin):
         end_date: datetime.date,
         is_completed: bool = False,
         project: Optional[Project] = None,
-    ) -> IntentResult:
+    ) -> IntentResult[Union[Project, None]]:
         """If project is provided,
         update the project with given info,
         else create a new project
@@ -82,11 +82,8 @@ class ProjectDataSource(SQLModelDataSourceMixin):
                 exception=e,
             )
 
-    def get_project_by_id(self, projectId) -> IntentResult:
-        """If project is provided,
-        update the project with given info,
-        else create a new project
-        and store in the database
+    def get_project_by_id(self, projectId) -> IntentResult[Union[Project, None]]:
+        """Fetches the project from the database with the given id
 
         Returns:
             IntentResult:
@@ -105,7 +102,7 @@ class ProjectDataSource(SQLModelDataSourceMixin):
                 data=None,
             )
 
-    def delete_project_by_id(self, project_id):
+    def delete_project_by_id(self, project_id) -> IntentResult:
         """Deletes the project with the corresponding id
 
         Returns:

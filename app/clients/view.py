@@ -197,8 +197,8 @@ class ClientEditorPopUp(DialogHandler, UserControl):
                         views.get_headline_txt(txt=title, size=fonts.HEADLINE_4_SIZE),
                         views.xsSpace,
                         views.get_std_txt_field(
-                            on_change=self.on_title_changed,
-                            label="Client's title",
+                            on_change=self.on_client_name_changed,
+                            label="Client's name",
                             hint=self.client.name,
                             initial_value=self.client.name,
                         ),
@@ -296,7 +296,7 @@ class ClientEditorPopUp(DialogHandler, UserControl):
         self.country_field.value = self.invoicing_contact.address.country
         self.dialog.update()
 
-    def on_title_changed(self, e):
+    def on_client_name_changed(self, e):
         self.title = e.control.value
 
     def on_fname_changed(self, e):

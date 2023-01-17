@@ -12,7 +12,8 @@ from flet import (
     ProgressRing,
     border,
 )
-from tuttle.calendar import ICSCalendar
+from tuttle.calendar import Calendar
+from pandas import DataFrame
 from .model import CloudCalendarInfo, CloudConfigurationResult
 from .intent import TimeTrackingIntent
 from core.abstractions import DialogHandler, TuttleView
@@ -185,11 +186,12 @@ class TimeTrackingView(TuttleView, UserControl):
     def __init__(self, params):
         super().__init__(params)
         self.intent = TimeTrackingIntent(local_storage=params.local_storage)
-
+        self.get_cached_dataframe_callback = params.on_get_timetracking_dataframe
+        self.cache_dataframe_callback = params.on_save_timetracking_dataframe
         self.preferred_cloud_acc = ""
         self.preferred_cloud_provider = ""
         self.pop_up_handler = None
-        self.file_calendar_to_display: ICSCalendar = None
+        self.dataframe_to_display: DataFrame = None
 
     def close_pop_up_if_open(self):
         if self.pop_up_handler:
@@ -260,9 +262,10 @@ class TimeTrackingView(TuttleView, UserControl):
             is_error = not intent_result.was_intent_successful
             self.show_snack(msg, is_error)
             if intent_result.was_intent_successful:
-                data: ICSCalendar = intent_result.data
-                self.file_calendar_to_display = data
-                self.refresh_records()
+                data: Calendar = intent_result.data
+                self.dataframe_to_display = data.to_data()
+                self.cache_dataframe_callback(self.dataframe_to_display)
+                self.display_dataframe()
             self.set_progress_hint(hide_progress=True)
 
     """Cloud calendar setup"""
@@ -347,12 +350,11 @@ class TimeTrackingView(TuttleView, UserControl):
             self.show_snack(feedback_msg, is_error)
         self.set_progress_hint(hide_progress=True)
 
-    def refresh_records(self):
-        if not self.file_calendar_to_display:
+    def display_dataframe(self):
+        if not isinstance(self.dataframe_to_display, DataFrame):
             return
-        timetracking_data = self.file_calendar_to_display.to_data()
         data_table = tabular.data_frame_to_data_table(
-            data_frame=timetracking_data.sort_index().reset_index(),
+            data_frame=self.dataframe_to_display.sort_index().reset_index(),
             table_style={
                 "border": border.all(),
                 "border_radius": 10,
@@ -380,6 +382,8 @@ class TimeTrackingView(TuttleView, UserControl):
         self.mounted = True
         self.loading_indicator.visible = True
         self.load_preferred_cloud_acc()
+        self.dataframe_to_display = self.get_cached_dataframe_callback()
+        self.display_dataframe()
         self.loading_indicator.visible = False
         self.update_self()
 
