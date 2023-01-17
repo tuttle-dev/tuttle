@@ -24,6 +24,7 @@ from flet import (
     padding,
     ListTile,
 )
+from clients.view import ClientViewPopUp
 
 from contracts.intent import ContractsIntent
 from core.abstractions import TuttleView, DialogHandler, TuttleViewParams
@@ -64,7 +65,7 @@ class ContractCard(UserControl):
                 leading=Icon(utils.TuttleComponentIcons.contract_icon),
                 title=views.get_body_txt(self.contract.title),
                 subtitle=views.get_body_txt(
-                    f"{self.contract.client.name}",
+                    self.contract.client.name if self.contract.client else "",
                     color=colors.GRAY_COLOR,
                 ),
                 trailing=views.view_edit_delete_pop_up(
@@ -748,7 +749,9 @@ class ViewContractScreen(TuttleView, UserControl):
 
     def display_contract_data(self):
         self.contract_title_control.value = self.contract.title
-        self.client_control.value = self.contract.client.name
+        self.client_control.value = (
+            self.contract.client.name if self.contract.client else ""
+        )
         self.contract_title_control.value = self.contract.title
         self.start_date_control.value = self.contract.start_date
         self.end_date_control.value = self.contract.end_date
@@ -780,7 +783,14 @@ class ViewContractScreen(TuttleView, UserControl):
         self.update_self()
 
     def on_view_client_clicked(self, e):
-        self.show_snack("Coming soon", False)
+        if not self.contract or not self.contract.client:
+            return
+        if self.pop_up_handler:
+            self.pop_up_handler.close_dialog()
+        self.pop_up_handler = ClientViewPopUp(
+            dialog_controller=self.dialog_controller, client=self.contract.client
+        )
+        self.pop_up_handler.open_dialog()
 
     def on_mark_as_complete_clicked(self, e):
         self.show_snack("Coming soon", False)

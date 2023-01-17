@@ -36,6 +36,7 @@ from tuttle.model import (
     Contract,
     Project,
 )
+from clients.view import ClientViewPopUp
 
 
 class ProjectCard(UserControl):
@@ -289,9 +290,20 @@ class ViewProjectScreen(TuttleView, UserControl):
         self.chart = None
 
     def display_project_data(self):
+        has_contract = True if self.project.contract else False
+        has_client = True if has_contract and self.project.contract.client else False
+
         self.project_title_control.value = self.project.title
-        self.client_control.value = f"Client {self.project.contract.client.name}"
-        self.contract_control.value = f"Contract Title: {self.project.contract.title}"
+        self.client_control.value = (
+            f"Client {self.project.contract.client.name}"
+            if has_client
+            else "Client not specified"
+        )
+        self.contract_control.value = (
+            f"Contract Title: {self.project.contract.title}"
+            if has_contract
+            else "Contract not specified"
+        )
         self.project_description_control.value = self.project.description
         self.project_start_date_control.value = f"Start Date: {self.project.start_date}"
         self.project_end_date_control.value = f"End Date: {self.project.end_date}"
@@ -327,10 +339,21 @@ class ViewProjectScreen(TuttleView, UserControl):
         self.update_self()
 
     def on_view_client_clicked(self, e):
-        self.show_snack("Coming soon", False)
+        if not self.project or not self.project.client:
+            return
+        if self.pop_up_handler:
+            self.pop_up_handler.close_dialog()
+        self.pop_up_handler = ClientViewPopUp(
+            dialog_controller=self.dialog_controller, client=self.project.client
+        )
+        self.pop_up_handler.open_dialog()
 
     def on_view_contract_clicked(self, e):
-        self.show_snack("Coming soon", False)
+        if not self.project:
+            return
+        self.navigate_to_route(
+            res_utils.CONTRACT_DETAILS_SCREEN_ROUTE, self.project.contract.id
+        )
 
     def on_mark_as_complete_clicked(self, e):
         if self.pop_up_handler:

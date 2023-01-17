@@ -33,7 +33,12 @@ from tuttle.model import (
 class ClientCard(UserControl):
     """Formats a single client info into a card ui display"""
 
-    def __init__(self, client: Client, on_edit, on_delete):
+    def __init__(
+        self,
+        client: Client,
+        on_edit: Optional[Callable] = None,
+        on_delete: Optional[Callable] = None,
+    ):
         super().__init__()
         self.client = client
         self.client_info_container = Column(spacing=0, run_spacing=0)
@@ -45,15 +50,22 @@ class ClientCard(UserControl):
             invoicing_contact_info = self.client.invoicing_contact.print_address()
         else:
             invoicing_contact_info = "*not specified"
+        editable = True if self.on_edit_clicked or self.on_delete_clicked else None
+
+        editor_controls = (
+            views.view_edit_delete_pop_up(
+                on_click_delete=lambda e: self.on_delete_clicked(self.client),
+                on_click_edit=lambda e: self.on_edit_clicked(self.client),
+            )
+            if editable
+            else views.smSpace
+        )
 
         self.client_info_container.controls = [
             ListTile(
                 leading=Icon(utils.TuttleComponentIcons.client_icon),
                 title=views.get_body_txt(self.client.name),
-                trailing=views.view_edit_delete_pop_up(
-                    on_click_delete=lambda e: self.on_delete_clicked(self.client),
-                    on_click_edit=lambda e: self.on_edit_clicked(self.client),
-                ),
+                trailing=editor_controls,
             ),
             views.mdSpace,
             ResponsiveRow(
@@ -87,6 +99,31 @@ class ClientCard(UserControl):
             ),
         )
         return card
+
+
+class ClientViewPopUp(DialogHandler, UserControl):
+    """Pop up used to displaying a client"""
+
+    def __init__(
+        self,
+        dialog_controller: Callable[[any, utils.AlertDialogControls], None],
+        client: Client,
+    ):
+        # dimensions of the pop up and the elements inside
+        # accounting for margins and paddings
+
+        pop_up_width = int(dimens.MIN_WINDOW_WIDTH * 0.8)
+
+        dialog = AlertDialog(
+            content=Container(
+                content=Column(
+                    scroll=utils.AUTO_SCROLL,
+                    controls=[ClientCard(client=client)],
+                ),
+                width=pop_up_width,
+            ),
+        )
+        super().__init__(dialog=dialog, dialog_controller=dialog_controller)
 
 
 class ClientEditorPopUp(DialogHandler, UserControl):
