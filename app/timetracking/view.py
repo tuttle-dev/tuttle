@@ -185,8 +185,6 @@ class TimeTrackingView(TuttleView, UserControl):
     def __init__(self, params):
         super().__init__(params)
         self.intent = TimeTrackingIntent(local_storage=params.local_storage)
-        self.get_cached_dataframe_callback = params.on_get_timetracking_dataframe
-        self.cache_dataframe_callback = params.on_save_timetracking_dataframe
         self.preferred_cloud_acc = ""
         self.preferred_cloud_provider = ""
         self.pop_up_handler = None
@@ -263,9 +261,22 @@ class TimeTrackingView(TuttleView, UserControl):
             if intent_result.was_intent_successful:
                 data: Calendar = intent_result.data
                 self.dataframe_to_display = data.to_data()
-                self.cache_dataframe_callback(self.dataframe_to_display)
+                self.update_timetracking_dataframe()
                 self.display_dataframe()
             self.set_progress_hint(hide_progress=True)
+
+    def load_existing_dataframe(self):
+        result = self.intent.get_timetracking_data()
+        if not result.was_intent_successful:
+            self.show_snack(result.error_msg, is_error=True)
+            return
+        if isinstance(result.data, DataFrame):
+            self.dataframe_to_display = result.data
+
+    def update_timetracking_dataframe(self):
+        result = self.intent.set_timetracking_data(self.dataframe_to_display)
+        if not result.was_intent_successful:
+            self.show_snack(result.error_msg, is_error=True)
 
     """Cloud calendar setup"""
 
@@ -381,7 +392,7 @@ class TimeTrackingView(TuttleView, UserControl):
         self.mounted = True
         self.loading_indicator.visible = True
         self.load_preferred_cloud_acc()
-        self.dataframe_to_display = self.get_cached_dataframe_callback()
+        self.load_existing_dataframe()
         self.display_dataframe()
         self.loading_indicator.visible = False
         self.update_self()

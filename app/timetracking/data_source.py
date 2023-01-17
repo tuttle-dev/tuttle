@@ -2,38 +2,49 @@ from core.abstractions import SQLModelDataSourceMixin
 from tuttle.calendar import ICSCalendar
 from core.intent_result import IntentResult
 from .model import CloudCalendarInfo, CloudConfigurationResult
-
+from .singleton_dataframe import SingletonDataFrame
 from tuttle.cloud import login_iCloud, verify_icloud_session, CloudLoginResult
-
-import pandas
+from typing import Type, Union
+from pandas import DataFrame
 
 
 class TimeTrackingDataFrameSource:
-    # TODO: implement as singleton
+    """Provides get or edit access to the data frame in memory"""
 
     def __init__(self):
         super().__init__()
-        self.data: pandas.DataFrame = None
+        self.storage = SingletonDataFrame.getInstance()
+
+    def get_data_frame(self) -> IntentResult[Union[Type[DataFrame], None]]:
+        try:
+            data_frame = self.storage.data
+            return IntentResult(was_intent_successful=True, data=data_frame)
+        except Exception as e:
+            return IntentResult(
+                was_intent_successful=False,
+                log_message="An exception was raised @TimeTrackingDataFrameSource.get_data_frame {e}",
+                exception=e,
+            )
+
+    def store_date_frame(self, data: DataFrame) -> IntentResult:
+        try:
+            self.storage.data = data
+            return IntentResult(
+                was_intent_successful=True,
+            )
+        except Exception as e:
+            return IntentResult(
+                was_intent_successful=False,
+                log_message="An exception was raised @TimeTrackingDataFrameSource.store_date_frame {e}",
+                exception=e,
+            )
 
 
 class TimeTrackingFileCalendarSource:
-    pass
+    """Processes calendars from a file"""
 
-
-class TimeTrackingCloudCalendarSource:
-    pass
-
-
-class TimeTrackingDataSource:
-    """Handles manipulation of the TimeTracking data in the database"""
-
-    # TODO: multiple data sources depending on where the data comes from
-
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
-
-    def get_time_tracking_data(self) -> IntentResult[pandas.DataFrame]:
-        pass
 
     def load_timetracking_data_from_spreadsheet(
         self,
@@ -87,6 +98,13 @@ class TimeTrackingDataSource:
                 log_message=f"Exception raised @TimeTrackingDataSource.load_from_timetracking_file {e.__class__.__name__}",
                 exception=e,
             )
+
+
+class TimeTrackingCloudCalendarSource:
+    """Configures and processes calendar data from the cloud"""
+
+    def __init__(self):
+        super().__init__()
 
     def load_cloud_calendar_data(
         self, info: CloudCalendarInfo, cloud_session: any

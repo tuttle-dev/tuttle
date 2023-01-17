@@ -1,4 +1,10 @@
-from .data_source import TimeTrackingDataSource
+from .data_source import (
+    TimeTrackingCloudCalendarSource,
+    TimeTrackingDataFrameSource,
+    TimeTrackingFileCalendarSource,
+)
+from typing import Type, Union
+from pandas import DataFrame
 from core.abstractions import ClientStorage
 from core.intent_result import IntentResult
 from preferences.model import PreferencesStorageKeys, CloudAccounts
@@ -8,55 +14,14 @@ from typing import Optional
 
 
 class TimeTrackingIntent:
-    """Handles TimeTrackingIntent C_R_U_D intents
-
-    Intents handled (Methods)
-    ---------------
-    configure_account_and_load_calendar_intent
-        configuring and loading a calendar from CloudCalendarInfo
-    get_preferred_cloud_account_intent
-        fetching the [cloud_provider, cloud_account_name] from preferences
-    process_timetracking_file_intent
-        processing info given an ics or spreadsheet file
-    """
+    """Handles TimeTrackingIntent C_R_U_D intents"""
 
     def __init__(self, local_storage: ClientStorage):
-        """
-        Attributes
-        ----------
-        _data_source : TimeTrackingDataSource
-            reference to the TimeTracking data source
-        _preferences_intent : PreferencesIntent
-            reference to the PreferencesIntent for forwarding preferences related intents
-        """
-        self._data_source = TimeTrackingDataSource()
+
+        self._timetracking_cloud_data_source = TimeTrackingCloudCalendarSource()
+        self._timetracking_file_data_source = TimeTrackingFileCalendarSource()
+        self._timetracking_data_frame_source = TimeTrackingDataFrameSource()
         self._preferences_intent = PreferencesIntent(local_storage)
-
-    def process_timetracking_file(self, file_path, file_name) -> IntentResult:
-        """processes a time tracking spreadsheet or ics file in the uploads folder
-
-        Returns
-        -------
-            IntentResult
-                data : Calendar instance if was_intent_successful else None
-                error_msg  : text to display to the user if an error occurs else is empty
-        """
-        is_ics = ".ics" in file_name
-        if is_ics:
-            result = self._data_source.load_timetracking_data_from_ics_file(
-                ics_file_name=file_name,
-                ics_file_path=file_path,
-            )
-        else:
-            result = self._data_source.load_timetracking_data_from_spreadsheet(
-                spreadsheet_file_name=file_name, spreadsheet_file_path=file_path
-            )
-        if not result.was_intent_successful:
-            result.error_msg = (
-                "Failed to process the file! Please make sure it has a valid format."
-            )
-            result.log_message_if_any()
-        return result
 
     def get_preferred_cloud_account(self):
         """
@@ -90,6 +55,32 @@ class TimeTrackingIntent:
         return self._preferences_intent.set_preference_key_value_pair(
             PreferencesStorageKeys.cloud_acc_id_key, cloud_acc_id
         )
+
+    def process_timetracking_file(self, file_path, file_name) -> IntentResult:
+        """processes a time tracking spreadsheet or ics file in the uploads folder
+
+        Returns
+        -------
+            IntentResult
+                data : Calendar instance if was_intent_successful else None
+                error_msg  : text to display to the user if an error occurs else is empty
+        """
+        is_ics = ".ics" in file_name
+        if is_ics:
+            result = self._timetracking_file_data_source.load_timetracking_data_from_ics_file(
+                ics_file_name=file_name,
+                ics_file_path=file_path,
+            )
+        else:
+            result = self._timetracking_file_data_source.load_timetracking_data_from_spreadsheet(
+                spreadsheet_file_name=file_name, spreadsheet_file_path=file_path
+            )
+        if not result.was_intent_successful:
+            result.error_msg = (
+                "Failed to process the file! Please make sure it has a valid format."
+            )
+            result.log_message_if_any()
+        return result
 
     def configure_account_and_load_calendar(
         self,
@@ -125,30 +116,48 @@ class TimeTrackingIntent:
         if not two_factor_code:
             # STEP 1 user is login in
             if calendar_info.provider == CloudAccounts.ICloud.value:
-                res = self._data_source.login_to_icloud(calendar_info=calendar_info)
+                res = self._timetracking_cloud_data_source.login_to_icloud(
+                    calendar_info=calendar_info
+                )
             else:
 
-                res = self._data_source.login_to_google(calendar_info=calendar_info)
+                res = self._timetracking_cloud_data_source.login_to_google(
+                    calendar_info=calendar_info
+                )
         else:
             # STEP 2 complete login with 2FA
             if calendar_info.provider == CloudAccounts.ICloud.value:
-                res = self._data_source.verify_icloud_with_2fa(
+                res = self._timetracking_cloud_data_source.verify_icloud_with_2fa(
                     login_result=prev_un_verified_login_res,
                     two_factor_code=two_factor_code,
                 )
             else:
 
-                res = self._data_source.verify_google_with_2fa(
+                res = self._timetracking_cloud_data_source.verify_google_with_2fa(
                     login_result=prev_un_verified_login_res,
                     two_factor_code=two_factor_code,
                 )
         config_result: CloudConfigurationResult = res.data
         if config_result and config_result.cloud_acc_configured_successfully:
             # proceed to load cloud calendar data
-            res = self._data_source.load_cloud_calendar_data(
+            res = self._timetracking_cloud_data_source.load_cloud_calendar_data(
                 info=calendar_info, cloud_session=res.session_ref
             )
         if not res.was_intent_successful:
             res.error_msg = "Loading calendar data failed! Please retry"
             res.log_message_if_any()
         return res
+
+    def get_timetracking_data(self) -> IntentResult[Union[Type[DataFrame], None]]:
+        result = self._timetracking_data_frame_source.get_data_frame()
+        if not result.was_intent_successful:
+            result.error_msg = "Failed to load timetracking data!"
+            result.log_message_if_any()
+        return result
+
+    def set_timetracking_data(self, data: DataFrame) -> IntentResult[None]:
+        result = self._timetracking_data_frame_source.store_date_frame(data=data)
+        if not result.was_intent_successful:
+            result.error_msg = "Saving the time tracking data failed!"
+            result.log_message_if_any()
+        return result

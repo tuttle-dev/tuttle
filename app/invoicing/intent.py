@@ -11,30 +11,34 @@ from .data_source import InvoicingDataSource
 from tuttle.model import Invoice, Project
 from projects.intent import ProjectsIntent
 from tuttle.os_functions import preview_pdf
-
-from tuttle.dev import deprecated
+from core.abstractions import ClientStorage
+from timetracking.intent import TimeTrackingIntent
+from pandas import DataFrame
 
 
 class InvoicingIntent:
     """Handles Invoicing C_R_U_D intents"""
 
-    def __init__(self):
+    def __init__(self, local_storage: ClientStorage):
         """
         Attributes
         ----------
+        _timetracking_intent : TimeTrackingIntent
+            reference to the TimeTrackingIntent for forwarding timetracking related intents
         _data_source : InvoicingDataSource
             reference to the invoicing data source
         _projects_intent : ProjectsIntent
             reference to the ProjectsIntent for forwarding project related intents
         """
+        self._timetracking_intent = TimeTrackingIntent(local_storage=local_storage)
         self._projects_intent = ProjectsIntent()
-        self._data_source = InvoicingDataSource()
+        self._invoicing_data_source = InvoicingDataSource()
 
     def get_active_projects_as_map(self) -> Mapping[int, Project]:
         return self._projects_intent.get_active_projects_as_map()
 
     def get_invoices_for_project_as_map(self, project_id) -> IntentResult:
-        result = self._data_source.get_invoices_for_project(project_id)
+        result = self._invoicing_data_source.get_invoices_for_project(project_id)
         if result.was_intent_successful and result.data:
             invoices_list = result.data
             invoices_map = {invoice.id: invoice for invoice in invoices_list}
@@ -45,7 +49,7 @@ class InvoicingIntent:
             return {}
 
     def get_all_invoices_as_map(self) -> Mapping[int, Invoice]:
-        result = self._data_source.get_all_invoices()
+        result = self._invoicing_data_source.get_all_invoices()
         if result.was_intent_successful:
             invoices = result.data
             invoices_map = {invoice.id: invoice for invoice in invoices}
@@ -55,7 +59,9 @@ class InvoicingIntent:
             return {}
 
     def delete_invoice_by_id(self, invoice_id) -> IntentResult[None]:
-        result: IntentResult = self._data_source.delete_invoice_by_id(invoice_id)
+        result: IntentResult = self._invoicing_data_source.delete_invoice_by_id(
+            invoice_id
+        )
         if not result.was_intent_successful:
             result.log_message_if_any()
             result.error_msg = "Deleting invoice failed! Please retry"
@@ -81,7 +87,7 @@ class InvoicingIntent:
         self,
         invoice: Invoice,
     ) -> IntentResult:
-        result: IntentResult = self._data_source.save_invoice(invoice)
+        result: IntentResult = self._invoicing_data_source.save_invoice(invoice)
         if not result.was_intent_successful:
             result.log_message_if_any()
             result.error_msg = "Failed to update the invoice."
@@ -109,7 +115,7 @@ class InvoicingIntent:
                 An IntentResult object containing the updated invoice, or old invoice if update was not successful.
         """
         invoice.paid = not invoice.paid
-        result: IntentResult = self._data_source.save_invoice(invoice)
+        result: IntentResult = self._invoicing_data_source.save_invoice(invoice)
         if not result.was_intent_successful:
             result.log_message_if_any()
             invoice.paid = not invoice.paid
@@ -131,7 +137,7 @@ class InvoicingIntent:
                 An IntentResult object containing the updated invoice, or old invoice if update was not successful.
         """
         invoice.cancelled = not invoice.cancelled
-        result: IntentResult = self._data_source.save_invoice(invoice)
+        result: IntentResult = self._invoicing_data_source.save_invoice(invoice)
         if not result.was_intent_successful:
             result.log_message_if_any()
             invoice.cancelled = not invoice.cancelled
@@ -151,7 +157,7 @@ class InvoicingIntent:
                 An IntentResult object containing the updated invoice, or old invoice if update was not successful.
         """
         invoice.sent = not invoice.sent
-        result: IntentResult = self._data_source.save_invoice(invoice)
+        result: IntentResult = self._invoicing_data_source.save_invoice(invoice)
         if not result.was_intent_successful:
             result.log_message_if_any()
             invoice.sent = not invoice.sent
@@ -180,7 +186,7 @@ class InvoicingIntent:
     ) -> IntentResult[str]:
         """Creates a unique invoice number"""
         # get the number of the most recent invoice
-        result: IntentResult[Invoice] = self._data_source.get_last_invoice()
+        result: IntentResult[Invoice] = self._invoicing_data_source.get_last_invoice()
         if result.was_intent_successful:
             last_invoice: Invoice = result.data
             last_invoice_number: str = last_invoice.invoice_number
@@ -197,3 +203,8 @@ class InvoicingIntent:
                 was_intent_successful=True,
                 data=f"{invoice_number:05d}",
             )
+
+    def get_time_tracking_data_as_dataframe(self) -> Optional[DataFrame]:
+
+        result = self._timetracking_intent.get_timetracking_data()
+        return result.data

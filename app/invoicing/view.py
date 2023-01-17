@@ -92,6 +92,7 @@ class InvoicingEditorPopUp(DialogHandler, UserControl):
                             on_change=self.on_project_selected,
                             label="Select project",
                             items=project_options,
+                            show=not is_editing,
                         ),
                         views.stdSpace,
                         views.get_body_txt(txt="Date range"),
@@ -109,7 +110,7 @@ class InvoicingEditorPopUp(DialogHandler, UserControl):
         )
         super().__init__(dialog=dialog, dialog_controller=dialog_controller)
         self.number = self.invoice.number
-        self.project = None
+        self.project = self.invoice.project if is_editing else None
         self.on_submit = on_submit
 
     def on_number_changed(self, e):
@@ -137,16 +138,15 @@ class InvoicingEditorPopUp(DialogHandler, UserControl):
 class InvoicingListView(TuttleView, UserControl):
     def __init__(self, params: TuttleViewParams):
         super().__init__(params=params)
-        self.intent = InvoicingIntent()
+        self.intent = InvoicingIntent(local_storage=params.local_storage)
         self.invoices_to_display = {}
         self.contacts = {}
         self.active_projects = {}
         self.editor = None
-        self.get_timetracking_data = params.on_get_timetracking_dataframe
 
     def parent_intent_listener(self, intent: str, data: any):
         if intent == res_utils.CREATE_INVOICE_INTENT:
-            timetracking_data = self.get_timetracking_data()
+            timetracking_data = self.intent.get_time_tracking_data_as_dataframe()
             if not isinstance(timetracking_data, DataFrame):
                 self.show_snack("Please set timetracking data!", is_error=True)
                 return

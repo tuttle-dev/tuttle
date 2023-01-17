@@ -1,11 +1,10 @@
 import re
 from typing import Callable, Optional
-
+from timetracking.intent import TimeTrackingIntent
 from loguru import logger
 from pathlib import Path
 import sqlmodel
-from pandera.typing import DataFrame
-
+from pandas import DataFrame
 from flet import (
     app,
     Page,
@@ -91,10 +90,6 @@ class TuttleApp:
         # database config
         self.app_dir = self.ensure_app_dir()
         self.db_path = self.app_dir / "tuttle.db"
-
-        # temp data cache and keys
-        self.data_cache = {}
-        self.cached_timetracking_data_key = "time_tracking_cache_key"
 
     def page_resize(self, e):
         if self.current_route_view:
@@ -276,6 +271,11 @@ class TuttleApp:
         self.db_engine = sqlmodel.create_engine(f"sqlite:///{self.db_path}", echo=True)
         self.create_model()
 
+    def store_demo_timetracking_dataframe(self, time_tracking_data: DataFrame):
+        """Caches the time tracking dataframe created from a demo installation"""
+        self.timetracking_intent = TimeTrackingIntent(local_storage=self.local_storage)
+        self.timetracking_intent.set_timetracking_data(data=time_tracking_data)
+
     def install_demo_data(self):
         """Install demo data into the database."""
         self.clear_database()
@@ -283,7 +283,7 @@ class TuttleApp:
             demo.install_demo_data(
                 n=10,
                 db_path=self.db_path,
-                on_cache_timetracking_dataframe=self.store_timetracking_dataframe_in_cache,
+                on_cache_timetracking_dataframe=self.store_demo_timetracking_dataframe,
             )
         except Exception as ex:
             logger.exception(ex)
@@ -301,18 +301,6 @@ class TuttleApp:
         if not uploads_dir.exists():
             uploads_dir.mkdir(parents=True)
         return uploads_dir
-
-    def store_timetracking_dataframe_in_cache(
-        self,
-        data: DataFrame,
-    ):
-
-        self.data_cache[self.cached_timetracking_data_key] = data
-
-    def fetch_timetracking_dataframe_from_cache(self) -> Optional[DataFrame]:
-        if not self.cached_timetracking_data_key in self.data_cache:
-            return None
-        return self.data_cache[self.cached_timetracking_data_key]
 
     def build(self):
         self.page.go(self.page.route)
@@ -332,8 +320,6 @@ class TuttleRoutes:
             local_storage=app.local_storage,
             upload_file_callback=app.upload_file_callback,
             pick_file_callback=app.pick_file_callback,
-            on_save_timetracking_dataframe=self.app.store_timetracking_dataframe_in_cache,
-            on_get_timetracking_dataframe=self.app.fetch_timetracking_dataframe_from_cache,
         )
 
     def get_page_route_view(

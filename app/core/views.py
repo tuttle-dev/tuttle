@@ -287,6 +287,7 @@ def get_dropdown(
     hint: Optional[str] = "",
     width: Optional[int] = None,
     initial_value: Optional[str] = None,
+    show: bool = True,
 ):
     options = []
     for item in items:
@@ -306,6 +307,7 @@ def get_dropdown(
         value=initial_value,
         content_padding=padding.all(dimens.SPACE_XS),
         error_style=TextStyle(size=fonts.BODY_2_SIZE, color=colors.ERROR_COLOR),
+        visible=show,
     )
 
 
