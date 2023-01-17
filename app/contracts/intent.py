@@ -17,60 +17,9 @@ from tuttle.model import (
 
 
 class ContractsIntent:
-    """Handles Contract C_R_U_D intents
-
-    Intents handled (Methods)
-    ---------------
-    get_contract_by_id_intent
-        reading a contract info given it's id
-
-    get_all_clients_as_map_intent
-        fetching existing clients as a map of client IDs to client
-
-    get_all_contacts_as_map_intent
-        fetching existing contacts as a map of contact IDs to contact
-
-    save_client_intent
-        saving a client -- forwards to Client's intent
-
-    get_upcoming_contracts_intent
-        fetching upcoming contracts as a map of contract IDs to contract
-
-    get_completed_contracts_intent
-        fetching completed contracts as a map of contract IDs to contract
-
-    get_active_contracts_intent
-        fetching active contracts as a map of contract IDs to contract
-
-    get_all_contracts_as_map_intent
-        fetching existing contracts as a map of contract IDs to contract
-
-    save_contract_intent
-        saving the contract
-
-    delete_contract_by_id_intent
-        deleting a contract given it's id
-    """
+    """Handles Contract C_R_U_D intents"""
 
     def __init__(self):
-        """
-        Attributes
-        ----------
-        _data_source : ContractDataSource
-            reference to the contract's data source
-        _clients_intent :  ClientsIntent
-            reference to the client's Intent handler for forwarding client related intents
-        _contacts_intent  : ContactsIntent
-            reference to the contact's Intent handler for forwarding contact related intents
-        _all_contracts_cache : Mapping[str, Contract]
-            caches fetched contracts to reduce unnecessary database calls
-        _completed_contracts_cache : Mapping[str, Contract]
-            caches completed contracts to reduce unnecessary database calls
-        _active_contracts_cache  :   Mapping[str, Contract]
-            caches active contracts to reduce unnecessary database calls
-        _upcoming_contracts_cache : Mapping[str, Contract]
-            caches upcoming contracts to reduce unnecessary database calls
-        """
         self._clients_intent = ClientsIntent()
         self._contacts_intent = ContactsIntent()
         self._data_source = ContractDataSource()
@@ -82,12 +31,30 @@ class ContractsIntent:
     def get_preferred_currency_intent(
         self, local_storage: ClientStorage
     ) -> IntentResult:
+        """
+        Retrieves the preferred currency of the client from the local storage
+
+        Parameters:
+        local_storage (ClientStorage): The client storage object from which the preferred currency is retrieved
+
+        Returns:
+        IntentResult : An intent result object indicating the success or failure of the operation
+        """
         _preferences_intent = PreferencesIntent(client_storage=local_storage)
         return _preferences_intent.get_preference_by_key(
             preference_key=PreferencesStorageKeys.default_currency_key
         )
 
     def get_contract_by_id(self, contractId) -> IntentResult:
+        """
+        Retrieves a contract by its id
+
+        Parameters:
+        contractId (str): The id of the contract to retrieve
+
+        Returns:
+        IntentResult : An intent result object indicating the success or failure of the operation and the contract details if successful
+        """
         result = self._data_source.get_contract_by_id(contractId)
         if not result.was_intent_successful:
             result.error_msg = "Failed to load contract details. Please retry"
@@ -95,12 +62,32 @@ class ContractsIntent:
         return result
 
     def get_all_clients_as_map(self) -> Mapping[int, Client]:
+        """
+        Retrieves all clients as a map
+
+        Returns:
+        Mapping[int, Client] : A map containing all clients"""
         return self._clients_intent.get_all_clients_as_map()
 
     def get_all_contacts_as_map(self) -> Mapping[int, Contact]:
+        """
+        Retrieves all contacts as a map
+
+        Returns:
+        Mapping[int, Contact] : A map containing all contacts
+        """
         return self._contacts_intent.get_all_contacts_as_map()
 
     def save_client(self, client: Client) -> IntentResult:
+        """
+        Saves a client
+
+        Parameters:
+        client (Client): The client object to save
+
+        Returns:
+        IntentResult : An intent result object indicating the success or failure of the operation
+        """
         return self._clients_intent.save_client(client=client)
 
     def save_contract(
@@ -121,6 +108,29 @@ class ContractsIntent:
         is_completed: bool = False,
         contract_to_update: Optional[Contract] = None,
     ) -> IntentResult:
+        """Saves or updates a contract
+
+        Parameters:
+            title (str) : The title of the contract
+            signature_date (datetime.date) : The date the contract was signed
+            start_date (datetime.date) : The start date of the contract
+            end_date (Optional[datetime.date]) : The end date of the contract
+            client (Client) : The client associated with the contract
+            rate (str) : The rate of the contract
+            currency (str) : The currency of the contract
+            VAT_rate (str) : The VAT rate of the contract
+            unit (TimeUnit) : The unit of time for the contract
+            units_per_workday (str) : The number of units per workday
+            volume (Optional[str]) : The volume of the contract
+            term_of_payment (Optional[str]) : The term of payment for the contract
+            billing_cycle (Cycle) : The billing cycle for the contract (defaults to Cycle.hourly)
+            is_completed (bool) : Whether the contract is completed or not (defaults to False)
+            contract_to_update (Optional[Contract]) : The contract to update (if updating an existing contract)
+
+        Returns:
+        IntentResult : An intent result object indicating the success or failure of the operation
+
+        """
         result: IntentResult = self._data_source.save_or_update_contract(
             title=title,
             signature_date=signature_date,
@@ -146,6 +156,14 @@ class ContractsIntent:
     def get_all_contracts_as_map(
         self, reload_cache: bool = False
     ) -> Mapping[int, Contract]:
+        """Retrieves all completed contracts as a map
+
+        Parameters:
+        reload_cache (bool) : Whether to reload the cache or use the existing one (defaults to False)
+
+        Returns:
+        Mapping[str, Contract] : A map containing all completed contracts in the system
+        """
         if self._all_contracts_cache and not reload_cache:
             # return cached results
             return self._all_contracts_cache

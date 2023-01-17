@@ -441,18 +441,6 @@ class Timesheet(SQLModel, table=True):
         return len(self.items) == 0
 
 
-@deprecated
-class InvoiceStatus(Enum):
-    """Status parameters of an Invoice item"""
-
-    SENT = "sent"
-    PAID = "paid"
-    CANCELLED = "cancelled"
-
-    def __str__(self) -> str:
-        return str(self.value)
-
-
 class Invoice(SQLModel, table=True):
     """An invoice is a bill for a client."""
 

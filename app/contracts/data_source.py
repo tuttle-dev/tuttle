@@ -2,17 +2,17 @@ from core.abstractions import SQLModelDataSourceMixin
 from core.intent_result import IntentResult
 from tuttle.model import Contract, Client
 import datetime
-from typing import Optional, Mapping
+from typing import Optional, List, Union
 from tuttle.time import Cycle, TimeUnit
 
 
 class ContractDataSource(SQLModelDataSourceMixin):
-    """Handles manipulation of the Contract model in the database"""
+    """Provides methods for fetching, creating, updating and deleting contracts in the database."""
 
     def __init__(self):
         super().__init__()
 
-    def get_all_contracts(self) -> IntentResult:
+    def get_all_contracts(self) -> IntentResult[Union[List[Contract], None]]:
         """Fetches all existing contracts from the database
 
         Returns:
@@ -32,8 +32,11 @@ class ContractDataSource(SQLModelDataSourceMixin):
                 exception=e,
             )
 
-    def get_contract_by_id(self, contract_id: str) -> IntentResult:
+    def get_contract_by_id(self, contract_id) -> IntentResult[Union[Contract, None]]:
         """Fetches a contract with the contract id if one exists
+
+        Args:
+            contract_id : the id of the contract to fetch
 
         Returns:
             IntentResult:
@@ -69,8 +72,25 @@ class ContractDataSource(SQLModelDataSourceMixin):
         billing_cycle: Cycle = Cycle.hourly,
         is_completed: bool = False,
         contract: Optional[Contract] = None,
-    ) -> IntentResult:
+    ) -> IntentResult[Union[Contract, None]]:
         """Creates or updates a contract in the database
+
+        Args:
+            title (str): The title of the contract
+            signature_date (datetime.date): The date the contract was signed
+            start_date (datetime.date): The start date of the contract
+            end_date (Optional[datetime.date]): The end date of the contract
+            client (Client): The client associated with the contract
+            rate (str): The rate for the contract
+            currency (str): The currency for the contract
+            VAT_rate (str): The VAT rate for the contract
+            unit (TimeUnit): The unit of time for the contract
+            units_per_workday (str): The number of units per workday
+            volume (Optional[str]): The volume of the contract
+            term_of_payment (Optional[str]): The term of payment for the contract
+            billing_cycle (Cycle): The billing cycle for the contract
+            is_completed (bool): Indicates if the contract is completed or not
+            contract (Optional[Contract]): The contract to update
 
         Returns:
             IntentResult:
@@ -79,6 +99,7 @@ class ContractDataSource(SQLModelDataSourceMixin):
                 log_message  : str  if an error or exception occurs
                 exception : Exception if an exception occurs
         """
+
         try:
             if not contract:
                 # Create a new contract
@@ -109,8 +130,12 @@ class ContractDataSource(SQLModelDataSourceMixin):
                 exception=e,
             )
 
-    def delete_contract_by_id(self, contract_id):
-        """Attempts to delete the contract associated with the given id
+    def delete_contract_by_id(self, contract_id) -> IntentResult[None]:
+        """Deletes a contract with the contract id if one exists
+
+        Args:
+            contract_id : the id of the contract to delete
+
         Returns:
             IntentResult:
                 was_intent_successful : bool

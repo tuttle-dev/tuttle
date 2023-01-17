@@ -29,7 +29,7 @@ from core import utils, views
 from res import colors, dimens, fonts, res_utils
 
 
-from tuttle.model import Invoice, Project, InvoiceStatus
+from tuttle.model import Invoice, Project
 from .intent import InvoicingIntent
 
 
@@ -170,7 +170,9 @@ class InvoicingListView(TuttleView, UserControl):
                     on_delete_clicked=self.on_delete_invoice_clicked,
                     on_mail_invoice=self.on_mail_invoice,
                     on_view_invoice=self.on_view_invoice,
-                    toggle_invoice_status=self.toggle_invoice_status,
+                    toggle_paid_status=self.toggle_paid_status,
+                    toggle_cancelled_status=self.toggle_cancelled_status,
+                    toggle_sent_status=self.toggle_sent_status,
                 )
             except Exception as ex:
                 logger.error(f"Error while refreshing invoice: {ex}")
@@ -253,9 +255,18 @@ class InvoicingListView(TuttleView, UserControl):
         is_updating = invoice.id is not None
         self.loading_indicator.visible = True
         self.update_self()
-        result: IntentResult = self.intent.save_invoice(
-            invoice, project, from_date, to_date
-        )
+        if is_updating:
+            # update the invoice
+            result: IntentResult = self.intent.update_invoice(invoice=invoice)
+        else:
+            # create a new invoice
+            result: IntentResult = self.intent.create_or_update_invoice(
+                invoice_date=invoice.date,
+                project=project,
+                from_date=from_date,
+                to_date=to_date,
+            )
+
         if not result.was_intent_successful:
             self.show_snack(result.error_msg, True)
         else:
@@ -270,20 +281,31 @@ class InvoicingListView(TuttleView, UserControl):
         self.loading_indicator.visible = False
         self.update_self()
 
-    def toggle_invoice_status(self, invoice: Invoice, status_to_toggle: InvoiceStatus):
-        self.loading_indicator.visible = True
+    def toggle_paid_status(self, invoice: Invoice):
+        result: IntentResult = self.intent.toggle_invoice_paid_status(invoice)
+        is_error = not result.was_intent_successful
+        msg = result.error_msg if is_error else "Invoice status updated."
+        self.show_snack(msg, is_error)
+        self.invoices_to_display[result.data.id] = result.data
+        self.refresh_invoices()
         self.update_self()
-        result: IntentResult = self.intent.toggle_invoice_status(
-            invoice, status_to_toggle
-        )
-        if not result.was_intent_successful:
-            self.show_snack(result.error_msg, True)
-        else:
-            self.invoices_to_display[result.data.id] = result.data
-            self.refresh_invoices()
-            msg = "Invoice status updated."
-            self.show_snack(msg, False)
-        self.loading_indicator.visible = False
+
+    def toggle_sent_status(self, invoice: Invoice):
+        result: IntentResult = self.intent.toggle_invoice_sent_status(invoice)
+        is_error = not result.was_intent_successful
+        msg = result.error_msg if is_error else "Invoice status updated."
+        self.show_snack(msg, is_error)
+        self.invoices_to_display[result.data.id] = result.data
+        self.refresh_invoices()
+        self.update_self()
+
+    def toggle_cancelled_status(self, invoice: Invoice):
+        result: IntentResult = self.intent.toggle_invoice_cancelled_status(invoice)
+        is_error = not result.was_intent_successful
+        msg = result.error_msg if is_error else "Invoice status updated."
+        self.show_snack(msg, is_error)
+        self.invoices_to_display[result.data.id] = result.data
+        self.refresh_invoices()
         self.update_self()
 
     def did_mount(self):
@@ -351,7 +373,9 @@ class InvoiceTile(UserControl):
         on_delete_clicked,
         on_mail_invoice,
         on_view_invoice,
-        toggle_invoice_status,
+        toggle_paid_status,
+        toggle_sent_status,
+        toggle_cancelled_status,
     ):
         super().__init__()
         self.invoice = invoice
@@ -359,7 +383,9 @@ class InvoiceTile(UserControl):
         self.on_delete_clicked = on_delete_clicked
         self.on_view_invoice = on_view_invoice
         self.on_mail_invoice = on_mail_invoice
-        self.toggle_invoice_status = toggle_invoice_status
+        self.toggle_paid_status = toggle_paid_status
+        self.toggle_sent_status = toggle_sent_status
+        self.toggle_cancelled_status = toggle_cancelled_status
 
     def build(self):
         """
@@ -399,8 +425,8 @@ class InvoiceTile(UserControl):
                         txt="Mark as sent"
                         if not self.invoice.sent
                         else "Mark as not sent",
-                        on_click=lambda e: self.toggle_invoice_status(
-                            self.invoice, InvoiceStatus.SENT
+                        on_click=lambda e: self.toggle_sent_status(
+                            self.invoice,
                         ),
                     ),
                     views.pop_up_menu_item(
@@ -408,18 +434,14 @@ class InvoiceTile(UserControl):
                         txt="Mark as paid"
                         if not self.invoice.paid
                         else "Mark as not paid",
-                        on_click=lambda e: self.toggle_invoice_status(
-                            self.invoice, InvoiceStatus.PAID
-                        ),
+                        on_click=lambda e: self.toggle_paid_status(self.invoice),
                     ),
                     views.pop_up_menu_item(
                         icon=icons.CANCEL_OUTLINED,
                         txt="Mark as cancelled"
                         if not self.invoice.cancelled
                         else "Mark as not cancelled",
-                        on_click=lambda e: self.toggle_invoice_status(
-                            self.invoice, InvoiceStatus.CANCELLED
-                        ),
+                        on_click=lambda e: self.toggle_cancelled_status(self.invoice),
                     ),
                     views.pop_up_menu_item(
                         icon=icons.VISIBILITY_OUTLINED,

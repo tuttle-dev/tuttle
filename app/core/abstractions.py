@@ -62,53 +62,21 @@ class TuttleViewParams:
 
 
 class TuttleView(ABC):
-    """Abstract class for all UI screens
-
-    Methods
-    -------
-    parent_intent_listener
-        overridden to handle intents passed down from a parent view
-        e.g. home screen can pass on_new_events to individual destinations
-    on_window_resized_listener
-        overridden to get updates when the [page_width] and [page_height] are reset
-    update_self
-        called to update the view after some change
-    """
+    """Abstract class for all UI screens"""
 
     def __init__(self, params: TuttleViewParams):
         super().__init__()
-        """
-        Params
-        ------
-        navigate_to_route
-            callback function for navigating to another view
-        show_snack
-            callback function to display a message 
-            a boolean is passed as a second parameter to display the message as an error if True else as an info
-        dialog_controller
-            callback function that handles the display of a pop up dialog
-        vertical_alignment_in_parent
-            how the view should vertically align itself on it's parent view
-        horizontal_alignment_in_parent
-            how the view should horizontally align itself on it's parent view
-        keep_back_stack
-            True if this view displays a back button and the user can navigate back
-        on_navigate_back
-            callback function that pops the current view to display the previous screen
-        page_scroll_type
-            if and how to display the scrollbar on this entire view
-        upload_file_callback
-            callback function that is triggered to upload a picked file
-        pick_file_callback
-            callback function that is triggered to pick a file
-            params
-            ------
-            file : FilePickerFile
-                the file to upload
-        mounted
-            flag that keeps track of whether or not the view has been mounted
-        """
-        self.__dict__.update(params.__dict__)
+        self.navigate_to_route = params.navigate_to_route
+        self.show_snack = params.show_snack
+        self.dialog_controller = params.dialog_controller
+        self.vertical_alignment_in_parent = params.vertical_alignment_in_parent
+        self.horizontal_alignment_in_parent = params.horizontal_alignment_in_parent
+        self.keep_back_stack = params.keep_back_stack
+        self.on_navigate_back = params.on_navigate_back
+        self.page_scroll_type = params.page_scroll_type
+        self.upload_file_callback = params.upload_file_callback
+        self.pick_file_callback = params.pick_file_callback
+        self.local_storage = params.local_storage
         self.mounted = False
 
     def parent_intent_listener(self, intent: str, data: any):
