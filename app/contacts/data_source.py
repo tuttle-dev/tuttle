@@ -10,7 +10,7 @@ class ContactDataSource(SQLModelDataSourceMixin):
     def __init__(self):
         super().__init__()
 
-    def get_all_contacts(self) -> IntentResult[List[Contact]]:
+    def get_all_contacts(self) -> IntentResult[Union[List[Contact], None]]:
         """Fetches all existing contacts from the database
 
         Returns:
