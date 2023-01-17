@@ -59,14 +59,13 @@ class ContractCard(UserControl):
         self.on_click_delete = on_click_delete
 
     def build(self):
+        client_name = self.contract.client.name if self.contract.client else ""
         self.contract_info_container.controls = [
             ListTile(
                 leading=Icon(utils.TuttleComponentIcons.contract_icon),
                 title=views.get_body_txt(self.contract.title),
                 subtitle=views.get_body_txt(
-                    utils.truncate_str(
-                        f"client: {self.contract.client.name}", max_chars=20
-                    ),
+                    utils.truncate_str(f"client: {client_name}", max_chars=20),
                     color=colors.GRAY_COLOR,
                 ),
                 trailing=views.view_edit_delete_pop_up(

@@ -84,6 +84,15 @@ def get_action_bar(
     on_click_profile_btn: Callable,
     on_view_settings_clicked: Callable,
 ):
+    """
+    Returns the action bar containing various buttons for application functionality.
+
+    :param on_click_new_btn: Callable function to be called when the 'New' button is clicked.
+    :param on_click_notifications_btn: Callable function to be called when the 'Notifications' button is clicked.
+    :param on_click_profile_btn: Callable function to be called when the 'Profile' button is clicked.
+    :param on_view_settings_clicked: Callable function to be called when the 'Settings' button is clicked.
+    :return: A Container widget containing the action bar.
+    """
     return Container(
         alignment=alignment.center,
         height=TOOLBAR_HEIGHT,
@@ -95,14 +104,12 @@ def get_action_bar(
             controls=[
                 Row(
                     controls=[
-                        # TODO: replace with actual app logo
-                        # get_app_logo(width=10),
                         Text(
                             "Tuttle",
                             size=HEADLINE_4_SIZE,
                             font_family=HEADLINE_FONT,
                             color=WHITE_COLOR,
-                        ),
+                        )
                     ],
                     alignment=CENTER_ALIGNMENT,
                     vertical_alignment=CENTER_ALIGNMENT,
@@ -170,6 +177,16 @@ def create_and_get_navigation_menu(
     destinations=[],
     menu_height: int = 300,
 ):
+    """
+    Returns a navigation menu for the application.
+
+    :param title: Title of the navigation menu.
+    :param on_change: Callable function to be called when the selected item in the menu changes.
+    :param selected_index: The index of the selected item in the menu.
+    :param destinations: List of destinations in the menu.
+    :param menu_height: The height of the menu.
+    :return: A NavigationRail widget containing the navigation menu.
+    """
     return NavigationRail(
         leading=Container(
             content=Text(

@@ -99,7 +99,9 @@ class ProjectCard(UserControl):
                     ),
                     Container(
                         Text(
-                            self.project.client.name,
+                            self.project.client.name
+                            if self.project.client
+                            else "Unknown client",
                             size=fonts.BODY_2_SIZE,
                             col={"xs": "12"},
                         ),
