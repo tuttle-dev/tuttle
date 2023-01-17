@@ -357,11 +357,12 @@ class InvoiceTile(UserControl):
         """
         Build and return a ListTile displaying the invoice information
         """
+        client_name = ""
+        if self.invoice.client:
+            client_name = self.invoice.client.name
         return ListTile(
             leading=views.get_body_txt(self.invoice.number),
-            title=views.get_body_txt(
-                f"{self.invoice.project.title} ➡ {self.invoice.client.name}"
-            ),
+            title=views.get_body_txt(f"{self.invoice.project.title} ➡ {client_name}"),
             subtitle=Column(
                 controls=[
                     views.get_body_txt(
