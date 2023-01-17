@@ -9,7 +9,6 @@ from flet import (
     FilePickerUploadEvent,
     Text,
     UserControl,
-    ProgressRing,
     border,
 )
 from tuttle.calendar import Calendar
@@ -388,10 +387,7 @@ class TimeTrackingView(TuttleView, UserControl):
         self.update_self()
 
     def build(self):
-        self.loading_indicator = ProgressRing(
-            width=32,
-            height=32,
-        )
+        self.loading_indicator = views.horizontal_progress
         self.no_timetrack_control = Text(
             value="You have not logged any work progress yet.",
             color=colors.ERROR_COLOR,

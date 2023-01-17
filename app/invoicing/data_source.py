@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Union, Type
 
 from core.abstractions import SQLModelDataSourceMixin
 from core.intent_result import IntentResult
@@ -79,54 +79,29 @@ class InvoicingDataSource(SQLModelDataSourceMixin):
                 exception=e,
             )
 
-    def create_invoice(
+    def save_invoice(
         self,
         invoice: Invoice,
-        project: Project,
-    ) -> IntentResult[Invoice]:
-        """TODO Creates or updates an invoice with given invoice and project info
+    ) -> IntentResult[Union[Type[Invoice], None]]:
+        """Creates or updates an invoice with given invoice and project info
 
         Returns:
             IntentResult:
                 was_intent_successful : bool
-                data : Invoice
+                data : Invoice is was_intent_successful else None
                 log_message  : str  if an error or exception occurs
                 exception : Exception if an exception occurs
         """
         try:
-            # TODO: do we need project and time_range?
             self.store(invoice)
             return IntentResult(
                 was_intent_successful=True,
-                log_message="Successfulyl created invoice",
-                data=invoice,  # needs to be returned to the intent to obtain the invoice id
+                data=invoice,
             )
         except Exception as e:
             return IntentResult(
                 was_intent_successful=False,
                 log_message=f"Exception raised @InvoicingDataSource.create_or_update_invoice {e.__class__.__name__}",
-                exception=e,
-            )
-
-    def update_invoice(self, invoice: Invoice) -> IntentResult:
-        """TODO Updates a given invoice
-
-        Returns:
-            IntentResult:
-                was_intent_successful : bool
-                data : Invoice
-                log_message  : str  if an error or exception occurs
-                exception : Exception if an exception occurs
-        """
-        try:
-            return IntentResult(
-                was_intent_successful=False,
-                log_message="NotImplementedError @InvoicingDataSource.update_invoice",
-            )
-        except Exception as e:
-            return IntentResult(
-                was_intent_successful=False,
-                log_message=f"Exception raised @InvoicingDataSource.update_invoice {e.__class__.__name__}",
                 exception=e,
             )
 
