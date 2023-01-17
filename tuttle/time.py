@@ -15,14 +15,12 @@ class Cycle(enum.Enum):
 
 
 class TimeUnit(enum.Enum):
-    minute = "minute"
+    # minute = "minute"
     hour = "hour"
     day = "day"
 
     def to_timedelta(self):
-        if self == TimeUnit.minute:
-            return datetime.timedelta(minutes=1)
-        elif self == TimeUnit.hour:
+        if self == TimeUnit.hour:
             return datetime.timedelta(hours=1)
         elif self == TimeUnit.day:
             return datetime.timedelta(days=1)

@@ -59,13 +59,12 @@ class ContractCard(UserControl):
         self.on_click_delete = on_click_delete
 
     def build(self):
-        client_name = self.contract.client.name if self.contract.client else ""
         self.contract_info_container.controls = [
             ListTile(
                 leading=Icon(utils.TuttleComponentIcons.contract_icon),
                 title=views.get_body_txt(self.contract.title),
                 subtitle=views.get_body_txt(
-                    utils.truncate_str(f"client: {client_name}", max_chars=20),
+                    f"{self.contract.client.name}",
                     color=colors.GRAY_COLOR,
                 ),
                 trailing=views.view_edit_delete_pop_up(
@@ -78,13 +77,13 @@ class ContractCard(UserControl):
             ResponsiveRow(
                 controls=[
                     Text(
-                        "Billing Cycle",
+                        "Rate",
                         color=colors.GRAY_COLOR,
                         size=fonts.BODY_2_SIZE,
                         col={"xs": "12"},
                     ),
                     Text(
-                        self.contract.billing_cycle,
+                        f"{self.contract.rate} {self.contract.currency} / {self.contract.unit}",
                         size=fonts.BODY_2_SIZE,
                         col={"xs": "12"},
                     ),
@@ -92,55 +91,6 @@ class ContractCard(UserControl):
                 spacing=dimens.SPACE_XS,
                 run_spacing=0,
                 vertical_alignment=utils.CENTER_ALIGNMENT,
-            ),
-            views.mdSpace,
-            ResponsiveRow(
-                controls=[
-                    Text(
-                        "Start date",
-                        color=colors.GRAY_COLOR,
-                        size=fonts.BODY_2_SIZE,
-                        col={"xs": "12"},
-                    ),
-                    Container(
-                        Text(
-                            self.contract.start_date.strftime("%d/%m/%Y")
-                            if self.contract.start_date
-                            else "",
-                            size=fonts.BODY_2_SIZE,
-                            col={"xs": "12"},
-                        ),
-                    ),
-                ],
-                alignment=utils.START_ALIGNMENT,
-                vertical_alignment=utils.START_ALIGNMENT,
-                spacing=dimens.SPACE_XS,
-                run_spacing=0,
-            ),
-            views.mdSpace,
-            ResponsiveRow(
-                controls=[
-                    Text(
-                        "End date",
-                        color=colors.GRAY_COLOR,
-                        size=fonts.BODY_2_SIZE,
-                        col={"xs": "12"},
-                    ),
-                    Container(
-                        Text(
-                            self.contract.end_date.strftime("%d/%m/%Y")
-                            if self.contract.end_date
-                            else "-",
-                            size=fonts.BODY_2_SIZE,
-                            col={"xs": "12"},
-                            color=colors.ERROR_COLOR,
-                        ),
-                    ),
-                ],
-                alignment=utils.START_ALIGNMENT,
-                vertical_alignment=utils.START_ALIGNMENT,
-                spacing=dimens.SPACE_XS,
-                run_spacing=0,
             ),
         ]
         return Card(
