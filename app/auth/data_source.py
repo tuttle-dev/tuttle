@@ -45,7 +45,7 @@ class UserDataSource(SQLModelDataSourceMixin):
         postal_code: str,
         city: str,
         country: str,
-    ) -> IntentResult[Type[User]]:
+    ) -> IntentResult[Union[Type[User], None]]:
         """
         Create a new user and store it in the database
 
@@ -108,7 +108,7 @@ class UserDataSource(SQLModelDataSourceMixin):
         postal_code: str,
         city: str,
         country: str,
-    ) -> IntentResult[Type[User]]:
+    ) -> IntentResult[Union[Type[User], None]]:
         """
         Update an existing user in the database
 
@@ -157,7 +157,7 @@ class UserDataSource(SQLModelDataSourceMixin):
 
     def update_user_photo_path(
         self, user: Type[User], photo_path: str
-    ) -> IntentResult[Type[User]]:
+    ) -> IntentResult[Union[Type[User], None]]:
         """
         Update the photo path of an user in the database
 
