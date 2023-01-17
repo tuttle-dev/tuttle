@@ -3,21 +3,22 @@ from core.abstractions import SQLModelDataSourceMixin
 from tuttle.model import (
     Client,
 )
+from typing import List, Type, Optional, Union
 
 
 class ClientDataSource(SQLModelDataSourceMixin):
-    """Handles manipulation of the Client model in the database"""
+    """Provides methods to retrieve, store and delete clients from the database"""
 
     def __init__(self):
         super().__init__()
 
-    def get_all_clients(self) -> IntentResult:
-        """Gets all existing clients
+    def get_all_clients(self) -> IntentResult[Union[List[Client], None]]:
+        """Retrieves all existing clients from the database
 
         Returns:
             IntentResult:
                 was_intent_successful : bool
-                data : list[User]  if was_intent_successful else None
+                data : list[Client]  if was_intent_successful else None
                 log_message  : str  if an error or exception occurs
                 exception : Exception if an exception occurs
         """
@@ -31,8 +32,8 @@ class ClientDataSource(SQLModelDataSourceMixin):
                 exception=e,
             )
 
-    def save_client(self, client: Client) -> IntentResult:
-        """Stores a client. Used for creation of or to update a client info
+    def save_client(self, client: Client) -> IntentResult[Union[Type[Client], None]]:
+        """Stores a client in the database. Used for creating or updating a client's information
 
         Returns:
             IntentResult:
@@ -54,8 +55,11 @@ class ClientDataSource(SQLModelDataSourceMixin):
                 exception=e,
             )
 
-    def delete_client_by_id(self, client_id):
-        """Attempts to delete the client with the given id
+    def delete_client_by_id(self, client_id) -> IntentResult[None]:
+        """Attempts to delete a client with the given id from the database
+
+        Args:
+            client_id : The id of the client to delete
 
         Returns:
             IntentResult:
