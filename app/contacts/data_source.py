@@ -10,6 +10,29 @@ class ContactDataSource(SQLModelDataSourceMixin):
     def __init__(self):
         super().__init__()
 
+    def get_contact_by_id(self, contact_id) -> IntentResult[Union[Contact, None]]:
+        """Fetches a contact with the given id from the database
+
+        Returns:
+            IntentResult:
+                was_intent_successful : bool
+                data :  Contact if was_intent_successful else None
+                log_message  : str  if an error or exception occurs
+                exception : Exception if an exception occurs
+        """
+        try:
+            contact = self.query_by_id(Contact, contact_id)
+            return IntentResult(
+                was_intent_successful=True,
+                data=contact,
+            )
+        except Exception as e:
+            return IntentResult(
+                was_intent_successful=False,
+                log_message=f"An exception was raised @ContactDataSource.get_contact_by_id {e.__class__.__name__}",
+                exception=e,
+            )
+
     def get_all_contacts(self) -> IntentResult[Union[List[Contact], None]]:
         """Fetches all existing contacts from the database
 

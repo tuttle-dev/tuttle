@@ -36,6 +36,25 @@ class ContactsIntent:
             result.log_message_if_any()
             return {}
 
+    def get_contact_by_id(self, contact_id) -> IntentResult[Contact]:
+        """
+        Args:
+            contact_id : ID of the contact to be retrieved
+
+        Returns:
+            IntentResult[Union[Contact, None]]:
+                was_intent_successful : bool
+                data :  Contact if was_intent_successful else None
+                error_msg : str  if an error or exception occurs
+                log_message  : str  if an error or exception occurs
+                exception : Exception if an exception occurs
+        """
+        result: IntentResult[Contact] = self._data_source.get_contact_by_id(contact_id)
+        if not result.was_intent_successful:
+            result.error_msg = "Retrieving contact failed. Please retry"
+            result.log_message_if_any()
+        return result
+
     def save_contact(self, contact: Contact) -> IntentResult[Union[Contact, None]]:
         """
         Args:
@@ -77,8 +96,32 @@ class ContactsIntent:
                 log_message  : str  if an error or exception occurs
                 exception : Exception if an exception occurs
         """
-        result: IntentResult = self._data_source.delete_contact_by_id(contact_id)
-        if not result.was_intent_successful:
-            result.error_msg = "Failed to delete the contact! please retry"
-            result.log_message_if_any()
-        return result
+        # contact can only be deleted if it is not invoicing contact of any client
+        query_result: IntentResult[Contact] = self.get_contact_by_id(contact_id)
+        if query_result.was_intent_successful:
+            contact: Contact = query_result.data
+            if len(contact.invoicing_contact_of) > 0:
+                return IntentResult(
+                    was_intent_successful=False,
+                    error_msg=f"Contact {contact.name} cannot be deleted because it is invoicing contact of clients: {','.join([client.name for client in contact.invoicing_contact_of])}",
+                )
+            else:
+                # contact can be deleted
+                delete_result: IntentResult[
+                    None
+                ] = self._data_source.delete_contact_by_id(contact_id)
+                if delete_result.was_intent_successful:
+                    return IntentResult(was_intent_successful=True)
+                else:
+                    return IntentResult(
+                        was_intent_successful=False,
+                        error_msg=delete_result.error_msg,
+                        log_message=delete_result.log_message,
+                    )
+        else:
+            return IntentResult(
+                was_intent_successful=False,
+                error_msg=query_result.error_msg,
+                log_message=query_result.log_message,
+                exception=query_result.exception,
+            )
