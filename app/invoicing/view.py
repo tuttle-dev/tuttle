@@ -162,16 +162,24 @@ class InvoicingListView(TuttleView, UserControl):
     def refresh_invoices(self):
         self.invoices_list_control.controls.clear()
         for key in self.invoices_to_display:
-            invoice = self.invoices_to_display[key]
-            invoiceItemControl = InvoiceTile(
-                invoice=invoice,
-                on_edit_clicked=self.on_edit_invoice_clicked,
-                on_delete_clicked=self.on_delete_invoice_clicked,
-                on_mail_invoice=self.on_mail_invoice,
-                on_view_invoice=self.on_view_invoice,
-                toggle_invoice_status=self.toggle_invoice_status,
-            )
-            self.invoices_list_control.controls.append(invoiceItemControl)
+            try:
+                invoice = self.invoices_to_display[key]
+                invoiceItemControl = InvoiceTile(
+                    invoice=invoice,
+                    on_edit_clicked=self.on_edit_invoice_clicked,
+                    on_delete_clicked=self.on_delete_invoice_clicked,
+                    on_mail_invoice=self.on_mail_invoice,
+                    on_view_invoice=self.on_view_invoice,
+                    toggle_invoice_status=self.toggle_invoice_status,
+                )
+            except Exception as ex:
+                logger.error(f"Error while refreshing invoice: {ex}")
+                logger.exception(ex)
+                invoiceItemControl = ListTile(
+                    title="Error while refreshing invoice",
+                )
+            finally:
+                self.invoices_list_control.controls.append(invoiceItemControl)
 
     def on_edit_invoice_clicked(self, invoice: Invoice):
         if self.editor is not None:
@@ -357,12 +365,12 @@ class InvoiceTile(UserControl):
         """
         Build and return a ListTile displaying the invoice information
         """
-        client_name = ""
-        if self.invoice.client:
-            client_name = self.invoice.client.name
+
         return ListTile(
             leading=views.get_body_txt(self.invoice.number),
-            title=views.get_body_txt(f"{self.invoice.project.title} ➡ {client_name}"),
+            title=views.get_body_txt(
+                f"{self.invoice.project.title} ➡ {self.invoice.contract.client.name}"
+            ),
             subtitle=Column(
                 controls=[
                     views.get_body_txt(
