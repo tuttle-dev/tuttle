@@ -5,12 +5,35 @@ from .model import CloudCalendarInfo, CloudConfigurationResult
 
 from tuttle.cloud import login_iCloud, verify_icloud_session, CloudLoginResult
 
+import pandas
 
-class TimeTrackingDataSource(SQLModelDataSourceMixin):
-    """Handles manipulation of the TimeTracking data in the database"""
+
+class TimeTrackingDataFrameSource:
+    # TODO: implement as singleton
 
     def __init__(self):
         super().__init__()
+        self.data: pandas.DataFrame = None
+
+
+class TimeTrackingFileCalendarSource:
+    pass
+
+
+class TimeTrackingCloudCalendarSource:
+    pass
+
+
+class TimeTrackingDataSource:
+    """Handles manipulation of the TimeTracking data in the database"""
+
+    # TODO: multiple data sources depending on where the data comes from
+
+    def __init__(self):
+        super().__init__()
+
+    def get_time_tracking_data(self) -> IntentResult[pandas.DataFrame]:
+        pass
 
     def load_timetracking_data_from_spreadsheet(
         self,
