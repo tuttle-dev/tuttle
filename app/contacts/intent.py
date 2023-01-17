@@ -1,4 +1,4 @@
-from typing import Mapping
+from typing import Mapping, Union
 from core.intent_result import IntentResult
 from .data_source import ContactDataSource
 
@@ -8,20 +8,7 @@ from tuttle.model import (
 
 
 class ContactsIntent:
-    """Handles Contact C_R_U_D intents
-
-    Intents handled (Methods)
-    ---------------
-
-    get_all_contacts_as_map_intent
-        fetching existing contacts as a map of contact IDs to contact
-
-    save_contact_intent
-        saving the contact
-
-    delete_contact_by_id_intent
-        deleting a contact given it's id
-    """
+    """Handles Contact C_R_U_D intents"""
 
     def __init__(
         self,
@@ -35,6 +22,11 @@ class ContactsIntent:
         self._data_source = ContactDataSource()
 
     def get_all_contacts_as_map(self) -> Mapping[int, Contact]:
+        """
+        Returns:
+            Mapping[int, Contact]:
+                A map of contact IDs to contact
+        """
         result = self._data_source.get_all_contacts()
         if result.was_intent_successful:
             contacts = result.data
@@ -44,7 +36,19 @@ class ContactsIntent:
             result.log_message_if_any()
             return {}
 
-    def save_contact(self, contact: Contact) -> IntentResult:
+    def save_contact(self, contact: Contact) -> IntentResult[Union[Contact, None]]:
+        """
+        Args:
+            contact (Contact): Contact to be saved
+
+        Returns:
+            IntentResult[Union[Contact, None]]:
+                was_intent_successful : bool
+                data :  Contact if was_intent_successful else None
+                error_msg : str  if an error or exception occurs
+                log_message  : str  if an error or exception occurs
+                exception : Exception if an exception occurs
+        """
         if not contact.first_name or not contact.last_name:
             return IntentResult(
                 was_intent_successful=False,
@@ -61,7 +65,18 @@ class ContactsIntent:
             result.log_message_if_any()
         return result
 
-    def delete_contact_by_id(self, contact_id):
+    def delete_contact_by_id(self, contact_id) -> IntentResult[None]:
+        """
+        Args:
+            contact_id : ID of the contact to be deleted
+
+        Returns:
+            IntentResult[None]:
+                was_intent_successful : bool
+                error_msg : str  if an error or exception occurs
+                log_message  : str  if an error or exception occurs
+                exception : Exception if an exception occurs
+        """
         result: IntentResult = self._data_source.delete_contact_by_id(contact_id)
         if not result.was_intent_successful:
             result.error_msg = "Failed to delete the contact! please retry"

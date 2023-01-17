@@ -1,6 +1,7 @@
 from core.intent_result import IntentResult
 from core.abstractions import SQLModelDataSourceMixin
 from tuttle.model import Contact
+from typing import List, Union
 
 
 class ContactDataSource(SQLModelDataSourceMixin):
@@ -9,13 +10,13 @@ class ContactDataSource(SQLModelDataSourceMixin):
     def __init__(self):
         super().__init__()
 
-    def get_all_contacts(self) -> IntentResult:
+    def get_all_contacts(self) -> IntentResult[List[Contact]]:
         """Fetches all existing contacts from the database
 
         Returns:
             IntentResult:
                 was_intent_successful : bool
-                data :  list[Contact] if was_intent_successful else None
+                data :  List[Contact] if was_intent_successful else None
                 log_message  : str  if an error or exception occurs
                 exception : Exception if an exception occurs
         """
@@ -32,7 +33,7 @@ class ContactDataSource(SQLModelDataSourceMixin):
                 exception=e,
             )
 
-    def save_contact(self, contact: Contact) -> IntentResult:
+    def save_contact(self, contact: Contact) -> IntentResult[Union[Contact, None]]:
         """Store a contact in the data source.
 
         Returns:
@@ -55,7 +56,7 @@ class ContactDataSource(SQLModelDataSourceMixin):
                 exception=e,
             )
 
-    def delete_contact_by_id(self, contact_id):
+    def delete_contact_by_id(self, contact_id) -> IntentResult[None]:
         """Deletes a contact with the given id from the database
 
         Returns:
