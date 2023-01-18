@@ -14,7 +14,7 @@ class CloudCalendarInfo:
 
 @dataclass
 class CloudConfigurationResult:
-    """Used during configuration of a cloud account to mediate steps"""
+    """Used during configuration of a cloud account to mediate login, optional 2fa step, and cloud calendar"""
 
     request_2fa_code: bool = False
     cloud_acc_configured_successfully: bool = False

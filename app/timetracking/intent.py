@@ -87,18 +87,15 @@ class TimeTrackingIntent:
         calendar_info: CloudCalendarInfo,
         two_factor_code: Optional[str] = "",
         prev_un_verified_login_res: Optional[CloudConfigurationResult] = None,
-    ):
-        """Attempts to configure cloud account and load data given CloudCalendarInfo
-        *This is a multi-step process
+    ) -> IntentResult[Union[Type[CloudConfigurationResult], None]]:
+        """Configures cloud account and loads calendar data
 
-        Params
-        ------
-        calendar_info: CloudCalendarInfo
-            information about the calendar to load and it's associated account
-        two_factor_code: Optional[str]
-            set during an Optional second step if user has been asked to enter a 2fa code
-        prev_un_verified_login_res : CloudConfigurationResult
-            keeps track of the session if any that is pending a 2fa code
+        *Multi-step process
+
+        Parameters:
+        calendar_info (CloudCalendarInfo) : Calendar information
+        two_factor_code (Optional[str]) : Two factor code for login
+        prev_un_verified_login_res (Optional[CloudConfigurationResult]) : Previous login result
 
         Returns:
             IntentResult:
@@ -141,7 +138,7 @@ class TimeTrackingIntent:
         if config_result and config_result.cloud_acc_configured_successfully:
             # proceed to load cloud calendar data
             res = self._timetracking_cloud_data_source.load_cloud_calendar_data(
-                info=calendar_info, cloud_session=res.session_ref
+                info=calendar_info, cloud_session=config_result.session_ref
             )
         if not res.was_intent_successful:
             res.error_msg = "Loading calendar data failed! Please retry"
