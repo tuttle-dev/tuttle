@@ -6,6 +6,7 @@ warnings.warn(
     stacklevel=2,
 )
 
+from typing import List, Tuple
 
 import base64
 from enum import Enum
@@ -126,11 +127,14 @@ class TuttleComponentIcons(Enum):
         return str(self.value)
 
 
-def get_currencies_list():
+def get_currencies() -> List[Tuple[str, str, str]]:
     """Returns a list of available currencies sorted alphabetically"""
     currencies = []
     currency_list = list(pycountry.currencies)
     for currency in currency_list:
-        currencies.append(currency.name)
-    currencies.sort()
+        abbreviation = currency.alpha_3
+        symbol = currency.symbol if hasattr(currency, "symbol") else None
+        currencies.append((currency.name, abbreviation, symbol))
+    # sort alphabetically by abbreviation
+    currencies.sort(key=lambda tup: tup[1])
     return currencies

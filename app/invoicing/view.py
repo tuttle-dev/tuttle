@@ -333,7 +333,7 @@ class InvoicingListView(TuttleView, UserControl):
         self.loading_indicator = views.horizontal_progress
         self.no_invoices_control = views.get_body_txt(
             txt="You have not created any invoices yet",
-            color=colors.ERROR_COLOR,
+            color=colors.TEXT_COLOR,
             show=False,
         )
         self.title_control = ResponsiveRow(

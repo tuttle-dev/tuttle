@@ -19,13 +19,13 @@ from pandas import DataFrame
 from . import schema
 
 
-def extract_hashtag(string):
+def extract_hashtag(string) -> str:
     """Extract the first hashtag from a string."""
-    match = re.search(r"#([\w-]+)", string)
+    match = re.search(r"#(\S+)", string)
     if match:
         return match.group(1)
     else:
-        return None
+        return ""
 
 
 def parse_pyicloud_datetime(dt_list):

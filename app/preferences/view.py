@@ -57,7 +57,9 @@ class PreferencesScreen(TuttleView, UserControl):
         self.currencies = []
 
     def set_available_currencies(self):
-        self.currencies = utils.get_currencies_list()
+        self.currencies = [
+            abbreviation for (name, abbreviation, symbol) in utils.get_currencies()
+        ]
         update_dropdown_items(self.currencies_control, self.currencies)
 
     def on_currency_selected(self, e):

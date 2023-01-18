@@ -1,5 +1,7 @@
 from typing import Optional, Type, Union
 
+from loguru import logger
+
 from core.abstractions import ClientStorage
 from core.intent_result import IntentResult
 from pandas import DataFrame
@@ -162,4 +164,18 @@ class TimeTrackingIntent:
             )
 
     def set_timetracking_data(self, data: DataFrame) -> IntentResult[None]:
-        self._timetracking_data_frame_source.store_data_frame(data=data)
+        try:
+            self._timetracking_data_frame_source.store_data_frame(data=data)
+            return IntentResult(
+                was_intent_successful=True,
+            )
+        except Exception as ex:
+            error_msg = "Failed to store time tracking data"
+            logger.error(error_msg)
+            logger.exception(ex)
+            return IntentResult(
+                was_intent_successful=False,
+                error_msg=error_msg,
+                exception=ex,
+                data=None,
+            )

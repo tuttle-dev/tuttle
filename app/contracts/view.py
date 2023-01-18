@@ -298,7 +298,9 @@ class ContractEditorScreen(TuttleView, UserControl):
         self.display_with_contract_info()
 
     def load_currencies(self):
-        self.available_currencies = utils.get_currencies_list()
+        self.available_currencies = [
+            abbreviation for (name, abbreviation, symbol) in utils.get_currencies()
+        ]
         views.update_dropdown_items(self.currency_ui_field, self.available_currencies)
         result = self.intent.get_preferred_currency_intent(self.local_storage)
         if result.was_intent_successful:
@@ -619,7 +621,7 @@ class ContractsListView(TuttleView, UserControl):
         self.loading_indicator = views.horizontal_progress
         self.no_contracts_control = Text(
             value="You have not added any contracts yet",
-            color=colors.ERROR_COLOR,
+            color=colors.TEXT_COLOR,
             visible=False,
         )
         self.title_control = ResponsiveRow(
