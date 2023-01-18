@@ -21,12 +21,10 @@ from . import schema
 
 def extract_hashtag(string):
     """Extract the first hashtag from a string."""
-    match = re.search(r"#(\w+)", string)
+    match = re.search(r"#([\w-]+)", string)
     if match:
-        logger.debug(f"Found hashtag {match.group(1)}")
         return match.group(1)
     else:
-        logger.error(f"Could not find hashtag in {string}")
         return None
 
 
