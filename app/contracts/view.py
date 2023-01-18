@@ -621,7 +621,6 @@ class ContractsListView(TuttleView, UserControl):
         self.loading_indicator = views.horizontal_progress
         self.no_contracts_control = Text(
             value="You have not added any contracts yet",
-            color=colors.TEXT_COLOR,
             visible=False,
         )
         self.title_control = ResponsiveRow(
