@@ -1,7 +1,8 @@
-from typing import Type, Union
+from typing import Type, Union, Optional
 from core.abstractions import SQLModelDataSourceMixin
 from core.intent_result import IntentResult
 from tuttle.model import Address, User
+from tuttle.dev import deprecated
 
 
 class UserDataSource(SQLModelDataSourceMixin):
@@ -10,7 +11,16 @@ class UserDataSource(SQLModelDataSourceMixin):
     def __init__(self):
         super().__init__()
 
-    def get_user(self) -> IntentResult[Union[Type[User], None]]:
+    def get_user(self) -> User:
+        """Get a user from the database
+
+        Returns:
+            User: The user
+        """
+        return self.query_the_only(User)
+
+    @deprecated
+    def get_user_(self) -> IntentResult[Optional[User]]:
         """
         Get a user from the database
 

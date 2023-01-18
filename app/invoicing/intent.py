@@ -12,13 +12,18 @@ from pandas import DataFrame
 from projects.intent import ProjectsIntent
 from timetracking.data_source import TimeTrackingDataFrameSource
 from timetracking.intent import TimeTrackingIntent
+from auth.data_source import UserDataSource
 
 from tuttle.model import Invoice, Project, Timesheet
 from tuttle.os_functions import preview_pdf
 
 from .data_source import InvoicingDataSource
 
-from tuttle import timetracking, invoicing
+from tuttle import (
+    timetracking,
+    invoicing,
+    rendering,
+)
 
 
 class InvoicingIntent:
@@ -39,6 +44,7 @@ class InvoicingIntent:
         self._projects_intent = ProjectsIntent()
         self._invoicing_data_source = InvoicingDataSource()
         self._timetracking_data_source = TimeTrackingDataFrameSource()
+        self._user_data_source = UserDataSource()
 
     def get_active_projects_as_map(self) -> Mapping[int, Project]:
         return self._projects_intent.get_active_projects_as_map()
@@ -79,6 +85,7 @@ class InvoicingIntent:
         project: Project,
         from_date: date,
         to_date: date,
+        render: bool = True,
     ) -> IntentResult[Invoice]:
         """Create a new invoice from time tracking data."""
 
@@ -101,6 +108,23 @@ class InvoicingIntent:
                 date=invoice_date,
             )
             self._invoicing_data_source.save_invoice(invoice)
+
+            if render:
+                # TODO: render timesheet
+
+                # render invoice
+                try:
+                    user = self._user_data_source.get_user()
+                    rendering.render_invoice(
+                        user=user,
+                        invoice=invoice,
+                        out_dir=Path.home() / ".tuttle" / "Invoices",
+                    )
+                    logger.info(f"✅ rendered invoice for {project.title}")
+                except Exception as ex:
+                    logger.error(f"❌ Error rendering invoice for {project.title}: {ex}")
+                    logger.exception(ex)
+
             return IntentResult(
                 was_intent_successful=True,
                 data=invoice,
@@ -199,7 +223,13 @@ class InvoicingIntent:
         """TODO Attempts to open the invoice in the default pdf viewer"""
         try:
             assert invoice.rendered
-            pdf_path = Path().home() / "Invoices" / invoice.file_name
+            pdf_path = (
+                Path().home()
+                / ".tuttle"
+                / "Invoices"
+                / invoice.prefix
+                / invoice.file_name
+            )
             assert pdf_path.exists()
             preview_pdf(pdf_path)
             return IntentResult(was_intent_successful=True)

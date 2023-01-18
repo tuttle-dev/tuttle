@@ -117,9 +117,9 @@ def _convert_html_to_pdf_with_QT(
 def render_invoice(
     user: User,
     invoice: Invoice,
-    document_format: str = "html",
+    document_format: str = "pdf",
     out_dir: str = None,
-    style: str = None,
+    style: str = "anvil",
 ) -> str:
     """Render an Invoice using an HTML template.
 
