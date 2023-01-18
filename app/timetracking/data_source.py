@@ -1,24 +1,28 @@
-from core.abstractions import SQLModelDataSourceMixin
-from tuttle.calendar import ICSCalendar
-from core.intent_result import IntentResult
-from .model import CloudCalendarInfo, CloudConfigurationResult
-from .singleton_dataframe import SingletonDataFrame
-from tuttle.cloud import login_iCloud, verify_icloud_session, CloudLoginResult
 from typing import Type, Union
+
+from core.abstractions import SQLModelDataSourceMixin
+from core.intent_result import IntentResult
 from pandas import DataFrame
 
+from tuttle.calendar import ICSCalendar
+from tuttle.cloud import CloudLoginResult, login_iCloud, verify_icloud_session
+from tuttle.dev import singleton
 
+from .model import CloudCalendarInfo, CloudConfigurationResult
+
+
+@singleton
 class TimeTrackingDataFrameSource:
     """Provides get or edit access to the data frame in memory"""
 
     def __init__(self):
         super().__init__()
-        self.storage = SingletonDataFrame.getInstance()
+        self.data: DataFrame = None
 
     def get_data_frame(self) -> IntentResult[Union[Type[DataFrame], None]]:
         try:
-            data_frame = self.storage.data
-            return IntentResult(was_intent_successful=True, data=data_frame)
+            data = self.data
+            return IntentResult(was_intent_successful=True, data=data)
         except Exception as e:
             return IntentResult(
                 was_intent_successful=False,
@@ -28,7 +32,7 @@ class TimeTrackingDataFrameSource:
 
     def store_date_frame(self, data: DataFrame) -> IntentResult:
         try:
-            self.storage.data = data
+            self.data = data
             return IntentResult(
                 was_intent_successful=True,
             )
