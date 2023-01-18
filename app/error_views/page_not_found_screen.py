@@ -1,9 +1,10 @@
-from core.abstractions import TuttleView
 from typing import Callable
-from flet import UserControl, Column, Container, padding
+
+from flet import Column, Container, UserControl, padding
+
+from core.abstractions import TuttleView, TuttleViewParams
 from core.utils import CENTER_ALIGNMENT
 from core.views import get_error_txt, get_primary_btn
-from core.abstractions import TuttleViewParams
 from res.dimens import SPACE_MD, SPACE_STD
 
 

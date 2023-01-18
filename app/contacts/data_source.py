@@ -1,7 +1,9 @@
-from core.intent_result import IntentResult
-from core.abstractions import SQLModelDataSourceMixin
-from tuttle.model import Contact
 from typing import List, Union
+
+from core.abstractions import SQLModelDataSourceMixin
+from core.intent_result import IntentResult
+
+from tuttle.model import Contact
 
 
 class ContactDataSource(SQLModelDataSourceMixin):

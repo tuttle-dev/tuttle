@@ -1,9 +1,11 @@
 from typing import Mapping, Type, Union
 
-from core.intent_result import IntentResult
-from .data_source import ClientDataSource
 from contacts.intent import ContactsIntent
+from core.intent_result import IntentResult
+
 from tuttle.model import Client, Contact
+
+from .data_source import ClientDataSource
 
 
 class ClientsIntent:

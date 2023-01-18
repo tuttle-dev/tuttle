@@ -1,7 +1,6 @@
 from typing import Callable, Optional
+
 from datetime import datetime, timedelta
-from pandas import DataFrame
-from loguru import logger
 
 from flet import (
     AlertDialog,
@@ -9,27 +8,29 @@ from flet import (
     Column,
     Container,
     GridView,
+    Icon,
     IconButton,
+    Image,
     ListTile,
+    ListView,
     ResponsiveRow,
     Row,
     Text,
     UserControl,
     border_radius,
     icons,
-    Icon,
     padding,
-    Image,
-    ListView,
 )
 
+from core import utils, views
 from core.abstractions import DialogHandler, TuttleView, TuttleViewParams
 from core.intent_result import IntentResult
-from core import utils, views
+from loguru import logger
+from pandas import DataFrame
 from res import colors, dimens, fonts, res_utils
 
-
 from tuttle.model import Invoice, Project
+
 from .intent import InvoicingIntent
 
 

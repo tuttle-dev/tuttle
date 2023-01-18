@@ -11,7 +11,6 @@ import datetime
 
 from tuttle.dev import deprecated
 
-
 DAYS_IN_A_WEEK = 7
 
 

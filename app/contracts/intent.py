@@ -1,19 +1,18 @@
+from typing import Mapping, Optional
+
 import datetime
 
-from typing import Optional, Mapping
-from tuttle.time import Cycle, TimeUnit
-from core.abstractions import ClientStorage
-from core.intent_result import IntentResult
-from preferences.model import PreferencesStorageKeys
-from .data_source import ContractDataSource
 from clients.intent import ClientsIntent
 from contacts.intent import ContactsIntent
+from core.abstractions import ClientStorage
+from core.intent_result import IntentResult
 from preferences.intent import PreferencesIntent
-from tuttle.model import (
-    Client,
-    Contract,
-    Contact,
-)
+from preferences.model import PreferencesStorageKeys
+
+from tuttle.model import Client, Contact, Contract
+from tuttle.time import Cycle, TimeUnit
+
+from .data_source import ContractDataSource
 
 
 class ContractsIntent:

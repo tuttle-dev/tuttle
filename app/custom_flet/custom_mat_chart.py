@@ -1,9 +1,8 @@
+from typing import Any, Optional, Union
+
 import io
 import re
 import xml.etree.ElementTree as ET
-from typing import Any, Optional, Union
-
-from beartype import beartype
 
 from flet import alignment
 from flet.container import Container
@@ -11,6 +10,8 @@ from flet.control import OptionalNumber
 from flet.image import Image
 from flet.ref import Ref
 from flet.types import AnimationValue, OffsetValue, RotateValue, ScaleValue
+
+from beartype import beartype
 
 try:
     from matplotlib.figure import Figure

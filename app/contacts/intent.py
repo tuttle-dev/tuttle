@@ -1,10 +1,10 @@
 from typing import Mapping, Union
-from core.intent_result import IntentResult
-from .data_source import ContactDataSource
 
-from tuttle.model import (
-    Contact,
-)
+from core.intent_result import IntentResult
+
+from tuttle.model import Contact
+
+from .data_source import ContactDataSource
 
 
 class ContactsIntent:

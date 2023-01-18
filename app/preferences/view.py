@@ -1,45 +1,46 @@
 from typing import Optional
 
 from flet import (
-    Tabs,
-    Tab,
     Column,
     Container,
     Icon,
-    icons,
-    Text,
     IconButton,
     Row,
+    Tab,
+    Tabs,
+    Text,
     UserControl,
-    padding,
-    margin,
     dropdown,
+    icons,
+    margin,
+    padding,
 )
+
+from core import utils
+from core.abstractions import TuttleView, TuttleViewParams
 from core.intent_result import IntentResult
-from core.abstractions import TuttleView
 from core.views import (
-    update_dropdown_items,
+    CENTER_ALIGNMENT,
+    START_ALIGNMENT,
     get_dropdown,
     get_std_txt_field,
     horizontal_progress,
     mdSpace,
     smSpace,
-    START_ALIGNMENT,
-    CENTER_ALIGNMENT,
+    update_dropdown_items,
 )
-from core import utils
 from preferences.intent import PreferencesIntent
 from preferences.model import Preferences
 from res.dimens import (
-    SPACE_XL,
+    MIN_WINDOW_HEIGHT,
+    MIN_WINDOW_WIDTH,
     SPACE_MD,
     SPACE_STD,
+    SPACE_XL,
     SPACE_XS,
-    MIN_WINDOW_WIDTH,
-    MIN_WINDOW_HEIGHT,
 )
 from res.theme import THEME_MODES
-from core.abstractions import TuttleViewParams
+
 from .model import CloudAccounts
 
 

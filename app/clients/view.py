@@ -1,33 +1,29 @@
-from typing import Callable, Optional, Mapping
-from core.abstractions import TuttleViewParams
+from typing import Callable, Mapping, Optional
+
 from flet import (
     AlertDialog,
     Card,
     Column,
     Container,
     GridView,
-    ResponsiveRow,
-    ListTile,
     Icon,
-    icons,
+    ListTile,
+    ResponsiveRow,
     Row,
     Text,
     UserControl,
     border_radius,
+    icons,
     padding,
 )
-from tuttle.model import Address
+
 from clients.intent import ClientsIntent
-from core.abstractions import DialogHandler, TuttleView
-from core import utils
+from core import utils, views
+from core.abstractions import DialogHandler, TuttleView, TuttleViewParams
 from core.intent_result import IntentResult
-from core import views
 from res import colors, dimens, fonts, res_utils
 
-from tuttle.model import (
-    Client,
-    Contact,
-)
+from tuttle.model import Address, Client, Contact
 
 
 class ClientCard(UserControl):

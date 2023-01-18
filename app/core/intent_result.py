@@ -1,7 +1,6 @@
-from loguru import logger
-from typing import Optional
+from typing import Generic, Optional, TypeVar, Union
 
-from typing import TypeVar, Optional, Union, Generic
+from loguru import logger
 
 T = TypeVar("T")
 

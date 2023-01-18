@@ -1,12 +1,11 @@
+from typing import List, Optional, Union
+
 import datetime
 
-from core.intent_result import IntentResult
-from typing import Optional, List, Union
 from core.abstractions import SQLModelDataSourceMixin
-from tuttle.model import (
-    Contract,
-    Project,
-)
+from core.intent_result import IntentResult
+
+from tuttle.model import Contract, Project
 
 
 class ProjectDataSource(SQLModelDataSourceMixin):

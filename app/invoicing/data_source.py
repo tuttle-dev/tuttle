@@ -1,9 +1,11 @@
-from typing import List, Optional, Union, Type
+from typing import List, Optional, Type, Union
+
+import datetime
 
 from core.abstractions import SQLModelDataSourceMixin
 from core.intent_result import IntentResult
+
 from tuttle.model import Invoice, Project
-import datetime
 
 
 class InvoicingDataSource(SQLModelDataSourceMixin):

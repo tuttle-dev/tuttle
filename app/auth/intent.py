@@ -1,7 +1,10 @@
-from .data_source import UserDataSource
-from core.intent_result import IntentResult
 from typing import Type, Union
+
+from core.intent_result import IntentResult
+
 from tuttle.model import User
+
+from .data_source import UserDataSource
 
 
 class AuthIntent:

@@ -1,12 +1,14 @@
-from enum import Enum
 from typing import Callable, Optional
-from core.abstractions import TuttleViewParams
+
+from enum import Enum
+
 from flet import (
     ButtonStyle,
     Card,
     Column,
     Container,
     ElevatedButton,
+    FontWeight,
     GridView,
     Icon,
     IconButton,
@@ -20,23 +22,18 @@ from flet import (
     icons,
     margin,
     padding,
-    FontWeight,
 )
 
-from core.abstractions import TuttleView
+from clients.view import ClientViewPopUp
+from core import utils, views
+from core.abstractions import TuttleView, TuttleViewParams
 from core.charts import BarChart
-from core import utils
 from core.date_time_utils import get_last_seven_days
 from core.intent_result import IntentResult
-from core import views
 from projects.intent import ProjectsIntent
 from res import colors, dimens, fonts, res_utils
 
-from tuttle.model import (
-    Contract,
-    Project,
-)
-from clients.view import ClientViewPopUp
+from tuttle.model import Contract, Project
 
 
 class ProjectCard(UserControl):
@@ -861,6 +858,11 @@ class ProjectEditorScreen(TuttleView, UserControl):
 
         if self.contract is None:
             self.contracts_field.error_text = "Please specify the contract"
+            self.update_self()
+            return
+
+        if self.tag is None:
+            self.tag_field.error_text = "The project must have a tag."
             self.update_self()
             return
 

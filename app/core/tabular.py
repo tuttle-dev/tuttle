@@ -1,15 +1,11 @@
-from typing import List, Dict
+from typing import Dict, List
+
+from flet import Column, DataCell, DataColumn, DataRow, DataTable
+
 import pandas
-from . import views, utils
 from res import dimens
-import pandas
-from flet import (
-    DataTable,
-    Column,
-    DataColumn,
-    DataRow,
-    DataCell,
-)
+
+from . import utils, views
 
 
 def data_frame_to_data_table(

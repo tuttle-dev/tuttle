@@ -6,28 +6,25 @@ from flet import (
     Column,
     Container,
     GridView,
+    Icon,
     IconButton,
+    ListTile,
     ResponsiveRow,
     Row,
     Text,
     UserControl,
     border_radius,
-    Icon,
     icons,
     padding,
-    ListTile,
 )
-from contacts.intent import ContactsIntent
-from core.abstractions import DialogHandler, TuttleView, TuttleViewParams
-from core import utils
-from core.intent_result import IntentResult
-from core import views
-from res import colors, dimens, res_utils, fonts
 
-from tuttle.model import (
-    Address,
-    Contact,
-)
+from contacts.intent import ContactsIntent
+from core import utils, views
+from core.abstractions import DialogHandler, TuttleView, TuttleViewParams
+from core.intent_result import IntentResult
+from res import colors, dimens, fonts, res_utils
+
+from tuttle.model import Address, Contact
 
 
 class ContactCard(UserControl):

@@ -2,7 +2,7 @@ from typing import Callable, Optional
 
 import webbrowser
 from dataclasses import dataclass
-from core.utils import TuttleComponentIcons
+
 from flet import (
     Column,
     Container,
@@ -36,6 +36,7 @@ from core.utils import (
     START_ALIGNMENT,
     STRETCH_ALIGNMENT,
     TXT_ALIGN_START,
+    TuttleComponentIcons,
 )
 from core.views import (
     get_app_logo,
@@ -45,6 +46,7 @@ from core.views import (
 )
 from invoicing.view import InvoicingListView
 from projects.view import ProjectsListView
+from res import res_utils
 from res.colors import (
     BLACK_COLOR,
     GRAY_COLOR,
@@ -69,7 +71,6 @@ from res.fonts import (
     HEADLINE_FONT,
     SUBTITLE_2_SIZE,
 )
-from res import res_utils
 from timetracking.view import TimeTrackingView
 
 MIN_SIDE_BAR_WIDTH = int(MIN_WINDOW_WIDTH * 0.3)
