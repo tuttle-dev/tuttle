@@ -110,6 +110,7 @@ class NewTimeTrackPopUp(DialogHandler):
                         space_between_cloud_controls,
                         views.get_std_txt_field(
                             label="Cloud Password",
+                            hint="Your password will not be stored",
                             keyboard_type=utils.KEYBOARD_PASSWORD,
                             on_change=self.on_password_changed,
                             show=display_cloud_option,
@@ -212,6 +213,7 @@ class TimeTrackingView(TuttleView, UserControl):
             self.pop_up_handler.open_dialog()
         return
 
+    # TODO: refactor this - an enum TimeTrackingMethod or so would have been better
     def on_add_new_timetrack_record_callback(
         self,
         is_spreadsheet=False,

@@ -12,6 +12,13 @@ class CloudCalendarInfo:
     provider: str
     password: str
 
+    # string representation that hides the password
+    def __str__(self):
+        return f"CloudCalendarInfo(account={self.account}, calendar_name={self.calendar_name}, provider={self.provider}, password=********)"
+
+    def __repr__(self):
+        return self.__str__()
+
 
 @dataclass
 class CloudConfigurationResult:
