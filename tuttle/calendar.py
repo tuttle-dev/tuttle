@@ -3,7 +3,9 @@ from typing import Optional
 
 from pathlib import Path
 import io
+import re
 
+from loguru import logger
 import ics
 import icloudpy
 import getpass
@@ -15,6 +17,17 @@ from pandera import check_io
 from pandas import DataFrame
 
 from . import schema
+
+
+def extract_hashtag(string):
+    """Extract the first hashtag from a string."""
+    match = re.search(r"#(\w+)", string)
+    if match:
+        logger.debug(f"Found hashtag {match.group(1)}")
+        return match.group(1)
+    else:
+        logger.error(f"Could not find hashtag in {string}")
+        return None
 
 
 def parse_pyicloud_datetime(dt_list):
@@ -79,6 +92,7 @@ class ICSCalendar(Calendar):
     @check_io(out=schema.time_tracking)
     def to_data(self) -> DataFrame:
         """Convert ics.Calendar to pandas.DataFrame"""
+
         event_data = pandas.DataFrame(
             [
                 (
@@ -96,8 +110,8 @@ class ICSCalendar(Calendar):
             columns=["title", "description", "begin", "end", "all_day"],
         )
         event_data["duration"] = event_data["end"] - event_data["begin"]
-        # TODO: extract tag
-        event_data["tag"] = event_data["title"]
+        # apply the function extract_hashtag to the column title to derive the column tag
+        event_data["tag"] = event_data["title"].apply(extract_hashtag)
         # event_data["time"] = event_data["begin"]
         event_data = event_data.set_index("begin")
         return event_data
@@ -146,7 +160,7 @@ class ICloudCalendar(CloudCalendar):
                 "end": event_data["endDate"].apply(parse_pyicloud_datetime),
                 "title": event_data["title"],
                 # TODO: extract tag
-                "tag": event_data["title"],
+                "tag": extract_hashtag(event_data["title"]),
                 "description": event_data["description"],
                 "all_day": event_data["allDay"],
             }

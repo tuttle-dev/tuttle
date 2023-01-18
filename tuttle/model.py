@@ -343,7 +343,8 @@ class Project(SQLModel, table=True):
     # Project m:n Contract
     contract_id: Optional[int] = Field(default=None, foreign_key="contract.id")
     contract: Contract = Relationship(
-        back_populates="projects", sa_relationship_kwargs={"lazy": "subquery"}
+        back_populates="projects",
+        sa_relationship_kwargs={"lazy": "subquery"},
     )
     # Project 1:n Timesheet
     timesheets: List["Timesheet"] = Relationship(

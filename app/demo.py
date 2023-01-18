@@ -6,6 +6,7 @@ from tuttle.calendar import Calendar, ICSCalendar
 import faker
 import random
 import datetime
+from datetime import timedelta, date
 import ics
 from sqlmodel import Field, SQLModel, create_engine, Session, select
 import sqlalchemy
@@ -223,14 +224,34 @@ def create_fake_calendar(project_list: List[Project]) -> ics.Calendar:
     # create a new calendar
     calendar = ics.Calendar()
 
+    # get the last month's date range
+    # get todays date
+    now = datetime.datetime.now()
+    month_ago = now - timedelta(days=30)
+
     # populate the calendar with events
     for project in project_list:
         # create a new event
         event = ics.Event()
-        event.name = f"Meeting for {project.tag}"
-        # randomly set the event duration between 1 and 8 hours
-        event.duration = random.randint(1, 8), "hours"
-        calendar.events.append(event)
+        event.name = f"Meeting for #{project.tag}"
+
+        # set the event's begin and end datetime
+        event.begin = random_datetime(month_ago, now)
+        event.end = event.begin + random_duration()
+
+        # add to calendar.events
+        calendar.events.add(event)
+    return calendar
+
+
+def random_datetime(start, end):
+    return start + timedelta(
+        seconds=random.randint(0, int((end - start).total_seconds()))
+    )
+
+
+def random_duration():
+    return timedelta(hours=random.randint(1, 8))
 
 
 def install_demo_data(
@@ -251,6 +272,16 @@ def install_demo_data(
         session.add(user)
         session.commit()
 
+    # create a fake calendar and add time tracking data from it
+    logger.info("Creating a fake calendar...")
+    calendar: Calendar = ICSCalendar(
+        name="Demo calendar", ics_calendar=create_fake_calendar(project_list=projects)
+    )
+    time_tracking_data = calendar.to_data()
+    logger.info("Caching timetracking data")
+    on_cache_timetracking_dataframe(time_tracking_data)
+    logger.info("Demo data installed.")
+
     # add fake invoices
     logger.info("Adding fake invoices...")
     with Session(db_engine) as session:
@@ -263,16 +294,6 @@ def install_demo_data(
         for project in projects:
             session.add(project)
             session.commit()
-
-    # create a fake calendar and add time tracking data from it
-    logger.info("Creating a fake calendar...")
-    calendar: Calendar = ICSCalendar(
-        ics_calendar=create_fake_calendar(project_list=projects)
-    )
-    time_tracking_data = calendar.to_data()
-    logger.info("Caching timetracking data")
-    on_cache_timetracking_dataframe(time_tracking_data)
-    logger.info("Demo data installed.")
 
 
 if __name__ == "__main__":
