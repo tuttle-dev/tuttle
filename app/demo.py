@@ -231,16 +231,18 @@ def create_fake_calendar(project_list: List[Project]) -> ics.Calendar:
 
     # populate the calendar with events
     for project in project_list:
-        # create a new event
-        event = ics.Event()
-        event.name = f"Meeting for #{project.tag}"
+        # create 1-10 events for each project
+        for _ in range(random.randint(1, 10)):
+            # create a new event
+            event = ics.Event()
+            event.name = f"Meeting for #{project.tag}"
 
-        # set the event's begin and end datetime
-        event.begin = random_datetime(month_ago, now)
-        event.end = event.begin + random_duration()
+            # set the event's begin and end datetime
+            event.begin = random_datetime(month_ago, now)
+            event.end = event.begin + random_duration()
 
-        # add to calendar.events
-        calendar.events.add(event)
+            # add to calendar.events
+            calendar.events.add(event)
     return calendar
 
 
@@ -255,12 +257,22 @@ def random_duration():
 
 
 def install_demo_data(
-    n: int, db_path: str, on_cache_timetracking_dataframe: Optional[Callable] = None
+    n_projects: int,
+    db_path: str,
+    on_cache_timetracking_dataframe: Optional[Callable] = None,
 ):
+    """
+    Install demo data in the database.
+
+    Args:
+    n_projects (int): The number of projects to create.
+    db_path (str): The path to the database.
+    on_cache_timetracking_dataframe (Optional[Callable], optional): A callback function to be called when the timetracking dataframe is cached. Defaults to None.
+    """
     db_path = f"""sqlite:///{db_path}"""
     logger.info(f"Installing demo data in {db_path}...")
-    logger.info(f"Creating {n} fake projects...")
-    projects, invoices = create_fake_data(n)
+    logger.info(f"Creating {n_projects} fake projects...")
+    projects, invoices = create_fake_data(n_projects)
     logger.info(f"Creating database engine at: {db_path}...")
     db_engine = create_engine(db_path)
     logger.info("Creating database tables...")
@@ -275,7 +287,8 @@ def install_demo_data(
     # create a fake calendar and add time tracking data from it
     logger.info("Creating a fake calendar...")
     calendar: Calendar = ICSCalendar(
-        name="Demo calendar", ics_calendar=create_fake_calendar(project_list=projects)
+        name="Demo calendar",
+        ics_calendar=create_fake_calendar(project_list=projects),
     )
     time_tracking_data = calendar.to_data()
     logger.info("Caching timetracking data")
@@ -297,4 +310,4 @@ def install_demo_data(
 
 
 if __name__ == "__main__":
-    install_demo_data(n=10)
+    install_demo_data(n_projects=10)

@@ -82,28 +82,9 @@ class InvoicingDataSource(SQLModelDataSourceMixin):
     def save_invoice(
         self,
         invoice: Invoice,
-    ) -> IntentResult[Union[Type[Invoice], None]]:
-        """Creates or updates an invoice with given invoice and project info
-
-        Returns:
-            IntentResult:
-                was_intent_successful : bool
-                data : Invoice is was_intent_successful else None
-                log_message  : str  if an error or exception occurs
-                exception : Exception if an exception occurs
-        """
-        try:
-            self.store(invoice)
-            return IntentResult(
-                was_intent_successful=True,
-                data=invoice,
-            )
-        except Exception as e:
-            return IntentResult(
-                was_intent_successful=False,
-                log_message=f"Exception raised @InvoicingDataSource.create_or_update_invoice {e.__class__.__name__}",
-                exception=e,
-            )
+    ):
+        """Creates or updates an invoice with given invoice and project info"""
+        self.store(invoice)
 
     def get_last_invoice(self) -> IntentResult[Invoice]:
         """Get the last invoice.

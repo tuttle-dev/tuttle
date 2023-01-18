@@ -19,29 +19,11 @@ class TimeTrackingDataFrameSource:
         super().__init__()
         self.data: DataFrame = None
 
-    def get_data_frame(self) -> IntentResult[Union[Type[DataFrame], None]]:
-        try:
-            data = self.data
-            return IntentResult(was_intent_successful=True, data=data)
-        except Exception as e:
-            return IntentResult(
-                was_intent_successful=False,
-                log_message="An exception was raised @TimeTrackingDataFrameSource.get_data_frame {e}",
-                exception=e,
-            )
+    def get_data_frame(self) -> DataFrame:
+        return self.data
 
-    def store_date_frame(self, data: DataFrame) -> IntentResult:
-        try:
-            self.data = data
-            return IntentResult(
-                was_intent_successful=True,
-            )
-        except Exception as e:
-            return IntentResult(
-                was_intent_successful=False,
-                log_message="An exception was raised @TimeTrackingDataFrameSource.store_date_frame {e}",
-                exception=e,
-            )
+    def store_data_frame(self, data: DataFrame):
+        self.data = data
 
 
 class TimeTrackingFileCalendarSource:

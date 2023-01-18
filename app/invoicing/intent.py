@@ -1,19 +1,24 @@
-from typing import Mapping, Optional, Union, Type
+from typing import Mapping, Optional, Type, Union
 
-from pathlib import Path
-from datetime import date
-
-from loguru import logger
-
-from core.intent_result import IntentResult
 import datetime
-from .data_source import InvoicingDataSource
-from tuttle.model import Invoice, Project
-from projects.intent import ProjectsIntent
-from tuttle.os_functions import preview_pdf
+from datetime import date
+from pathlib import Path
+
 from core.abstractions import ClientStorage
-from timetracking.intent import TimeTrackingIntent
+from core.intent_result import IntentResult
+from loguru import logger
 from pandas import DataFrame
+
+from projects.intent import ProjectsIntent
+from timetracking.data_source import TimeTrackingDataFrameSource
+from timetracking.intent import TimeTrackingIntent
+
+from tuttle.model import Invoice, Project, Timesheet
+from tuttle.os_functions import preview_pdf
+
+from .data_source import InvoicingDataSource
+
+from tuttle import timetracking, invoicing
 
 
 class InvoicingIntent:
@@ -33,6 +38,7 @@ class InvoicingIntent:
         self._timetracking_intent = TimeTrackingIntent(local_storage=local_storage)
         self._projects_intent = ProjectsIntent()
         self._invoicing_data_source = InvoicingDataSource()
+        self._timetracking_data_source = TimeTrackingDataFrameSource()
 
     def get_active_projects_as_map(self) -> Mapping[int, Project]:
         return self._projects_intent.get_active_projects_as_map()
@@ -67,7 +73,7 @@ class InvoicingIntent:
             result.error_msg = "Deleting invoice failed! Please retry"
         return result
 
-    def create_or_update_invoice(
+    def create_invoice(
         self,
         invoice_date: date,
         project: Project,
@@ -76,12 +82,37 @@ class InvoicingIntent:
     ) -> IntentResult[Invoice]:
         """Create a new invoice from time tracking data."""
 
-        # TODO: get the time tracking data
-        result = IntentResult()
-        if not result.was_intent_successful:
-            result.log_message_if_any()
-            result.error_msg = "failed to save the invoice! Please retry"
-        return result
+        try:
+            # get the time tracking data
+            timetracking_data = self._timetracking_data_source.get_data_frame()
+            timesheet: Timesheet = timetracking.create_timesheet(
+                timetracking_data,
+                project,
+                from_date,
+                to_date,
+            )
+
+            invoice: Invoice = invoicing.generate_invoice(
+                timesheets=[
+                    timesheet,
+                ],
+                contract=project.contract,
+                project=project,
+                date=invoice_date,
+            )
+            self._invoicing_data_source.save_invoice(invoice)
+            return IntentResult(
+                was_intent_successful=True,
+                data=invoice,
+            )
+        except Exception as ex:
+            error_message = "Failed to create invoice. Check the logs for more details."
+            logger.error(error_message)
+            logger.exception(ex)
+            return IntentResult(
+                was_intent_successful=False,
+                error_msg=error_message,
+            )
 
     def update_invoice(
         self,

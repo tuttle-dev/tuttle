@@ -217,6 +217,7 @@ class SQLModelDataSourceMixin:
         with self.create_session() as session:
             session.add(entity)
             session.commit()
+            session.refresh(entity)
 
     def delete_by_id(self, entity_type: Type[sqlmodel.SQLModel], entity_id: int):
         """Deletes the entity of the given type with the given id from the database"""

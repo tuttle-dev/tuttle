@@ -145,16 +145,20 @@ class TimeTrackingIntent:
             res.log_message_if_any()
         return res
 
-    def get_timetracking_data(self) -> IntentResult[Union[Type[DataFrame], None]]:
-        result = self._timetracking_data_frame_source.get_data_frame()
-        if not result.was_intent_successful:
-            result.error_msg = "Failed to load timetracking data!"
-            result.log_message_if_any()
-        return result
+    def get_timetracking_data(self) -> IntentResult[Optional[DataFrame]]:
+        try:
+            data = self._timetracking_data_frame_source.get_data_frame()
+            return IntentResult(
+                was_intent_successful=True,
+                data=data,
+            )
+        except Exception as ex:
+            return IntentResult(
+                was_intent_successful=False,
+                error_msg="Failed to load time tracking data",
+                exception=ex,
+                data=None,
+            )
 
     def set_timetracking_data(self, data: DataFrame) -> IntentResult[None]:
-        result = self._timetracking_data_frame_source.store_date_frame(data=data)
-        if not result.was_intent_successful:
-            result.error_msg = "Saving the time tracking data failed!"
-            result.log_message_if_any()
-        return result
+        self._timetracking_data_frame_source.store_data_frame(data=data)

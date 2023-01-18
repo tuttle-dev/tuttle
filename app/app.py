@@ -281,7 +281,7 @@ class TuttleApp:
         self.clear_database()
         try:
             demo.install_demo_data(
-                n=10,
+                n_projects=4,
                 db_path=self.db_path,
                 on_cache_timetracking_dataframe=self.store_demo_timetracking_dataframe,
             )

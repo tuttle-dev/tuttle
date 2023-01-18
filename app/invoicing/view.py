@@ -260,7 +260,7 @@ class InvoicingListView(TuttleView, UserControl):
             result: IntentResult = self.intent.update_invoice(invoice=invoice)
         else:
             # create a new invoice
-            result: IntentResult = self.intent.create_or_update_invoice(
+            result: IntentResult = self.intent.create_invoice(
                 invoice_date=invoice.date,
                 project=project,
                 from_date=from_date,
