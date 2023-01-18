@@ -245,7 +245,7 @@ def make_contract_view(
                                 [
                                     Icon(icons.PERCENT),
                                     Text(
-                                        f"VAT rate: {(contract.VAT_rate) * 100:.0f} %"
+                                        f"VAT rate: {(contract.VAT_rate) * 100:.2f} %"
                                     ),
                                 ]
                             ),

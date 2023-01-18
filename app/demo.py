@@ -84,7 +84,7 @@ def create_fake_contract(
         start_date=fake.date_this_year(after_today=True),
         rate=fake.random_int(1, 1000),
         currency="EUR",  # TODO: Use actual currency
-        VAT_rate=random.random() * 0.19,
+        VAT_rate=round(random.uniform(0.05, 0.2), 2),
         unit=random.choice(list(TimeUnit)),
         units_per_workday=random.randint(1, 12),
         volume=fake.random_int(1, 1000),

@@ -90,6 +90,25 @@ class ContractCard(UserControl):
                 run_spacing=0,
                 vertical_alignment=utils.CENTER_ALIGNMENT,
             ),
+            # add ResponsiveRow for billing cycle
+            ResponsiveRow(
+                controls=[
+                    Text(
+                        "Billing Cycle",
+                        color=colors.GRAY_COLOR,
+                        size=fonts.BODY_2_SIZE,
+                        col={"xs": "12"},
+                    ),
+                    Text(
+                        f"{self.contract.billing_cycle}",
+                        size=fonts.BODY_2_SIZE,
+                        col={"xs": "12"},
+                    ),
+                ],
+                spacing=dimens.SPACE_XS,
+                run_spacing=0,
+                vertical_alignment=utils.CENTER_ALIGNMENT,
+            ),
         ]
         return Card(
             elevation=2,
@@ -473,8 +492,8 @@ class ContractEditorScreen(TuttleView, UserControl):
             items=self.available_currencies,
         )
         self.vat_rate_ui_field = views.get_std_txt_field(
-            label="Vat",
-            hint="Vat rate",
+            label="VAT rate",
+            hint="VAT rate",
             on_change=self.on_vat_rate_changed,
             on_focus=self.clear_ui_field_errors,
             keyboard_type=utils.KEYBOARD_NUMBER,
@@ -758,7 +777,7 @@ class ViewContractScreen(TuttleView, UserControl):
         )
         self.rate_control.value = self.contract.rate
         self.currency_control.value = self.contract.currency
-        self.vat_rate_control.value = self.contract.VAT_rate
+        self.vat_rate_control.value = f"{(self.contract.VAT_rate) * 100:.0f} %"
         time_unit = self.contract.unit.value if self.contract.unit else ""
         self.unit_control.value = time_unit
         self.units_per_workday_control.value = (
