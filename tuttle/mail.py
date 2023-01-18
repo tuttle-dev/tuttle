@@ -6,20 +6,15 @@ import urllib.parse
 
 
 def compose_email(
-    recipient: str,
+    to: str,
     subject: str,
     body: str,
     attachment_paths: Optional[List[Path]] = None,
 ):
     """Compose an email with the default email client."""
-    attachments = ""
-    if attachment_paths:
-        for i, attachment_path in enumerate(attachment_paths):
-            attachments += "&attachment{}={}".format(i + 1, str(attachment_path))
-    url = "mailto:{}?subject={}&body={}{}".format(
-        recipient,
+    url = "mailto:{}?subject={}&body={}".format(
+        to,
         subject,
-        urllib.parse.quote(body),
-        attachments,
+        body,
     )
     webbrowser.open(url)

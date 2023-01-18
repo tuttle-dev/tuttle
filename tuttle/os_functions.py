@@ -25,3 +25,15 @@ def preview_pdf(file_path):
         os.system("xdg-open {}".format(file_path))
     else:
         print("Sorry, your platform is not supported.")
+
+
+def open_folder(folder_path):
+    """Open a folder."""
+    if platform.system() == "Darwin":
+        subprocess.call(["open", folder_path])
+    elif platform.system() == "Windows":
+        subprocess.call(["start", folder_path], shell=True)
+    elif platform.system() == "Linux":
+        subprocess.call(["xdg-open", folder_path])
+    else:
+        print("Sorry, your platform is not supported.")

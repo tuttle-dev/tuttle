@@ -3,6 +3,7 @@ from typing import Mapping, Optional, Type, Union
 import datetime
 from datetime import date
 from pathlib import Path
+import textwrap
 
 from core.abstractions import ClientStorage
 from core.intent_result import IntentResult
@@ -23,6 +24,8 @@ from tuttle import (
     timetracking,
     invoicing,
     rendering,
+    mail,
+    os_functions,
 )
 
 
@@ -151,8 +154,41 @@ class InvoicingIntent:
         return result
 
     def send_invoice_by_mail(self, invoice: Invoice) -> IntentResult[None]:
-        """TODO attempts to trigger the mail client to send the intent as attachment"""
-        return IntentResult(was_intent_successful=False, error_msg="Not implemented")
+        """attempts to trigger the mail client to send the intent as attachment"""
+        try:
+            user = self._user_data_source.get_user()
+            # open email client with message pre-filled
+            email_body = f"""
+            Dear {invoice.contract.client.invoicing_contact.name},
+
+            Please find attached the invoice for {invoice.project.title}.
+
+            <-- Insert invoice PDF here -->
+
+            Best regards,
+            {user.name}
+            """
+            email_body = textwrap.dedent(email_body)
+            mail.compose_email(
+                to=invoice.contract.client.invoicing_contact.email,
+                subject=f"Invoice {invoice.number}",
+                body=email_body,
+            )
+            # open invoice pdf's folder
+            invoice_path = Path.home() / ".tuttle" / "Invoices" / invoice.file_name
+            assert invoice_path.exists()
+            os_functions.open_folder(invoice_path.parent)
+
+            return IntentResult(
+                was_intent_successful=True,
+            )
+        except Exception as ex:
+            logger.error(f"❌ Error sending invoice by mail: {ex}")
+            logger.exception(ex)
+            return IntentResult(
+                was_intent_successful=False,
+                error_msg="Failed to send the invoice by mail. Check the logs for more details.",
+            )
 
     def generate_invoice_doc(self, invoice: Invoice) -> IntentResult:
         """TODO Attempts to generate the invoice as a pdf and open the location"""
