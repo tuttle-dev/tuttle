@@ -59,27 +59,13 @@ class InvoicingDataSource(SQLModelDataSourceMixin):
                 exception=ex,
             )
 
-    def delete_invoice_by_id(self, invoice_id) -> IntentResult[None]:
-        """TODO Deletes the invoice corresponding to the given id
+    def delete_invoice_by_id(self, invoice_id):
+        """Deletes an invoice by id
 
-        Returns:
-            IntentResult:
-                was_intent_successful : bool
-                data : None
-                log_message  : str  if an error or exception occurs
-                exception : Exception if an exception occurs
+        Args:
+            invoice_id (int): the id of the invoice to delete
         """
-        try:
-            return IntentResult(
-                was_intent_successful=False,
-                log_message="NotImplementedError @InvoicingDataSource.delete_invoice_by_id",
-            )
-        except Exception as e:
-            return IntentResult(
-                was_intent_successful=False,
-                log_message=f"Exception raised @InvoicingDataSource.delete_invoice_by_id {e.__class__.__name__}",
-                exception=e,
-            )
+        self.delete_by_id(Invoice, invoice_id)
 
     def save_invoice(
         self,

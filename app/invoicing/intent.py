@@ -74,13 +74,17 @@ class InvoicingIntent:
             return {}
 
     def delete_invoice_by_id(self, invoice_id) -> IntentResult[None]:
-        result: IntentResult = self._invoicing_data_source.delete_invoice_by_id(
-            invoice_id
-        )
-        if not result.was_intent_successful:
-            result.log_message_if_any()
-            result.error_msg = "Deleting invoice failed! Please retry"
-        return result
+        """Delete an invoice by id."""
+        try:
+            self._invoicing_data_source.delete_invoice_by_id(invoice_id)
+            return IntentResult(was_intent_successful=True)
+        except Exception as ex:
+            logger.error(f"Could not delete invoice with id {invoice_id}.")
+            logger.exception(ex)
+            return IntentResult(
+                was_intent_successful=False,
+                message="Could not delete invoice. Check the log for details.",
+            )
 
     def create_invoice(
         self,
@@ -194,6 +198,33 @@ class InvoicingIntent:
         """TODO Attempts to generate the invoice as a pdf and open the location"""
         return IntentResult(was_intent_successful=False, error_msg="Not implemented")
 
+    def toggle_invoice_sent_status(self, invoice: Invoice) -> IntentResult[Invoice]:
+        """
+        Toggles the "sent" status of an invoice and updates it in the data source.
+
+        Parameters:
+            invoice (Invoice):
+                The invoice object whose "sent" status will be toggled.
+
+        Returns:
+            IntentResult[Invoice]:
+                An IntentResult object containing the updated invoice, or old invoice if update was not successful.
+        """
+        try:
+            invoice.sent = not invoice.sent
+            self._invoicing_data_source.save_invoice(invoice)
+            return IntentResult(
+                was_intent_successful=True,
+                data=invoice,
+            )
+        except Exception as ex:
+            logger.error(f"❌ Error toggling invoice sent status: {ex}")
+            logger.exception(ex)
+            return IntentResult(
+                was_intent_successful=False,
+                error_msg="Failed to toggle the invoice sent status. Check the logs for more details.",
+            )
+
     def toggle_invoice_paid_status(self, invoice: Invoice) -> IntentResult[Invoice]:
         """
         Toggles the "paid" status of an invoice and updates it in the data source.
@@ -206,13 +237,20 @@ class InvoicingIntent:
             IntentResult[Invoice]:
                 An IntentResult object containing the updated invoice, or old invoice if update was not successful.
         """
-        invoice.paid = not invoice.paid
-        result: IntentResult = self._invoicing_data_source.save_invoice(invoice)
-        if not result.was_intent_successful:
-            result.log_message_if_any()
+        try:
             invoice.paid = not invoice.paid
-            result.data = invoice
-        return result
+            self._invoicing_data_source.save_invoice(invoice)
+            return IntentResult(
+                was_intent_successful=True,
+                data=invoice,
+            )
+        except Exception as ex:
+            logger.error(f"❌ Error toggling invoice paid status: {ex}")
+            logger.exception(ex)
+            return IntentResult(
+                was_intent_successful=False,
+                error_msg="Failed to toggle the invoice paid status. Check the logs for more details.",
+            )
 
     def toggle_invoice_cancelled_status(
         self, invoice: Invoice
@@ -228,33 +266,20 @@ class InvoicingIntent:
             IntentResult[Invoice]:
                 An IntentResult object containing the updated invoice, or old invoice if update was not successful.
         """
-        invoice.cancelled = not invoice.cancelled
-        result: IntentResult = self._invoicing_data_source.save_invoice(invoice)
-        if not result.was_intent_successful:
-            result.log_message_if_any()
+        try:
             invoice.cancelled = not invoice.cancelled
-            result.data = invoice
-        return result
-
-    def toggle_invoice_sent_status(self, invoice: Invoice) -> IntentResult[Invoice]:
-        """
-        Toggles the "sent" status of an invoice and updates it in the data source.
-
-        Parameters:
-            invoice (Invoice):
-                The invoice object whose "sent" status will be toggled.
-
-        Returns:
-            IntentResult[Invoice]:
-                An IntentResult object containing the updated invoice, or old invoice if update was not successful.
-        """
-        invoice.sent = not invoice.sent
-        result: IntentResult = self._invoicing_data_source.save_invoice(invoice)
-        if not result.was_intent_successful:
-            result.log_message_if_any()
-            invoice.sent = not invoice.sent
-            result.data = invoice
-        return result
+            self._invoicing_data_source.save_invoice(invoice)
+            return IntentResult(
+                was_intent_successful=True,
+                data=invoice,
+            )
+        except Exception as ex:
+            logger.error(f"❌ Error toggling invoice cancelled status: {ex}")
+            logger.exception(ex)
+            return IntentResult(
+                was_intent_successful=False,
+                error_msg="Failed to toggle the invoice cancelled status. Check the logs for more details.",
+            )
 
     def view_invoice(self, invoice: Invoice) -> IntentResult[None]:
         """TODO Attempts to open the invoice in the default pdf viewer"""
