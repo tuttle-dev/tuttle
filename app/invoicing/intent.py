@@ -119,6 +119,7 @@ class InvoicingIntent:
                         user=user,
                         invoice=invoice,
                         out_dir=Path.home() / ".tuttle" / "Invoices",
+                        only_final=True,
                     )
                     logger.info(f"✅ rendered invoice for {project.title}")
                 except Exception as ex:
@@ -223,13 +224,7 @@ class InvoicingIntent:
         """TODO Attempts to open the invoice in the default pdf viewer"""
         try:
             assert invoice.rendered
-            pdf_path = (
-                Path().home()
-                / ".tuttle"
-                / "Invoices"
-                / invoice.prefix
-                / invoice.file_name
-            )
+            pdf_path = Path().home() / ".tuttle" / "Invoices" / invoice.file_name
             assert pdf_path.exists()
             preview_pdf(pdf_path)
             return IntentResult(was_intent_successful=True)
