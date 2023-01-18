@@ -185,15 +185,21 @@ class InvoicingListView(TuttleView, UserControl):
                 self.invoices_list_control.controls.append(invoiceItemControl)
 
     def on_edit_invoice_clicked(self, invoice: Invoice):
-        if self.editor is not None:
-            self.editor.close_dialog()
-        self.editor = InvoicingEditorPopUp(
-            dialog_controller=self.dialog_controller,
-            on_submit=self.on_save_invoice,
-            projects_map=self.active_projects,
-            invoice=invoice,
+        # show a snack bar message that invoices are not supposed to be edited
+        self.show_snack(
+            "Invoices are not editable. Instead, delete and recreate the invoice.",
+            is_error=True,
         )
-        self.editor.open_dialog()
+
+        # if self.editor is not None:
+        #     self.editor.close_dialog()
+        # self.editor = InvoicingEditorPopUp(
+        #     dialog_controller=self.dialog_controller,
+        #     on_submit=self.on_save_invoice,
+        #     projects_map=self.active_projects,
+        #     invoice=invoice,
+        # )
+        # self.editor.open_dialog()
 
     def on_mail_invoice(self, invoice: Invoice):
         result = self.intent.send_invoice_by_mail(invoice)
