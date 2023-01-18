@@ -1,6 +1,7 @@
-from .model import Preferences, PreferencesStorageKeys
 from core.abstractions import ClientStorage
 from core.intent_result import IntentResult
+
+from .model import Preferences, PreferencesStorageKeys
 
 
 class PreferencesIntent:

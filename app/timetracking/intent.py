@@ -1,16 +1,17 @@
+from typing import Optional, Type, Union
+
+from core.abstractions import ClientStorage
+from core.intent_result import IntentResult
+from pandas import DataFrame
+from preferences.intent import PreferencesIntent
+from preferences.model import CloudAccounts, PreferencesStorageKeys
+
 from .data_source import (
     TimeTrackingCloudCalendarSource,
     TimeTrackingDataFrameSource,
     TimeTrackingFileCalendarSource,
 )
-from typing import Type, Union
-from pandas import DataFrame
-from core.abstractions import ClientStorage
-from core.intent_result import IntentResult
-from preferences.model import PreferencesStorageKeys, CloudAccounts
-from preferences.intent import PreferencesIntent
 from .model import CloudCalendarInfo, CloudConfigurationResult
-from typing import Optional
 
 
 class TimeTrackingIntent:

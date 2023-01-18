@@ -1,50 +1,50 @@
-import datetime
 import typing
 from typing import Callable, List, Optional, Union
-from .abstractions import DialogHandler
-from .utils import AlertDialogControls, KEYBOARD_PASSWORD
+
+import datetime
+
 from flet import (
     AlertDialog,
-    alignment,
-    ResponsiveRow,
     Column,
     Container,
     Dropdown,
     ElevatedButton,
     FilledButton,
+    Icon,
     Image,
+    PopupMenuButton,
+    PopupMenuItem,
     ProgressBar,
-    border_radius,
+    ResponsiveRow,
     Row,
     Text,
     TextField,
     TextStyle,
     UserControl,
+    alignment,
+    border_radius,
     dropdown,
-    padding,
-    PopupMenuButton,
-    PopupMenuItem,
-    Icon,
     icons,
+    padding,
 )
-
 
 from res import colors, dimens, fonts, image_paths
 
-
+from .abstractions import DialogHandler
 from .utils import (
     AUTO_SCROLL,
+    CENTER_ALIGNMENT,
     CONTAIN,
     KEYBOARD_MULTILINE,
-    KEYBOARD_TEXT,
-    START_ALIGNMENT,
-    TXT_ALIGN_LEFT,
-    TXT_ALIGN_CENTER,
-    CENTER_ALIGNMENT,
-    SPACE_BETWEEN_ALIGNMENT,
     KEYBOARD_NONE,
+    KEYBOARD_PASSWORD,
+    KEYBOARD_TEXT,
+    SPACE_BETWEEN_ALIGNMENT,
+    START_ALIGNMENT,
+    TXT_ALIGN_CENTER,
+    TXT_ALIGN_LEFT,
+    AlertDialogControls,
 )
-
 
 lgSpace = Container(height=dimens.SPACE_LG, width=dimens.SPACE_STD, padding=0, margin=0)
 mdSpace = Container(height=dimens.SPACE_MD, width=dimens.SPACE_MD, padding=0, margin=0)

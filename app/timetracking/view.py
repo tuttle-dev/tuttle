@@ -1,25 +1,28 @@
 from typing import Callable, Optional
+
 from pathlib import Path
+
 from flet import (
     AlertDialog,
-    FilePickerResultEvent,
     Column,
     Container,
-    ResponsiveRow,
+    FilePickerResultEvent,
     FilePickerUploadEvent,
+    ResponsiveRow,
     Text,
     UserControl,
     border,
 )
-from tuttle.calendar import Calendar
-from pandas import DataFrame
-from .model import CloudCalendarInfo, CloudConfigurationResult
-from .intent import TimeTrackingIntent
-from core.abstractions import DialogHandler, TuttleView
-from core import views, utils
-from res import colors, fonts, res_utils, dimens
 
-from core import tabular
+from core import tabular, utils, views
+from core.abstractions import DialogHandler, TuttleView
+from pandas import DataFrame
+from res import colors, dimens, fonts, res_utils
+
+from tuttle.calendar import Calendar
+
+from .intent import TimeTrackingIntent
+from .model import CloudCalendarInfo, CloudConfigurationResult
 
 
 class TwoFAPopUp(DialogHandler):

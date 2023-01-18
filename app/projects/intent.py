@@ -1,16 +1,14 @@
-from typing import Optional, Mapping, Union
+from typing import Mapping, Optional, Union
+
 import datetime
-from core.intent_result import IntentResult
-from .data_source import ProjectDataSource
 
 from clients.intent import ClientsIntent
 from contracts.intent import ContractsIntent
+from core.intent_result import IntentResult
 
-from tuttle.model import (
-    Client,
-    Project,
-    Contract,
-)
+from tuttle.model import Client, Contract, Project
+
+from .data_source import ProjectDataSource
 
 
 class ProjectsIntent:

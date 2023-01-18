@@ -1,24 +1,25 @@
+from typing import Callable
+
 from flet import (
+    Card,
     Column,
     Container,
-    Row,
-    UserControl,
-    Card,
     IconButton,
     ResponsiveRow,
+    Row,
+    UserControl,
     icons,
     margin,
     padding,
 )
-from core.abstractions import TuttleViewParams
-from typing import Callable
-from tuttle.model import User
 
 from auth.intent import AuthIntent
-from core.abstractions import TuttleView
-from core import views, utils
+from core import utils, views
+from core.abstractions import TuttleView, TuttleViewParams
 from core.intent_result import IntentResult
 from res import dimens, fonts, image_paths, res_utils
+
+from tuttle.model import User
 
 from .intent import AuthIntent
 

@@ -1,6 +1,7 @@
 """Helper models for timetracking"""
 
 from dataclasses import dataclass
+
 from preferences.model import CloudAccounts
 
 

@@ -1,47 +1,44 @@
+from typing import Callable, Optional
+
 from enum import Enum
 
-from tuttle.time import Cycle, TimeUnit
-from typing import Callable, Optional
-from clients.view import ClientEditorPopUp
 from flet import (
     AlertDialog,
-    TextButton,
-    margin,
-    ElevatedButton,
     ButtonStyle,
     Card,
     Column,
     Container,
+    ElevatedButton,
     GridView,
+    Icon,
     IconButton,
+    ListTile,
     ResponsiveRow,
     Row,
     Text,
+    TextButton,
     UserControl,
     border_radius,
-    Icon,
     icons,
+    margin,
     padding,
-    ListTile,
 )
-from clients.view import ClientViewPopUp
 
-from contracts.intent import ContractsIntent
-from core.abstractions import TuttleView, DialogHandler, TuttleViewParams
-from res import colors, dimens, fonts, res_utils
+from clients.view import ClientEditorPopUp, ClientViewPopUp
 from contracts.intent import ContractsIntent
 from core import utils, views
+from core.abstractions import DialogHandler, TuttleView, TuttleViewParams
 from core.intent_result import IntentResult
 from core.models import (
-    get_time_unit_from_value,
     get_cycle_from_value,
     get_cycle_values_as_list,
+    get_time_unit_from_value,
     get_time_unit_values_as_list,
 )
-from tuttle.model import (
-    Contract,
-    Client,
-)
+from res import colors, dimens, fonts, res_utils
+
+from tuttle.model import Client, Contract
+from tuttle.time import Cycle, TimeUnit
 
 LABEL_WIDTH = 80
 

@@ -7,9 +7,11 @@ warnings.warn(
 )
 
 
-from enum import Enum
 import base64
+from enum import Enum
+
 from flet import icons
+
 import pycountry
 
 from tuttle.dev import deprecated
