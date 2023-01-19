@@ -52,17 +52,9 @@ Desktop apps are great - let's have more of them. We are consciously developing 
 
 ## Prototype Test
 
-### Demo Notebooks
-
-A demo of the core functionality is available as a series of Jupyter notebooks at [`notebooks/walkthrough/`](https://github.com/tuttle-dev/tuttle/tree/main/notebooks/walkthrough). If you have basic Python programming skills you will be able to test this. We appreciate your feedback.
-
-### Demo App
-
-A desktop app is under development. Currently, the app includes some demo functionality.
-
 ## Setup
 
-1. Clone or download the current version from the `main` branch.
+1. Clone or download the current version.
 
 2. We recommend installation into a new [virtual environment](https://calmcode.io/virtualenv/intro.html).
 
@@ -72,24 +64,22 @@ A desktop app is under development. Currently, the app includes some demo functi
 $ python setup.py develop
 ```
 
+or
+
+```shell
+pip install -e .
+```
+
 4. To verify, run the unit tests:
 
 ```shell
 $ pytest
 ```
 
-5. Start the demo app with
+1. Start the app with
 
 ```shell
-$ python app/Tuttle.py
-```
-
-and/or
-
-6. Open and run the demo notebooks with Jupyter Lab.
-
-```shell
-$ jupyter lab
+$ python app/app.py
 ```
 
 
