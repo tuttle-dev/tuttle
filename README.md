@@ -49,10 +49,9 @@ We develop the solution as a GUI application based on web technologies. Sensitiv
 
 Desktop apps are great - let's have more of them. We are consciously developing a desktop app with local data storage, not a web app, since your business data is none of our business.
 
-
 ## Prototype Test
 
-## Setup
+### Setup
 
 1. Clone or download the current version.
 
