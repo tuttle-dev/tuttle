@@ -1,6 +1,9 @@
 """Top-level package for tuttle."""
 
-__author__ = """Christian Staudt"""
+__authors__ = [
+    "Christian Staudt",
+    "Vladimir Peter",
+]
 __version__ = "1.0.0"
 
 from . import (
@@ -18,8 +21,3 @@ from . import (
     os_functions,
     mail,
 )
-
-
-import pandas
-
-pandas.set_option("display.max_columns", 100)
