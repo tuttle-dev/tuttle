@@ -585,7 +585,11 @@ def pop_up_menu_item(icon, txt, on_click, is_delete: bool = False):
     return PopupMenuItem(
         content=Row(
             [
-                Icon(icon, color=colors.ERROR_COLOR if is_delete else None),
+                Icon(
+                    icon,
+                    size=dimens.ICON_SIZE,
+                    color=colors.ERROR_COLOR if is_delete else None,
+                ),
                 get_body_txt(
                     txt,
                     size=fonts.BUTTON_SIZE,
@@ -645,7 +649,7 @@ def status_label(txt: str, is_done: bool):
         controls=[
             Icon(
                 icons.CHECK_CIRCLE_OUTLINE if is_done else icons.RADIO_BUTTON_UNCHECKED,
-                size=14,
+                size=dimens.SM_ICON_SIZE,
                 color=colors.PRIMARY_COLOR if is_done else colors.GRAY_COLOR,
             ),
             get_body_txt(txt),

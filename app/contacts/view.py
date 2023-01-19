@@ -48,7 +48,10 @@ class ContactCard(UserControl):
     def build(self):
         self.contact_info_container.controls = [
             ListTile(
-                leading=Icon(utils.TuttleComponentIcons.contact_icon),
+                leading=Icon(
+                    utils.TuttleComponentIcons.contact_icon,
+                    size=dimens.ICON_SIZE,
+                ),
                 title=views.get_body_txt(utils.truncate_str(self.contact.name)),
                 subtitle=views.get_body_txt(
                     utils.truncate_str(self.contact.company), color=colors.GRAY_COLOR

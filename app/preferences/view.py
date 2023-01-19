@@ -40,7 +40,7 @@ from res.dimens import (
     SPACE_XS,
 )
 from res.theme import THEME_MODES
-
+from res import dimens
 from .model import CloudAccounts
 
 
@@ -114,7 +114,10 @@ class PreferencesScreen(TuttleView, UserControl):
                 alignment=CENTER_ALIGNMENT,
                 horizontal_alignment=CENTER_ALIGNMENT,
                 controls=[
-                    Icon(icon, size=24),
+                    Icon(
+                        icon,
+                        size=dimens.ICON_SIZE,
+                    ),
                     smSpace,
                     Text(label),
                     mdSpace,
@@ -138,6 +141,7 @@ class PreferencesScreen(TuttleView, UserControl):
                 controls=[
                     IconButton(
                         icon=icons.KEYBOARD_ARROW_LEFT,
+                        icon_size=dimens.ICON_SIZE,
                         on_click=self.on_navigate_back,
                     ),
                 ]
@@ -210,7 +214,10 @@ class PreferencesScreen(TuttleView, UserControl):
                 controls=[
                     Row(
                         controls=[
-                            Icon(icons.SETTINGS_SUGGEST_OUTLINED),
+                            Icon(
+                                icons.SETTINGS_SUGGEST_OUTLINED,
+                                size=dimens.ICON_SIZE,
+                            ),
                             Text(
                                 "Preferences",
                             ),

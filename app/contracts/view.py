@@ -59,7 +59,10 @@ class ContractCard(UserControl):
     def build(self):
         self.contract_info_container.controls = [
             ListTile(
-                leading=Icon(utils.TuttleComponentIcons.contract_icon),
+                leading=Icon(
+                    utils.TuttleComponentIcons.contract_icon,
+                    size=dimens.ICON_SIZE,
+                ),
                 title=views.get_body_txt(self.contract.title),
                 subtitle=views.get_body_txt(
                     self.contract.client.name if self.contract.client else "",
@@ -560,6 +563,7 @@ class ContractEditorScreen(TuttleView, UserControl):
                                     IconButton(
                                         icon=icons.CHEVRON_LEFT_ROUNDED,
                                         on_click=self.on_navigate_back,
+                                        icon_size=dimens.ICON_SIZE,
                                     ),
                                     self.form_title_ui_field,
                                 ]
@@ -584,6 +588,7 @@ class ContractEditorScreen(TuttleView, UserControl):
                                     IconButton(
                                         icon=icons.ADD_CIRCLE_OUTLINE,
                                         on_click=self.on_add_client_clicked,
+                                        icon_size=dimens.ICON_SIZE,
                                     ),
                                 ],
                             ),
@@ -865,10 +870,12 @@ class ViewContractScreen(TuttleView, UserControl):
             icon=icons.EDIT_OUTLINED,
             tooltip="Edit contract",
             on_click=self.on_edit_clicked,
+            icon_size=dimens.ICON_SIZE,
         )
         self.mark_as_complete_btn = IconButton(
             icon=icons.CHECK_CIRCLE_OUTLINE,
             icon_color=colors.PRIMARY_COLOR,
+            icon_size=dimens.ICON_SIZE,
             tooltip="Mark contract as completed",
             on_click=self.on_mark_as_complete_clicked,
         )
@@ -877,6 +884,7 @@ class ViewContractScreen(TuttleView, UserControl):
             icon_color=colors.ERROR_COLOR,
             tooltip="Delete contract",
             on_click=self.on_delete_clicked,
+            icon_size=dimens.ICON_SIZE,
         )
 
         self.client_control = Text(
@@ -943,11 +951,13 @@ class ViewContractScreen(TuttleView, UserControl):
                             IconButton(
                                 icon=icons.KEYBOARD_ARROW_LEFT,
                                 on_click=self.on_navigate_back,
+                                icon_size=dimens.ICON_SIZE,
                             ),
                             TextButton(
                                 "Client",
                                 tooltip="View contract's client",
                                 on_click=self.on_view_client_clicked,
+                                icon_size=dimens.ICON_SIZE,
                             ),
                         ]
                     ),
@@ -960,7 +970,10 @@ class ViewContractScreen(TuttleView, UserControl):
                             self.loading_indicator,
                             Row(
                                 controls=[
-                                    Icon(icons.HANDSHAKE_ROUNDED),
+                                    Icon(
+                                        icons.HANDSHAKE_ROUNDED,
+                                        size=dimens.ICON_SIZE,
+                                    ),
                                     Column(
                                         expand=True,
                                         spacing=0,

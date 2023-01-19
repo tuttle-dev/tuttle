@@ -59,7 +59,10 @@ class ClientCard(UserControl):
 
         self.client_info_container.controls = [
             ListTile(
-                leading=Icon(utils.TuttleComponentIcons.client_icon),
+                leading=Icon(
+                    utils.TuttleComponentIcons.client_icon,
+                    size=dimens.ICON_SIZE,
+                ),
                 title=views.get_body_txt(self.client.name),
                 trailing=editor_controls,
             ),
