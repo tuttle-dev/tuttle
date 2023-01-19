@@ -78,15 +78,22 @@ def create_fake_contract(
     """
     Create a fake contract for the given client.
     """
+    unit = random.choice(list(TimeUnit))
+    if unit == TimeUnit.day:
+        rate = fake.random_int(200, 1000)  # realistic distribution for day rates
+    elif unit == TimeUnit.hour:
+        rate = fake.random_int(10, 100)  # realistic distribution for hourly rates
+    else:
+        rate = fake.random_int(1, 1000)
     return Contract(
         title=f"{client.name} service contract",
         client=client,
         signature_date=fake.date_this_year(before_today=True),
         start_date=fake.date_this_year(after_today=True),
-        rate=fake.random_int(1, 1000),
+        rate=rate,
         currency="EUR",  # TODO: Use actual currency
         VAT_rate=round(random.uniform(0.05, 0.2), 2),
-        unit=random.choice(list(TimeUnit)),
+        unit=unit,
         units_per_workday=random.randint(1, 12),
         volume=fake.random_int(1, 1000),
         term_of_payment=fake.random_int(1, 31),
