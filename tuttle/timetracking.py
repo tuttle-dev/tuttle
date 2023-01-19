@@ -14,15 +14,65 @@ from pandas import DataFrame
 
 
 from . import schema
-from .calendar import Calendar, ICloudCalendar, FileCalendar
+from .calendar import Calendar, ICloudCalendar, ICSCalendar
 from .model import (
     TimeTrackingItem,
     User,
     Project,
     Timesheet,
 )
+from tuttle.dev import deprecated
 
 
+def create_timesheet(
+    timetracking_data: DataFrame,
+    project: Project,
+    period_start: datetime.date,
+    period_end: datetime.date,
+    date: datetime.date = datetime.date.today(),
+    comment: str = "",
+    item_description: str = None,
+) -> Timesheet:
+    """Create a timesheet from a dataframe of time tracking data."""
+
+    # convert period_start and period_end to strings that can be used as index for a DateTimeIndex
+    period_start = period_start.strftime("%Y-%m-%d")
+    period_end = period_end.strftime("%Y-%m-%d")
+
+    tag_query = f"tag == '{project.tag}'"
+    if period_end:
+        ts_table = (
+            timetracking_data.loc[period_start:period_end].query(tag_query).sort_index()
+        )
+        if ts_table.empty:
+            raise ValueError(
+                f"No time tracking data found for project {project.title} in period {period_start} - {period_end}"
+            )
+    else:
+        ts_table = timetracking_data.loc[period_start].query(tag_query).sort_index()
+    # convert all-day entries
+    ts_table.loc[ts_table["all_day"], "duration"] = (
+        project.contract.unit.to_timedelta() * project.contract.units_per_workday
+    )
+    if item_description:
+        # TODO: extract item description from calendar
+        ts_table["description"] = item_description
+
+    period_str = f"{period_start} - {period_end}"
+    ts = Timesheet(
+        title=f"{project.title} - {period_str}",
+        # period=period,
+        project=project,
+        comment=comment,
+        date=date,
+    )
+    for record in ts_table.reset_index().to_dict("records"):
+        ts.items.append(TimeTrackingItem(**record))
+
+    return ts
+
+
+@deprecated
 def generate_timesheet(
     source,
     project: Project,
@@ -119,7 +169,7 @@ def import_from_calendar(cal: Calendar) -> DataFrame:
     if issubclass(type(cal), ICloudCalendar):
         timetracking_data = cal.to_data()
         return timetracking_data
-    elif issubclass(type(cal), FileCalendar):
+    elif issubclass(type(cal), ICSCalendar):
         timetracking_data = cal.to_data()
         return timetracking_data
     else:

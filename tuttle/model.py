@@ -3,7 +3,7 @@
 import email
 from typing import Optional, List, Dict, Type
 from pydantic import constr, BaseModel, condecimal
-
+from enum import Enum
 import datetime
 import hashlib
 import uuid
@@ -21,13 +21,10 @@ import decimal
 from decimal import Decimal
 import pandas
 
-# TODO: support currencies
-# from money.money import Money
-# from money.currency import Currency
 
 from .time import Cycle, TimeUnit
 
-# TODO: created & modified time stamps
+from .dev import deprecated
 
 
 def help(model_class):
@@ -64,11 +61,11 @@ class Address(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     # name: str
-    street: str
-    number: str
-    city: str
-    postal_code: str
-    country: str
+    street: str = Field(default="")
+    number: str = Field(default="")
+    city: str = Field(default="")
+    postal_code: str = Field(default="")
+    country: str = Field(default="")
     users: List["User"] = Relationship(back_populates="address")
     contacts: List["Contact"] = Relationship(back_populates="address")
 
@@ -94,16 +91,32 @@ class Address(SQLModel, table=True):
         """
         )
 
+    @property
+    def is_empty(self) -> bool:
+        """True if all fields are empty."""
+        return all(
+            [
+                not self.street,
+                not self.number,
+                not self.city,
+                not self.postal_code,
+                not self.country,
+            ]
+        )
+
 
 class User(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
     subtitle: str
-    website: str
+    website: Optional[str]
     email: str
     phone_number: str
+    profile_photo_path: Optional[str] = Field(default=None)
     address_id: Optional[int] = Field(default=None, foreign_key="address.id")
-    address: Optional[Address] = Relationship(back_populates="users")
+    address: Optional[Address] = Relationship(
+        back_populates="users", sa_relationship_kwargs={"lazy": "subquery"}
+    )
     VAT_number: Optional[str]
     # User 1:1* ICloudAccount
     icloud_account_id: Optional[int] = Field(
@@ -118,7 +131,10 @@ class User(SQLModel, table=True):
     # google_account: Optional["GoogleAccount"] = Relationship(back_populates="user")
     # User 1:1 business BankAccount
     bank_account_id: Optional[int] = Field(default=None, foreign_key="bankaccount.id")
-    bank_account: Optional["BankAccount"] = Relationship(back_populates="user")
+    bank_account: Optional["BankAccount"] = Relationship(
+        back_populates="user",
+        sa_relationship_kwargs={"lazy": "subquery"},
+    )
     # TODO: path to logo image
     logo: Optional[str]
 
@@ -160,9 +176,11 @@ class Contact(SQLModel, table=True):
     company: Optional[str]
     email: Optional[str]
     address_id: Optional[int] = Field(default=None, foreign_key="address.id")
-    address: Optional[Address] = Relationship(back_populates="contacts")
+    address: Optional[Address] = Relationship(
+        back_populates="contacts", sa_relationship_kwargs={"lazy": "subquery"}
+    )
     invoicing_contact_of: List["Client"] = Relationship(
-        back_populates="invoicing_contact"
+        back_populates="invoicing_contact", sa_relationship_kwargs={"lazy": "subquery"}
     )
     # post address
 
@@ -179,10 +197,19 @@ class Contact(SQLModel, table=True):
         else:
             return None
 
-    def print_address(self):
+    def print_address(self, address_only: bool = False):
         """Print address in common format."""
         if self.address is None:
             return ""
+
+        if address_only:
+            return textwrap.dedent(
+                f"""
+                {self.address.street} {self.address.number}
+                {self.address.postal_code} {self.address.city}
+                {self.address.country}"""
+            )
+
         return textwrap.dedent(
             f"""
         {self.name}
@@ -198,11 +225,16 @@ class Client(SQLModel, table=True):
     """A client the freelancer has contracted with."""
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    name: str
+    name: str = Field(default="")
     # Client 1:1 invoicing Contact
     invoicing_contact_id: int = Field(default=None, foreign_key="contact.id")
-    invoicing_contact: Contact = Relationship(back_populates="invoicing_contact_of")
-    contracts: List["Contract"] = Relationship(back_populates="client")
+    invoicing_contact: Contact = Relationship(
+        back_populates="invoicing_contact_of",
+        sa_relationship_kwargs={"lazy": "subquery"},
+    )
+    contracts: List["Contract"] = Relationship(
+        back_populates="client", sa_relationship_kwargs={"lazy": "subquery"}
+    )
     # non-invoice related contact person?
 
 
@@ -212,7 +244,7 @@ class Contract(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     title: str = Field(description="Short description of the contract.")
     client: Client = Relationship(
-        back_populates="contracts",
+        back_populates="contracts", sa_relationship_kwargs={"lazy": "subquery"}
     )
     signature_date: datetime.date = Field(
         description="Date on which the contract was signed",
@@ -230,6 +262,9 @@ class Contract(SQLModel, table=True):
     )
     rate: condecimal(decimal_places=2) = Field(
         description="Rate of remuneration",
+    )
+    is_completed: bool = Field(
+        default=False, description="flag marking if contract has been completed"
     )
     currency: str  # TODO: currency representation
     VAT_rate: Decimal = Field(
@@ -253,13 +288,39 @@ class Contract(SQLModel, table=True):
         default=31,
     )
     billing_cycle: Cycle = Field(sa_column=sqlalchemy.Column(sqlalchemy.Enum(Cycle)))
-    projects: List["Project"] = Relationship(back_populates="contract")
-    invoices: List["Invoice"] = Relationship(back_populates="contract")
+    projects: List["Project"] = Relationship(
+        back_populates="contract", sa_relationship_kwargs={"lazy": "subquery"}
+    )
+    invoices: List["Invoice"] = Relationship(
+        back_populates="contract", sa_relationship_kwargs={"lazy": "subquery"}
+    )
     # TODO: model contractual promises like "at least 2 days per week"
 
     @property
     def volume_as_time(self):
         return self.volume * self.unit.to_timedelta()
+
+    def is_active(self) -> bool:
+        if self.end_date:
+            today = datetime.date.today()
+            return self.end_date > today
+        else:
+            return True
+
+    def is_upcoming(self) -> bool:
+        today = datetime.date.today()
+        return self.start_date > today
+
+    def get_status(self) -> str:
+        if self.is_active():
+            return "Active"
+        elif self.is_upcoming():
+            return "Upcoming"
+        elif self.is_completed:
+            return "Completed"
+        else:
+            # default
+            return "All"
 
 
 class Project(SQLModel, table=True):
@@ -267,21 +328,66 @@ class Project(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     title: str = Field(
-        description="A short, unique description", sa_column_kwargs={"unique": True}
+        description="A short, unique title", sa_column_kwargs={"unique": True}
+    )
+    description: str = Field(
+        description="A longer description of the project", default=""
     )
     # TODO: tag: constr(regex=r"#\S+")
     tag: str = Field(description="A unique tag", sa_column_kwargs={"unique": True})
     start_date: datetime.date
     end_date: datetime.date
+    is_completed: bool = Field(
+        default=False, description="marks if the project is completed"
+    )
     # Project m:n Contract
     contract_id: Optional[int] = Field(default=None, foreign_key="contract.id")
-    contract: Contract = Relationship(back_populates="projects")
+    contract: Contract = Relationship(
+        back_populates="projects",
+        sa_relationship_kwargs={"lazy": "subquery"},
+    )
     # Project 1:n Timesheet
-    timesheets: List["Timesheet"] = Relationship(back_populates="project")
+    timesheets: List["Timesheet"] = Relationship(
+        back_populates="project",
+        sa_relationship_kwargs={"lazy": "subquery"},
+    )
+    # Project 1:n Invoice
+    invoices: List["Invoice"] = Relationship(
+        back_populates="project",
+        sa_relationship_kwargs={"lazy": "subquery"},
+    )
 
     @property
     def client(self):
         return self.contract.client
+
+    def get_brief_description(self):
+        if len(self.description) <= 108:
+            return self.description
+        else:
+            return f"{self.description[0:108]}..."
+
+    def is_active(self) -> bool:
+        if self.end_date:
+            today = datetime.date.today()
+            return self.end_date >= today
+        else:
+            return True
+
+    def is_upcoming(self) -> bool:
+        today = datetime.date.today()
+        return self.start_date > today
+
+    def get_status(self) -> str:
+        if self.is_active():
+            return "Active"
+        elif self.is_upcoming():
+            return "Upcoming"
+        elif self.is_completed:
+            return "Completed"
+        else:
+            # default
+            return "All"
 
 
 class TimeTrackingItem(SQLModel, table=True):
@@ -308,7 +414,10 @@ class Timesheet(SQLModel, table=True):
     # table: Dict = Field(default={}, sa_column=sqlalchemy.Column(sqlalchemy.JSON))
     # Timesheet n:1 Project
     project_id: Optional[int] = Field(default=None, foreign_key="project.id")
-    project: Project = Relationship(back_populates="timesheets")
+    project: Project = Relationship(
+        back_populates="timesheets",
+        sa_relationship_kwargs={"lazy": "subquery"},
+    )
     # invoice: "Invoice" = Relationship(back_populates="timesheet")
     # period: str
     comment: Optional[str]
@@ -334,8 +443,10 @@ class Timesheet(SQLModel, table=True):
 
 
 class Invoice(SQLModel, table=True):
+    """An invoice is a bill for a client."""
+
     id: Optional[int] = Field(default=None, primary_key=True)
-    number: Optional[str]
+    number: str
     # date and time
     date: datetime.date
     # due_date: datetime.date
@@ -345,14 +456,26 @@ class Invoice(SQLModel, table=True):
     # timesheet: Timesheet = Relationship(back_populates="invoice")
     # Invoice n:1 Contract ?
     contract_id: Optional[int] = Field(default=None, foreign_key="contract.id")
-    contract: Contract = Relationship(back_populates="invoices")
-    # status
-    sent: Optional[bool]
-    paid: Optional[bool]
-    cancelled: Optional[bool]
+    contract: Contract = Relationship(
+        back_populates="invoices",
+        sa_relationship_kwargs={"lazy": "subquery"},
+    )
+    # Invoice n:1 Project
+    project_id: Optional[int] = Field(default=None, foreign_key="project.id")
+    project: Project = Relationship(
+        back_populates="invoices",
+        sa_relationship_kwargs={"lazy": "subquery"},
+    )
+    # status -- corresponds to InvoiceStatus enum above
+    sent: Optional[bool] = Field(default=False)
+    paid: Optional[bool] = Field(default=False)
+    cancelled: Optional[bool] = Field(default=False)
     # payment: Optional["Payment"] = Relationship(back_populates="invoice")
     # invoice items
-    items: List["InvoiceItem"] = Relationship(back_populates="invoice")
+    items: List["InvoiceItem"] = Relationship(
+        back_populates="invoice",
+        sa_relationship_kwargs={"lazy": "subquery"},
+    )
     rendered: bool = Field(default=False)
 
     #
@@ -418,7 +541,10 @@ class InvoiceItem(SQLModel, table=True):
     VAT_rate: Decimal
     # invoice
     invoice_id: Optional[int] = Field(default=None, foreign_key="invoice.id")
-    invoice: Invoice = Relationship(back_populates="items")
+    invoice: Invoice = Relationship(
+        back_populates="items",
+        sa_relationship_kwargs={"lazy": "subquery"},
+    )
 
     @property
     def subtotal(self) -> Decimal:
@@ -447,3 +573,7 @@ class TimelineItem(SQLModel, table=True):
         )
     )
     content: str
+
+
+class Settings(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)

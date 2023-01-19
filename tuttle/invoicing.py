@@ -9,19 +9,21 @@ import shutil
 import pandas
 import datetime
 
-from .model import InvoiceItem, Invoice, Contract, User
+from .model import InvoiceItem, Invoice, Contract, User, Project
 from .timetracking import Timesheet
 
 
 def generate_invoice(
     timesheets: List[Timesheet],
     contract: Contract,
+    project: Project,
     date: datetime.date = datetime.date.today(),
     counter: int = None,
 ) -> Invoice:
     invoice = Invoice(
         date=date,
         contract=contract,
+        project=project,
     )
     for timesheet in timesheets:
         total_hours = timesheet.total / pandas.Timedelta("1h")

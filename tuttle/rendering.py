@@ -117,15 +117,17 @@ def _convert_html_to_pdf_with_QT(
 def render_invoice(
     user: User,
     invoice: Invoice,
-    document_format: str = "html",
+    document_format: str = "pdf",
     out_dir: str = None,
-    style: str = None,
+    style: str = "anvil",
+    only_final: bool = False,
 ) -> str:
     """Render an Invoice using an HTML template.
 
     Args:
         user (User): [description]
         invoice (Invoice): [description]
+        only_output (bool, optional): Store only the final output. Defaults to False.
 
     Returns:
         str: [description]
@@ -152,7 +154,6 @@ def render_invoice(
         invoice=invoice,
         style=style,
     )
-    # TODO: output as PDF
     # output
     if out_dir is None:
         return html
@@ -191,6 +192,19 @@ def render_invoice(
                 css_paths=css_paths,
                 out_path=invoice_dir / Path(f"{invoice.prefix}.pdf"),
             )
+        if only_final:
+            final_output_path = out_dir / Path(f"{invoice.prefix}.{document_format}")
+            if document_format == "pdf":
+                shutil.move(
+                    invoice_dir / Path(f"{invoice.prefix}.pdf"), final_output_path
+                )
+            else:
+                shutil.move(
+                    invoice_dir / Path(f"{invoice.prefix}.html"), final_output_path
+                )
+            shutil.rmtree(invoice_dir)
+        # finally set the rendered flag
+        invoice.rendered = True
     # finally set the rendered flag
     invoice.rendered = True
 

@@ -22,6 +22,7 @@ from . import (
     calendar,
     cloud,
     os_functions,
+    mail,
 )
 from .preferences import Preferences
 from .model import (
@@ -31,7 +32,10 @@ from .model import (
     Invoice,
 )
 
+from .dev import deprecated
 
+
+@deprecated("Outdated approach")
 class Controller:
     """The application controller."""
 
@@ -243,12 +247,12 @@ class Controller:
             )
         elif timetracking_method == "file_calendar":
             if calendar_file_path:
-                timetracking_calendar = calendar.FileCalendar(
+                timetracking_calendar = calendar.ICSCalendar(
                     path=calendar_file_path,
                     name=calendar_file_path.stem,
                 )
             elif calendar_file_content:
-                timetracking_calendar = calendar.FileCalendar(
+                timetracking_calendar = calendar.ICSCalendar(
                     content=calendar_file_content,
                     name="TimeTracking",
                 )
@@ -366,11 +370,13 @@ class Controller:
                     invoice,
                     self.user,
                 )
-                os_functions.compose_email(
+                mail.compose_email(
                     recipient=email["recipient"],
                     subject=email["subject"],
                     body=email["body"],
-                    attachment_path=invoice_file_path,
+                    attachment_paths=[
+                        invoice_file_path,
+                    ],
                 )
             else:
                 logger.error(f"emailing not yet supported on {platform.system()}")

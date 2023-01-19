@@ -1,8 +1,11 @@
 """Calendar integration."""
+from typing import Optional
 
 from pathlib import Path
 import io
+import re
 
+from loguru import logger
 import ics
 import icloudpy
 import getpass
@@ -14,6 +17,15 @@ from pandera import check_io
 from pandas import DataFrame
 
 from . import schema
+
+
+def extract_hashtag(string) -> str:
+    """Extract the first hashtag from a string."""
+    match = re.search(r"#(\S+)", string)
+    if match:
+        return match.group(1)
+    else:
+        return ""
 
 
 def parse_pyicloud_datetime(dt_list):
@@ -40,14 +52,15 @@ class CloudCalendar(Calendar):
     pass
 
 
-class FileCalendar(Calendar):
-    """An .ics file based calendar."""
+class ICSCalendar(Calendar):
+    """An ICS data format based calendar."""
 
     def __init__(
         self,
         name: str,
-        path: str = None,
-        content: bytes = None,
+        path: Optional[str] = None,
+        content: Optional[bytes] = None,
+        ics_calendar: Optional[ics.Calendar] = None,
     ):
         super().__init__(name)
         if path is not None:
@@ -58,6 +71,8 @@ class FileCalendar(Calendar):
             self.content = content
             with io.TextIOWrapper(io.BytesIO(content), encoding="utf-8") as cal_file:
                 self.ical = ics.Calendar(cal_file.read())
+        elif ics_calendar is not None:
+            self.ical = ics_calendar
         else:
             raise ValueError(
                 "Either a path to or the content of an .ics file must be passed."
@@ -75,6 +90,7 @@ class FileCalendar(Calendar):
     @check_io(out=schema.time_tracking)
     def to_data(self) -> DataFrame:
         """Convert ics.Calendar to pandas.DataFrame"""
+
         event_data = pandas.DataFrame(
             [
                 (
@@ -92,8 +108,8 @@ class FileCalendar(Calendar):
             columns=["title", "description", "begin", "end", "all_day"],
         )
         event_data["duration"] = event_data["end"] - event_data["begin"]
-        # TODO: extract tag
-        event_data["tag"] = event_data["title"]
+        # apply the function extract_hashtag to the column title to derive the column tag
+        event_data["tag"] = event_data["title"].apply(extract_hashtag)
         # event_data["time"] = event_data["begin"]
         event_data = event_data.set_index("begin")
         return event_data
@@ -142,7 +158,7 @@ class ICloudCalendar(CloudCalendar):
                 "end": event_data["endDate"].apply(parse_pyicloud_datetime),
                 "title": event_data["title"],
                 # TODO: extract tag
-                "tag": event_data["title"],
+                "tag": extract_hashtag(event_data["title"]),
                 "description": event_data["description"],
                 "all_day": event_data["allDay"],
             }

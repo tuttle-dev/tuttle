@@ -138,3 +138,5 @@ dmypy.json
 # temporary
 notebooks/tmp
 tuttle_tests/tmp
+app/tmp
+app/assets/uploads

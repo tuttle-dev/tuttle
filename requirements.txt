@@ -1,5 +1,6 @@
 pytest
 pandas
+matplotlib
 altair
 pydantic
 sqlmodel
@@ -8,7 +9,9 @@ babel
 loguru
 pandera
 weasyprint
+matplotlib
+faker
 PyPDF2
-
 flet
+pycountry
 icloudpy
