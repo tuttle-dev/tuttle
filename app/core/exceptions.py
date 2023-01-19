@@ -1,4 +1,4 @@
-from typing import List, Any
+from typing import List, Any, Optional
 
 
 class DataIntegrityViolation(Exception):
@@ -13,7 +13,7 @@ class DataIntegrityViolation(Exception):
     def __init__(
         self,
         message: str,
-        dependent_objects: List[Any] = None,
+        dependent_objects: Optional[List[Any]] = None,
     ):
         self.message = message
         self.dependent_objects = dependent_objects
