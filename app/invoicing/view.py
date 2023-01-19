@@ -167,7 +167,6 @@ class InvoicingListView(TuttleView, UserControl):
                 invoice = self.invoices_to_display[key]
                 invoiceItemControl = InvoiceTile(
                     invoice=invoice,
-                    on_edit_clicked=self.on_edit_invoice_clicked,
                     on_delete_clicked=self.on_delete_invoice_clicked,
                     on_mail_invoice=self.on_mail_invoice,
                     on_view_invoice=self.on_view_invoice,
@@ -183,23 +182,6 @@ class InvoicingListView(TuttleView, UserControl):
                 )
             finally:
                 self.invoices_list_control.controls.append(invoiceItemControl)
-
-    def on_edit_invoice_clicked(self, invoice: Invoice):
-        # show a snack bar message that invoices are not supposed to be edited
-        self.show_snack(
-            "Invoices are not editable. Instead, delete and recreate the invoice.",
-            is_error=True,
-        )
-
-        # if self.editor is not None:
-        #     self.editor.close_dialog()
-        # self.editor = InvoicingEditorPopUp(
-        #     dialog_controller=self.dialog_controller,
-        #     on_submit=self.on_save_invoice,
-        #     projects_map=self.active_projects,
-        #     invoice=invoice,
-        # )
-        # self.editor.open_dialog()
 
     def on_mail_invoice(self, invoice: Invoice):
         result = self.intent.send_invoice_by_mail(invoice)
@@ -375,7 +357,6 @@ class InvoiceTile(UserControl):
     def __init__(
         self,
         invoice: Invoice,
-        on_edit_clicked,
         on_delete_clicked,
         on_mail_invoice,
         on_view_invoice,
@@ -385,7 +366,6 @@ class InvoiceTile(UserControl):
     ):
         super().__init__()
         self.invoice = invoice
-        self.on_edit_clicked = on_edit_clicked
         self.on_delete_clicked = on_delete_clicked
         self.on_view_invoice = on_view_invoice
         self.on_mail_invoice = on_mail_invoice
@@ -422,9 +402,8 @@ class InvoiceTile(UserControl):
                     ),
                 ]
             ),
-            trailing=views.view_edit_delete_pop_up(
+            trailing=views.context_pop_up_menu(
                 on_click_delete=lambda e: self.on_delete_clicked(self.invoice),
-                on_click_edit=lambda e: self.on_edit_clicked(self.invoice),
                 prefix_menu_items=[
                     views.pop_up_menu_item(
                         icon=icons.HOURGLASS_BOTTOM_OUTLINED,

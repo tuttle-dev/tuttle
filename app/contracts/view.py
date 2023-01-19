@@ -65,7 +65,7 @@ class ContractCard(UserControl):
                     self.contract.client.name if self.contract.client else "",
                     color=colors.GRAY_COLOR,
                 ),
-                trailing=views.view_edit_delete_pop_up(
+                trailing=views.context_pop_up_menu(
                     on_click_view=lambda e: self.on_click_view(self.contract.id),
                     on_click_edit=lambda e: self.on_click_edit(self.contract.id),
                     on_click_delete=lambda e: self.on_click_delete(self.contract.id),

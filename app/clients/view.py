@@ -49,7 +49,7 @@ class ClientCard(UserControl):
         editable = True if self.on_edit_clicked or self.on_delete_clicked else None
 
         editor_controls = (
-            views.view_edit_delete_pop_up(
+            views.context_pop_up_menu(
                 on_click_delete=lambda e: self.on_delete_clicked(self.client),
                 on_click_edit=lambda e: self.on_edit_clicked(self.client),
             )

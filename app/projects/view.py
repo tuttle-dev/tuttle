@@ -59,7 +59,7 @@ class ProjectCard(UserControl):
                     color=colors.GRAY_COLOR,
                     weight=FontWeight.BOLD,
                 ),
-                trailing=views.view_edit_delete_pop_up(
+                trailing=views.context_pop_up_menu(
                     on_click_view=lambda e: self.on_view_details_clicked(
                         self.project.id
                     ),

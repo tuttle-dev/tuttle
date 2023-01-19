@@ -597,9 +597,9 @@ def pop_up_menu_item(icon, txt, on_click, is_delete: bool = False):
     )
 
 
-def view_edit_delete_pop_up(
-    on_click_edit,
-    on_click_delete,
+def context_pop_up_menu(
+    on_click_edit: Optional[Callable] = None,
+    on_click_delete: Optional[Callable] = None,
     view_item_lbl="View Details",
     delete_item_lbl="Delete",
     edit_item_lbl="Edit",
@@ -607,29 +607,32 @@ def view_edit_delete_pop_up(
     prefix_menu_items: Optional[list[PopupMenuItem]] = None,
     suffix_menu_items: Optional[list[PopupMenuItem]] = None,
 ):
-    """Returns a pop up menu button with view (optional), edit and delete options"""
+    """Returns a customizable pop up menu button with optional view, edit and delete menus"""
     items = []
     if prefix_menu_items:
         items.extend(prefix_menu_items)
-    items.extend(
-        [
+    if on_click_view:
+        items.append(
             pop_up_menu_item(
-                icons.EDIT_OUTLINED, txt=edit_item_lbl, on_click=on_click_edit
+                icons.VISIBILITY_OUTLINED, txt=view_item_lbl, on_click=on_click_view
             ),
+        )
+    if on_click_edit:
+        items.append(
+            pop_up_menu_item(
+                icons.EDIT_OUTLINED,
+                txt=edit_item_lbl,
+                on_click=on_click_edit,
+            )
+        )
+    if on_click_delete:
+        items.append(
             pop_up_menu_item(
                 icons.DELETE_OUTLINE,
                 txt=delete_item_lbl,
                 on_click=on_click_delete,
                 is_delete=True,
-            ),
-        ]
-    )
-    if on_click_view:
-        items.insert(
-            0,
-            pop_up_menu_item(
-                icons.VISIBILITY_OUTLINED, txt=view_item_lbl, on_click=on_click_view
-            ),
+            )
         )
     if suffix_menu_items:
         items.extend(suffix_menu_items)

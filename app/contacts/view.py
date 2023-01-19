@@ -53,7 +53,7 @@ class ContactCard(UserControl):
                 subtitle=views.get_body_txt(
                     utils.truncate_str(self.contact.company), color=colors.GRAY_COLOR
                 ),
-                trailing=views.view_edit_delete_pop_up(
+                trailing=views.context_pop_up_menu(
                     on_click_edit=lambda e: self.on_edit_clicked(self.contact),
                     on_click_delete=lambda e: self.on_deleted_clicked(self.contact),
                 ),
