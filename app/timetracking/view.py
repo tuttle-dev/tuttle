@@ -42,7 +42,7 @@ class TwoFAPopUp(DialogHandler):
                 content=Column(
                     scroll=utils.AUTO_SCROLL,
                     controls=[
-                        views.get_headline_txt(txt=title, size=fonts.HEADLINE_4_SIZE),
+                        views.get_heading(title=title, size=fonts.HEADLINE_4_SIZE),
                         views.xsSpace,
                         views.get_std_txt_field(
                             label="Code",
@@ -95,7 +95,7 @@ class NewTimeTrackPopUp(DialogHandler):
                 content=Column(
                     scroll=utils.AUTO_SCROLL,
                     controls=[
-                        views.get_headline_txt(txt=title, size=fonts.HEADLINE_4_SIZE),
+                        views.get_heading(title=title, size=fonts.HEADLINE_4_SIZE),
                         views.xsSpace,
                         views.get_body_txt(
                             f"Use calendar from {preferred_cloud_acc}",
@@ -404,19 +404,19 @@ class TimeTrackingView(TuttleView, UserControl):
 
     def build(self):
         self.loading_indicator = views.horizontal_progress
-        self.no_timetrack_control = Text(
-            value="You have not logged any work progress yet.",
+        self.no_timetrack_control = views.get_body_txt(
+            txt="You have not logged any work progress yet.",
             color=colors.ERROR_COLOR,
-            visible=False,
+            show=False,
         )
-        self.ongoing_action_hint = Text("", visible=False)
+        self.ongoing_action_hint = views.get_body_txt(show=False)
         self.title_control = ResponsiveRow(
             controls=[
                 Column(
                     col={"xs": 12},
                     controls=[
-                        views.get_headline_txt(
-                            txt="Time Tracking", size=fonts.HEADLINE_4_SIZE
+                        views.get_heading(
+                            title="Time Tracking", size=fonts.HEADLINE_4_SIZE
                         ),
                         self.loading_indicator,
                         self.ongoing_action_hint,

@@ -308,7 +308,7 @@ class SplashScreen(TuttleView, UserControl):
         self.form_container = Column(
             controls=[
                 views.get_labelled_logo(),
-                views.get_headline_with_subtitle(
+                views.get_heading_with_subheading(
                     "Hi, Welcome to Tuttle.", "Let's get you started"
                 ),
                 self.loading_indicator,
@@ -335,13 +335,13 @@ class SplashScreen(TuttleView, UserControl):
                                 "welcome screen image",
                                 width=300,
                             ),
-                            views.get_headline_with_subtitle(
+                            views.get_heading_with_subheading(
                                 "Tuttle",
                                 "Time and money management for freelancers",
                                 alignment_in_container=utils.CENTER_ALIGNMENT,
-                                txtAlignment=utils.TXT_ALIGN_CENTER,
-                                titleSize=fonts.HEADLINE_3_SIZE,
-                                subtitleSize=fonts.HEADLINE_4_SIZE,
+                                txt_alignment=utils.TXT_ALIGN_CENTER,
+                                title_size=fonts.HEADLINE_3_SIZE,
+                                subtitle_size=fonts.HEADLINE_4_SIZE,
                             ),
                         ],
                     ),
@@ -472,7 +472,7 @@ class ProfileScreen(TuttleView, UserControl):
                                     on_click=self.on_navigate_back,
                                     icon_size=dimens.ICON_SIZE,
                                 ),
-                                views.get_headline_txt(
+                                views.get_heading(
                                     "Profile", size=fonts.HEADLINE_4_SIZE
                                 ),
                             ],

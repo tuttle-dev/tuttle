@@ -69,14 +69,14 @@ class ClientCard(UserControl):
             views.mdSpace,
             ResponsiveRow(
                 controls=[
-                    Text(
-                        "Invoicing Contact",
+                    views.get_body_txt(
+                        txt="Invoicing Contact",
                         color=colors.GRAY_COLOR,
                         size=fonts.BODY_2_SIZE,
                         col={"xs": "12"},
                     ),
-                    Text(
-                        invoicing_contact_info,
+                    views.get_body_txt(
+                        txt=invoicing_contact_info,
                         size=fonts.BODY_2_SIZE,
                         col={"xs": "12"},
                     ),
@@ -230,7 +230,7 @@ class ClientEditorPopUp(DialogHandler, UserControl):
                 content=Column(
                     scroll=utils.AUTO_SCROLL,
                     controls=[
-                        views.get_headline_txt(txt=title, size=fonts.HEADLINE_4_SIZE),
+                        views.get_heading(title=title, size=fonts.HEADLINE_4_SIZE),
                         views.xsSpace,
                         views.get_std_txt_field(
                             on_change=self.on_client_name_changed,
@@ -239,8 +239,8 @@ class ClientEditorPopUp(DialogHandler, UserControl):
                             initial_value=self.client.name,
                         ),
                         views.xsSpace,
-                        views.get_headline_txt(
-                            txt="Invoicing Contact",
+                        views.get_heading(
+                            title="Invoicing Contact",
                             size=fonts.SUBTITLE_2_SIZE,
                             color=colors.GRAY_COLOR,
                         ),
@@ -424,18 +424,18 @@ class ClientsListView(TuttleView, UserControl):
         super().__init__(params=params)
         self.intent = ClientsIntent()
         self.loading_indicator = views.horizontal_progress
-        self.no_clients_control = Text(
-            value="You have not added any clients yet.",
+        self.no_clients_control = views.get_body_txt(
+            txt="You have not added any clients yet.",
             color=colors.ERROR_COLOR,
-            visible=False,
+            show=False,
         )
         self.title_control = ResponsiveRow(
             controls=[
                 Column(
                     col={"xs": 12},
                     controls=[
-                        views.get_headline_txt(
-                            txt="My Clients", size=fonts.HEADLINE_4_SIZE
+                        views.get_heading(
+                            title="My Clients", size=fonts.HEADLINE_4_SIZE
                         ),
                         self.loading_indicator,
                         self.no_clients_control,

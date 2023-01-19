@@ -64,14 +64,14 @@ class ContactCard(UserControl):
             views.mdSpace,
             ResponsiveRow(
                 controls=[
-                    Text(
-                        "email",
+                    views.get_body_txt(
+                        txt="email",
                         color=colors.GRAY_COLOR,
                         size=fonts.BODY_2_SIZE,
                         col={"xs": "12"},
                     ),
-                    Text(
-                        self.contact.email,
+                    views.get_body_txt(
+                        txt=self.contact.email,
                         size=fonts.BODY_2_SIZE,
                         col={"xs": "12"},
                     ),
@@ -83,15 +83,15 @@ class ContactCard(UserControl):
             views.mdSpace,
             ResponsiveRow(
                 controls=[
-                    Text(
-                        "address",
+                    views.get_body_txt(
+                        txt="address",
                         color=colors.GRAY_COLOR,
                         size=fonts.BODY_2_SIZE,
                         col={"xs": "12"},
                     ),
                     Container(
-                        Text(
-                            self.contact.print_address(onlyAddress=True).strip(),
+                        views.get_body_txt(
+                            txt=self.contact.print_address(address_only=True).strip(),
                             size=fonts.BODY_2_SIZE,
                             col={"xs": "12"},
                         ),
@@ -143,7 +143,7 @@ class ContactEditorPopUp(DialogHandler):
                 content=Column(
                     scroll=utils.AUTO_SCROLL,
                     controls=[
-                        views.get_headline_txt(txt=title, size=fonts.HEADLINE_4_SIZE),
+                        views.get_heading(title=title, size=fonts.HEADLINE_4_SIZE),
                         views.xsSpace,
                         views.get_std_txt_field(
                             on_change=self.on_fname_changed,
@@ -310,18 +310,18 @@ class ContactsListView(TuttleView, UserControl):
         super().__init__(params)
         self.intent = ContactsIntent()
         self.loading_indicator = views.horizontal_progress
-        self.no_contacts_control = Text(
-            value="You have not added any contacts yet",
+        self.no_contacts_control = views.get_body_txt(
+            txt="You have not added any contacts yet",
             color=colors.ERROR_COLOR,
-            visible=False,
+            show=False,
         )
         self.title_control = ResponsiveRow(
             controls=[
                 Column(
                     col={"xs": 12},
                     controls=[
-                        views.get_headline_txt(
-                            txt="My Contacts", size=fonts.HEADLINE_4_SIZE
+                        views.get_heading(
+                            title="My Contacts", size=fonts.HEADLINE_4_SIZE
                         ),
                         self.loading_indicator,
                         self.no_contacts_control,

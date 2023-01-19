@@ -77,14 +77,14 @@ class ContractCard(UserControl):
             views.mdSpace,
             ResponsiveRow(
                 controls=[
-                    Text(
-                        "Rate",
+                    views.get_body_txt(
+                        txt="Rate",
                         color=colors.GRAY_COLOR,
                         size=fonts.BODY_2_SIZE,
                         col={"xs": "12"},
                     ),
-                    Text(
-                        f"{self.contract.rate} {self.contract.currency} / {self.contract.unit}",
+                    views.get_body_txt(
+                        txt=f"{self.contract.rate} {self.contract.currency} / {self.contract.unit}",
                         size=fonts.BODY_2_SIZE,
                         col={"xs": "12"},
                     ),
@@ -96,14 +96,14 @@ class ContractCard(UserControl):
             # add ResponsiveRow for billing cycle
             ResponsiveRow(
                 controls=[
-                    Text(
-                        "Billing Cycle",
+                    views.get_body_txt(
+                        txt="Billing Cycle",
                         color=colors.GRAY_COLOR,
                         size=fonts.BODY_2_SIZE,
                         col={"xs": "12"},
                     ),
-                    Text(
-                        f"{self.contract.billing_cycle}",
+                    views.get_body_txt(
+                        txt=f"{self.contract.billing_cycle}",
                         size=fonts.BODY_2_SIZE,
                         col={"xs": "12"},
                     ),
@@ -545,8 +545,8 @@ class ContractEditorScreen(TuttleView, UserControl):
         self.submit_btn = views.get_primary_btn(
             label="Create Contract", on_click=self.on_save
         )
-        self.form_title_ui_field = views.get_headline_txt(
-            txt="New Contract",
+        self.form_title_ui_field = views.get_heading(
+            title="New Contract",
         )
         view = Container(
             expand=True,
@@ -624,17 +624,18 @@ class ContractsListView(TuttleView, UserControl):
         super().__init__(params)
         self.intent = ContractsIntent()
         self.loading_indicator = views.horizontal_progress
-        self.no_contracts_control = Text(
-            value="You have not added any contracts yet",
-            visible=False,
+        self.no_contracts_control = views.get_body_txt(
+            txt="You have not added any contracts yet",
+            color=colors.ERROR_COLOR,
+            show=False,
         )
         self.title_control = ResponsiveRow(
             controls=[
                 Column(
                     col={"xs": 12},
                     controls=[
-                        views.get_headline_txt(
-                            txt="My Contracts", size=fonts.HEADLINE_4_SIZE
+                        views.get_heading(
+                            title="My Contracts", size=fonts.HEADLINE_4_SIZE
                         ),
                         self.loading_indicator,
                         self.no_contracts_control,
@@ -849,8 +850,8 @@ class ViewContractScreen(TuttleView, UserControl):
     def get_body_element(self, label, control):
         return ResponsiveRow(
             controls=[
-                Text(
-                    label,
+                views.get_body_txt(
+                    txt=label,
                     color=colors.GRAY_COLOR,
                     size=fonts.BODY_2_SIZE,
                     col={
@@ -887,59 +888,47 @@ class ViewContractScreen(TuttleView, UserControl):
             icon_size=dimens.ICON_SIZE,
         )
 
-        self.client_control = Text(
-            size=fonts.SUBTITLE_2_SIZE,
+        self.client_control = views.get_heading()
+        self.contract_title_control = views.get_heading()
+        self.billing_cycle_control = views.get_body_txt(
+            align=utils.TXT_ALIGN_JUSTIFY,
         )
-        self.contract_title_control = Text(
-            size=fonts.SUBTITLE_1_SIZE,
+        self.rate_control = views.get_body_txt(
+            align=utils.TXT_ALIGN_JUSTIFY,
         )
-        self.billing_cycle_control = Text(
-            size=fonts.BODY_1_SIZE,
-            text_align=utils.TXT_ALIGN_JUSTIFY,
+        self.currency_control = views.get_body_txt(
+            align=utils.TXT_ALIGN_JUSTIFY,
         )
-        self.rate_control = Text(
-            size=fonts.BODY_1_SIZE,
-            text_align=utils.TXT_ALIGN_JUSTIFY,
+        self.vat_rate_control = views.get_body_txt(
+            align=utils.TXT_ALIGN_JUSTIFY,
         )
-        self.currency_control = Text(
-            size=fonts.BODY_1_SIZE,
-            text_align=utils.TXT_ALIGN_JUSTIFY,
+        self.unit_control = views.get_body_txt(
+            align=utils.TXT_ALIGN_JUSTIFY,
         )
-        self.vat_rate_control = Text(
-            size=fonts.BODY_1_SIZE,
-            text_align=utils.TXT_ALIGN_JUSTIFY,
+        self.units_per_workday_control = views.get_body_txt(
+            align=utils.TXT_ALIGN_JUSTIFY,
         )
-        self.unit_control = Text(
-            size=fonts.BODY_1_SIZE,
-            text_align=utils.TXT_ALIGN_JUSTIFY,
+        self.volume_control = views.get_body_txt(
+            align=utils.TXT_ALIGN_JUSTIFY,
         )
-        self.units_per_workday_control = Text(
-            size=fonts.BODY_1_SIZE,
-            text_align=utils.TXT_ALIGN_JUSTIFY,
-        )
-        self.volume_control = Text(
-            size=fonts.BODY_1_SIZE,
-            text_align=utils.TXT_ALIGN_JUSTIFY,
-        )
-        self.term_of_payment_control = Text(
-            size=fonts.BODY_1_SIZE,
-            text_align=utils.TXT_ALIGN_JUSTIFY,
+        self.term_of_payment_control = views.get_body_txt(
+            align=utils.TXT_ALIGN_JUSTIFY,
         )
 
-        self.signature_date_control = Text(
-            size=fonts.BODY_1_SIZE,
-            text_align=utils.TXT_ALIGN_JUSTIFY,
+        self.signature_date_control = views.get_body_txt(
+            align=utils.TXT_ALIGN_JUSTIFY,
         )
-        self.start_date_control = Text(
-            size=fonts.BODY_1_SIZE,
-            text_align=utils.TXT_ALIGN_JUSTIFY,
+        self.start_date_control = views.get_body_txt(
+            align=utils.TXT_ALIGN_JUSTIFY,
         )
-        self.end_date_control = Text(
-            size=fonts.BODY_1_SIZE,
-            text_align=utils.TXT_ALIGN_JUSTIFY,
+        self.end_date_control = views.get_body_txt(
+            align=utils.TXT_ALIGN_JUSTIFY,
         )
 
-        self.status_control = Text(size=fonts.BUTTON_SIZE, color=colors.PRIMARY_COLOR)
+        self.status_control = views.get_body_txt(
+            size=fonts.BUTTON_SIZE,
+            color=colors.PRIMARY_COLOR,
+        )
 
         page_view = Row(
             [
@@ -957,7 +946,6 @@ class ViewContractScreen(TuttleView, UserControl):
                                 "Client",
                                 tooltip="View contract's client",
                                 on_click=self.on_view_client_clicked,
-                                icon_size=dimens.ICON_SIZE,
                             ),
                         ]
                     ),
@@ -983,10 +971,9 @@ class ViewContractScreen(TuttleView, UserControl):
                                                 vertical_alignment=utils.CENTER_ALIGNMENT,
                                                 alignment=utils.SPACE_BETWEEN_ALIGNMENT,
                                                 controls=[
-                                                    Text(
-                                                        "Contract",
+                                                    views.get_heading(
+                                                        title="Contract",
                                                         size=fonts.HEADLINE_4_SIZE,
-                                                        font_family=fonts.HEADLINE_FONT,
                                                         color=colors.PRIMARY_COLOR,
                                                     ),
                                                     Row(

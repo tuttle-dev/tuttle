@@ -73,15 +73,14 @@ class ProjectCard(UserControl):
             views.mdSpace,
             ResponsiveRow(
                 controls=[
-                    Text(
-                        "Brief Description",
+                    views.get_body_txt(
+                        txt="Brief Description",
                         color=colors.GRAY_COLOR,
                         size=fonts.BODY_2_SIZE,
                         col={"xs": "12"},
                     ),
-                    Text(
-                        self.project.get_brief_description(),
-                        size=fonts.BODY_2_SIZE,
+                    views.get_body_txt(
+                        txt=self.project.get_brief_description(),
                         col={"xs": "12"},
                     ),
                 ],
@@ -92,18 +91,17 @@ class ProjectCard(UserControl):
             views.mdSpace,
             ResponsiveRow(
                 controls=[
-                    Text(
-                        "Client",
+                    views.get_body_txt(
+                        txt="Client",
                         color=colors.GRAY_COLOR,
                         size=fonts.BODY_2_SIZE,
                         col={"xs": "12"},
                     ),
                     Container(
-                        Text(
-                            self.project.client.name
+                        views.get_body_txt(
+                            txt=self.project.client.name
                             if self.project.client
                             else "Unknown client",
-                            size=fonts.BODY_2_SIZE,
                             col={"xs": "12"},
                         ),
                     ),
@@ -116,16 +114,15 @@ class ProjectCard(UserControl):
             views.mdSpace,
             ResponsiveRow(
                 controls=[
-                    Text(
-                        "Contract",
+                    views.get_body_txt(
+                        txt="Contract",
                         color=colors.GRAY_COLOR,
                         size=fonts.BODY_2_SIZE,
                         col={"xs": "12"},
                     ),
                     Container(
-                        Text(
-                            self.project.contract.title,
-                            size=fonts.BODY_2_SIZE,
+                        views.get_body_txt(
+                            txt=self.project.contract.title,
                             col={"xs": "12"},
                         ),
                     ),
@@ -138,18 +135,17 @@ class ProjectCard(UserControl):
             views.mdSpace,
             ResponsiveRow(
                 controls=[
-                    Text(
-                        "Start date",
+                    views.get_body_txt(
+                        txt="Start date",
                         color=colors.GRAY_COLOR,
                         size=fonts.BODY_2_SIZE,
                         col={"xs": "12"},
                     ),
                     Container(
-                        Text(
-                            self.project.start_date.strftime("%d/%m/%Y")
+                        views.get_body_txt(
+                            txt=self.project.start_date.strftime("%d/%m/%Y")
                             if self.project.start_date
                             else "",
-                            size=fonts.BODY_2_SIZE,
                             col={"xs": "12"},
                         ),
                     ),
@@ -162,18 +158,17 @@ class ProjectCard(UserControl):
             views.mdSpace,
             ResponsiveRow(
                 controls=[
-                    Text(
-                        "End date",
+                    views.get_body_txt(
+                        txt="End date",
                         color=colors.GRAY_COLOR,
                         size=fonts.BODY_2_SIZE,
                         col={"xs": "12"},
                     ),
                     Container(
-                        Text(
-                            self.project.end_date.strftime("%d/%m/%Y")
+                        views.get_body_txt(
+                            txt=self.project.end_date.strftime("%d/%m/%Y")
                             if self.project.end_date
                             else "-",
-                            size=fonts.BODY_2_SIZE,
                             col={"xs": "12"},
                             color=colors.ERROR_COLOR,
                         ),
@@ -429,35 +424,31 @@ class ViewProjectScreen(TuttleView, UserControl):
             on_click=self.on_delete_clicked,
         )
 
-        self.project_title_control = Text(size=fonts.SUBTITLE_1_SIZE)
-        self.client_control = Text(
-            size=fonts.SUBTITLE_2_SIZE,
+        self.project_title_control = views.get_heading()
+
+        self.client_control = views.get_sub_heading_txt(
             color=colors.GRAY_COLOR,
         )
-        self.contract_control = Text(
-            size=fonts.SUBTITLE_2_SIZE,
+        self.contract_control = views.get_sub_heading_txt(
             color=colors.GRAY_COLOR,
         )
-        self.project_description_control = Text(
-            size=fonts.BODY_1_SIZE,
-            text_align=utils.TXT_ALIGN_JUSTIFY,
+        self.project_description_control = views.get_body_txt(
+            align=utils.TXT_ALIGN_JUSTIFY,
         )
 
-        self.project_start_date_control = Text(
+        self.project_start_date_control = views.get_sub_heading_txt(
             size=fonts.BUTTON_SIZE,
             color=colors.GRAY_COLOR,
-            font_family=fonts.HEADLINE_FONT,
         )
-        self.project_end_date_control = Text(
+        self.project_end_date_control = views.get_sub_heading_txt(
             size=fonts.BUTTON_SIZE,
             color=colors.GRAY_COLOR,
-            font_family=fonts.HEADLINE_FONT,
         )
 
-        self.project_status_control = Text(
+        self.project_status_control = views.get_sub_heading_txt(
             size=fonts.BUTTON_SIZE, color=colors.PRIMARY_COLOR
         )
-        self.project_tagline_control = Text(
+        self.project_tagline_control = views.get_sub_heading_txt(
             size=fonts.BUTTON_SIZE, color=colors.PRIMARY_COLOR
         )
 
@@ -509,10 +500,9 @@ class ViewProjectScreen(TuttleView, UserControl):
                                                 vertical_alignment=utils.CENTER_ALIGNMENT,
                                                 alignment=utils.SPACE_BETWEEN_ALIGNMENT,
                                                 controls=[
-                                                    Text(
+                                                    views.get_heading(
                                                         "Project",
                                                         size=fonts.HEADLINE_4_SIZE,
-                                                        font_family=fonts.HEADLINE_FONT,
                                                         color=colors.PRIMARY_COLOR,
                                                     ),
                                                     Row(
@@ -536,9 +526,8 @@ class ViewProjectScreen(TuttleView, UserControl):
                                 ],
                             ),
                             views.mdSpace,
-                            Text(
-                                "Project Description",
-                                size=fonts.SUBTITLE_1_SIZE,
+                            views.get_sub_heading_txt(
+                                subtitle="Project Description",
                             ),
                             self.project_description_control,
                             self.project_start_date_control,
@@ -591,18 +580,18 @@ class ProjectsListView(TuttleView, UserControl):
         super().__init__(params)
         self.intent = ProjectsIntent()
         self.loading_indicator = views.horizontal_progress
-        self.no_projects_control = Text(
-            value="You have not added any projects yet.",
+        self.no_projects_control = views.get_body_txt(
+            txt="You have not added any projects yet.",
             color=colors.ERROR_COLOR,
-            visible=False,
+            show=False,
         )
         self.title_control = ResponsiveRow(
             controls=[
                 Column(
                     col={"xs": 12},
                     controls=[
-                        views.get_headline_txt(
-                            txt="My Projects", size=fonts.HEADLINE_4_SIZE
+                        views.get_heading(
+                            title="My Projects", size=fonts.HEADLINE_4_SIZE
                         ),
                         self.loading_indicator,
                         self.no_projects_control,
@@ -939,8 +928,8 @@ class ProjectEditorScreen(TuttleView, UserControl):
             ],
         )
 
-        self.form_title = views.get_headline_txt(
-            txt="New Project",
+        self.form_title = views.get_heading(
+            title="New Project",
         )
         self.submit_btn = views.get_primary_btn(
             label="Create Project",
