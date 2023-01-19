@@ -61,12 +61,6 @@ Desktop apps are great - let's have more of them. We are consciously developing 
 3. Install the Python module in development mode:
 
 ```shell
-$ python setup.py develop
-```
-
-or
-
-```shell
 pip install -e .
 ```
 
