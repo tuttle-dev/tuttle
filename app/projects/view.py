@@ -52,7 +52,10 @@ class ProjectCard(UserControl):
     def build(self):
         self.project_info_container.controls = [
             ListTile(
-                leading=Icon(utils.TuttleComponentIcons.project_icon),
+                leading=Icon(
+                    utils.TuttleComponentIcons.project_icon,
+                    size=dimens.ICON_SIZE,
+                ),
                 title=views.get_body_txt(self.project.title),
                 subtitle=views.get_body_txt(
                     f"#{self.project.tag}",
@@ -409,17 +412,20 @@ class ViewProjectScreen(TuttleView, UserControl):
             icon=icons.EDIT_OUTLINED,
             tooltip="Edit project",
             on_click=self.on_edit_clicked,
+            icon_size=dimens.ICON_SIZE,
         )
         self.mark_as_complete_btn = IconButton(
             icon=icons.CHECK_CIRCLE_OUTLINE,
             icon_color=colors.PRIMARY_COLOR,
             tooltip="Mark as complete",
+            icon_size=dimens.ICON_SIZE,
             on_click=self.on_mark_as_complete_clicked,
         )
         self.delete_project_btn = IconButton(
             icon=icons.DELETE_OUTLINE_ROUNDED,
             icon_color=colors.ERROR_COLOR,
             tooltip="Delete project",
+            icon_size=dimens.ICON_SIZE,
             on_click=self.on_delete_clicked,
         )
 
@@ -467,6 +473,7 @@ class ViewProjectScreen(TuttleView, UserControl):
                             IconButton(
                                 icon=icons.KEYBOARD_ARROW_LEFT,
                                 on_click=self.on_navigate_back,
+                                icon_size=dimens.ICON_SIZE,
                             ),
                             TextButton(
                                 "Client",
@@ -489,7 +496,10 @@ class ViewProjectScreen(TuttleView, UserControl):
                             self.loading_indicator,
                             Row(
                                 controls=[
-                                    Icon(icons.WORK_ROUNDED),
+                                    Icon(
+                                        icons.WORK_ROUNDED,
+                                        size=dimens.ICON_SIZE,
+                                    ),
                                     Column(
                                         expand=True,
                                         spacing=0,
@@ -924,6 +934,7 @@ class ProjectEditorScreen(TuttleView, UserControl):
                 IconButton(
                     icon=icons.ADD_CIRCLE_OUTLINE,
                     on_click=self.on_add_contract,
+                    icon_size=dimens.ICON_SIZE,
                 ),
             ],
         )
@@ -950,6 +961,7 @@ class ProjectEditorScreen(TuttleView, UserControl):
                                     IconButton(
                                         icon=icons.CHEVRON_LEFT_ROUNDED,
                                         on_click=self.on_navigate_back,
+                                        icon_size=dimens.ICON_SIZE,
                                     ),
                                     self.form_title,
                                 ]

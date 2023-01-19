@@ -71,6 +71,7 @@ from res.fonts import (
     HEADLINE_FONT,
     SUBTITLE_2_SIZE,
 )
+from res import dimens
 from timetracking.view import TimeTrackingView
 
 MIN_SIDE_BAR_WIDTH = int(MIN_WINDOW_WIDTH * 0.3)
@@ -127,21 +128,21 @@ def get_action_bar(
                         IconButton(
                             icons.NOTIFICATIONS,
                             icon_color=PRIMARY_COLOR,
-                            icon_size=20,
+                            icon_size=dimens.ICON_SIZE,
                             tooltip="Notifications",
                             on_click=on_click_notifications_btn,
                         ),
                         IconButton(
                             icon=icons.SETTINGS_SUGGEST_OUTLINED,
                             icon_color=PRIMARY_COLOR,
-                            icon_size=20,
+                            icon_size=dimens.ICON_SIZE,
                             on_click=on_view_settings_clicked,
                             tooltip="Preferences",
                         ),
                         IconButton(
                             icons.PERSON_OUTLINE_OUTLINED,
                             icon_color=PRIMARY_COLOR,
-                            icon_size=20,
+                            icon_size=dimens.ICON_SIZE,
                             tooltip="Profile",
                             on_click=on_click_profile_btn,
                         ),
@@ -194,13 +195,14 @@ def create_and_get_navigation_menu(
                 title,
                 text_align=START_ALIGNMENT,
                 expand=True,
-                font_family=SUBTITLE_2_SIZE,
-                size=HEADLINE_4_SIZE,
+                font_family=HEADLINE_FONT,
+                size=SUBTITLE_2_SIZE,
                 color=GRAY_DARK_COLOR,
             ),
             expand=True,
             width=MIN_SIDE_BAR_WIDTH,
             margin=margin.only(top=SPACE_STD),
+            padding=padding.only(left=SPACE_STD),
         ),
         selected_index=selected_index,
         min_width=COMPACT_RAIL_WIDTH,
@@ -369,9 +371,15 @@ class HomeScreen(TuttleView, UserControl):
         )
         for item in handler.items:
             itemDestination = NavigationRailDestination(
-                icon_content=Icon(item.icon),
-                selected_icon_content=Icon(item.selected_icon),
-                label_content=get_body_txt(item.label, size=BODY_2_SIZE),
+                icon_content=Icon(
+                    item.icon,
+                    size=dimens.ICON_SIZE,
+                ),
+                selected_icon_content=Icon(
+                    item.selected_icon,
+                    size=dimens.ICON_SIZE,
+                ),
+                label_content=get_body_txt(item.label),
                 padding=padding.symmetric(horizontal=SPACE_SM),
             )
             items.append(itemDestination)

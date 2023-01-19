@@ -470,6 +470,7 @@ class ProfileScreen(TuttleView, UserControl):
                                 IconButton(
                                     icon=icons.KEYBOARD_ARROW_LEFT,
                                     on_click=self.on_navigate_back,
+                                    icon_size=dimens.ICON_SIZE,
                                 ),
                                 views.get_headline_txt(
                                     "Profile", size=fonts.HEADLINE_4_SIZE
