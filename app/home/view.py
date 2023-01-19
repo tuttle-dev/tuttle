@@ -84,13 +84,14 @@ def get_action_bar(
                             color=colors.PRIMARY_COLOR,
                             on_click=on_click_new_btn,
                         ),
-                        IconButton(
-                            icons.NOTIFICATIONS,
-                            icon_color=colors.PRIMARY_COLOR,
-                            icon_size=dimens.ICON_SIZE,
-                            tooltip="Notifications",
-                            on_click=on_click_notifications_btn,
-                        ),
+                        # TODO: Implement notifications
+                        # IconButton(
+                        #     icons.NOTIFICATIONS,
+                        #     icon_color=colors.PRIMARY_COLOR,
+                        #     icon_size=dimens.ICON_SIZE,
+                        #     tooltip="Notifications",
+                        #     on_click=on_click_notifications_btn,
+                        # ),
                         IconButton(
                             icon=icons.SETTINGS_SUGGEST_OUTLINED,
                             icon_color=colors.PRIMARY_COLOR,
