@@ -57,7 +57,7 @@ Desktop apps are great - let's have more of them. We are consciously developing 
 
 2. We recommend installation into a new [virtual environment](https://calmcode.io/virtualenv/intro.html).
 
-3. Install the Python module in development mode:
+3. From the repository's directory, install the Python module in development mode:
 
 ```shell
 pip install -e .
