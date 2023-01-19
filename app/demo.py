@@ -26,6 +26,7 @@ from tuttle.model import (
     Invoice,
     InvoiceItem,
 )
+from tuttle import rendering
 
 
 def create_fake_contact(
@@ -121,7 +122,11 @@ def invoice_number_counting():
 invoice_number_counter = invoice_number_counting()
 
 
-def create_fake_invoice(project: Project, fake: faker.Faker) -> Invoice:
+def create_fake_invoice(
+    project: Project,
+    user: User,
+    fake: faker.Faker,
+) -> Invoice:
     """
     Create a fake invoice object with random values.
 
@@ -162,10 +167,24 @@ def create_fake_invoice(project: Project, fake: faker.Faker) -> Invoice:
             invoice=invoice,
         )
         assert invoice_item.invoice == invoice
+
+        try:
+            rendering.render_invoice(
+                user=user,
+                invoice=invoice,
+                out_dir=Path.home() / ".tuttle" / "Invoices",
+                only_final=True,
+            )
+            logger.info(f"✅ rendered invoice for {project.title}")
+        except Exception as ex:
+            logger.error(f"❌ Error rendering invoice for {project.title}: {ex}")
+            logger.exception(ex)
+
     return invoice
 
 
 def create_fake_data(
+    user: User,
     n: int = 10,
 ):
     locales = [
@@ -190,7 +209,7 @@ def create_fake_data(
     contracts = [create_fake_contract(client, fake) for client in clients]
     projects = [create_fake_project(contract, fake) for contract in contracts]
 
-    invoices = [create_fake_invoice(project, fake) for project in projects]
+    invoices = [create_fake_invoice(project, user, fake) for project in projects]
 
     return projects, invoices
 
@@ -271,8 +290,6 @@ def install_demo_data(
     """
     db_path = f"""sqlite:///{db_path}"""
     logger.info(f"Installing demo data in {db_path}...")
-    logger.info(f"Creating {n_projects} fake projects...")
-    projects, invoices = create_fake_data(n_projects)
     logger.info(f"Creating database engine at: {db_path}...")
     db_engine = create_engine(db_path)
     logger.info("Creating database tables...")
@@ -283,6 +300,10 @@ def install_demo_data(
         user = create_demo_user()
         session.add(user)
         session.commit()
+        session.refresh(user)
+
+    logger.info(f"Creating {n_projects} fake projects...")
+    projects, invoices = create_fake_data(user, n_projects)
 
     # create a fake calendar and add time tracking data from it
     logger.info("Creating a fake calendar...")
