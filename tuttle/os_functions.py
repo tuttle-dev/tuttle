@@ -1,5 +1,6 @@
 """OS-level function"""
 from typing import Optional, List
+from pathlib import Path
 import subprocess
 import platform
 import os
@@ -17,6 +18,8 @@ def open_application(app_name):
 
 def preview_pdf(file_path):
     """Preview a PDF file."""
+    if not Path(file_path).exists():
+        raise FileNotFoundError(f"File not found: {file_path}")
     if platform.system() == "Darwin":
         os.system("qlmanage -p {}".format(file_path))
     elif platform.system() == "Windows":

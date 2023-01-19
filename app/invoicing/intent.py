@@ -137,6 +137,13 @@ class InvoicingIntent:
                 was_intent_successful=True,
                 data=invoice,
             )
+        except ValueError:
+            error_message = f"No time tracking data found for project '{project.title}' between {from_date} and {to_date}."
+            logger.error(error_message)
+            return IntentResult(
+                was_intent_successful=False,
+                error_msg=error_message,
+            )
         except Exception as ex:
             error_message = "Failed to create invoice. Check the logs for more details."
             logger.error(error_message)
@@ -282,19 +289,25 @@ class InvoicingIntent:
             )
 
     def view_invoice(self, invoice: Invoice) -> IntentResult[None]:
-        """TODO Attempts to open the invoice in the default pdf viewer"""
+        """Attempts to open the invoice in the default pdf viewer"""
+        if not invoice.rendered:
+            return IntentResult(
+                was_intent_successful=False,
+                error_msg="The invoice has not been rendered.",
+            )
         try:
-            assert invoice.rendered
             pdf_path = Path().home() / ".tuttle" / "Invoices" / invoice.file_name
-            assert pdf_path.exists()
             preview_pdf(pdf_path)
             return IntentResult(was_intent_successful=True)
         except Exception as ex:
-            logger.error(f"Failed to open the invoice: {ex}")
+            # display the execption name in the error message
+            error_message = f"Failed to open the invoice: {ex.__class__.__name__}"
+
+            logger.error(error_message)
             logger.exception(ex)
             return IntentResult(
                 was_intent_successful=False,
-                error_msg=f"Failed to open the invoice: {str(ex)}",
+                error_msg=error_message,
             )
 
     def generate_invoice_number(
