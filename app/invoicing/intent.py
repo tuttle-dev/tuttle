@@ -137,6 +137,13 @@ class InvoicingIntent:
                 was_intent_successful=True,
                 data=invoice,
             )
+        except ValueError:
+            error_message = f"No time tracking data found for project '{project.title}' between {from_date} and {to_date}."
+            logger.error(error_message)
+            return IntentResult(
+                was_intent_successful=False,
+                error_msg=error_message,
+            )
         except Exception as ex:
             error_message = "Failed to create invoice. Check the logs for more details."
             logger.error(error_message)

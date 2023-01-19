@@ -44,6 +44,10 @@ def create_timesheet(
         ts_table = (
             timetracking_data.loc[period_start:period_end].query(tag_query).sort_index()
         )
+        if ts_table.empty:
+            raise ValueError(
+                f"No time tracking data found for project {project.title} in period {period_start} - {period_end}"
+            )
     else:
         ts_table = timetracking_data.loc[period_start].query(tag_query).sort_index()
     # convert all-day entries
