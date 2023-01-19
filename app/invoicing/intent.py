@@ -166,6 +166,17 @@ class InvoicingIntent:
 
     def send_invoice_by_mail(self, invoice: Invoice) -> IntentResult[None]:
         """attempts to trigger the mail client to send the intent as attachment"""
+        invoice_path = Path.home() / ".tuttle" / "Invoices" / invoice.file_name
+        if not invoice.rendered:
+            return IntentResult(
+                was_intent_successful=False,
+                error_msg="The invoice has not been rendered.",
+            )
+        if not invoice_path.exists():
+            return IntentResult(
+                was_intent_successful=False,
+                error_msg=f"The invoice file {invoice_path} does not exist.",
+            )
         try:
             user = self._user_data_source.get_user()
             # open email client with message pre-filled
@@ -186,8 +197,7 @@ class InvoicingIntent:
                 body=email_body,
             )
             # open invoice pdf's folder
-            invoice_path = Path.home() / ".tuttle" / "Invoices" / invoice.file_name
-            assert invoice_path.exists()
+
             os_functions.open_folder(invoice_path.parent)
 
             return IntentResult(
