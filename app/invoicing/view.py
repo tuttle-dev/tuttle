@@ -76,7 +76,7 @@ class InvoicingEditorPopUp(DialogHandler, UserControl):
                 content=Column(
                     scroll=utils.AUTO_SCROLL,
                     controls=[
-                        views.get_headline_txt(txt=title, size=fonts.HEADLINE_4_SIZE),
+                        views.get_heading(title=title, size=fonts.HEADLINE_4_SIZE),
                         views.xsSpace,
                         views.get_std_txt_field(
                             on_change=self.on_number_changed,
@@ -322,8 +322,8 @@ class InvoicingListView(TuttleView, UserControl):
                 Column(
                     col={"xs": 12},
                     controls=[
-                        views.get_headline_txt(
-                            txt="Invoicing", size=fonts.HEADLINE_4_SIZE
+                        views.get_heading(
+                            title="Invoicing", size=fonts.HEADLINE_4_SIZE
                         ),
                         self.loading_indicator,
                         self.no_invoices_control,

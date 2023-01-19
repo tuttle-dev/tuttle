@@ -16,7 +16,7 @@ from flet import (
     padding,
 )
 
-from core import utils
+from core import utils, views
 from core.abstractions import TuttleView, TuttleViewParams
 from core.intent_result import IntentResult
 from core.views import (
@@ -119,7 +119,7 @@ class PreferencesScreen(TuttleView, UserControl):
                         size=dimens.ICON_SIZE,
                     ),
                     smSpace,
-                    Text(label),
+                    views.get_body_txt(txt=label),
                     mdSpace,
                 ],
             ),
@@ -218,8 +218,8 @@ class PreferencesScreen(TuttleView, UserControl):
                                 icons.SETTINGS_SUGGEST_OUTLINED,
                                 size=dimens.ICON_SIZE,
                             ),
-                            Text(
-                                "Preferences",
+                            views.get_heading(
+                                title="Preferences",
                             ),
                         ],
                     ),

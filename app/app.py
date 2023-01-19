@@ -1,45 +1,41 @@
-import re
 from typing import Callable, Optional
-from timetracking.intent import TimeTrackingIntent
-from loguru import logger
+
+import re
 from pathlib import Path
-import sqlmodel
-from pandas import DataFrame
+
 from flet import (
-    app,
-    Page,
+    AlertDialog,
     FilePicker,
     FilePickerUploadFile,
-    AlertDialog,
+    Page,
     SnackBar,
     TemplateRoute,
     Text,
     View,
+    app,
 )
 
 import demo
+import sqlmodel
 from auth.view import ProfileScreen, SplashScreen
-from contracts.view import (
-    ContractEditorScreen,
-    ContractEditorScreen,
-    ViewContractScreen,
-)
-from preferences.model import PreferencesStorageKeys
-from preferences.intent import PreferencesIntent
-from core.abstractions import TuttleView
-from core.utils import AlertDialogControls
+from contracts.view import ContractEditorScreen, ViewContractScreen
+from core.abstractions import TuttleView, TuttleViewParams
 from core.local_storage_impl import ClientStorageImpl
 from core.models import RouteView
+from core.utils import AlertDialogControls
+from core.views import get_heading
 from error_views.page_not_found_screen import Error404Screen
 from home.view import HomeScreen
+from loguru import logger
+from pandas import DataFrame
+from preferences.intent import PreferencesIntent
+from preferences.model import PreferencesStorageKeys
 from preferences.view import PreferencesScreen
 from projects.view import ProjectEditorScreen, ViewProjectScreen
 from res.colors import BLACK_COLOR_ALT, ERROR_COLOR, PRIMARY_COLOR, WHITE_COLOR
 from res.dimens import MIN_WINDOW_HEIGHT, MIN_WINDOW_WIDTH
 from res.fonts import APP_FONTS, HEADLINE_4_SIZE, HEADLINE_FONT
-from res.theme import APP_THEME, THEME_MODES, get_theme_mode_from_value
 from res.res_utils import (
-    CONTRACT_EDITOR_SCREEN_ROUTE,
     CONTRACT_DETAILS_SCREEN_ROUTE,
     CONTRACT_EDITOR_SCREEN_ROUTE,
     HOME_SCREEN_ROUTE,
@@ -49,7 +45,8 @@ from res.res_utils import (
     PROJECT_EDITOR_SCREEN_ROUTE,
     SPLASH_SCREEN_ROUTE,
 )
-from core.abstractions import TuttleViewParams
+from res.theme import APP_THEME, THEME_MODES, get_theme_mode_from_value
+from timetracking.intent import TimeTrackingIntent
 
 
 class TuttleApp:
@@ -151,11 +148,10 @@ class TuttleApp:
             self.page.snack_bar.open = False
             self.page.update()
         self.page.snack_bar = SnackBar(
-            Text(
-                message,
+            get_heading(
+                title=message,
                 size=HEADLINE_4_SIZE,
                 color=ERROR_COLOR if is_error else WHITE_COLOR,
-                font_family=HEADLINE_FONT,
             ),
             bgcolor=WHITE_COLOR if is_error else BLACK_COLOR_ALT,
             action=action_label,

@@ -27,56 +27,16 @@ from flet import (
 from clients.view import ClientsListView
 from contacts.view import ContactEditorPopUp, ContactsListView
 from contracts.view import ContractsListView
+from core import utils, views
 from core.abstractions import DialogHandler, TuttleView, TuttleViewParams
-from core.utils import (
-    ALWAYS_SCROLL,
-    CENTER_ALIGNMENT,
-    COMPACT_RAIL_WIDTH,
-    SPACE_BETWEEN_ALIGNMENT,
-    START_ALIGNMENT,
-    STRETCH_ALIGNMENT,
-    TXT_ALIGN_START,
-    TuttleComponentIcons,
-)
-from core.views import (
-    get_app_logo,
-    get_body_txt,
-    get_headline_with_subtitle,
-    get_std_txt_field,
-)
 from invoicing.view import InvoicingListView
 from projects.view import ProjectsListView
-from res import res_utils
-from res.colors import (
-    BLACK_COLOR,
-    GRAY_COLOR,
-    GRAY_DARK_COLOR,
-    PRIMARY_COLOR,
-    WHITE_COLOR,
-)
-from res.dimens import (
-    FOOTER_HEIGHT,
-    MIN_WINDOW_HEIGHT,
-    MIN_WINDOW_WIDTH,
-    SPACE_LG,
-    SPACE_MD,
-    SPACE_SM,
-    SPACE_STD,
-    SPACE_XL,
-    TOOLBAR_HEIGHT,
-)
-from res.fonts import (
-    BODY_2_SIZE,
-    HEADLINE_4_SIZE,
-    HEADLINE_FONT,
-    SUBTITLE_2_SIZE,
-)
-from res import dimens
+from res import colors, dimens, fonts, res_utils
 from timetracking.view import TimeTrackingView
 
-MIN_SIDE_BAR_WIDTH = int(MIN_WINDOW_WIDTH * 0.3)
-MIN_FOOTER_WIDTH = int(MIN_WINDOW_WIDTH * 0.7)
-MIN_BODY_HEIGHT = int(MIN_WINDOW_HEIGHT * 0.8)
+MIN_SIDE_BAR_WIDTH = int(dimens.MIN_WINDOW_WIDTH * 0.3)
+MIN_FOOTER_WIDTH = int(dimens.MIN_WINDOW_WIDTH * 0.7)
+MIN_BODY_HEIGHT = int(dimens.MIN_WINDOW_HEIGHT * 0.8)
 NO_MENU_ITEM_INDEX = -1
 
 
@@ -97,51 +57,50 @@ def get_action_bar(
     """
     return Container(
         alignment=alignment.center,
-        height=TOOLBAR_HEIGHT,
-        padding=padding.symmetric(horizontal=SPACE_MD),
+        height=dimens.TOOLBAR_HEIGHT,
+        padding=padding.symmetric(horizontal=dimens.SPACE_MD),
         border=border.only(bottom=border.BorderSide(width=1)),
         content=Row(
-            alignment=SPACE_BETWEEN_ALIGNMENT,
-            vertical_alignment=CENTER_ALIGNMENT,
+            alignment=utils.SPACE_BETWEEN_ALIGNMENT,
+            vertical_alignment=utils.CENTER_ALIGNMENT,
             controls=[
                 Row(
                     controls=[
-                        Text(
+                        views.get_heading(
                             "Tuttle",
-                            size=HEADLINE_4_SIZE,
-                            font_family=HEADLINE_FONT,
-                            color=WHITE_COLOR,
+                            size=fonts.HEADLINE_4_SIZE,
+                            color=colors.WHITE_COLOR,
                         )
                     ],
-                    alignment=CENTER_ALIGNMENT,
-                    vertical_alignment=CENTER_ALIGNMENT,
+                    alignment=utils.CENTER_ALIGNMENT,
+                    vertical_alignment=utils.CENTER_ALIGNMENT,
                 ),
                 Row(
                     controls=[
                         ElevatedButton(
                             text="New",
                             icon=icons.ADD_OUTLINED,
-                            icon_color=PRIMARY_COLOR,
-                            color=PRIMARY_COLOR,
+                            icon_color=colors.PRIMARY_COLOR,
+                            color=colors.PRIMARY_COLOR,
                             on_click=on_click_new_btn,
                         ),
                         IconButton(
                             icons.NOTIFICATIONS,
-                            icon_color=PRIMARY_COLOR,
+                            icon_color=colors.PRIMARY_COLOR,
                             icon_size=dimens.ICON_SIZE,
                             tooltip="Notifications",
                             on_click=on_click_notifications_btn,
                         ),
                         IconButton(
                             icon=icons.SETTINGS_SUGGEST_OUTLINED,
-                            icon_color=PRIMARY_COLOR,
+                            icon_color=colors.PRIMARY_COLOR,
                             icon_size=dimens.ICON_SIZE,
                             on_click=on_view_settings_clicked,
                             tooltip="Preferences",
                         ),
                         IconButton(
                             icons.PERSON_OUTLINE_OUTLINED,
-                            icon_color=PRIMARY_COLOR,
+                            icon_color=colors.PRIMARY_COLOR,
                             icon_size=dimens.ICON_SIZE,
                             tooltip="Profile",
                             on_click=on_click_profile_btn,
@@ -191,21 +150,19 @@ def create_and_get_navigation_menu(
     """
     return NavigationRail(
         leading=Container(
-            content=Text(
-                title,
-                text_align=START_ALIGNMENT,
+            content=views.get_sub_heading_txt(
+                subtitle=title,
+                align=utils.START_ALIGNMENT,
                 expand=True,
-                font_family=HEADLINE_FONT,
-                size=SUBTITLE_2_SIZE,
-                color=GRAY_DARK_COLOR,
+                color=colors.GRAY_DARK_COLOR,
             ),
             expand=True,
             width=MIN_SIDE_BAR_WIDTH,
-            margin=margin.only(top=SPACE_STD),
-            padding=padding.only(left=SPACE_STD),
+            margin=margin.only(top=dimens.SPACE_STD),
+            padding=padding.only(left=dimens.SPACE_STD),
         ),
         selected_index=selected_index,
-        min_width=COMPACT_RAIL_WIDTH,
+        min_width=utils.COMPACT_RAIL_WIDTH,
         extended=True,
         height=menu_height,
         min_extended_width=MIN_SIDE_BAR_WIDTH,
@@ -241,16 +198,16 @@ class MainMenuItemsHandler:
             # MenuItem(
             #     index=0,
             #     label="Dashboard",
-            #     icon=TuttleComponentIcons.dashboard_icon,
-            #     selected_icon=TuttleComponentIcons.dashboard_selected_icon,
+            #     icon=utils.TuttleComponentIcons.dashboard_icon,
+            #     selected_icon=utils.TuttleComponentIcons.dashboard_selected_icon,
             #     destination=Container(),
             #     on_new_screen_route="/404",
             # ),
             MenuItem(
                 index=1,
                 label="Projects",
-                icon=TuttleComponentIcons.project_icon,
-                selected_icon=TuttleComponentIcons.project_selected_icon,
+                icon=utils.TuttleComponentIcons.project_icon,
+                selected_icon=utils.TuttleComponentIcons.project_selected_icon,
                 destination=self.projects_view,
                 on_new_screen_route=res_utils.PROJECT_EDITOR_SCREEN_ROUTE,
                 on_new_intent=None,
@@ -258,8 +215,8 @@ class MainMenuItemsHandler:
             MenuItem(
                 index=4,
                 label="Contracts",
-                icon=TuttleComponentIcons.contract_icon,
-                selected_icon=TuttleComponentIcons.contract_selected_icon,
+                icon=utils.TuttleComponentIcons.contract_icon,
+                selected_icon=utils.TuttleComponentIcons.contract_selected_icon,
                 destination=self.contracts_view,
                 on_new_screen_route=res_utils.CONTRACT_EDITOR_SCREEN_ROUTE,
                 on_new_intent=None,
@@ -267,8 +224,8 @@ class MainMenuItemsHandler:
             MenuItem(
                 index=3,
                 label="Clients",
-                icon=TuttleComponentIcons.client_icon,
-                selected_icon=TuttleComponentIcons.client_selected_icon,
+                icon=utils.TuttleComponentIcons.client_icon,
+                selected_icon=utils.TuttleComponentIcons.client_selected_icon,
                 destination=self.clients_view,
                 on_new_screen_route=None,
                 on_new_intent=res_utils.ADD_CLIENT_INTENT,
@@ -276,8 +233,8 @@ class MainMenuItemsHandler:
             MenuItem(
                 index=2,
                 label="Contacts",
-                icon=TuttleComponentIcons.contact_icon,
-                selected_icon=TuttleComponentIcons.contact_selected_icon,
+                icon=utils.TuttleComponentIcons.contact_icon,
+                selected_icon=utils.TuttleComponentIcons.contact_selected_icon,
                 destination=self.contacts_view,
                 on_new_screen_route=None,
                 on_new_intent=res_utils.ADD_CONTACT_INTENT,
@@ -299,8 +256,8 @@ class SecondaryMenuHandler:
             MenuItem(
                 index=0,
                 label="Time Tracking",
-                icon=TuttleComponentIcons.timetracking_icon,
-                selected_icon=TuttleComponentIcons.timetracking_selected_icon,
+                icon=utils.TuttleComponentIcons.timetracking_icon,
+                selected_icon=utils.TuttleComponentIcons.timetracking_selected_icon,
                 destination=self.timetrack_view,
                 on_new_screen_route=None,
                 on_new_intent=res_utils.NEW_TIME_TRACK_INTENT,
@@ -308,8 +265,8 @@ class SecondaryMenuHandler:
             MenuItem(
                 index=1,
                 label="Invoicing",
-                icon=TuttleComponentIcons.invoicing_icon,
-                selected_icon=TuttleComponentIcons.invoicing_selected_icon,
+                icon=utils.TuttleComponentIcons.invoicing_icon,
+                selected_icon=utils.TuttleComponentIcons.invoicing_selected_icon,
                 destination=self.invoicing_view,
                 on_new_screen_route=None,
                 on_new_intent=res_utils.CREATE_INVOICE_INTENT,
@@ -342,13 +299,13 @@ class HomeScreen(TuttleView, UserControl):
         )
         # initialize destination view with a welcome text
         self.destination_view = Container(
-            padding=padding.all(SPACE_MD),
+            padding=padding.all(dimens.SPACE_MD),
             content=Row(
                 [
-                    get_headline_with_subtitle(
+                    views.get_heading_with_subheading(
                         title="Welcome back!",
                         subtitle="Select an item on the menu to get started",
-                        subtitleColor=GRAY_COLOR,
+                        subtitle_color=colors.GRAY_COLOR,
                     )
                 ]
             ),
@@ -379,8 +336,8 @@ class HomeScreen(TuttleView, UserControl):
                     item.selected_icon,
                     size=dimens.ICON_SIZE,
                 ),
-                label_content=get_body_txt(item.label),
-                padding=padding.symmetric(horizontal=SPACE_SM),
+                label_content=views.get_body_txt(item.label),
+                padding=padding.symmetric(horizontal=dimens.SPACE_SM),
             )
             items.append(itemDestination)
         return items
@@ -438,17 +395,17 @@ class HomeScreen(TuttleView, UserControl):
 
     def build(self):
         self.destination_content_container = Container(
-            padding=padding.all(SPACE_MD),
+            padding=padding.all(dimens.SPACE_MD),
             content=self.destination_view,
-            margin=margin.only(bottom=SPACE_LG),
+            margin=margin.only(bottom=dimens.SPACE_LG),
         )
         self.footer = Container(
             col={"xs": 12},
-            content=Text(""),
+            content=views.get_heading(),
             alignment=alignment.center,
             border=border.only(top=border.BorderSide(1, "black")),
-            height=FOOTER_HEIGHT,
-            margin=margin.only(top=SPACE_LG),
+            height=dimens.FOOTER_HEIGHT,
+            margin=margin.only(top=dimens.SPACE_LG),
         )
         self.main_body = Column(
             col={
@@ -456,8 +413,8 @@ class HomeScreen(TuttleView, UserControl):
                 "md": 9,
                 "lg": 10,
             },
-            alignment=START_ALIGNMENT,
-            horizontal_alignment=START_ALIGNMENT,
+            alignment=utils.START_ALIGNMENT,
+            horizontal_alignment=utils.START_ALIGNMENT,
             controls=[
                 self.action_bar,
                 self.destination_content_container,
@@ -471,14 +428,14 @@ class HomeScreen(TuttleView, UserControl):
                         controls=[
                             Container(
                                 col={"xs": 4, "md": 3, "lg": 2},
-                                padding=padding.only(top=SPACE_XL),
+                                padding=padding.only(top=dimens.SPACE_XL),
                                 content=Column(
                                     controls=[
                                         self.main_menu,
                                         self.secondary_menu,
                                     ],
-                                    alignment=START_ALIGNMENT,
-                                    horizontal_alignment=START_ALIGNMENT,
+                                    alignment=utils.START_ALIGNMENT,
+                                    horizontal_alignment=utils.START_ALIGNMENT,
                                     spacing=0,
                                     run_spacing=0,
                                 ),
@@ -487,14 +444,14 @@ class HomeScreen(TuttleView, UserControl):
                             self.main_body,
                         ],
                         spacing=0,
-                        alignment=START_ALIGNMENT,
-                        vertical_alignment=START_ALIGNMENT,
+                        alignment=utils.START_ALIGNMENT,
+                        vertical_alignment=utils.START_ALIGNMENT,
                         expand=1,
                     ),
                     self.footer,
                 ],
-                alignment=SPACE_BETWEEN_ALIGNMENT,
-                horizontal_alignment=STRETCH_ALIGNMENT,
+                alignment=utils.SPACE_BETWEEN_ALIGNMENT,
+                horizontal_alignment=utils.STRETCH_ALIGNMENT,
             ),
         )
         return self.view

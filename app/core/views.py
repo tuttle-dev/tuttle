@@ -55,51 +55,92 @@ smSpace = Container(height=dimens.SPACE_SM, width=dimens.SPACE_SM, padding=0, ma
 xsSpace = Container(height=dimens.SPACE_XS, width=dimens.SPACE_XS, padding=0, margin=0)
 
 
-def get_headline_txt(
-    txt: str,
+def get_heading(
+    title: str = "",
     size: int = fonts.SUBTITLE_1_SIZE,
     color: Optional[str] = None,
     align: str = TXT_ALIGN_LEFT,
+    show: bool = True,
 ):
     """Displays text formatted as a headline"""
     return Text(
-        txt,
+        title,
         font_family=fonts.HEADLINE_FONT,
         weight=fonts.BOLD_FONT,
         size=size,
         color=color,
         text_align=align,
+        visible=show,
     )
 
 
-def get_headline_with_subtitle(
+def get_sub_heading_txt(
+    subtitle: str = "",
+    size: int = fonts.SUBTITLE_2_SIZE,
+    color: Optional[str] = None,
+    align: str = TXT_ALIGN_LEFT,
+    show: bool = True,
+    expand: bool = False,
+):
+    """Displays text formatted as a headline"""
+    return Text(
+        subtitle,
+        font_family=fonts.HEADLINE_FONT,
+        size=size,
+        color=color,
+        text_align=align,
+        visible=show,
+        expand=expand,
+    )
+
+
+def get_heading_with_subheading(
     title: str,
     subtitle: str,
     alignment_in_container: str = START_ALIGNMENT,
-    txtAlignment: str = TXT_ALIGN_LEFT,
-    titleSize: int = fonts.SUBTITLE_1_SIZE,
-    subtitleSize: int = fonts.SUBTITLE_2_SIZE,
-    subtitleColor: Optional[str] = None,
+    txt_alignment: str = TXT_ALIGN_LEFT,
+    title_size: int = fonts.SUBTITLE_1_SIZE,
+    subtitle_size: int = fonts.SUBTITLE_2_SIZE,
+    subtitle_color: Optional[str] = None,
 ):
     """Displays text formatted as a headline with a subtitle below it"""
     return Column(
         spacing=0,
         horizontal_alignment=alignment_in_container,
         controls=[
-            Text(
-                title,
-                font_family=fonts.HEADLINE_FONT,
-                size=titleSize,
-                text_align=txtAlignment,
+            get_heading(
+                title=title,
+                size=title_size,
+                align=txt_alignment,
             ),
-            Text(
-                subtitle,
-                font_family=fonts.HEADLINE_FONT,
-                size=subtitleSize,
-                text_align=txtAlignment,
-                color=subtitleColor,
+            get_sub_heading_txt(
+                subtitle=subtitle,
+                size=subtitle_size,
+                align=txt_alignment,
+                color=subtitle_color,
             ),
         ],
+    )
+
+
+def get_body_txt(
+    txt: str = "",
+    size: int = fonts.BODY_1_SIZE,
+    color: Optional[str] = None,
+    show: bool = True,
+    col: Optional[dict] = None,
+    align: str = TXT_ALIGN_LEFT,
+    **kwargs,
+):
+    """Displays text standard-formatted for body"""
+    return Text(
+        col=col,
+        value=txt,
+        color=color,
+        size=size,
+        visible=show,
+        text_align=align,
+        **kwargs,
     )
 
 
@@ -168,33 +209,10 @@ def get_std_multiline_field(
 
 def get_error_txt(
     txt: str,
-    size: int = fonts.BODY_2_SIZE,
-    color: str = colors.ERROR_COLOR,
     show: bool = True,
 ):
     """Displays text formatted for errors / warnings"""
-    return Text(txt, color=color, size=size, visible=show)
-
-
-def get_body_txt(
-    txt: str,
-    size: int = fonts.BODY_1_SIZE,
-    color: Optional[str] = None,
-    show: bool = True,
-    col: Optional[dict] = None,
-    align: str = TXT_ALIGN_LEFT,
-    **kwargs,
-):
-    """Displays text formatted for body"""
-    return Text(
-        col=col,
-        value=txt,
-        color=color,
-        size=size,
-        visible=show,
-        text_align=align,
-        **kwargs,
-    )
+    return get_body_txt(txt, color=colors.ERROR_COLOR, show=show)
 
 
 def get_primary_btn(
@@ -255,7 +273,7 @@ def get_labelled_logo():
         vertical_alignment=CENTER_ALIGNMENT,
         controls=[
             get_app_logo(),
-            get_headline_txt(
+            get_heading(
                 "Tuttle",
                 size=fonts.HEADLINE_3_SIZE,
             ),
@@ -495,8 +513,8 @@ class AlertDisplayPopUp(DialogHandler):
                 content=Column(
                     scroll=AUTO_SCROLL,
                     controls=[
-                        get_headline_txt(
-                            txt=title,
+                        get_heading(
+                            title=title,
                             size=fonts.HEADLINE_4_SIZE,
                         ),
                         xsSpace,
@@ -545,8 +563,8 @@ class ConfirmDisplayPopUp(DialogHandler):
                 content=Column(
                     scroll=AUTO_SCROLL,
                     controls=[
-                        get_headline_txt(
-                            txt=title,
+                        get_heading(
+                            title=title,
                             size=fonts.HEADLINE_4_SIZE,
                         ),
                         xsSpace,

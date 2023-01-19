@@ -197,12 +197,12 @@ class Contact(SQLModel, table=True):
         else:
             return None
 
-    def print_address(self, onlyAddress: bool = False):
+    def print_address(self, address_only: bool = False):
         """Print address in common format."""
         if self.address is None:
             return ""
 
-        if onlyAddress:
+        if address_only:
             return textwrap.dedent(
                 f"""
                 {self.address.street} {self.address.number}
