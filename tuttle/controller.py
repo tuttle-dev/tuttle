@@ -241,7 +241,9 @@ class Controller:
         # TODO: read method from user settings
         if timetracking_method == "cloud_calendar":
             timetracking_calendar = calendar.ICloudCalendar(
-                icloud=cloud.login_iCloud(user_name=self.user.icloud_account.user_name),
+                icloud_connector=cloud.login_iCloud(
+                    user_name=self.user.icloud_account.user_name
+                ),
                 # TODO: read from user settings
                 name="TimeTracking",
             )

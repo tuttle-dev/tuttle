@@ -20,9 +20,9 @@ from pandas import DataFrame
 from res import colors, dimens, fonts, res_utils
 
 from tuttle.calendar import Calendar
+from tuttle.cloud import CloudConnector
 
 from .intent import TimeTrackingIntent
-from .model import CloudCalendarInfo, CloudConfigurationResult
 
 
 class TwoFAPopUp(DialogHandler):
@@ -163,23 +163,17 @@ class NewTimeTrackPopUp(DialogHandler):
         self.password = e.control.value
 
     def on_submit_btn_clicked(self, is_spreadsheet=False, is_ics=False, is_cloud=False):
-        info = (
-            None
-            if not is_cloud
-            else CloudCalendarInfo(
-                account=self.acc,
-                calendar_name=self.calendar_name,
-                password=self.password,
-                provider=self.provider,
-            )
-        )
+        """ """
 
         self.close_dialog()
         self.on_submit_callback(
             is_spreadsheet=is_spreadsheet,
             is_ics=is_ics,
             is_cloud=is_cloud,
-            cloud_calendar_info=info,
+            acc=self.acc,
+            provider=self.provider,
+            password=self.password,
+            calendar_name=self.calendar_name,
         )
 
 
@@ -213,13 +207,15 @@ class TimeTrackingView(TuttleView, UserControl):
             self.pop_up_handler.open_dialog()
         return
 
-    # TODO: refactor this - an enum TimeTrackingMethod or so would have been better
     def on_add_new_timetrack_record_callback(
         self,
-        is_spreadsheet=False,
-        is_ics=False,
-        is_cloud=False,
-        cloud_calendar_info: Optional[CloudCalendarInfo] = None,
+        is_spreadsheet: bool,
+        is_ics: bool,
+        is_cloud: bool,
+        acc: str,
+        provider: str,
+        password: str,
+        calendar_name: str,
     ):
         """Spreadsheet and ics uploads"""
         self.close_pop_up_if_open()
