@@ -96,6 +96,7 @@ class TimeTrackingCloudCalendarSource:
         raise NotImplementedError
 
     """ iCLOUD LOGIN STEPS """
+
     def login_to_icloud(
         self,
         icloud_account: str,
@@ -108,10 +109,11 @@ class TimeTrackingCloudCalendarSource:
         self,
         two_factor_code: str,
     ) -> IntentResult:
-        """TODO Attempts to verify an icloud session given a 2fa code""""
+        """TODO Attempts to verify an icloud session given a 2fa code"""
         raise NotImplementedError
 
     """ GOOGLE LOGIN STEPS """
+
     def login_to_google(
         self,
         google_account: str,
