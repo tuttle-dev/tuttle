@@ -404,7 +404,6 @@ class HomeScreen(TuttleView, UserControl):
             alignment=alignment.center,
             border=border.only(top=border.BorderSide(1, "black")),
             height=dimens.FOOTER_HEIGHT,
-            margin=margin.only(top=dimens.SPACE_LG),
         )
         self.main_body = Column(
             col={
