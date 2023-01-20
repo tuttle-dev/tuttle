@@ -93,5 +93,4 @@ class ContactDataSource(SQLModelDataSourceMixin):
             logger.exception(integrity_error)
             raise DataIntegrityViolation(
                 f"Cannot delete contact with id {contact_id} because it is referenced by another entity",
-                s,
             )
