@@ -72,11 +72,11 @@ table tr td:last-child {
 }
 
 .line-items-container td {
-  padding: 5px 0;
+  padding: 15px 0;
 }
 
 .line-items-container tbody tr:first-child td {
-  padding-top: 15px;
+  padding-top: 25px;
 }
 
 .line-items-container.has-bottom-border tbody tr:last-child td {

@@ -7,8 +7,6 @@ from pathlib import Path
 from flet import AlertDialog, file_picker
 
 import sqlmodel
-import sqlalchemy
-
 from core.intent_result import IntentResult
 from loguru import logger
 
@@ -142,7 +140,6 @@ class SQLModelDataSourceMixin:
     def __init__(
         self,
     ):
-        # TODO: refactor: there should be only one place to create the db engine
         db_path = Path.home() / ".tuttle" / "tuttle.db"
         db_path = f"sqlite:///{db_path}"
         logger.info(f"Creating {self.__class__.__name__} with db_path: {db_path}")
@@ -151,12 +148,6 @@ class SQLModelDataSourceMixin:
             echo=False,
             connect_args={"check_same_thread": False},
             poolclass=sqlmodel.pool.StaticPool,
-        )
-        # required to enable database integrity constraints
-        sqlalchemy.event.listen(
-            self.db_engine,
-            "connect",
-            lambda c, _: c.execute("PRAGMA foreign_keys = ON"),
         )
 
     def create_session(self):

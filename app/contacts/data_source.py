@@ -1,11 +1,7 @@
 from typing import List, Union
 
-from loguru import logger
-from sqlalchemy.exc import IntegrityError
-
 from core.abstractions import SQLModelDataSourceMixin
 from core.intent_result import IntentResult
-from core.exceptions import DataIntegrityViolation
 
 from tuttle.model import Contact
 
@@ -85,12 +81,22 @@ class ContactDataSource(SQLModelDataSourceMixin):
                 exception=e,
             )
 
-    def delete_contact_by_id(self, contact_id):
-        """Deletes a contact with the given id from the database"""
+    def delete_contact_by_id(self, contact_id) -> IntentResult[None]:
+        """Deletes a contact with the given id from the database
+
+        Returns:
+            IntentResult:
+                was_intent_successful : bool
+                data :  None
+                log_message  : str  if an error or exception occurs
+                exception : Exception if an exception occurs
+        """
         try:
             self.delete_by_id(Contact, contact_id)
-        except IntegrityError as integrity_error:
-            logger.exception(integrity_error)
-            raise DataIntegrityViolation(
-                f"Cannot delete contact with id {contact_id} because it is referenced by another entity",
+            return IntentResult(was_intent_successful=True)
+        except Exception as e:
+            return IntentResult(
+                was_intent_successful=False,
+                log_message=f"An exception was raised @ContactDataSource.delete_contact_by_id {e.__class__.__name__}",
+                exception=e,
             )

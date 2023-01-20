@@ -180,9 +180,9 @@ class Contact(SQLModel, table=True):
         back_populates="contacts", sa_relationship_kwargs={"lazy": "subquery"}
     )
     invoicing_contact_of: List["Client"] = Relationship(
-        back_populates="invoicing_contact",
-        sa_relationship_kwargs={"lazy": "subquery", "passive_deletes": "all"},
+        back_populates="invoicing_contact", sa_relationship_kwargs={"lazy": "subquery"}
     )
+    # post address
 
     @property
     def name(self):
