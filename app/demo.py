@@ -283,6 +283,7 @@ def random_duration():
 
 
 def install_demo_data(
+    db_engine,
     n_projects: int,
     db_path: str,
     on_cache_timetracking_dataframe: Optional[Callable] = None,
@@ -297,8 +298,6 @@ def install_demo_data(
     """
     db_path = f"""sqlite:///{db_path}"""
     logger.info(f"Installing demo data in {db_path}...")
-    logger.info(f"Creating database engine at: {db_path}...")
-    db_engine = create_engine(db_path)
     logger.info("Creating database tables...")
     SQLModel.metadata.create_all(db_engine)
 
