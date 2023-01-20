@@ -90,7 +90,7 @@ class ICSCalendar(Calendar):
     @check_io(out=schema.time_tracking)
     def to_data(self) -> DataFrame:
         """Convert ics.Calendar to pandas.DataFrame"""
-
+        # TODO: handle errors from data transformation here
         event_data = pandas.DataFrame(
             [
                 (
@@ -120,12 +120,12 @@ class ICloudCalendar(CloudCalendar):
 
     def __init__(
         self,
-        icloud: icloudpy.ICloudPyService,
+        icloud_connector: icloudpy.ICloudPyService,
         name: str,
     ):
         super().__init__(name)
-        self.icloud = icloud
-        calendars = icloud.calendar.calendars()
+        self.icloud = icloud_connector
+        calendars = icloud_connector.calendar.calendars()
         calendars_df = pandas.DataFrame(calendars)
         cal_to_guid = dict(
             (cal_name, guid)

@@ -1,13 +1,14 @@
-from typing import Type, Union
+from typing import Type, Union, Any
+
+import icloudpy
 
 from core.abstractions import SQLModelDataSourceMixin
 from core.intent_result import IntentResult
 from pandas import DataFrame
 
-from tuttle.calendar import ICSCalendar
+from tuttle.calendar import ICSCalendar, ICloudCalendar, CloudCalendar
 from tuttle.dev import singleton
-
-from .model import CloudCalendarInfo, CloudConfigurationResult
+from tuttle.cloud import CloudConnector
 
 
 @singleton
@@ -91,26 +92,41 @@ class TimeTrackingCloudCalendarSource:
     def __init__(self):
         super().__init__()
 
-    def load_cloud_calendar_data(self, calendar_name: str):
-        """TODO Loads data from a cloud calendar"""
-        raise NotImplementedError
+    def load_cloud_calendar_data(
+        self,
+        calendar_name: str,
+        cloud_connector: CloudConnector,
+    ) -> DataFrame:
+        """Loads data from a cloud calendar"""
+        calendar = None
+        if cloud_connector.provider == "iCloud":
+            icloud_connector: icloudpy.ICloudPyService = (
+                cloud_connector.concrete_connector
+            )
+            calendar: CloudCalendar = ICloudCalendar(
+                name=calendar_name,
+                icloud_connector=icloud_connector,
+            )
+        else:
+            raise NotImplementedError
 
-    """ iCLOUD LOGIN STEPS """
+        calendar_data: DataFrame = calendar.to_data()
+        return calendar_data
 
     def login_to_icloud(
         self,
-        icloud_account: str,
-        icloud_account_password: str,
-    ):
-        """TODO Attempts to authenticate user with their icloud account"""
-        raise NotImplementedError
-
-    def verify_icloud_with_2fa(
-        self,
-        two_factor_code: str,
-    ) -> IntentResult:
-        """TODO Attempts to verify an icloud session given a 2fa code"""
-        raise NotImplementedError
+        apple_id: str,
+        password: str,
+    ) -> CloudConnector:
+        """Attempts to authenticate user with their icloud account"""
+        # TODO: error handling - login may fail
+        icloud_connector = icloudpy.ICloudPyService(
+            apple_id=apple_id,
+            password=password,
+        )
+        return CloudConnector(
+            cloud_connector=icloud_connector,
+        )
 
     """ GOOGLE LOGIN STEPS """
 
@@ -120,11 +136,4 @@ class TimeTrackingCloudCalendarSource:
         google_account_password: str,
     ):
         """TODO Attempts to authenticate user with their google account"""
-        raise NotImplementedError
-
-    def verify_google_with_2fa(
-        self,
-        two_factor_code: str,
-    ) -> IntentResult:
-        """TODO Attempts to verify an google session given a 2fa code"""
         raise NotImplementedError
