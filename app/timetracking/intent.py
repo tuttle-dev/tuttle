@@ -77,16 +77,18 @@ class TimeTrackingIntent:
 
     def connect_to_cloud(
         self,
-        provider: CloudProvider,
-        account_name: str,
+        provider: str,
+        account_id: str,
         password: str,
     ) -> IntentResult[CloudConnector]:
         """"""
         # check cloud_calendar_info for the value of the cloud provider
         # if it is icloud, call the login_to_icloud method
 
-        if provider == CloudProvider.ICloud:
-            connector: CloudConnector = self._cloud_calendar_source.login_to_icloud()
+        if provider == CloudProvider.ICloud.value:
+            connector: CloudConnector = self._cloud_calendar_source.login_to_icloud(
+                apple_id=account_id, password=password
+            )
             # is a 2fa code required?
             return IntentResult(
                 was_intent_successful=True,

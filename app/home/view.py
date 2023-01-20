@@ -494,6 +494,7 @@ class HomeScreen(TuttleView, UserControl):
             self.action_bar.bgcolor = colors.WHITE_COLOR_ALT
         for component in side_bar_components:
             component.bgcolor = side_bar_bg_color
+        self.footer.bgcolor = side_bar_bg_color  # footer and side bar have same bgcolor
 
         self.update_self()
 

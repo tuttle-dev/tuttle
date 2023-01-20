@@ -45,6 +45,13 @@ class CloudConnector:
         else:
             raise NotImplementedError
 
+    @property
+    def is_connected():
+        if isinstance(self.concrete_connector, icloudpy.ICloudPyService):
+            return icloud_connector.is_trusted_session
+        else:
+            raise NotImplementedError
+
     def validate_2fa_code(
         self,
         twofa_code: str,
@@ -53,6 +60,5 @@ class CloudConnector:
         if isinstance(self.cloud_connector, icloudpy.ICloudPyService):
             icloud_connector: icloudpy.ICloudPyService = self.concrete_connector
             icloud_connector.validate_2fa_code(twofa_code)
-            assert icloud_connector.is_trusted_session
         else:
             raise NotImplementedError
