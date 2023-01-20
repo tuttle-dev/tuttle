@@ -2,38 +2,25 @@
 
 from typing import Optional
 from loguru import logger
-import getpass
 import icloudpy
 from icloudpy import ICloudPyService
-from .model import ICloudAccount, GoogleAccount
 from dataclasses import dataclass
+from tuttle.dev import deprecated
 
 
 @dataclass
+@deprecated
 class CloudLoginResult:
-    """Wraps the result of login in-to a cloud account
-
-    Properties
-    ----------
-    request_2fa_code : bool
-        True if the user should provide an 2fa code before proceeding else False
-    icloud_session_ref : ICloudPyService
-        Reference to the created icloud session else None
-    auth_error_occured : bool
-        True if login failed because of invalid auth credentials
-    has_invalid_2fa_code : bool
-        True if the two factor auth code passed was invalid
-    is_logged_in : bool
-        True if login was successful
-    """
+    """Wraps the result of login in-to a cloud account"""
 
     request_2fa_code: bool = False
-    icloud_session_ref: Optional[ICloudPyService] = None
+    session: Optional[any] = None
     auth_error_occured: bool = False
     has_invalid_2fa_code: bool = False
     is_logged_in: bool = False
 
 
+@deprecated
 def verify_icloud_session(
     two_factor_auth_code: Optional[str] = None,
     iCloud: Optional[ICloudPyService] = None,
@@ -44,16 +31,17 @@ def verify_icloud_session(
         assert iCloud.is_trusted_session
         return CloudLoginResult(
             is_logged_in=True,
-            icloud_session_ref=iCloud,
+            session=iCloud,
         )
     except Exception as e:
         logger.error(
             f"Exception raised @login_iCloud during validation {e.__class__.__name__}"
         )
         logger.exception(e)
-        return CloudLoginResult(has_invalid_2fa_code=True, icloud_session_ref=iCloud)
+        return CloudLoginResult(has_invalid_2fa_code=True, session=iCloud)
 
 
+@deprecated
 def login_iCloud(
     user_name: str,
     password: str,
@@ -72,7 +60,7 @@ def login_iCloud(
         iCloud = icloudpy.ICloudPyService(apple_id=user_name, password=password)
         request_2fa_code = not iCloud.is_trusted_session
         return CloudLoginResult(
-            icloud_session_ref=iCloud,
+            session=iCloud,
             request_2fa_code=request_2fa_code,
             is_logged_in=iCloud.is_trusted_session,
         )
@@ -86,6 +74,7 @@ def login_iCloud(
         )
 
 
+@deprecated
 def login_google(
     user_name: str,
     password: str,

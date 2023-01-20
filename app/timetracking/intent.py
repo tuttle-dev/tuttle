@@ -87,66 +87,9 @@ class TimeTrackingIntent:
 
     def configure_account_and_load_calendar(
         self,
-        calendar_info: CloudCalendarInfo,
-        two_factor_code: Optional[str] = "",
-        prev_un_verified_login_res: Optional[CloudConfigurationResult] = None,
-    ) -> IntentResult[Union[Type[CloudConfigurationResult], None]]:
-        """Configures cloud account and loads calendar data
-
-        *Multi-step process
-
-        Parameters:
-        calendar_info (CloudCalendarInfo) : Calendar information
-        two_factor_code (Optional[str]) : Two factor code for login
-        prev_un_verified_login_res (Optional[CloudConfigurationResult]) : Previous login result
-
-        Returns:
-            IntentResult:
-                was_intent_successful : bool
-                data : CloudConfigurationResult if was_intent_successful else None
-                    the data result can be CloudConfigurationResult(request_2fa_code = True) if a 2fa code is needed
-                    Or CloudConfigurationResult(request_2fa_code = True, provided_2fa_code_is_invalid = True) if a 2fa code is needed and the user just provided an incorrect one
-                    Or CloudConfigurationResult(cloud_acc_configured_successfully = True) when and if configuration steps complete successfully and a cloud session is created (user is logged in)
-                    Or CloudConfigurationResult(calendar_loaded_successfully = True) if calendar data is loaded succesffuly
-                log_message  : str  if an error or exception occurs
-                exception : Exception if an exception occurs
-        """
-
-        res: IntentResult = None
-        if not two_factor_code:
-            # STEP 1 user is login in
-            if calendar_info.provider == CloudAccounts.ICloud.value:
-                res = self._timetracking_cloud_data_source.login_to_icloud(
-                    calendar_info=calendar_info
-                )
-            else:
-
-                res = self._timetracking_cloud_data_source.login_to_google(
-                    calendar_info=calendar_info
-                )
-        else:
-            # STEP 2 complete login with 2FA
-            if calendar_info.provider == CloudAccounts.ICloud.value:
-                res = self._timetracking_cloud_data_source.verify_icloud_with_2fa(
-                    login_result=prev_un_verified_login_res,
-                    two_factor_code=two_factor_code,
-                )
-            else:
-
-                res = self._timetracking_cloud_data_source.verify_google_with_2fa(
-                    login_result=prev_un_verified_login_res,
-                    two_factor_code=two_factor_code,
-                )
-        config_result: CloudConfigurationResult = res.data
-        if config_result and config_result.cloud_acc_configured_successfully:
-            # proceed to load cloud calendar data
-            res = self._timetracking_cloud_data_source.load_cloud_calendar_data(
-                info=calendar_info, cloud_session=config_result.session_ref
-            )
-        if not res.was_intent_successful:
-            res.error_msg = "Loading calendar data failed! Please retry"
-            res.log_message_if_any()
-        return res
+    ) -> IntentResult:
+        """TODO"""
+        return IntentResult(error_msg="Un Implemented Error")
 
     def get_timetracking_data(self) -> IntentResult[Optional[DataFrame]]:
         try:

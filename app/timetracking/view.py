@@ -327,42 +327,13 @@ class TimeTrackingView(TuttleView, UserControl):
         )
         self.set_progress_hint(progress_msg)
 
-        result = self.intent.configure_account_and_load_calendar(
-            info,
-            two_factor_code=two_factor_auth_code,
-            prev_un_verified_login_res=prev_un_verified_login_res,
-        )
+        result = self.intent.configure_account_and_load_calendar()
         if not result.was_intent_successful:
             # the intent failed
             self.show_snack(result.error_msg, is_error=True)
             self.set_progress_hint(hide_progress=True)
             return
-        # if we get here, then intent was a success
-        # Case 1 - a 2fa is needed
-        result_data: CloudConfigurationResult = result.data
-        if result_data.request_2fa_code:
-            if result_data.provided_2fa_code_is_invalid:
-                self.show_snack(
-                    "The code you provided is invalid. Please retry", is_error=True
-                )
-            """prompt user for the 2fa code, then call this method again"""
-            self.request_2fa_auth_code(
-                info=info,
-                prev_un_verified_login_res=result_data,
-            )
-        else:
-            feedback_msg = ""
-            is_error = False
-            if result_data.calendar_loaded_successfully:
-                feedback_msg = "Processed your calendar info"
-            elif result_data.auth_error_occurred:
-                feedback_msg = "Invalid credentials. Your account name or password might be incorrect."
-                is_error = True
-            else:
-                feedback_msg = "Failed to load calendar info"
-                is_error = True
-            is_error = not result_data.calendar_loaded_successfully
-            self.show_snack(feedback_msg, is_error)
+        # TODO result is successful
         self.set_progress_hint(hide_progress=True)
 
     def display_dataframe(self):
