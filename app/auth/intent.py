@@ -1,5 +1,7 @@
 from typing import Type, Union
 
+from loguru import logger
+
 from core.intent_result import IntentResult
 
 from tuttle.model import User
@@ -74,11 +76,23 @@ class AuthIntent:
         IntentResult
             Result object with the status of the intent and other details
         """
-        result = self._data_source.get_user_()
-        if not result.was_intent_successful:
-            result.error_msg = "Checking auth status failed! Please restart the app"
-            result.log_message_if_any()
-        return result
+
+        try:
+            user = self._data_source.get_user()
+            return IntentResult(
+                was_intent_successful=True,
+                data=user,
+            )
+        except Exception as ex:
+            error_message = f"Failed to get user: {ex}. Check the logs for more details"
+            logger.error(error_message)
+            logger.exception(ex)
+            return IntentResult(
+                was_intent_successful=False,
+                data=None,
+                log_message=error_message,
+                exception=ex,
+            )
 
     def update_user(
         self,

@@ -161,7 +161,7 @@ class UserDataForm(UserControl):
         self.title_field = views.get_std_txt_field(
             lambda e: self.on_field_value_changed("title", e),
             "Job Title",
-            "your work title",
+            "What is your role as a freelancer?",
             on_focus=self.on_field_focus,
             keyboard_type=utils.KEYBOARD_TEXT,
         )
@@ -354,7 +354,8 @@ class SplashScreen(TuttleView, UserControl):
                             self.form_container,
                             views.get_secondary_btn(
                                 on_click=self.on_proceed_with_demo_data_clicked,
-                                label="Proceed with demo data",
+                                label="Proceed with demo",
+                                icon="TOYS",
                             ),
                         ]
                     ),
@@ -435,7 +436,7 @@ class ProfileScreen(TuttleView, UserControl):
         self.ongoing_action_hint = views.get_body_txt(txt="")
         self.profile_photo_control = views.get_profile_photo_img()
         self.update_photo_btn = views.get_secondary_btn(
-            label="Update photo", on_click=self.on_update_photo_clicked
+            label="Update profile picture", on_click=self.on_update_photo_clicked
         )
         self.user_data_form = UserDataForm(
             on_form_submit=lambda title, name, email, phone, street, street_num, postal_code, city, country: self.intent.update_user(

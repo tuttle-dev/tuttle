@@ -19,31 +19,6 @@ class UserDataSource(SQLModelDataSourceMixin):
         """
         return self.query_the_only(User)
 
-    @deprecated
-    def get_user_(self) -> IntentResult[Optional[User]]:
-        """
-        Get a user from the database
-
-        Returns:
-            IntentResult:
-                was_intent_successful : bool
-                data : User or None
-                log_message  : str  if an error or exception occurs
-                exception : Exception if an exception occurs
-        """
-        try:
-            user = self.query_the_only(User)
-            return IntentResult(
-                was_intent_successful=True,
-                data=user,
-            )
-        except Exception as e:
-            return IntentResult(
-                was_intent_successful=False,
-                log_message=f"An exception was raised @UserDataSource.get_user {e.__class__.__name__}",
-                exception=e,
-            )
-
     def create_user(
         self,
         title: str,

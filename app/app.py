@@ -15,8 +15,10 @@ from flet import (
     app,
 )
 
-import demo
+import sqlalchemy
 import sqlmodel
+
+import demo
 from auth.view import ProfileScreen, SplashScreen
 from contracts.view import ContractEditorScreen, ViewContractScreen
 from core.abstractions import TuttleView, TuttleViewParams
@@ -239,6 +241,24 @@ class TuttleApp:
             self.page.window_width, self.page.window_height
         )
 
+    def create_database_engine(self):
+        """
+        Create a database engine.
+        """
+        logger.info("Creating database engine")
+        self.db_engine = sqlmodel.create_engine(
+            f"sqlite:///{self.db_path}",
+            echo=True,
+            connect_args={"check_same_thread": False},
+            poolclass=sqlmodel.pool.StaticPool,
+        )
+        # required to enable database integrity constraints
+        sqlalchemy.event.listen(
+            self.db_engine,
+            "connect",
+            lambda c, _: c.execute("PRAGMA foreign_keys = ON"),
+        )
+
     def create_model(self):
         logger.info("Creating database model")
         sqlmodel.SQLModel.metadata.create_all(self.db_engine, checkfirst=True)
@@ -248,9 +268,7 @@ class TuttleApp:
         Ensure that the database exists and is up to date.
         """
         if not self.db_path.exists():
-            self.db_engine = sqlmodel.create_engine(
-                f"sqlite:///{self.db_path}", echo=True
-            )
+            self.create_database_engine()
             self.create_model()
         else:
             logger.info("Database exists, skipping creation")
@@ -264,7 +282,7 @@ class TuttleApp:
             self.db_path.unlink()
         except FileNotFoundError:
             logger.info("Database file not found, skipping delete")
-        self.db_engine = sqlmodel.create_engine(f"sqlite:///{self.db_path}", echo=True)
+        self.create_database_engine()
         self.create_model()
 
     def store_demo_timetracking_dataframe(self, time_tracking_data: DataFrame):
@@ -275,8 +293,10 @@ class TuttleApp:
     def install_demo_data(self):
         """Install demo data into the database."""
         self.clear_database()
+        self.create_database_engine()
         try:
             demo.install_demo_data(
+                db_engine=self.db_engine,
                 n_projects=4,
                 db_path=self.db_path,
                 on_cache_timetracking_dataframe=self.store_demo_timetracking_dataframe,

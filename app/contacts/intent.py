@@ -1,6 +1,9 @@
 from typing import Mapping, Union
 
+from loguru import logger
+
 from core.intent_result import IntentResult
+from core.exceptions import DataIntegrityViolation
 
 from tuttle.model import Contact
 
@@ -97,31 +100,17 @@ class ContactsIntent:
                 exception : Exception if an exception occurs
         """
         # contact can only be deleted if it is not invoicing contact of any client
-        query_result: IntentResult[Contact] = self.get_contact_by_id(contact_id)
-        if query_result.was_intent_successful:
-            contact: Contact = query_result.data
-            if len(contact.invoicing_contact_of) > 0:
-                return IntentResult(
-                    was_intent_successful=False,
-                    error_msg=f"Contact {contact.name} cannot be deleted because it is invoicing contact of clients: {','.join([client.name for client in contact.invoicing_contact_of])}",
-                )
-            else:
-                # contact can be deleted
-                delete_result: IntentResult[
-                    None
-                ] = self._data_source.delete_contact_by_id(contact_id)
-                if delete_result.was_intent_successful:
-                    return IntentResult(was_intent_successful=True)
-                else:
-                    return IntentResult(
-                        was_intent_successful=False,
-                        error_msg=delete_result.error_msg,
-                        log_message=delete_result.log_message,
-                    )
-        else:
+        try:
+            self._data_source.delete_contact_by_id(contact_id)
+            return IntentResult(
+                was_intent_successful=True,
+            )
+        except DataIntegrityViolation as data_integrity_violation:
+            error_message = data_integrity_violation.message
+            logger.error(data_integrity_violation.message)
+            logger.exception(data_integrity_violation)
             return IntentResult(
                 was_intent_successful=False,
-                error_msg=query_result.error_msg,
-                log_message=query_result.log_message,
-                exception=query_result.exception,
+                error_msg=error_message,
+                exception=data_integrity_violation,
             )
