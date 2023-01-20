@@ -2,7 +2,7 @@ from typing import Callable, Optional
 
 import webbrowser
 from dataclasses import dataclass
-
+from .intent import HomeIntent
 from flet import (
     Column,
     Container,
@@ -15,7 +15,6 @@ from flet import (
     PopupMenuItem,
     ResponsiveRow,
     Row,
-    Text,
     UserControl,
     alignment,
     border,
@@ -31,7 +30,7 @@ from core import utils, views
 from core.abstractions import DialogHandler, TuttleView, TuttleViewParams
 from invoicing.view import InvoicingListView
 from projects.view import ProjectsListView
-from res import colors, dimens, fonts, res_utils
+from res import colors, dimens, fonts, res_utils, theme
 from timetracking.view import TimeTrackingView
 
 MIN_SIDE_BAR_WIDTH = int(dimens.MIN_WINDOW_WIDTH * 0.3)
@@ -69,7 +68,6 @@ def get_action_bar(
                         views.get_heading(
                             "Tuttle",
                             size=fonts.HEADLINE_4_SIZE,
-                            color=colors.WHITE_COLOR,
                         )
                     ],
                     alignment=utils.CENTER_ALIGNMENT,
@@ -285,7 +283,7 @@ class HomeScreen(TuttleView, UserControl):
         self.page_scroll_type = None
         self.main_menu_handler = MainMenuItemsHandler(params)
         self.secondary_menu_handler = SecondaryMenuHandler(params)
-
+        self.intent_handler = HomeIntent(local_storage=params.local_storage)
         self.selected_tab = NO_MENU_ITEM_INDEX
 
         self.main_menu = create_and_get_navigation_menu(
@@ -421,27 +419,28 @@ class HomeScreen(TuttleView, UserControl):
                 self.destination_content_container,
             ],
         )
+        self.side_bar = Container(
+            col={"xs": 4, "md": 3, "lg": 2},
+            padding=padding.only(top=dimens.SPACE_XL),
+            content=Column(
+                controls=[
+                    self.main_menu,
+                    self.secondary_menu,
+                ],
+                alignment=utils.START_ALIGNMENT,
+                horizontal_alignment=utils.START_ALIGNMENT,
+                spacing=0,
+                run_spacing=0,
+            ),
+            border=border.only(right=border.BorderSide(width=1)),
+        )
 
         self.view = Container(
             Column(
                 [
                     ResponsiveRow(
                         controls=[
-                            Container(
-                                col={"xs": 4, "md": 3, "lg": 2},
-                                padding=padding.only(top=dimens.SPACE_XL),
-                                content=Column(
-                                    controls=[
-                                        self.main_menu,
-                                        self.secondary_menu,
-                                    ],
-                                    alignment=utils.START_ALIGNMENT,
-                                    horizontal_alignment=utils.START_ALIGNMENT,
-                                    spacing=0,
-                                    run_spacing=0,
-                                ),
-                                border=border.only(right=border.BorderSide(width=1)),
-                            ),
+                            self.side_bar,
                             self.main_body,
                         ],
                         spacing=0,
@@ -453,12 +452,39 @@ class HomeScreen(TuttleView, UserControl):
                 ],
                 alignment=utils.SPACE_BETWEEN_ALIGNMENT,
                 horizontal_alignment=utils.STRETCH_ALIGNMENT,
+                spacing=0,
+                run_spacing=0,
             ),
         )
         return self.view
 
     def did_mount(self):
         self.mounted = True
+        self.load_preferred_theme()
+
+    def on_resume_after_back_pressed(self):
+        self.load_preferred_theme()
+
+    def load_preferred_theme(self):
+        result = self.intent_handler.get_preferred_theme()
+        if not result.was_intent_successful:
+            self.show_snack(result.error_msg, is_error=True)
+            return
+        self.preferred_theme = result.data
+        side_bar_components = [
+            self.side_bar,
+            self.main_menu,
+            self.secondary_menu,
+        ]
+        side_bar_bg_color = colors.BLACK_COLOR_ALT  # default is dark mode
+        self.action_bar.bgcolor = colors.BLACK_COLOR
+        if self.preferred_theme == theme.THEME_MODES.light.value:
+            side_bar_bg_color = colors.GRAY_LIGHT_COLOR
+            self.action_bar.bgcolor = colors.WHITE_COLOR_ALT
+        for component in side_bar_components:
+            component.bgcolor = side_bar_bg_color
+
+        self.update_self()
 
     def will_unmount(self):
         self.mounted = False

@@ -8,8 +8,8 @@ from dataclasses import dataclass
 from tuttle.dev import deprecated
 
 
-@dataclass
 @deprecated
+@dataclass
 class CloudLoginResult:
     """Wraps the result of login in-to a cloud account"""
 

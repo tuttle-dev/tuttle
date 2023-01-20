@@ -1,6 +1,6 @@
 import threading
 import time
-
+from typing import Optional
 from flet import Page
 
 from core.abstractions import ClientStorage
@@ -43,12 +43,19 @@ class ClientStorageImpl(ClientStorage):
             )
             logger.exception(e)
 
-    def get_value(self, key: str):
-        prefixedKey = self.keys_prefix + key
-        keyExists = self.page.client_storage.contains_key(prefixedKey)
-        if not keyExists:
+    def get_value(self, key: str) -> Optional[str]:
+        try:
+            prefixedKey = self.keys_prefix + key
+            keyExists = self.page.client_storage.contains_key(prefixedKey)
+            if not keyExists:
+                return None
+            return self.page.client_storage.get(prefixedKey)
+        except Exception as e:
+            logger.error(
+                f"ClientStorageImpl.get_value({key}) threw an exception {e.__class__.__name__}"
+            )
+            logger.exception(e)
             return None
-        return self.page.client_storage.get(prefixedKey)
 
     def remove_value(self, key: str):
         prefixedKey = self.keys_prefix + key
