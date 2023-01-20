@@ -6,22 +6,22 @@ from core.abstractions import ClientStorage
 from core.intent_result import IntentResult
 from pandas import DataFrame
 from preferences.intent import PreferencesIntent
-from preferences.model import CloudAccounts, PreferencesStorageKeys
+from preferences.model import PreferencesStorageKeys
 
 from .data_source import (
     TimeTrackingCloudCalendarSource,
     TimeTrackingDataFrameSource,
     TimeTrackingFileCalendarSource,
 )
-from .model import CloudCalendarInfo, CloudConfigurationResult
+from tuttle.cloud import CloudConnector, CloudProvider
 
 
 class TimeTrackingIntent:
-    """Handles TimeTrackingIntent C_R_U_D intents"""
+    """Handles time tracking intents"""
 
     def __init__(self, local_storage: ClientStorage):
 
-        self._timetracking_cloud_data_source = TimeTrackingCloudCalendarSource()
+        self._cloud_calendar_source = TimeTrackingCloudCalendarSource()
         self._timetracking_file_data_source = TimeTrackingFileCalendarSource()
         self._timetracking_data_frame_source = TimeTrackingDataFrameSource()
         self._preferences_intent = PreferencesIntent(local_storage)
@@ -47,16 +47,6 @@ class TimeTrackingIntent:
             )
         return IntentResult(
             was_intent_successful=True, data=[provider_result.data, acc_result.data]
-        )
-
-    def _set_preferred_cloud_account(self, cloud_acc_id, cloud_provider):
-        result = self._preferences_intent.set_preference_key_value_pair(
-            PreferencesStorageKeys.cloud_provider_key, cloud_provider
-        )
-        if not result.was_intent_successful:
-            return result  # do not proceed
-        return self._preferences_intent.set_preference_key_value_pair(
-            PreferencesStorageKeys.cloud_acc_id_key, cloud_acc_id
         )
 
     def process_timetracking_file(self, file_path, file_name) -> IntentResult:
@@ -85,11 +75,43 @@ class TimeTrackingIntent:
             result.log_message_if_any()
         return result
 
-    def configure_account_and_load_calendar(
+    def connect_to_cloud(
         self,
-    ) -> IntentResult:
-        """TODO"""
-        return IntentResult(error_msg="Un Implemented Error")
+        provider: CloudProvider,
+        account_name: str,
+        password: str,
+    ) -> IntentResult[CloudConnector]:
+        """"""
+        # check cloud_calendar_info for the value of the cloud provider
+        # if it is icloud, call the login_to_icloud method
+
+        if provider == CloudProvider.ICloud:
+            connector: CloudConnector = self._cloud_calendar_source.login_to_icloud()
+            # is a 2fa code required?
+            return IntentResult(
+                was_intent_successful=True,
+                data=connector,
+            )
+        else:
+            return IntentResult(
+                was_intent_successful=False,
+                error_msg=f"Not implemented yet for cloud provider {provider}",
+            )
+
+    def load_from_cloud_calendar(
+        self,
+        cloud_connector: CloudConnector,
+        calendar_name: str,
+    ) -> IntentResult[DataFrame]:
+        """Loads time tracking data from a cloud calendar using a cloud connector"""
+        calendar_data: DataFrame = self._cloud_calendar_source.load_data(
+            cloud_connector=cloud_connector,
+            calendar_name=calendar_name,
+        )
+        return IntentResult(
+            was_intent_successful=True,
+            data=calendar_data,
+        )
 
     def get_timetracking_data(self) -> IntentResult[Optional[DataFrame]]:
         try:

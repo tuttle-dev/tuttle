@@ -62,7 +62,7 @@ class TimeTrackingFileCalendarSource:
     ) -> IntentResult:
         """loads time tracking data from a .ics file
 
-        Arguments:
+        Args:
             ics_file_name : name of the uploaded file
             ics_file_path : path to an uploaded ics or spreadsheet file
 
@@ -92,7 +92,7 @@ class TimeTrackingCloudCalendarSource:
     def __init__(self):
         super().__init__()
 
-    def load_cloud_calendar_data(
+    def load_data(
         self,
         calendar_name: str,
         cloud_connector: CloudConnector,

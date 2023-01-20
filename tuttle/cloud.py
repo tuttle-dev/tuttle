@@ -2,12 +2,22 @@
 
 from typing import Optional, Union, Any
 
+from enum import Enum
+
 from loguru import logger
 import getpass
 import icloudpy
 from icloudpy import ICloudPyService
 from .model import ICloudAccount, GoogleAccount
 from dataclasses import dataclass
+
+
+class CloudProvider(Enum):
+    Google = "Google"
+    ICloud = "iCloud"
+
+    def __str__(self) -> str:
+        return str(self.value)
 
 
 class CloudConnector:

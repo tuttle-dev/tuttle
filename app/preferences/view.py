@@ -41,7 +41,8 @@ from res.dimens import (
 )
 from res.theme import THEME_MODES
 from res import dimens
-from .model import CloudAccounts
+
+from tuttle.cloud import CloudProvider
 
 
 class PreferencesScreen(TuttleView, UserControl):
@@ -157,7 +158,7 @@ class PreferencesScreen(TuttleView, UserControl):
         self.cloud_provider_control = get_dropdown(
             label="Cloud Provider",
             on_change=self.on_cloud_provider_selected,
-            items=[item.value for item in CloudAccounts],
+            items=[item.value for item in CloudProvider],
         )
         self.cloud_account_id_control = get_std_txt_field(
             label="Cloud Account Name",

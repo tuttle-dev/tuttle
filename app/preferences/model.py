@@ -2,14 +2,6 @@ from dataclasses import dataclass
 from enum import Enum
 
 
-class CloudAccounts(Enum):
-    Google = "Google Calendar"
-    ICloud = "iCloud"
-
-    def __str__(self) -> str:
-        return str(self.value)
-
-
 @dataclass
 class Preferences:
     theme_mode: str = ""
