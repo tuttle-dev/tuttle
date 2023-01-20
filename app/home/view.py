@@ -58,7 +58,12 @@ def get_action_bar(
         alignment=alignment.center,
         height=dimens.TOOLBAR_HEIGHT,
         padding=padding.symmetric(horizontal=dimens.SPACE_MD),
-        border=border.only(bottom=border.BorderSide(width=1)),
+        border=border.only(
+            bottom=border.BorderSide(
+                width=0.2,
+                color=colors.BORDER_COLOR,
+            )
+        ),
         content=Row(
             alignment=utils.SPACE_BETWEEN_ALIGNMENT,
             vertical_alignment=utils.CENTER_ALIGNMENT,
@@ -402,7 +407,9 @@ class HomeScreen(TuttleView, UserControl):
             col={"xs": 12},
             content=views.get_heading(),
             alignment=alignment.center,
-            border=border.only(top=border.BorderSide(1, "black")),
+            border=border.only(
+                top=border.BorderSide(width=0.2, color=colors.BORDER_COLOR)
+            ),
             height=dimens.FOOTER_HEIGHT,
         )
         self.main_body = Column(
@@ -431,7 +438,12 @@ class HomeScreen(TuttleView, UserControl):
                 spacing=0,
                 run_spacing=0,
             ),
-            border=border.only(right=border.BorderSide(width=1)),
+            border=border.only(
+                right=border.BorderSide(
+                    width=0.2,
+                    color=colors.BORDER_COLOR,
+                )
+            ),
         )
 
         self.view = Container(
