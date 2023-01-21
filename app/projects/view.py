@@ -675,7 +675,7 @@ class ProjectsListView(TuttleView, UserControl):
         self.initialize_data()
 
     def parent_intent_listener(self, intent: str, data: any):
-        if intent == res_utils.REFRESH_INTENT:
+        if intent == res_utils.RELOAD_INTENT:
             self.initialize_data()
         return
 

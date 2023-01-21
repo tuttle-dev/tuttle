@@ -176,7 +176,7 @@ class TimeTrackingView(TuttleView, UserControl):
             self.pop_up_handler.close_dialog()
 
     def parent_intent_listener(self, intent: str, data: any):
-        if intent == res_utils.REFRESH_INTENT:
+        if intent == res_utils.RELOAD_INTENT:
             self.initialize_data()
             return
 
@@ -196,8 +196,8 @@ class TimeTrackingView(TuttleView, UserControl):
 
     def on_add_timetrack_from_file(
         self,
-        is_spreadsheet: bool,
-        is_ics: bool,
+        is_spreadsheet: Optional[bool] = False,
+        is_ics: Optional[bool] = False,
     ):
         self.close_pop_up_if_open()
         exts = ["ics"] if is_ics else ["xlsx", "csv", "xls", "tsv", "ods"]

@@ -480,7 +480,7 @@ class HomeScreen(TuttleView, UserControl):
 
     def on_resume_after_back_pressed(self):
         self.load_preferred_theme()
-        self.pass_intent_to_destination(res_utils.REFRESH_INTENT)
+        self.pass_intent_to_destination(res_utils.RELOAD_INTENT)
 
     def load_preferred_theme(self):
         result = self.intent_handler.get_preferred_theme()

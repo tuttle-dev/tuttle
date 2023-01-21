@@ -134,9 +134,12 @@ class ProjectsIntent:
                     self._completed_projects_cache[key] = p
         return self._completed_projects_cache
 
-    def get_active_projects_as_map(self) -> Mapping[int, Project]:
-        if not self._all_projects_cache:
-            self.get_all_projects_as_map()
+    def get_active_projects_as_map(
+        self,
+        reload_cache: Optional[bool] = False,
+    ) -> Mapping[int, Project]:
+        if reload_cache or not self._all_projects_cache:
+            self.get_all_projects_as_map(reload_cache=reload_cache)
         if not self._active_projects_cache:
             self._active_projects_cache = {}
             for key in self._all_projects_cache:
