@@ -142,4 +142,4 @@ app/tmp
 app/assets/uploads
 
 # visual studio workspaces
-.code-workspace
+*.code-workspace
