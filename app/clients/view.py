@@ -1,21 +1,19 @@
 from typing import Callable, Mapping, Optional
 
-from flet import (
-    AlertDialog,
-    Card,
-    Column,
-    Container,
-    GridView,
-    Icon,
-    ListTile,
-    ResponsiveRow,
-    Row,
-    Text,
-    UserControl,
-    border_radius,
-    icons,
-    padding,
-)
+from flet import (AlertDialog,
+                  Card,
+                  Column,
+                  Container,
+                  GridView,
+                  Icon,
+                  ListTile,
+                  ResponsiveRow,
+                  Row,
+                  Text,
+                  UserControl,
+                  border_radius,
+                  icons,
+                  padding,)
 
 from clients.intent import ClientsIntent
 from core import utils, views

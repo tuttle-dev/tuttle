@@ -2,26 +2,24 @@ from typing import Callable, Optional
 
 import webbrowser
 from dataclasses import dataclass
-from .intent import HomeIntent
-from flet import (
-    Column,
-    Container,
-    ElevatedButton,
-    Icon,
-    IconButton,
-    NavigationRail,
-    NavigationRailDestination,
-    PopupMenuButton,
-    PopupMenuItem,
-    ResponsiveRow,
-    Row,
-    UserControl,
-    alignment,
-    border,
-    icons,
-    margin,
-    padding,
-)
+
+from flet import (Column,
+                  Container,
+                  ElevatedButton,
+                  Icon,
+                  IconButton,
+                  NavigationRail,
+                  NavigationRailDestination,
+                  PopupMenuButton,
+                  PopupMenuItem,
+                  ResponsiveRow,
+                  Row,
+                  UserControl,
+                  alignment,
+                  border,
+                  icons,
+                  margin,
+                  padding,)
 
 from clients.view import ClientsListView
 from contacts.view import ContactEditorPopUp, ContactsListView
@@ -32,6 +30,8 @@ from invoicing.view import InvoicingListView
 from projects.view import ProjectsListView
 from res import colors, dimens, fonts, res_utils, theme
 from timetracking.view import TimeTrackingView
+
+from .intent import HomeIntent
 
 MIN_SIDE_BAR_WIDTH = int(dimens.MIN_WINDOW_WIDTH * 0.3)
 MIN_FOOTER_WIDTH = int(dimens.MIN_WINDOW_WIDTH * 0.7)

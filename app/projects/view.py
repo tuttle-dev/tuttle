@@ -2,27 +2,25 @@ from typing import Callable, Optional
 
 from enum import Enum
 
-from flet import (
-    ButtonStyle,
-    Card,
-    Column,
-    Container,
-    ElevatedButton,
-    FontWeight,
-    GridView,
-    Icon,
-    IconButton,
-    ListTile,
-    ResponsiveRow,
-    Row,
-    Text,
-    TextButton,
-    UserControl,
-    border_radius,
-    icons,
-    margin,
-    padding,
-)
+from flet import (ButtonStyle,
+                  Card,
+                  Column,
+                  Container,
+                  ElevatedButton,
+                  FontWeight,
+                  GridView,
+                  Icon,
+                  IconButton,
+                  ListTile,
+                  ResponsiveRow,
+                  Row,
+                  Text,
+                  TextButton,
+                  UserControl,
+                  border_radius,
+                  icons,
+                  margin,
+                  padding,)
 
 from clients.view import ClientViewPopUp
 from core import utils, views

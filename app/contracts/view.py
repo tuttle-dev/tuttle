@@ -2,39 +2,35 @@ from typing import Callable, Optional
 
 from enum import Enum
 
-from flet import (
-    AlertDialog,
-    ButtonStyle,
-    Card,
-    Column,
-    Container,
-    ElevatedButton,
-    GridView,
-    Icon,
-    IconButton,
-    ListTile,
-    ResponsiveRow,
-    Row,
-    Text,
-    TextButton,
-    UserControl,
-    border_radius,
-    icons,
-    margin,
-    padding,
-)
+from flet import (AlertDialog,
+                  ButtonStyle,
+                  Card,
+                  Column,
+                  Container,
+                  ElevatedButton,
+                  GridView,
+                  Icon,
+                  IconButton,
+                  ListTile,
+                  ResponsiveRow,
+                  Row,
+                  Text,
+                  TextButton,
+                  UserControl,
+                  border_radius,
+                  icons,
+                  margin,
+                  padding,)
 
 from clients.view import ClientEditorPopUp, ClientViewPopUp
 from contracts.intent import ContractsIntent
 from core import utils, views
 from core.abstractions import DialogHandler, TuttleView, TuttleViewParams
 from core.intent_result import IntentResult
-from core.models import (
-    get_cycle_from_value,
-    get_cycle_values_as_list,
-    get_time_unit_from_value,
-    get_time_unit_values_as_list,
-)
+from core.models import (get_cycle_from_value,
+                         get_cycle_values_as_list,
+                         get_time_unit_from_value,
+                         get_time_unit_values_as_list,)
 from res import colors, dimens, fonts, res_utils
 
 from tuttle.model import Client, Contract

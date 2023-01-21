@@ -1,7 +1,8 @@
+from typing import Optional
+
 from core.abstractions import ClientStorage, IntentResult
 from preferences.intent import PreferencesIntent
 from preferences.model import PreferencesStorageKeys
-from typing import Optional
 
 
 class HomeIntent:

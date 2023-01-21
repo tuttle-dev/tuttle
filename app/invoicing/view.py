@@ -2,25 +2,23 @@ from typing import Callable, Optional
 
 from datetime import datetime, timedelta
 
-from flet import (
-    AlertDialog,
-    Card,
-    Column,
-    Container,
-    GridView,
-    Icon,
-    IconButton,
-    Image,
-    ListTile,
-    ListView,
-    ResponsiveRow,
-    Row,
-    Text,
-    UserControl,
-    border_radius,
-    icons,
-    padding,
-)
+from flet import (AlertDialog,
+                  Card,
+                  Column,
+                  Container,
+                  GridView,
+                  Icon,
+                  IconButton,
+                  Image,
+                  ListTile,
+                  ListView,
+                  ResponsiveRow,
+                  Row,
+                  Text,
+                  UserControl,
+                  border_radius,
+                  icons,
+                  padding,)
 
 from core import utils, views
 from core.abstractions import DialogHandler, TuttleView, TuttleViewParams
