@@ -31,6 +31,7 @@ from core.views import (
 )
 from preferences.intent import PreferencesIntent
 from preferences.model import Preferences
+from res import dimens
 from res.dimens import (
     MIN_WINDOW_HEIGHT,
     MIN_WINDOW_WIDTH,
@@ -40,7 +41,6 @@ from res.dimens import (
     SPACE_XS,
 )
 from res.theme import THEME_MODES
-from res import dimens
 
 from tuttle.cloud import CloudProvider
 

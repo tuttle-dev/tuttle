@@ -1,9 +1,9 @@
 from typing import List, Union
-from loguru import logger
-from sqlalchemy.exc import IntegrityError
 
 from core.abstractions import SQLModelDataSourceMixin
 from core.intent_result import IntentResult
+from loguru import logger
+from sqlalchemy.exc import IntegrityError
 
 from tuttle.model import Contact
 

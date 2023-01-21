@@ -1,17 +1,15 @@
 from typing import Callable
 
-from flet import (
-    Card,
-    Column,
-    Container,
-    IconButton,
-    ResponsiveRow,
-    Row,
-    UserControl,
-    icons,
-    margin,
-    padding,
-)
+from flet import (Card,
+                  Column,
+                  Container,
+                  IconButton,
+                  ResponsiveRow,
+                  Row,
+                  UserControl,
+                  icons,
+                  margin,
+                  padding,)
 
 from auth.intent import AuthIntent
 from core import utils, views

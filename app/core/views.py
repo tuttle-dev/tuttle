@@ -3,48 +3,44 @@ from typing import Callable, List, Optional, Union
 
 import datetime
 
-from flet import (
-    AlertDialog,
-    Column,
-    Container,
-    Dropdown,
-    ElevatedButton,
-    FilledButton,
-    Icon,
-    Image,
-    PopupMenuButton,
-    PopupMenuItem,
-    ProgressBar,
-    ResponsiveRow,
-    Row,
-    Text,
-    TextField,
-    TextStyle,
-    UserControl,
-    alignment,
-    border_radius,
-    dropdown,
-    icons,
-    padding,
-)
+from flet import (AlertDialog,
+                  Column,
+                  Container,
+                  Dropdown,
+                  ElevatedButton,
+                  FilledButton,
+                  Icon,
+                  Image,
+                  PopupMenuButton,
+                  PopupMenuItem,
+                  ProgressBar,
+                  ResponsiveRow,
+                  Row,
+                  Text,
+                  TextField,
+                  TextStyle,
+                  UserControl,
+                  alignment,
+                  border_radius,
+                  dropdown,
+                  icons,
+                  padding,)
 
 from res import colors, dimens, fonts, image_paths
 
 from .abstractions import DialogHandler
-from .utils import (
-    AUTO_SCROLL,
-    CENTER_ALIGNMENT,
-    CONTAIN,
-    KEYBOARD_MULTILINE,
-    KEYBOARD_NONE,
-    KEYBOARD_PASSWORD,
-    KEYBOARD_TEXT,
-    SPACE_BETWEEN_ALIGNMENT,
-    START_ALIGNMENT,
-    TXT_ALIGN_CENTER,
-    TXT_ALIGN_LEFT,
-    AlertDialogControls,
-)
+from .utils import (AUTO_SCROLL,
+                    CENTER_ALIGNMENT,
+                    CONTAIN,
+                    KEYBOARD_MULTILINE,
+                    KEYBOARD_NONE,
+                    KEYBOARD_PASSWORD,
+                    KEYBOARD_TEXT,
+                    SPACE_BETWEEN_ALIGNMENT,
+                    START_ALIGNMENT,
+                    TXT_ALIGN_CENTER,
+                    TXT_ALIGN_LEFT,
+                    AlertDialogControls,)
 
 lgSpace = Container(height=dimens.SPACE_LG, width=dimens.SPACE_STD, padding=0, margin=0)
 mdSpace = Container(height=dimens.SPACE_MD, width=dimens.SPACE_MD, padding=0, margin=0)
