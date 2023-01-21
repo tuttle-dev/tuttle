@@ -26,7 +26,7 @@ class TimeTrackingIntent:
         self._timetracking_data_frame_source = TimeTrackingDataFrameSource()
         self._preferences_intent = PreferencesIntent(local_storage)
 
-    def get_preferred_cloud_account(self):
+    def get_preferred_cloud_account(self) -> IntentResult[Optional[list]]:
         """
         Returns:
             IntentResult

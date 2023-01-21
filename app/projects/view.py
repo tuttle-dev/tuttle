@@ -672,13 +672,15 @@ class ProjectsListView(TuttleView, UserControl):
         self.no_projects_control.visible = True
 
     def did_mount(self):
-        self.mounted = True
         self.initialize_data()
 
-    def on_resume_after_back_pressed(self):
-        self.initialize_data()
+    def parent_intent_listener(self, intent: str, data: any):
+        if intent == res_utils.REFRESH_INTENT:
+            self.initialize_data()
+        return
 
     def initialize_data(self):
+        self.mounted = True
         self.loading_indicator.visible = True
         self.projects_to_display = self.intent.get_all_projects_as_map(
             reload_cache=True

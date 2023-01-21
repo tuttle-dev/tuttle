@@ -1,6 +1,8 @@
+from typing import Optional
+
 import threading
 import time
-from typing import Optional
+
 from flet import Page
 
 from core.abstractions import ClientStorage

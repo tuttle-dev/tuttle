@@ -375,7 +375,7 @@ class HomeScreen(TuttleView, UserControl):
         """determine the item user wishes to create"""
         item = self.current_menu_handler.items[self.selected_tab]
         if item.on_new_intent:
-            self.pass_intent_to_destination(item.on_new_intent, "")
+            self.pass_intent_to_destination(item.on_new_intent)
         else:
             self.navigate_to_route(item.on_new_screen_route)
 
@@ -383,7 +383,7 @@ class HomeScreen(TuttleView, UserControl):
         if self.destination_view and isinstance(self.destination_view, TuttleView):
             self.destination_view.on_resume_after_back_pressed()
 
-    def pass_intent_to_destination(self, intent: str, data: str):
+    def pass_intent_to_destination(self, intent: str, data: Optional[any] = None):
         """forwards an intent to a child destination view"""
         if self.destination_view and isinstance(self.destination_view, TuttleView):
             self.destination_view.parent_intent_listener(intent, data)
@@ -475,6 +475,7 @@ class HomeScreen(TuttleView, UserControl):
 
     def on_resume_after_back_pressed(self):
         self.load_preferred_theme()
+        self.pass_intent_to_destination(res_utils.REFRESH_INTENT)
 
     def load_preferred_theme(self):
         result = self.intent_handler.get_preferred_theme()

@@ -176,8 +176,9 @@ class TimeTrackingView(TuttleView, UserControl):
             self.pop_up_handler.close_dialog()
 
     def parent_intent_listener(self, intent: str, data: any):
-        if self.loading_indicator.visible:
-            return  # action in progress
+        if intent == res_utils.REFRESH_INTENT:
+            self.initialize_data()
+            return
 
         if intent == res_utils.NEW_TIME_TRACK_INTENT:
             self.close_pop_up_if_open()
@@ -358,9 +359,11 @@ class TimeTrackingView(TuttleView, UserControl):
 
     def load_preferred_cloud_acc(self):
         result = self.intent.get_preferred_cloud_account()
-        if result.was_intent_successful:
-            self.preferred_cloud_provider = result.data[0]
-            self.preferred_cloud_acc = result.data[1]
+        if not result.was_intent_successful:
+            self.show_snack(result.error_msg, is_error=True)
+            return
+        self.preferred_cloud_provider = result.data[0]
+        self.preferred_cloud_acc = result.data[1]
 
     def set_progress_hint(self, msg: str = "", hide_progress=False):
         if self.mounted:
@@ -371,9 +374,6 @@ class TimeTrackingView(TuttleView, UserControl):
 
     def did_mount(self):
         self.mounted = True
-        self.initialize_data()
-
-    def on_resume_after_back_pressed(self):
         self.initialize_data()
 
     def initialize_data(self):
