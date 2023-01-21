@@ -31,7 +31,7 @@ class TwoFAPopUp(DialogHandler):
     def __init__(
         self,
         dialog_controller: Callable[[any, utils.AlertDialogControls], None],
-        on_submit: Callable,
+        on_submit_callback: Callable[[str], None],
         title: Optional[str] = "Enter the verification code",
     ):
 
@@ -56,20 +56,16 @@ class TwoFAPopUp(DialogHandler):
             actions=[
                 views.get_primary_btn(
                     label="Verify",
-                    on_click=self.on_submit_btn_clicked,
+                    on_click=lambda e: on_submit_callback(self.code),
                 ),
             ],
         )
         super().__init__(dialog=dialog, dialog_controller=dialog_controller)
-        self.on_submit_callback = on_submit
+
         self.code = ""
 
     def on_code_changed(self, e):
         self.code = e.control.value
-
-    def on_submit_btn_clicked(self, e):
-        self.close_dialog()
-        self.on_submit_callback(self.code)
 
 
 class NewTimeTrackPopUp(DialogHandler):
@@ -78,7 +74,8 @@ class NewTimeTrackPopUp(DialogHandler):
     def __init__(
         self,
         dialog_controller: Callable[[any, utils.AlertDialogControls], None],
-        on_submit: Callable,
+        on_use_file_callback: Callable[[bool, bool], None],
+        on_use_cloud_acc_callback: Callable[[str, str, str, str], None],
         preferred_cloud_acc: str,
         preferred_acc_provider: str,
     ):
@@ -118,8 +115,11 @@ class NewTimeTrackPopUp(DialogHandler):
                         space_between_cloud_controls,
                         views.get_primary_btn(
                             label="Load from cloud calendar",
-                            on_click=lambda e: self.on_submit_btn_clicked(
-                                is_cloud=True
+                            on_click=lambda e: on_use_cloud_acc_callback(
+                                account_id=preferred_cloud_acc,
+                                provider=preferred_acc_provider,
+                                password=self.password,
+                                calendar_name=self.calendar_name,
                             ),
                             width=int(dialog_width * 0.9),
                             show=display_cloud_option,
@@ -130,7 +130,7 @@ class NewTimeTrackPopUp(DialogHandler):
                         views.get_secondary_btn(
                             label="Upload a spreadsheet",
                             icon="table_view",
-                            on_click=lambda _: self.on_submit_btn_clicked(
+                            on_click=lambda _: on_use_file_callback(
                                 is_spreadsheet=True
                             ),
                             width=int(dialog_width * 0.9),
@@ -141,7 +141,7 @@ class NewTimeTrackPopUp(DialogHandler):
                         views.get_secondary_btn(
                             label="Upload a calendar (.ics) file",
                             icon="calendar_month",
-                            on_click=lambda _: self.on_submit_btn_clicked(is_ics=True),
+                            on_click=lambda _: on_use_file_callback(is_ics=True),
                             width=int(dialog_width * 0.9),
                         ),
                     ],
@@ -150,9 +150,6 @@ class NewTimeTrackPopUp(DialogHandler):
             ),
         )
         super().__init__(dialog=dialog, dialog_controller=dialog_controller)
-        self.on_submit_callback = on_submit
-        self.acc = preferred_cloud_acc
-        self.provider = preferred_acc_provider
         self.password = ""
         self.calendar_name = ""
 
@@ -162,27 +159,13 @@ class NewTimeTrackPopUp(DialogHandler):
     def on_password_changed(self, e):
         self.password = e.control.value
 
-    def on_submit_btn_clicked(self, is_spreadsheet=False, is_ics=False, is_cloud=False):
-        """ """
-
-        self.close_dialog()
-        self.on_submit_callback(
-            is_spreadsheet=is_spreadsheet,
-            is_ics=is_ics,
-            is_cloud=is_cloud,
-            acc=self.acc,
-            provider=self.provider,
-            password=self.password,
-            calendar_name=self.calendar_name,
-        )
-
 
 class TimeTrackingView(TuttleView, UserControl):
     """Time tracking view on home page"""
 
     def __init__(self, params):
         super().__init__(params)
-        self.intent = TimeTrackingIntent(local_storage=params.local_storage)
+        self.intent = TimeTrackingIntent(client_storage=params.client_storage)
         self.preferred_cloud_acc = ""
         self.preferred_cloud_provider = ""
         self.pop_up_handler = None
@@ -193,46 +176,40 @@ class TimeTrackingView(TuttleView, UserControl):
             self.pop_up_handler.close_dialog()
 
     def parent_intent_listener(self, intent: str, data: any):
-        if self.loading_indicator.visible:
-            return  # action in progress
+        if intent == res_utils.RELOAD_INTENT:
+            self.initialize_data()
+            return
 
         if intent == res_utils.NEW_TIME_TRACK_INTENT:
             self.close_pop_up_if_open()
             self.pop_up_handler = NewTimeTrackPopUp(
                 dialog_controller=self.dialog_controller,
-                on_submit=self.on_add_new_timetrack_record_callback,
+                on_use_file_callback=self.on_add_timetrack_from_file,
+                on_use_cloud_acc_callback=self.on_login_to_cloud,
                 preferred_cloud_acc=self.preferred_cloud_acc,
                 preferred_acc_provider=self.preferred_cloud_provider,
             )
             self.pop_up_handler.open_dialog()
         return
 
-    def on_add_new_timetrack_record_callback(
-        self,
-        is_spreadsheet: bool,
-        is_ics: bool,
-        is_cloud: bool,
-        acc: str,
-        provider: str,
-        password: str,
-        calendar_name: str,
-    ):
-        """Spreadsheet and ics uploads"""
-        self.close_pop_up_if_open()
-        if is_spreadsheet or is_ics:
-            exts = ["ics"] if is_ics else ["xlsx", "csv", "xls", "tsv", "ods"]
-            title = "Select .ics file" if is_ics else "Select excel file"
-            self.pick_file_callback(
-                on_file_picker_result=self.on_file_picker_result,
-                on_upload_progress=self.on_upload_progress,
-                allowed_extensions=exts,
-                dialog_title=title,
-                file_type="custom",
-            )
-            self.set_progress_hint()
+    """GETTING DATA FROM A FILE"""
 
-        elif is_cloud:
-            self.on_load_from_calendar(info=cloud_calendar_info)
+    def on_add_timetrack_from_file(
+        self,
+        is_spreadsheet: Optional[bool] = False,
+        is_ics: Optional[bool] = False,
+    ):
+        self.close_pop_up_if_open()
+        exts = ["ics"] if is_ics else ["xlsx", "csv", "xls", "tsv", "ods"]
+        title = "Select .ics file" if is_ics else "Select excel file"
+        self.pick_file_callback(
+            on_file_picker_result=self.on_file_picker_result,
+            on_upload_progress=self.on_upload_progress,
+            allowed_extensions=exts,
+            dialog_title=title,
+            file_type="custom",
+        )
+        self.set_progress_hint()
 
     def on_file_picker_result(self, e: FilePickerResultEvent):
         if e.files and len(e.files) > 0:
@@ -266,6 +243,117 @@ class TimeTrackingView(TuttleView, UserControl):
                 self.display_dataframe()
             self.set_progress_hint(hide_progress=True)
 
+    """Cloud calendar setup"""
+
+    def on_login_to_cloud(
+        self,
+        account_id: str,
+        calendar_name: str,
+        password: str,
+        provider: str,
+    ):
+        """
+        This function is used for logging in to a cloud account.
+
+        Parameters:
+        ----------
+            - account_id (str): The ID of the cloud account to log in to.
+            - calendar_name (str): The name of the calendar to load data from.
+            - password (str): The password for the account.
+            - provider (str): The name of the cloud provider (e.g. Google, iCloud).
+        """
+        self.close_pop_up_if_open()
+        if utils.is_empty_str(account_id):
+            self.show_snack("No Cloud account was specified")
+            return
+        if utils.is_empty_str(calendar_name):
+            self.show_snack("No calendar name was provided")
+            return
+
+        if utils.is_empty_str(password):
+            self.show_snack("Your Cloud password is required")
+            return
+
+        progress_msg = "Authenticating your account..."
+        self.set_progress_hint(progress_msg)
+        result = self.intent.connect_to_cloud(
+            account_id=account_id,
+            provider=provider,
+            password=password,
+        )
+
+        self.set_progress_hint(hide_progress=True)
+        if not result.was_intent_successful:
+            self.show_snack(result.error_msg, is_error=True)
+            return
+        connector: CloudConnector = result.data
+        if connector.requires_2fa:
+            self.request_2fa_code(connector=connector, calendar_name=calendar_name)
+
+    def request_2fa_code(
+        self,
+        connector: CloudConnector,
+        calendar_name: str,
+    ):
+        """
+        This function is used to request a 2FA code from the user.
+
+        Parameters:
+        ----------
+            - connector (CloudConnector): The connector object for the cloud account.
+            - calendar_name (str): The name of the calendar to load data from.
+        """
+        self.close_pop_up_if_open()
+        self.pop_up_handler = TwoFAPopUp(
+            self.dialog_controller,
+            on_submit_callback=lambda code: self.verify_cloud_connector(
+                two_fa_code=code, connector=connector, calendar_name=calendar_name
+            ),
+        )
+        self.pop_up_handler.open_dialog()
+
+    def verify_cloud_connector(
+        self,
+        connector: CloudConnector,
+        two_fa_code: str,
+        calendar_name: str,
+    ):
+        """
+        This function is used to verify a 2FA code provided by the user.
+        It takes in the following parameters:
+        - connector (CloudConnector): The connector object for the cloud account.
+        - two_fa_code (str): The 2FA code provided by the user.
+        - calendar_name (str): The name of the calendar to load data from.
+        """
+        connector.validate_2fa_code(twofa_code=two_fa_code)
+        if not connector.is_connected:
+            self.request_2fa_code(
+                connector=connector,
+                calendar_name=calendar_name,
+            )
+            self.show_snack(
+                "The code you provided is incorrect",
+                is_error=True,
+            )
+            return
+        self.set_progress_hint(msg="Loading calendar data")
+        result = self.intent.load_from_cloud_calendar(
+            cloud_connector=connector,
+            calendar_name=calendar_name,
+        )
+        self.set_progress_hint(hide_progress=True)
+        if not result.was_intent_successful or not isinstance(result.data, DataFrame):
+            self.show_snack(
+                "Failed to load data from that calendar.",
+                is_error=True,
+            )
+            return
+        self.dataframe_to_display = result.data
+        self.update_timetracking_dataframe()
+        self.display_dataframe()
+
+    """ DISPLAYED DATA FRAME """
+
     def load_existing_dataframe(self):
         result = self.intent.get_timetracking_data()
         if not result.was_intent_successful:
@@ -278,59 +366,6 @@ class TimeTrackingView(TuttleView, UserControl):
         result = self.intent.set_timetracking_data(self.dataframe_to_display)
         if not result.was_intent_successful:
             self.show_snack(result.error_msg, is_error=True)
-
-    """Cloud calendar setup"""
-
-    def request_2fa_auth_code(
-        self,
-        info: CloudCalendarInfo,
-        prev_un_verified_login_res: CloudConfigurationResult,
-    ):
-        self.close_pop_up_if_open()
-        self.pop_up_handler = TwoFAPopUp(
-            self.dialog_controller,
-            on_submit=lambda code: self.on_load_from_calendar(
-                info=info,
-                two_factor_auth_code=code,
-                prev_un_verified_login_res=prev_un_verified_login_res,
-            ),
-        )
-        self.pop_up_handler.open_dialog()
-
-    def on_load_from_calendar(
-        self,
-        info: CloudCalendarInfo,
-        two_factor_auth_code: Optional[str] = "",
-        prev_un_verified_login_res: Optional[CloudConfigurationResult] = None,
-    ):
-
-        if utils.is_empty_str(info.account):
-            self.show_snack("No Cloud account was specified")
-            return
-
-        if utils.is_empty_str(info.calendar_name):
-            self.show_snack("No calendar name was provided")
-            return
-
-        if utils.is_empty_str(info.password):
-            self.show_snack("Your Cloud password is required")
-            return
-
-        progress_msg = (
-            "Authenticating your account..."
-            if not two_factor_auth_code
-            else "Verifying your account..."
-        )
-        self.set_progress_hint(progress_msg)
-
-        result = self.intent.configure_account_and_load_calendar()
-        if not result.was_intent_successful:
-            # the intent failed
-            self.show_snack(result.error_msg, is_error=True)
-            self.set_progress_hint(hide_progress=True)
-            return
-        # TODO result is successful
-        self.set_progress_hint(hide_progress=True)
 
     def display_dataframe(self):
         if not isinstance(self.dataframe_to_display, DataFrame):
@@ -349,9 +384,11 @@ class TimeTrackingView(TuttleView, UserControl):
 
     def load_preferred_cloud_acc(self):
         result = self.intent.get_preferred_cloud_account()
-        if result.was_intent_successful:
-            self.preferred_cloud_provider = result.data[0]
-            self.preferred_cloud_acc = result.data[1]
+        if not result.was_intent_successful:
+            self.show_snack(result.error_msg, is_error=True)
+            return
+        self.preferred_cloud_provider = result.data[0]
+        self.preferred_cloud_acc = result.data[1]
 
     def set_progress_hint(self, msg: str = "", hide_progress=False):
         if self.mounted:
@@ -362,6 +399,9 @@ class TimeTrackingView(TuttleView, UserControl):
 
     def did_mount(self):
         self.mounted = True
+        self.initialize_data()
+
+    def initialize_data(self):
         self.loading_indicator.visible = True
         self.load_preferred_cloud_acc()
         self.load_existing_dataframe()

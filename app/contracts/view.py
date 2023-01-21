@@ -305,7 +305,7 @@ class ContractEditorScreen(TuttleView, UserControl):
             abbreviation for (name, abbreviation, symbol) in utils.get_currencies()
         ]
         views.update_dropdown_items(self.currency_ui_field, self.available_currencies)
-        result = self.intent.get_preferred_currency_intent(self.local_storage)
+        result = self.intent.get_preferred_currency_intent(self.client_storage)
         if result.was_intent_successful:
             preferred_currency = result.data
             self.currency_ui_field.value = preferred_currency
@@ -716,14 +716,15 @@ class ContractsListView(TuttleView, UserControl):
         self.no_contracts_control.visible = True
 
     def did_mount(self):
-        self.mounted = True
         self.initialize_data()
 
-    def on_resume_after_back_pressed(self):
-        self.mounted = True
-        self.initialize_data()
+    def parent_intent_listener(self, intent: str, data: any):
+        if intent == res_utils.RELOAD_INTENT:
+            self.initialize_data()
+        return
 
     def initialize_data(self):
+        self.mounted = True
         self.loading_indicator.visible = True
         self.update_self()
 

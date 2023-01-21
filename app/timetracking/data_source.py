@@ -8,7 +8,7 @@ from pandas import DataFrame
 
 from tuttle.calendar import ICSCalendar, ICloudCalendar, CloudCalendar
 from tuttle.dev import singleton
-from tuttle.cloud import CloudConnector
+from tuttle.cloud import CloudConnector, CloudProvider
 
 
 @singleton
@@ -99,7 +99,7 @@ class TimeTrackingCloudCalendarSource:
     ) -> DataFrame:
         """Loads data from a cloud calendar"""
         calendar = None
-        if cloud_connector.provider == "iCloud":
+        if cloud_connector.provider == CloudProvider.ICloud.value:
             icloud_connector: icloudpy.ICloudPyService = (
                 cloud_connector.concrete_connector
             )

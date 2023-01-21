@@ -139,14 +139,16 @@ class InvoicingEditorPopUp(DialogHandler, UserControl):
 class InvoicingListView(TuttleView, UserControl):
     def __init__(self, params: TuttleViewParams):
         super().__init__(params=params)
-        self.intent = InvoicingIntent(local_storage=params.local_storage)
+        self.intent = InvoicingIntent(client_storage=params.client_storage)
         self.invoices_to_display = {}
         self.contacts = {}
         self.active_projects = {}
         self.editor = None
 
     def parent_intent_listener(self, intent: str, data: any):
+        """Handles the intent from the parent view"""
         if intent == res_utils.CREATE_INVOICE_INTENT:
+            # create a new invoice
             timetracking_data = self.intent.get_time_tracking_data_as_dataframe()
             if not isinstance(timetracking_data, DataFrame):
                 self.show_snack("Please set timetracking data!", is_error=True)
@@ -158,7 +160,11 @@ class InvoicingListView(TuttleView, UserControl):
                 on_submit=self.on_save_invoice,
                 projects_map=self.active_projects,
             )
-        self.editor.open_dialog()
+            self.editor.open_dialog()
+
+        elif intent == res_utils.RELOAD_INTENT:
+            # reload the data
+            self.initialize_data()
 
     def refresh_invoices(self):
         self.invoices_list_control.controls.clear()
@@ -194,6 +200,7 @@ class InvoicingListView(TuttleView, UserControl):
             self.show_snack(result.error_msg, is_error=True)
 
     def on_delete_invoice_clicked(self, invoice: Invoice):
+        """Called when the user clicks on the delete button of an invoice"""
         if self.editor is not None:
             self.editor.close_dialog()
         self.editor = views.ConfirmDisplayPopUp(
@@ -207,6 +214,7 @@ class InvoicingListView(TuttleView, UserControl):
         self.editor.open_dialog()
 
     def on_delete_confirmed(self, invoice_id):
+        """Called when the user confirms the deletion of an invoice"""
         self.loading_indicator.visible = True
         self.update_self()
         result = self.intent.delete_invoice_by_id(invoice_id)
@@ -226,8 +234,9 @@ class InvoicingListView(TuttleView, UserControl):
         from_date: Optional[datetime.date],
         to_date: Optional[datetime.date],
     ):
+        """Called when the user clicks on the submit button in the editor"""
         if not invoice:
-            return
+            return  # this should never happen
 
         if not project:
             self.show_snack("Please specify the project")
@@ -271,6 +280,7 @@ class InvoicingListView(TuttleView, UserControl):
         self.update_self()
 
     def toggle_paid_status(self, invoice: Invoice):
+        """toggle the paid status of the invoice"""
         result: IntentResult = self.intent.toggle_invoice_paid_status(invoice)
         is_error = not result.was_intent_successful
         msg = result.error_msg if is_error else "Invoice status updated."
@@ -280,6 +290,7 @@ class InvoicingListView(TuttleView, UserControl):
         self.update_self()
 
     def toggle_sent_status(self, invoice: Invoice):
+        """toggle the sent status of the invoice"""
         result: IntentResult = self.intent.toggle_invoice_sent_status(invoice)
         is_error = not result.was_intent_successful
         msg = result.error_msg if is_error else "Invoice status updated."
@@ -289,6 +300,7 @@ class InvoicingListView(TuttleView, UserControl):
         self.update_self()
 
     def toggle_cancelled_status(self, invoice: Invoice):
+        """toggle the cancelled status of the invoice"""
         result: IntentResult = self.intent.toggle_invoice_cancelled_status(invoice)
         is_error = not result.was_intent_successful
         msg = result.error_msg if is_error else "Invoice status updated."
@@ -298,6 +310,10 @@ class InvoicingListView(TuttleView, UserControl):
         self.update_self()
 
     def did_mount(self):
+        self.initialize_data()
+
+    def initialize_data(self):
+        """initialize the data for the page"""
         self.mounted = True
         self.loading_indicator.visible = True
         self.active_projects = self.intent.get_active_projects_as_map()

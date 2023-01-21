@@ -9,7 +9,6 @@ from tuttle.dev import deprecated
 
 
 class THEME_MODES(Enum):
-    system = "system"
     light = "light"
     dark = "dark"
 
@@ -17,14 +16,8 @@ class THEME_MODES(Enum):
         return str(self.value)
 
 
-@deprecated("square wheel reinvention antipattern: use Enum[value] instead")
 def get_theme_mode_from_value(value: str):
-    if value == THEME_MODES.system.value:
-        return THEME_MODES.system
-    elif value == THEME_MODES.dark.value:
-        return THEME_MODES.dark
-    else:
-        return THEME_MODES.light
+    return next((e for e in THEME_MODES if e.value == value), None)
 
 
 APP_THEME = theme.Theme(
