@@ -28,18 +28,18 @@ class ContractsIntent:
         self._upcoming_contracts_cache: Mapping[str, Contract] = None
 
     def get_preferred_currency_intent(
-        self, local_storage: ClientStorage
+        self, client_storage: ClientStorage
     ) -> IntentResult:
         """
         Retrieves the preferred currency of the client from the local storage
 
         Parameters:
-        local_storage (ClientStorage): The client storage object from which the preferred currency is retrieved
+        client_storage (ClientStorage): The client storage object from which the preferred currency is retrieved
 
         Returns:
         IntentResult : An intent result object indicating the success or failure of the operation
         """
-        _preferences_intent = PreferencesIntent(client_storage=local_storage)
+        _preferences_intent = PreferencesIntent(client_storage=client_storage)
         return _preferences_intent.get_preference_by_key(
             preference_key=PreferencesStorageKeys.default_currency_key
         )

@@ -32,7 +32,7 @@ from tuttle import (
 class InvoicingIntent:
     """Handles Invoicing C_R_U_D intents"""
 
-    def __init__(self, local_storage: ClientStorage):
+    def __init__(self, client_storage: ClientStorage):
         """
         Attributes
         ----------
@@ -43,7 +43,7 @@ class InvoicingIntent:
         _projects_intent : ProjectsIntent
             reference to the ProjectsIntent for forwarding project related intents
         """
-        self._timetracking_intent = TimeTrackingIntent(local_storage=local_storage)
+        self._timetracking_intent = TimeTrackingIntent(client_storage=client_storage)
         self._projects_intent = ProjectsIntent()
         self._invoicing_data_source = InvoicingDataSource()
         self._timetracking_data_source = TimeTrackingDataFrameSource()

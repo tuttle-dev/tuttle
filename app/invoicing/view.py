@@ -139,7 +139,7 @@ class InvoicingEditorPopUp(DialogHandler, UserControl):
 class InvoicingListView(TuttleView, UserControl):
     def __init__(self, params: TuttleViewParams):
         super().__init__(params=params)
-        self.intent = InvoicingIntent(local_storage=params.local_storage)
+        self.intent = InvoicingIntent(client_storage=params.client_storage)
         self.invoices_to_display = {}
         self.contacts = {}
         self.active_projects = {}

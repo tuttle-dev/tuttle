@@ -305,7 +305,7 @@ class ContractEditorScreen(TuttleView, UserControl):
             abbreviation for (name, abbreviation, symbol) in utils.get_currencies()
         ]
         views.update_dropdown_items(self.currency_ui_field, self.available_currencies)
-        result = self.intent.get_preferred_currency_intent(self.local_storage)
+        result = self.intent.get_preferred_currency_intent(self.client_storage)
         if result.was_intent_successful:
             preferred_currency = result.data
             self.currency_ui_field.value = preferred_currency

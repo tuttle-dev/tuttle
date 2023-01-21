@@ -19,12 +19,12 @@ from tuttle.cloud import CloudConnector, CloudProvider
 class TimeTrackingIntent:
     """Handles time tracking intents"""
 
-    def __init__(self, local_storage: ClientStorage):
+    def __init__(self, client_storage: ClientStorage):
 
         self._cloud_calendar_source = TimeTrackingCloudCalendarSource()
         self._timetracking_file_data_source = TimeTrackingFileCalendarSource()
         self._timetracking_data_frame_source = TimeTrackingDataFrameSource()
-        self._preferences_intent = PreferencesIntent(local_storage)
+        self._preferences_intent = PreferencesIntent(client_storage)
 
     def get_preferred_cloud_account(self) -> IntentResult[Optional[list]]:
         """

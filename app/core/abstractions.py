@@ -14,7 +14,7 @@ from .utils import AUTO_SCROLL, START_ALIGNMENT, AlertDialogControls
 
 
 class ClientStorage(ABC):
-    """An abstraction that defines methods for caching data"""
+    """Abstract class for client storage"""
 
     def __init__(
         self,
@@ -54,7 +54,7 @@ class TuttleViewParams:
     dialog_controller: Callable
     upload_file_callback: Callable
     pick_file_callback: Callable[[file_picker.FilePickerFile], str]
-    local_storage: Optional[ClientStorage] = None
+    client_storage: Optional[ClientStorage] = None
     vertical_alignment_in_parent: str = START_ALIGNMENT
     horizontal_alignment_in_parent: str = START_ALIGNMENT
     keep_back_stack: bool = True
@@ -77,7 +77,7 @@ class TuttleView(ABC):
         self.page_scroll_type = params.page_scroll_type
         self.upload_file_callback = params.upload_file_callback
         self.pick_file_callback = params.pick_file_callback
-        self.local_storage = params.local_storage
+        self.client_storage = params.client_storage
         self.mounted = False
 
     def parent_intent_listener(self, intent: str, data: any):

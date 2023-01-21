@@ -279,6 +279,8 @@ class SecondaryMenuHandler:
 
 
 class HomeScreen(TuttleView, UserControl):
+    """The home screen"""
+
     def __init__(
         self,
         params: TuttleViewParams,
@@ -288,7 +290,7 @@ class HomeScreen(TuttleView, UserControl):
         self.page_scroll_type = None
         self.main_menu_handler = MainMenuItemsHandler(params)
         self.secondary_menu_handler = SecondaryMenuHandler(params)
-        self.intent_handler = HomeIntent(local_storage=params.local_storage)
+        self.intent_handler = HomeIntent(client_storage=params.client_storage)
         self.selected_tab = NO_MENU_ITEM_INDEX
 
         self.main_menu = create_and_get_navigation_menu(
@@ -347,6 +349,7 @@ class HomeScreen(TuttleView, UserControl):
         return items
 
     def on_menu_destination_change(self, e, menu_level=0):
+        """handles the menu destination change event"""
         if self.mounted:
             # update the current menu
             self.current_menu_handler = (
@@ -370,6 +373,7 @@ class HomeScreen(TuttleView, UserControl):
 
     # ACTION BUTTONS
     def on_click_add_new(self, e):
+        """handles the add new button click event"""
         if self.selected_tab == NO_MENU_ITEM_INDEX:
             return
         """determine the item user wishes to create"""
@@ -380,11 +384,12 @@ class HomeScreen(TuttleView, UserControl):
             self.navigate_to_route(item.on_new_screen_route)
 
     def on_resume_after_back_pressed(self):
+        """called when the user presses the back button"""
         if self.destination_view and isinstance(self.destination_view, TuttleView):
             self.destination_view.on_resume_after_back_pressed()
 
     def pass_intent_to_destination(self, intent: str, data: Optional[any] = None):
-        """forwards an intent to a child destination view"""
+        """pass an intent to the destination view"""
         if self.destination_view and isinstance(self.destination_view, TuttleView):
             self.destination_view.parent_intent_listener(intent, data)
 

@@ -165,7 +165,7 @@ class TimeTrackingView(TuttleView, UserControl):
 
     def __init__(self, params):
         super().__init__(params)
-        self.intent = TimeTrackingIntent(local_storage=params.local_storage)
+        self.intent = TimeTrackingIntent(client_storage=params.client_storage)
         self.preferred_cloud_acc = ""
         self.preferred_cloud_provider = ""
         self.pop_up_handler = None
@@ -252,6 +252,16 @@ class TimeTrackingView(TuttleView, UserControl):
         password: str,
         provider: str,
     ):
+        """
+        This function is used for logging in to a cloud account.
+
+        Parameters:
+        ----------
+            - account_id (str): The ID of the cloud account to log in to.
+            - calendar_name (str): The name of the calendar to load data from.
+            - password (str): The password for the account.
+            - provider (str): The name of the cloud provider (e.g. Google, iCloud).
+        """
         self.close_pop_up_if_open()
         if utils.is_empty_str(account_id):
             self.show_snack("No Cloud account was specified")
@@ -285,6 +295,14 @@ class TimeTrackingView(TuttleView, UserControl):
         connector: CloudConnector,
         calendar_name: str,
     ):
+        """
+        This function is used to request a 2FA code from the user.
+
+        Parameters:
+        ----------
+            - connector (CloudConnector): The connector object for the cloud account.
+            - calendar_name (str): The name of the calendar to load data from.
+        """
         self.close_pop_up_if_open()
         self.pop_up_handler = TwoFAPopUp(
             self.dialog_controller,
@@ -300,6 +318,13 @@ class TimeTrackingView(TuttleView, UserControl):
         two_fa_code: str,
         calendar_name: str,
     ):
+        """
+        This function is used to verify a 2FA code provided by the user.
+        It takes in the following parameters:
+        - connector (CloudConnector): The connector object for the cloud account.
+        - two_fa_code (str): The 2FA code provided by the user.
+        - calendar_name (str): The name of the calendar to load data from.
+        """
         connector.validate_2fa_code(twofa_code=two_fa_code)
         if not connector.is_connected:
             self.request_2fa_code(

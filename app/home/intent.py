@@ -5,9 +5,9 @@ from typing import Optional
 
 
 class HomeIntent:
-    def __init__(self, local_storage: ClientStorage):
+    def __init__(self, client_storage: ClientStorage):
         super().__init__()
-        self.preferences_intent = PreferencesIntent(client_storage=local_storage)
+        self.preferences_intent = PreferencesIntent(client_storage=client_storage)
 
     def get_preferred_theme(self) -> IntentResult[Optional[str]]:
         result: IntentResult = self.preferences_intent.get_preference_by_key(

@@ -52,7 +52,7 @@ class PreferencesScreen(TuttleView, UserControl):
         on_theme_changed,
     ):
         super().__init__(params=params)
-        self.intent = PreferencesIntent(client_storage=params.local_storage)
+        self.intent = PreferencesIntent(client_storage=params.client_storage)
         self.on_theme_changed_callback = on_theme_changed
         self.preferences: Optional[Preferences] = None
         self.currencies = []
