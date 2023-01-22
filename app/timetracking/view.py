@@ -199,19 +199,21 @@ class TimeTrackingView(TuttleView, UserControl):
         is_spreadsheet: Optional[bool] = False,
         is_ics: Optional[bool] = False,
     ):
+        """Open file picker to select a file to upload"""
         self.close_pop_up_if_open()
-        exts = ["ics"] if is_ics else ["xlsx", "csv", "xls", "tsv", "ods"]
+        allowed_exts = ["ics"] if is_ics else ["xlsx", "csv", "xls", "tsv", "ods"]
         title = "Select .ics file" if is_ics else "Select excel file"
         self.pick_file_callback(
             on_file_picker_result=self.on_file_picker_result,
             on_upload_progress=self.on_upload_progress,
-            allowed_extensions=exts,
+            allowed_extensions=allowed_exts,
             dialog_title=title,
             file_type="custom",
         )
         self.set_progress_hint()
 
     def on_file_picker_result(self, e: FilePickerResultEvent):
+        """Handle file picker result"""
         if e.files and len(e.files) > 0:
             file = e.files[0]
             self.set_progress_hint(f"Uploading file {file.name}")
@@ -223,8 +225,9 @@ class TimeTrackingView(TuttleView, UserControl):
             self.set_progress_hint(hide_progress=True)
 
     def on_upload_progress(self, e: FilePickerUploadEvent):
-
+        """Handle file upload progress"""
         if e.progress == 1.0:
+            # upload complete
             self.set_progress_hint(f"Upload complete, processing file...")
             intent_result = self.intent.process_timetracking_file(
                 self.uploaded_file_url, e.file_name
@@ -285,10 +288,21 @@ class TimeTrackingView(TuttleView, UserControl):
         self.set_progress_hint(hide_progress=True)
         if not result.was_intent_successful:
             self.show_snack(result.error_msg, is_error=True)
-            return
+            return  # exit function
+
+        # get connector object
         connector: CloudConnector = result.data
+
         if connector.requires_2fa:
+            # request 2FA code
             self.request_2fa_code(connector=connector, calendar_name=calendar_name)
+            return  #   exit function
+
+        # load calendar data
+        self.load_calendar_from_cloud(
+            calendar_name=calendar_name,
+            connector=connector,
+        )
 
     def request_2fa_code(
         self,
@@ -336,6 +350,16 @@ class TimeTrackingView(TuttleView, UserControl):
                 is_error=True,
             )
             return
+        self.load_calendar_from_cloud(
+            calendar_name=calendar_name,
+            connector=connector,
+        )
+
+    def load_calendar_from_cloud(
+        self,
+        calendar_name: str,
+        connector: CloudConnector,
+    ):
         self.set_progress_hint(msg="Loading calendar data")
         result = self.intent.load_from_cloud_calendar(
             cloud_connector=connector,
