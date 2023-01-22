@@ -1,6 +1,7 @@
 from typing import Callable, Optional
 
 from pathlib import Path
+from loguru import logger
 
 from flet import (
     AlertDialog,
@@ -15,7 +16,7 @@ from flet import (
 )
 
 from core import tabular, utils, views
-from core.abstractions import DialogHandler, TuttleView
+from core.abstractions import DialogHandler, TuttleView, IntentResult
 from pandas import DataFrame
 from res import colors, dimens, fonts, res_utils
 
@@ -95,7 +96,7 @@ class NewTimeTrackPopUp(DialogHandler):
                         views.get_heading(title=title, size=fonts.HEADLINE_4_SIZE),
                         views.xsSpace,
                         views.get_body_txt(
-                            f"Use calendar from {preferred_cloud_acc}",
+                            f"Use calendar from {preferred_acc_provider}",
                             show=display_cloud_option,
                         ),
                         space_between_cloud_controls,
@@ -115,6 +116,7 @@ class NewTimeTrackPopUp(DialogHandler):
                         space_between_cloud_controls,
                         views.get_primary_btn(
                             label="Load from cloud calendar",
+                            icon="cloud",
                             on_click=lambda e: on_use_cloud_acc_callback(
                                 account_id=preferred_cloud_acc,
                                 provider=preferred_acc_provider,
@@ -276,7 +278,7 @@ class TimeTrackingView(TuttleView, UserControl):
 
         progress_msg = "Authenticating your account..."
         self.set_progress_hint(progress_msg)
-        result = self.intent.connect_to_cloud(
+        result: IntentResult[CloudConnector] = self.intent.connect_to_cloud(
             account_id=account_id,
             provider=provider,
             password=password,
@@ -286,9 +288,16 @@ class TimeTrackingView(TuttleView, UserControl):
         if not result.was_intent_successful:
             self.show_snack(result.error_msg, is_error=True)
             return
-        connector: CloudConnector = result.data
-        if connector.requires_2fa:
-            self.request_2fa_code(connector=connector, calendar_name=calendar_name)
+        else:
+            logger.info("successfully connected to cloud for login")
+            connector: CloudConnector = result.data
+            if connector.requires_2fa:
+                logger.info(f"2FA required for {connector.account_name}")
+                self.request_2fa_code(connector=connector, calendar_name=calendar_name)
+            else:
+                raise NotImplementedError(
+                    "Continuing without 2FA is not implemented yet"
+                )
 
     def request_2fa_code(
         self,
@@ -303,6 +312,7 @@ class TimeTrackingView(TuttleView, UserControl):
             - connector (CloudConnector): The connector object for the cloud account.
             - calendar_name (str): The name of the calendar to load data from.
         """
+        logger.info(f"Requesting 2FA code for {connector.account_name}")
         self.close_pop_up_if_open()
         self.pop_up_handler = TwoFAPopUp(
             self.dialog_controller,

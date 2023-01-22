@@ -26,8 +26,10 @@ class CloudConnector:
     def __init__(
         self,
         cloud_connector: Union[icloudpy.ICloudPyService, Any],
+        account_name: Optional[str] = None,
     ):
         self.concrete_connector = cloud_connector
+        self.account_name = account_name
 
     @property
     def provider(self) -> str:

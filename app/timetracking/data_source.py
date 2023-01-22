@@ -126,6 +126,7 @@ class TimeTrackingCloudCalendarSource:
         )
         return CloudConnector(
             cloud_connector=icloud_connector,
+            account_name=apple_id,
         )
 
     """ GOOGLE LOGIN STEPS """

@@ -2,7 +2,7 @@ from typing import Optional, Type, Union
 
 from loguru import logger
 
-from core.abstractions import ClientStorage
+from core.abstractions import ClientStorage, Intent
 from core.intent_result import IntentResult
 from pandas import DataFrame
 from preferences.intent import PreferencesIntent
@@ -16,7 +16,7 @@ from .data_source import (
 from tuttle.cloud import CloudConnector, CloudProvider
 
 
-class TimeTrackingIntent:
+class TimeTrackingIntent(Intent):
     """Handles time tracking intents"""
 
     def __init__(self, client_storage: ClientStorage):
@@ -84,10 +84,13 @@ class TimeTrackingIntent:
         """"""
         # check cloud_calendar_info for the value of the cloud provider
         # if it is icloud, call the login_to_icloud method
-
+        logger.info(
+            f"Trying to connect to cloud provider {provider} with account {account_id}"
+        )
         if provider == CloudProvider.ICloud.value:
             connector: CloudConnector = self._cloud_calendar_source.login_to_icloud(
-                apple_id=account_id, password=password
+                apple_id=account_id,
+                password=password,
             )
             # is a 2fa code required?
             return IntentResult(

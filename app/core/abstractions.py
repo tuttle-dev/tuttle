@@ -3,6 +3,7 @@ from typing import Any, Callable, List, Optional, Type
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
+import functools
 
 from flet import AlertDialog, file_picker
 
@@ -142,7 +143,7 @@ class SQLModelDataSourceMixin:
     ):
         db_path = Path.home() / ".tuttle" / "tuttle.db"
         db_path = f"sqlite:///{db_path}"
-        logger.info(f"Creating {self.__class__.__name__} with db_path: {db_path}")
+        logger.debug(f"Creating {self.__class__.__name__} with db_path: {db_path}")
         self.db_engine = sqlmodel.create_engine(
             db_path,
             echo=False,
@@ -164,7 +165,7 @@ class SQLModelDataSourceMixin:
         if len(entities) == 0:
             logger.warning(f"No instances of {entity_type} found")
         else:
-            logger.info(f"Found {len(entities)} instances of {entity_type}")
+            logger.debug(f"Found {len(entities)} instances of {entity_type}")
         return entities
 
     def query_by_id(
@@ -230,3 +231,25 @@ class SQLModelDataSourceMixin:
                 sqlmodel.delete(entity_type).where(entity_type.id == entity_id)
             )
             session.commit()
+
+
+class Intent(ABC):
+    """Abstract base class for intent classes."""
+
+    def __getattribute__(self, name):
+        """Logs all calls to methods of this class""" ""
+        attr = object.__getattribute__(self, name)
+        if callable(attr):
+
+            @functools.wraps(attr)
+            def wrapped(*args, **kwargs):
+                class_name = self.__class__.__name__
+                # Mask password argument if exists
+                kwargs = {
+                    k: "******" if k == "password" else v for k, v in kwargs.items()
+                }
+                logger.debug(f"Intent: {class_name}:{name} called with: {kwargs}")
+                return attr(*args, **kwargs)
+
+            return wrapped
+        return attr
