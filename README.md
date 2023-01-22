@@ -85,6 +85,6 @@ Your contributions are welcome. Please follow the [guide (CONTRIBUTING.md)](http
 
 ## Acknowledgements
 
-This project has received funding by the [Prototype Fund](https://prototypefund.de).
+This project has received funding by the [Prototype Fund](https://prototypefund.de) in 2022.
 
-![](https://raw.githubusercontent.com/openandroidinstaller-dev/openandroidinstaller/main/resources/pf_funding_logos.svg)
+<img src="assets/images/pf_funding_logos.svg" width="512px">
