@@ -193,6 +193,10 @@ class PreferencesScreen(TuttleView, UserControl):
                     "Cloud",
                     icons.CLOUD_OUTLINED,
                     [
+                        views.get_body_txt(
+                            txt="Setting up your cloud account will enable you to import time tracking data from your cloud calendar.",
+                        ),
+                        smSpace,
                         self.cloud_provider_control,
                         self.cloud_account_id_control,
                     ],
