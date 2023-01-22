@@ -3,23 +3,25 @@ from typing import Callable, Optional
 import webbrowser
 from dataclasses import dataclass
 
-from flet import (Column,
-                  Container,
-                  ElevatedButton,
-                  Icon,
-                  IconButton,
-                  NavigationRail,
-                  NavigationRailDestination,
-                  PopupMenuButton,
-                  PopupMenuItem,
-                  ResponsiveRow,
-                  Row,
-                  UserControl,
-                  alignment,
-                  border,
-                  icons,
-                  margin,
-                  padding,)
+from flet import (
+    Column,
+    Container,
+    ElevatedButton,
+    Icon,
+    IconButton,
+    NavigationRail,
+    NavigationRailDestination,
+    PopupMenuButton,
+    PopupMenuItem,
+    ResponsiveRow,
+    Row,
+    UserControl,
+    alignment,
+    border,
+    icons,
+    margin,
+    padding,
+)
 
 from clients.view import ClientsListView
 from contacts.view import ContactEditorPopUp, ContactsListView
@@ -483,6 +485,7 @@ class HomeScreen(TuttleView, UserControl):
         self.pass_intent_to_destination(res_utils.RELOAD_INTENT)
 
     def load_preferred_theme(self):
+        """Sets the UI theme from the user's preferences"""
         result = self.intent_handler.get_preferred_theme()
         if not result.was_intent_successful:
             self.show_snack(result.error_msg, is_error=True)
@@ -493,11 +496,11 @@ class HomeScreen(TuttleView, UserControl):
             self.main_menu,
             self.secondary_menu,
         ]
-        side_bar_bg_color = colors.BLACK_COLOR_ALT  # default is dark mode
-        self.action_bar.bgcolor = colors.BLACK_COLOR
+        side_bar_bg_color = colors.SIDEBAR_DARK_COLOR  # default is dark mode
+        self.action_bar.bgcolor = colors.ACTION_BAR_DARK_COLOR
         if self.preferred_theme == theme.THEME_MODES.light.value:
-            side_bar_bg_color = colors.GRAY_LIGHT_COLOR
-            self.action_bar.bgcolor = colors.WHITE_COLOR_ALT
+            side_bar_bg_color = colors.SIDEBAR_LIGHT_COLOR
+            self.action_bar.bgcolor = colors.ACTION_BAR_LIGHT_COLOR
         for component in side_bar_components:
             component.bgcolor = side_bar_bg_color
         self.footer.bgcolor = side_bar_bg_color  # footer and side bar have same bgcolor
