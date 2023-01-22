@@ -1,20 +1,22 @@
 from typing import Callable, Optional
 
-from flet import (AlertDialog,
-                  Card,
-                  Column,
-                  Container,
-                  GridView,
-                  Icon,
-                  IconButton,
-                  ListTile,
-                  ResponsiveRow,
-                  Row,
-                  Text,
-                  UserControl,
-                  border_radius,
-                  icons,
-                  padding,)
+from flet import (
+    AlertDialog,
+    Card,
+    Column,
+    Container,
+    GridView,
+    Icon,
+    IconButton,
+    ListTile,
+    ResponsiveRow,
+    Row,
+    Text,
+    UserControl,
+    border_radius,
+    icons,
+    padding,
+)
 
 from contacts.intent import ContactsIntent
 from core import utils, views
