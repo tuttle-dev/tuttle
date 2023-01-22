@@ -67,7 +67,7 @@ def get_action_bar(
                 Row(
                     controls=[
                         views.get_heading(
-                            "Tuttle",
+                            "",
                             size=fonts.HEADLINE_4_SIZE,
                             color=colors.WHITE_COLOR,
                         )
