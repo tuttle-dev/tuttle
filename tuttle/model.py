@@ -106,12 +106,14 @@ class Address(SQLModel, table=True):
 
 
 class User(SQLModel, table=True):
+    """User of the application, a freelancer."""
+
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
     subtitle: str
     website: Optional[str]
     email: str
-    phone_number: str
+    phone_number: Optional[str]
     profile_photo_path: Optional[str] = Field(default=None)
     address_id: Optional[int] = Field(default=None, foreign_key="address.id")
     address: Optional[Address] = Relationship(
