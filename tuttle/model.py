@@ -119,7 +119,9 @@ class User(SQLModel, table=True):
     address: Optional[Address] = Relationship(
         back_populates="users", sa_relationship_kwargs={"lazy": "subquery"}
     )
-    VAT_number: Optional[str]
+    VAT_number: str = Field(
+        description="Value Added Tax number of the user, legally required for invoices.",
+    )
     # User 1:1* ICloudAccount
     icloud_account_id: Optional[int] = Field(
         default=None, foreign_key="icloudaccount.id"
@@ -289,7 +291,10 @@ class Contract(SQLModel, table=True):
         description="How many days after receipt of invoice this invoice is due.",
         default=31,
     )
-    billing_cycle: Cycle = Field(sa_column=sqlalchemy.Column(sqlalchemy.Enum(Cycle)))
+    billing_cycle: Cycle = Field(
+        sa_column=sqlalchemy.Column(sqlalchemy.Enum(Cycle)),
+        description="How often is an invoice sent?",
+    )
     projects: List["Project"] = Relationship(
         back_populates="contract", sa_relationship_kwargs={"lazy": "subquery"}
     )
