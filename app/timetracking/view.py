@@ -299,6 +299,7 @@ class TimeTrackingView(TuttleView, UserControl):
             # request 2FA code
             self.request_2fa_code(connector=connector, calendar_name=calendar_name)
             return  #   exit function
+        self.show_snack(f"Cloud login successful.")
 
         # load calendar data
         self.load_calendar_from_cloud(
@@ -364,14 +365,14 @@ class TimeTrackingView(TuttleView, UserControl):
         connector: CloudConnector,
     ):
         self.set_progress_hint(msg="Loading calendar data")
-        result = self.intent.load_from_cloud_calendar(
+        result: IntentResult[DataFrame] = self.intent.load_from_cloud_calendar(
             cloud_connector=connector,
             calendar_name=calendar_name,
         )
         self.set_progress_hint(hide_progress=True)
-        if not result.was_intent_successful or not isinstance(result.data, DataFrame):
+        if not result.was_intent_successful:
             self.show_snack(
-                "Failed to load data from that calendar.",
+                result.error_msg,
                 is_error=True,
             )
             return

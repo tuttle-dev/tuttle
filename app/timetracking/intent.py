@@ -82,25 +82,35 @@ class TimeTrackingIntent(Intent):
         password: str,
     ) -> IntentResult[CloudConnector]:
         """"""
-        # check cloud_calendar_info for the value of the cloud provider
-        # if it is icloud, call the login_to_icloud method
-        logger.info(
-            f"Trying to connect to cloud provider {provider} with account {account_id}"
-        )
-        if provider == CloudProvider.ICloud.value:
-            connector: CloudConnector = self._cloud_calendar_source.login_to_icloud(
-                apple_id=account_id,
-                password=password,
+        try:
+            # check cloud_calendar_info for the value of the cloud provider
+            # if it is icloud, call the login_to_icloud method
+            logger.info(
+                f"Trying to connect to cloud provider {provider} with account {account_id}"
             )
-            # is a 2fa code required?
-            return IntentResult(
-                was_intent_successful=True,
-                data=connector,
-            )
-        else:
+            if provider == CloudProvider.ICloud.value:
+                connector: CloudConnector = self._cloud_calendar_source.login_to_icloud(
+                    apple_id=account_id,
+                    password=password,
+                )
+                logger.info(
+                    f"Successfully connected to iCloud with account {account_id}"
+                )
+                return IntentResult(
+                    was_intent_successful=True,
+                    data=connector,
+                )
+            else:
+                return IntentResult(
+                    was_intent_successful=False,
+                    error_msg=f"Not implemented yet for cloud provider {provider}",
+                )
+        except Exception as ex:
+            logger.exception(ex)
             return IntentResult(
                 was_intent_successful=False,
-                error_msg=f"Not implemented yet for cloud provider {provider}",
+                error_msg=f"Failed to connect to cloud provider {provider}",
+                exception=ex,
             )
 
     def load_from_cloud_calendar(
@@ -109,14 +119,23 @@ class TimeTrackingIntent(Intent):
         calendar_name: str,
     ) -> IntentResult[DataFrame]:
         """Loads time tracking data from a cloud calendar using a cloud connector"""
-        calendar_data: DataFrame = self._cloud_calendar_source.load_data(
-            cloud_connector=cloud_connector,
-            calendar_name=calendar_name,
-        )
-        return IntentResult(
-            was_intent_successful=True,
-            data=calendar_data,
-        )
+        try:
+            calendar_data: DataFrame = self._cloud_calendar_source.load_data(
+                cloud_connector=cloud_connector,
+                calendar_name=calendar_name,
+            )
+            return IntentResult(
+                was_intent_successful=True,
+                data=calendar_data,
+            )
+        except Exception as ex:
+            error_message = f"Failed to load data from cloud calendar {calendar_name}"
+            logger.exception(ex)
+            return IntentResult(
+                was_intent_successful=False,
+                error_msg=error_message,
+                exception=ex,
+            )
 
     def get_timetracking_data(self) -> IntentResult[Optional[DataFrame]]:
         try:

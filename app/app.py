@@ -139,7 +139,7 @@ class TuttleApp:
     def show_snack(
         self,
         message: str,
-        is_error: bool = True,
+        is_error: bool = False,
         action_label: Optional[str] = None,
         action_callback: Optional[Callable] = None,
     ):
