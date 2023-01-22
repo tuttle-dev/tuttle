@@ -47,6 +47,37 @@ We develop the solution as a desktop application. Sensitive financial data is pr
 
 Desktop apps are great - let's have more of them. We are consciously developing a desktop app with local data storage, not a web app, since your business data is none of our business.
 
+
+## Features
+
+
+### Business Data Management
+
+Manage your business contacts and contract terms for your project - all in one place.
+
+### Time Tracking
+
+Track the time you spend on your projects. Import from your cloud calendar or from your favorite time tracking tool.
+
+### Invoicing
+
+Generate invoices and timesheets automatically from your time tracking data. Export to PDF and send via email.
+
+## Roadmap
+
+### Income Forecasting
+
+Project your income for the next months based on your project planning. See how changes in your schedule affect your bottom line.
+
+### Expense Tracking & Forecasting
+
+Track regular expenses, taxes and social security contributions. Estimate them for the future based on your income expectations.
+
+### Safe to Spend
+
+Calculate your effective income and see how much you can spend without risking your financial security.
+
+
 ## Prototype Test
 
 ### Setup
