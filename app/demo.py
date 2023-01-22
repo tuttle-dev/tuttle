@@ -257,8 +257,8 @@ def create_fake_calendar(project_list: List[Project]) -> ics.Calendar:
 
     # populate the calendar with events
     for project in project_list:
-        # create 1-10 events for each project
-        for _ in range(random.randint(1, 10)):
+        # create 1-5 events for each project
+        for _ in range(random.randint(1, 5)):
             # create a new event
             event = ics.Event()
             event.name = f"Meeting for #{project.tag}"
