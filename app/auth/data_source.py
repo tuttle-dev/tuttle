@@ -168,8 +168,8 @@ class UserDataSource(SQLModelDataSourceMixin):
             )
 
     def update_user_photo_path(
-        self, user: Type[User], photo_path: str
-    ) -> IntentResult[Union[Type[User], None]]:
+        self, user: User, photo_path: str
+    ) -> IntentResult[Optional[User]]:
         """
         Update the photo path of an user in the database
 
