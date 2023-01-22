@@ -70,7 +70,7 @@ class TuttleApp:
         self.page.theme_mode = theme
         self.page.window_min_width = MIN_WINDOW_WIDTH
         self.page.window_min_height = MIN_WINDOW_HEIGHT
-        self.page.window_width = MIN_WINDOW_WIDTH * 2
+        self.page.window_width = MIN_WINDOW_HEIGHT * 3
         self.page.window_height = MIN_WINDOW_HEIGHT * 2
         self.file_picker = FilePicker()
         self.page.overlay.append(self.file_picker)
