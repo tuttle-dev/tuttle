@@ -55,13 +55,21 @@ Desktop apps are great - let's have more of them. We are consciously developing 
 
 Manage your business contacts and contract terms for your project - all in one place.
 
+<img src="assets/images/screenshot-contracts.png" width=768 />
+
 ### Time Tracking
 
 Track the time you spend on your projects. Import from your cloud calendar or from your favorite time tracking tool.
 
+<img src="assets/images/screenshot-timetracking.png" width=768 />
+
+
 ### Invoicing
 
 Generate invoices and timesheets automatically from your time tracking data. Export to PDF and send via email.
+
+<img src="assets/images/screenshot-invoicing.png" width=768 />
+
 
 ## Roadmap
 
