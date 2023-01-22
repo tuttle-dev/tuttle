@@ -307,9 +307,9 @@ class SplashScreen(TuttleView, UserControl):
         self.loading_indicator = views.horizontal_progress
         self.form_container = Column(
             controls=[
-                views.get_labelled_logo(),
+                # views.get_labelled_logo(),
                 views.get_heading_with_subheading(
-                    "Hi, Welcome to Tuttle.",
+                    "Welcome to Tuttle",
                     "Let's get you started: Please enter your details below. Your data will be stored locally and will not be sent to a server.",
                 ),
                 self.loading_indicator,
