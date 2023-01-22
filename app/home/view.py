@@ -99,14 +99,12 @@ def get_action_bar(
                         # ),
                         IconButton(
                             icon=icons.SETTINGS_SUGGEST_OUTLINED,
-                            icon_color=colors.PRIMARY_COLOR,
                             icon_size=dimens.ICON_SIZE,
                             on_click=on_view_settings_clicked,
                             tooltip="Preferences",
                         ),
                         IconButton(
                             icons.PERSON_OUTLINE_OUTLINED,
-                            icon_color=colors.PRIMARY_COLOR,
                             icon_size=dimens.ICON_SIZE,
                             tooltip="Profile",
                             on_click=on_click_profile_btn,
