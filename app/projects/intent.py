@@ -181,24 +181,61 @@ class ProjectsIntent:
             self._remove_project_from_caches(project_id)
         return result
 
-    def _remove_project_from_caches(self, project_id):
-        if self._all_projects_cache and project_id in self._all_projects_cache:
-            del self._all_projects_cache[project_id]
+    def _remove_project_from_caches(self, project: Project):
+        """remove the project from the caches"""
+        if self._all_projects_cache and project.id in self._all_projects_cache:
+            del self._all_projects_cache[project.id]
+
         if (
             self._completed_projects_cache
-            and project_id in self._completed_projects_cache
+            and project.id in self._completed_projects_cache
         ):
-            del self._completed_projects_cache[project_id]
-        if self._active_projects_cache and project_id in self._active_projects_cache:
-            del self._active_projects_cache[project_id]
+            del self._completed_projects_cache[project.id]
+
+        if self._active_projects_cache and project.id in self._active_projects_cache:
+            self._active_projects_cache[project.id]
+
         if (
             self._upcoming_projects_cache
-            and project_id in self._upcoming_projects_cache
+            and project.id in self._upcoming_projects_cache
         ):
-            del self._upcoming_projects_cache[project_id]
+            del self._upcoming_projects_cache[project.id]
+
+    def _update_project_in_caches(self, project: Project):
+        """update the project in the caches"""
+        if self._all_projects_cache and project.id in self._all_projects_cache:
+            self._all_projects_cache[project.id] = project
+        if (
+            self._completed_projects_cache
+            and project.id in self._completed_projects_cache
+        ):
+            self._completed_projects_cache[project.id] = project
+        if self._active_projects_cache and project.id in self._active_projects_cache:
+            self._active_projects_cache[project.id] = project
+        if (
+            self._upcoming_projects_cache
+            and project.id in self._upcoming_projects_cache
+        ):
+            self._upcoming_projects_cache[project.id] = project
 
     def _clear_cached_results(self):
         self._all_projects_cache = None
         self._completed_projects_cache = None
         self._active_projects_cache = None
         self._upcoming_projects_cache = None
+
+    def toggle_project_completed_status(
+        self, project: Project
+    ) -> IntentResult[Project]:
+        """Updates the project completed status"""
+        project.is_completed = not project.is_completed
+        result: IntentResult = self._data_source.save_project(project)
+        if not result.was_intent_successful:
+            # undo
+            project.is_completed = not project.is_completed
+            result.error_msg = "Failed to update the project's completed status"
+            result.log_message_if_any()
+        else:
+            self._update_project_in_caches(project)
+        result.data = project
+        return result

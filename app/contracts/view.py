@@ -695,8 +695,11 @@ class ContractsListView(TuttleView, UserControl):
         is_error = not result.was_intent_successful
         msg = "Contract deleted!" if not is_error else result.error_msg
         self.show_snack(msg, is_error)
-        if not is_error and contract_id in self.contracts_to_display:
-            del self.contracts_to_display[contract_id]
+        if not is_error:
+            if int(contract_id) in self.contracts_to_display:
+                # remove deleted contract from displayed contracts
+                del self.contracts_to_display[int(contract_id)]
+            # reload displayed contracts
             self.display_currently_filtered_contracts()
         self.loading_indicator.visible = False
         self.update_self()

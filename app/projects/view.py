@@ -352,14 +352,18 @@ class ViewProjectScreen(TuttleView, UserControl):
         )
 
     def on_mark_as_complete_clicked(self, e):
-        if self.pop_up_handler:
-            self.pop_up_handler.close_dialog()
-        self.pop_up_handler = views.AlertDisplayPopUp(
-            dialog_controller=self.dialog_controller,
-            title="Not Implemented",
-            description="This feature is coming soon",
-        )
-        self.pop_up_handler.open_dialog()
+        if self.project is None:
+            return  # project is not loaded yet
+        if self.project.is_completed:
+            return  # project is already completed
+        result: IntentResult = self.intent.toggle_project_completed_status(self.project)
+        is_error = not result.was_intent_successful
+        msg = "Updated project." if not is_error else result.error_msg
+        self.show_snack(msg, is_error)
+        if not is_error:
+            self.project = result.data
+            self.display_project_data()
+            self.update_self()  # update the view
 
     def on_edit_clicked(self, e):
         if self.project is None:
@@ -368,6 +372,7 @@ class ViewProjectScreen(TuttleView, UserControl):
         self.navigate_to_route(res_utils.PROJECT_EDITOR_SCREEN_ROUTE, self.project.id)
 
     def on_delete_clicked(self, e):
+        """Called when the user clicks the delete button"""
         if self.project is None:
             # project is not loaded yet
             return
@@ -384,6 +389,7 @@ class ViewProjectScreen(TuttleView, UserControl):
         self.pop_up_handler.open_dialog()
 
     def on_delete_confirmed(self, project_id):
+        """Called when the user confirms the deletion of a project"""
         result = self.intent.delete_project_by_id(project_id)
         is_err = not result.was_intent_successful
         msg = result.error_msg if is_err else "Project deleted!"
@@ -611,6 +617,7 @@ class ProjectsListView(TuttleView, UserControl):
         self.dialog = None
 
     def display_currently_filtered_projects(self):
+        """Display the projects that according to the current filter"""
         self.projects_container.controls.clear()
         for key in self.projects_to_display:
             project = self.projects_to_display[key]
@@ -626,6 +633,7 @@ class ProjectsListView(TuttleView, UserControl):
         self.navigate_to_route(res_utils.PROJECT_DETAILS_SCREEN_ROUTE, project_id)
 
     def on_delete_project_clicked(self, project_id: str):
+        """Called when delete button is clicked on a project card"""
         if project_id not in self.projects_to_display:
             return
         project_title = self.projects_to_display[project_id].title
@@ -641,13 +649,17 @@ class ProjectsListView(TuttleView, UserControl):
         )
         self.dialog.open_dialog()
 
-    def on_delete_confirmed(self, project_id):
+    def on_delete_confirmed(self, project_id: str):
+        """Called when the user confirms the delete action"""
         self.loading_indicator.visible = True
         self.update_self()
         result = self.intent.delete_project_by_id(project_id)
         is_err = not result.was_intent_successful
-        if not is_err and project_id in self.projects_to_display:
-            del self.projects_to_display[project_id]
+        if not is_err:
+            if int(project_id) in self.projects_to_display:
+                # remove deleted project from displayed projects
+                del self.projects_to_display[int(project_id)]
+            # reload displayed projects
             self.display_currently_filtered_projects()
         msg = result.error_msg if is_err else "Project deleted!"
         self.show_snack(msg, is_err)
