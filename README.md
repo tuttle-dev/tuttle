@@ -71,7 +71,7 @@ Project your income for the next months based on your project planning. See how 
 
 ### Expense Tracking & Forecasting
 
-Track regular expenses, taxes and social security contributions. Estimate them for the future based on your income expectations.
+Track regular expenses, taxes and social security contributions. Estimate them for the future based on expected revenue.
 
 ### Safe to Spend
 
