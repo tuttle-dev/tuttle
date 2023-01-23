@@ -767,7 +767,7 @@ class ProjectEditorScreen(TuttleView, UserControl):
 
     def add_tag_to_dropdown_item_id(self, id, value):
         """given id and value, prepends a # symbol and returns as str"""
-        return f"#{id} {value}"
+        return f"{value}"
 
     def get_id_from_dropdown_selection(self, selected: str):
         """given a dropdown selection, extracts the id from the selection"""
