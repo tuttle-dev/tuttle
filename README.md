@@ -94,7 +94,13 @@ Calculate your effective income and see how much you can spend without risking y
 
 2. We recommend installation into a new [virtual environment](https://calmcode.io/virtualenv/intro.html).
 
-3. From the repository's directory, install the Python module in development mode:
+3. Install the Python module in development mode:
+
+```shell
+$ python setup.py develop
+```
+
+or
 
 ```shell
 pip install -e .

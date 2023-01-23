@@ -15,7 +15,6 @@ from flet import (
     ListTile,
     ResponsiveRow,
     Row,
-    Text,
     TextButton,
     UserControl,
     border_radius,
@@ -27,8 +26,6 @@ from flet import (
 from clients.view import ClientViewPopUp
 from core import utils, views
 from core.abstractions import TuttleView, TuttleViewParams
-from core.charts import BarChart
-from core.date_time_utils import get_last_seven_days
 from core.intent_result import IntentResult
 from projects.intent import ProjectsIntent
 from res import colors, dimens, fonts, res_utils
@@ -50,6 +47,13 @@ class ProjectCard(UserControl):
         self.on_edit_clicked = on_edit_clicked
 
     def build(self):
+        """Builds the project card"""
+        _contract_title = "Unknown contract"
+        if self.project.contract:
+            _contract_title = self.project.contract.title
+        _client_title = "Unknown client"
+        if self.project.client:
+            _client_title = self.project.client.name
         self.project_info_container.controls = [
             ListTile(
                 leading=Icon(
@@ -69,6 +73,7 @@ class ProjectCard(UserControl):
                     on_click_delete=lambda e: self.on_delete_clicked(self.project.id),
                     on_click_edit=lambda e: self.on_edit_clicked(self.project.id),
                 ),
+                on_click=lambda e: self.on_view_details_clicked(self.project.id),
             ),
             views.mdSpace,
             ResponsiveRow(
@@ -99,9 +104,7 @@ class ProjectCard(UserControl):
                     ),
                     Container(
                         views.get_body_txt(
-                            txt=self.project.client.name
-                            if self.project.client
-                            else "Unknown client",
+                            txt=_client_title,
                             col={"xs": "12"},
                         ),
                     ),
@@ -122,7 +125,7 @@ class ProjectCard(UserControl):
                     ),
                     Container(
                         views.get_body_txt(
-                            txt=self.project.contract.title,
+                            txt=_contract_title,
                             col={"xs": "12"},
                         ),
                     ),
@@ -195,6 +198,8 @@ class ProjectCard(UserControl):
 
 
 class ProjectStates(Enum):
+    """Project states"""
+
     ALL = 1
     ACTIVE = 2
     COMPLETED = 3
@@ -213,6 +218,7 @@ class ProjectFiltersView(UserControl):
     def filter_button(
         self, state: ProjectStates, label: str, onClick: Callable[[ProjectStates], None]
     ):
+        """creates a filter button for project status"""
         button = ElevatedButton(
             text=label,
             col={"xs": 6, "sm": 3, "lg": 2},
@@ -241,6 +247,7 @@ class ProjectFiltersView(UserControl):
         self.onStateChangedCallback(state)
 
     def get_filter_button_label(self, state: ProjectStates):
+        """returns the label for the filter button"""
         if state.value == ProjectStates.ACTIVE.value:
             return "Active"
         elif state.value == ProjectStates.UPCOMING.value:
@@ -251,6 +258,7 @@ class ProjectFiltersView(UserControl):
             return "All"
 
     def set_filter_buttons(self):
+        """sets the filter buttons for each project state"""
         for state in ProjectStates:
             button = self.filter_button(
                 label=self.get_filter_button_label(state),
@@ -260,6 +268,7 @@ class ProjectFiltersView(UserControl):
             self.stateTofilterButtonsMap[state] = button
 
     def build(self):
+        """builds the filter buttons"""
         if len(self.stateTofilterButtonsMap) == 0:
             # set the buttons
             self.set_filter_buttons()
@@ -271,6 +280,8 @@ class ProjectFiltersView(UserControl):
 
 
 class ViewProjectScreen(TuttleView, UserControl):
+    """View project screen"""
+
     def __init__(
         self,
         params: TuttleViewParams,
@@ -282,9 +293,9 @@ class ViewProjectScreen(TuttleView, UserControl):
         self.loading_indicator = views.horizontal_progress
         self.project: Optional[Project] = None
         self.pop_up_handler = None
-        self.chart = None
 
     def display_project_data(self):
+        """displays the project data on the screen"""
         has_contract = True if self.project.contract else False
         has_client = True if has_contract and self.project.contract.client else False
 
@@ -302,38 +313,22 @@ class ViewProjectScreen(TuttleView, UserControl):
         self.project_description_control.value = self.project.description
         self.project_start_date_control.value = f"Start Date: {self.project.start_date}"
         self.project_end_date_control.value = f"End Date: {self.project.end_date}"
-        self.project_status_control.value = f"Status {self.project.get_status()}"
+        _status = self.project.get_status(default="")
+        if _status:
+            self.project_status_control.value = f"Status {_status}"
         self.project_tagline_control.value = f"{self.project.tag}"
-        # self.set_chart()
-
-    def set_chart(self):
-        dummy_hours = []
-        last_seven = get_last_seven_days()
-        for i in range(0, len(last_seven)):
-            dummy_hours.append((i + 1) * 10)
-
-        self.chart = BarChart(
-            x_items_labels=last_seven,
-            values=dummy_hours,
-            chart_title="Hours logged last 7 days",
-            x_label="Days",
-            y_label="Hours",
-            legend="hours per day",
+        is_project_completed = self.project.is_completed
+        self.toggle_complete_status_btn.icon = (
+            icons.RADIO_BUTTON_CHECKED_OUTLINED
+            if is_project_completed
+            else icons.RADIO_BUTTON_UNCHECKED_OUTLINED
         )
-        self.chart_container.content = self.chart
-
-    def did_mount(self):
-        self.mounted = True
-        result: IntentResult = self.intent.get_project_by_id(self.project_id)
-        if not result.was_intent_successful:
-            self.show_snack(result.error_msg, True)
-        else:
-            self.project = result.data
-            self.display_project_data()
-        self.loading_indicator.visible = False
-        self.update_self()
+        self.toggle_complete_status_btn.tooltip = (
+            "Mark as incomplete" if is_project_completed else "Mark as complete"
+        )
 
     def on_view_client_clicked(self, e):
+        """opens the client view pop up when the client button is clicked"""
         if not self.project or not self.project.client:
             return
         if self.pop_up_handler:
@@ -344,29 +339,35 @@ class ViewProjectScreen(TuttleView, UserControl):
         self.pop_up_handler.open_dialog()
 
     def on_view_contract_clicked(self, e):
-        if not self.project:
+        """redirects to the contract view screen when the contract button is clicked"""
+        if not self.project or not self.project.contract:
             return
         self.navigate_to_route(
             res_utils.CONTRACT_DETAILS_SCREEN_ROUTE, self.project.contract.id
         )
 
-    def on_mark_as_complete_clicked(self, e):
-        if self.pop_up_handler:
-            self.pop_up_handler.close_dialog()
-        self.pop_up_handler = views.AlertDisplayPopUp(
-            dialog_controller=self.dialog_controller,
-            title="Not Implemented",
-            description="This feature is coming soon",
-        )
-        self.pop_up_handler.open_dialog()
+    def toggle_complete_status(self, e):
+        """toggles the project complete status"""
+        if self.project is None:
+            return  # project is not loaded yet
+        result: IntentResult = self.intent.toggle_project_completed_status(self.project)
+        is_error = not result.was_intent_successful
+        msg = "Updated project." if not is_error else result.error_msg
+        self.show_snack(msg, is_error)
+        if not is_error:
+            self.project = result.data
+            self.display_project_data()
+            self.update_self()  # update the view
 
     def on_edit_clicked(self, e):
+        """redirects to the project editor screen when the edit button is clicked"""
         if self.project is None:
             # project is not loaded yet
             return
         self.navigate_to_route(res_utils.PROJECT_EDITOR_SCREEN_ROUTE, self.project.id)
 
     def on_delete_clicked(self, e):
+        """Called when the user clicks the delete button"""
         if self.project is None:
             # project is not loaded yet
             return
@@ -383,23 +384,14 @@ class ViewProjectScreen(TuttleView, UserControl):
         self.pop_up_handler.open_dialog()
 
     def on_delete_confirmed(self, project_id):
+        """Called when the user confirms the deletion of a project"""
         result = self.intent.delete_project_by_id(project_id)
         is_err = not result.was_intent_successful
         msg = result.error_msg if is_err else "Project deleted!"
         self.show_snack(msg, is_err)
         if not is_err:
-            # go back
+            # go back, project has been deleted
             self.on_navigate_back()
-
-    def on_window_resized_listener(self, desired_width, height):
-        super().on_window_resized_listener(desired_width, height)
-        desired_width = self.page_width * 0.4
-        min_chart_width = dimens.MIN_WINDOW_WIDTH * 0.7
-        chart_width = (
-            desired_width if desired_width > min_chart_width else min_chart_width
-        )
-        self.chart_container.width = chart_width
-        self.update_self()
 
     def build(self):
         """Called when page is built"""
@@ -409,12 +401,13 @@ class ViewProjectScreen(TuttleView, UserControl):
             on_click=self.on_edit_clicked,
             icon_size=dimens.ICON_SIZE,
         )
-        self.mark_as_complete_btn = IconButton(
-            icon=icons.CHECK_CIRCLE_OUTLINE,
+
+        self.toggle_complete_status_btn = IconButton(
+            icon=icons.RADIO_BUTTON_UNCHECKED_OUTLINED,
             icon_color=colors.PRIMARY_COLOR,
             tooltip="Mark as complete",
             icon_size=dimens.ICON_SIZE,
-            on_click=self.on_mark_as_complete_clicked,
+            on_click=self.toggle_complete_status,
         )
         self.delete_project_btn = IconButton(
             icon=icons.DELETE_OUTLINE_ROUNDED,
@@ -451,8 +444,6 @@ class ViewProjectScreen(TuttleView, UserControl):
         self.project_tagline_control = views.get_sub_heading_txt(
             size=fonts.BUTTON_SIZE, color=colors.PRIMARY_COLOR
         )
-
-        self.chart_container = Container()
 
         page_view = Row(
             [
@@ -512,7 +503,7 @@ class ViewProjectScreen(TuttleView, UserControl):
                                                         run_spacing=dimens.SPACE_STD,
                                                         controls=[
                                                             self.edit_project_btn,
-                                                            self.mark_as_complete_btn,
+                                                            self.toggle_complete_status_btn,
                                                             self.delete_project_btn,
                                                         ],
                                                     ),
@@ -532,8 +523,6 @@ class ViewProjectScreen(TuttleView, UserControl):
                             self.project_description_control,
                             self.project_start_date_control,
                             self.project_end_date_control,
-                            views.mdSpace,
-                            self.chart_container,
                             views.mdSpace,
                             Row(
                                 spacing=dimens.SPACE_STD,
@@ -569,13 +558,36 @@ class ViewProjectScreen(TuttleView, UserControl):
         )
         return page_view
 
+    def did_mount(self):
+        """called when the view is mounted"""
+        self.reload_data()
+
+    def on_resume_after_back_pressed(self):
+        """called when the view is resumed after back pressed"""
+        self.reload_data()
+
+    def reload_data(self):
+        """reloads data whem the view is first mounted or resumed"""
+        self.mounted = True
+        result: IntentResult = self.intent.get_project_by_id(self.project_id)
+        if not result.was_intent_successful:
+            self.show_snack(result.error_msg, True)
+        else:
+            self.project = result.data
+            self.display_project_data()
+        self.loading_indicator.visible = False
+        self.update_self()
+
     def will_unmount(self):
+        """called when the view is unmounted"""
         self.mounted = False
         if self.pop_up_handler:
             self.pop_up_handler.dimiss_open_dialogs()
 
 
 class ProjectsListView(TuttleView, UserControl):
+    """View for displaying a list of projects"""
+
     def __init__(self, params):
         super().__init__(params)
         self.intent = ProjectsIntent()
@@ -610,6 +622,7 @@ class ProjectsListView(TuttleView, UserControl):
         self.dialog = None
 
     def display_currently_filtered_projects(self):
+        """Display the projects that according to the current filter"""
         self.projects_container.controls.clear()
         for key in self.projects_to_display:
             project = self.projects_to_display[key]
@@ -622,9 +635,11 @@ class ProjectsListView(TuttleView, UserControl):
             self.projects_container.controls.append(projectCard)
 
     def on_view_project_clicked(self, project_id: str):
+        """Called when view details button is clicked on a project card"""
         self.navigate_to_route(res_utils.PROJECT_DETAILS_SCREEN_ROUTE, project_id)
 
     def on_delete_project_clicked(self, project_id: str):
+        """Called when delete button is clicked on a project card"""
         if project_id not in self.projects_to_display:
             return
         project_title = self.projects_to_display[project_id].title
@@ -640,13 +655,17 @@ class ProjectsListView(TuttleView, UserControl):
         )
         self.dialog.open_dialog()
 
-    def on_delete_confirmed(self, project_id):
+    def on_delete_confirmed(self, project_id: str):
+        """Called when the user confirms the delete action"""
         self.loading_indicator.visible = True
         self.update_self()
         result = self.intent.delete_project_by_id(project_id)
         is_err = not result.was_intent_successful
-        if not is_err and project_id in self.projects_to_display:
-            del self.projects_to_display[project_id]
+        if not is_err:
+            if int(project_id) in self.projects_to_display:
+                # remove deleted project from displayed projects
+                del self.projects_to_display[int(project_id)]
+            # reload displayed projects
             self.display_currently_filtered_projects()
         msg = result.error_msg if is_err else "Project deleted!"
         self.show_snack(msg, is_err)
@@ -654,9 +673,11 @@ class ProjectsListView(TuttleView, UserControl):
         self.update_self()
 
     def on_edit_project_clicked(self, project_id: str):
+        """Called when edit button is clicked on a project card,redirects to project editor"""
         self.navigate_to_route(res_utils.PROJECT_EDITOR_SCREEN_ROUTE, project_id)
 
     def on_filter_projects(self, filterByState: ProjectStates):
+        """Called when the user selects a filter option"""
         if filterByState.value == ProjectStates.ACTIVE.value:
             self.projects_to_display = self.intent.get_active_projects_as_map()
         elif filterByState.value == ProjectStates.UPCOMING.value:
@@ -668,30 +689,33 @@ class ProjectsListView(TuttleView, UserControl):
         self.display_currently_filtered_projects()
         self.update_self()
 
-    def show_no_projects(self):
-        self.no_projects_control.visible = True
-
     def did_mount(self):
+        """called when the view is mounted"""
+        self.reload_data()
+
+    def parent_intent_listener(self, intent: str, data: any):
+        """Called when the parent view sends an intent"""
+        if intent == res_utils.RELOAD_INTENT:
+            self.reload_data()
+
+    def reload_data(self):
+        """reloads data displayed when view is mounted or when parent view sends a reload intent"""
         self.mounted = True
-        self.initialize_data()
-
-    def on_resume_after_back_pressed(self):
-        self.initialize_data()
-
-    def initialize_data(self):
         self.loading_indicator.visible = True
-        self.projects_to_display = self.intent.get_all_projects_as_map(
-            reload_cache=True
-        )
+        self.projects_to_display = self.intent.get_all_projects_as_map()
         count = len(self.projects_to_display)
         self.loading_indicator.visible = False
         if count == 0:
-            self.show_no_projects()
+            # Show the no projects message
+            self.no_projects_control.visible = True
+            self.projects_container.controls.clear()
         else:
+            self.no_projects_control.visible = False
             self.display_currently_filtered_projects()
         self.update_self()
 
     def build(self):
+        """Builds the view"""
         return Column(
             controls=[
                 self.title_control,
@@ -703,6 +727,7 @@ class ProjectsListView(TuttleView, UserControl):
         )
 
     def will_unmount(self):
+        """Called when the view is unmounted"""
         self.mounted = False
 
 
@@ -729,12 +754,15 @@ class ProjectEditorScreen(TuttleView, UserControl):
         self.end_date = None
 
     def on_title_changed(self, e):
+        """Called when the title input changes"""
         self.title = e.control.value
 
     def on_description_changed(self, e):
+        """Called when the description input changes"""
         self.description = e.control.value
 
     def on_tag_changed(self, e):
+        """Called when the tag input changes"""
         self.tag = e.control.value
 
     def add_tag_to_dropdown_item_id(self, id, value):
@@ -742,6 +770,7 @@ class ProjectEditorScreen(TuttleView, UserControl):
         return f"#{id} {value}"
 
     def get_id_from_dropdown_selection(self, selected: str):
+        """given a dropdown selection, extracts the id from the selection"""
         _id = ""
         for c in selected:
             if c == "#":
@@ -752,7 +781,7 @@ class ProjectEditorScreen(TuttleView, UserControl):
         return _id
 
     def get_contracts_as_list(self):
-        """transforms a map of id-contract_desc to a list for dropdown options"""
+        """transforms a map of id - to  - contract to a list for dropdown options"""
         contracts = []
         for key in self.contracts_map:
             contracts.append(
@@ -763,7 +792,7 @@ class ProjectEditorScreen(TuttleView, UserControl):
         return contracts
 
     def on_contract_selected(self, e):
-        # parse selected value to extract id
+        """Called when a contract is selected from the dropdown"""
         contract_id = self.get_id_from_dropdown_selection(selected=e.control.value)
         if int(contract_id) in self.contracts_map:
             self.contract = self.contracts_map[int(contract_id)]
@@ -772,30 +801,33 @@ class ProjectEditorScreen(TuttleView, UserControl):
             self.update_self()
 
     def clear_title_error(self, e):
+        """Called when the title input is focused"""
         if self.title_field.error_text:
             self.title_field.error_text = None
             self.update_self()
 
     def clear_description_error(self, e):
+        """Called when the description input is focused"""
         if self.description_field.error_text:
             self.description_field.error_text = None
             self.update_self()
 
     def toggle_progress_indicator(self, is_action_ongoing: bool):
+        """Toggles the progress indicator visibility and disables / enables the submit button"""
         self.loading_indicator.visible = is_action_ongoing
         self.submit_btn.disabled = is_action_ongoing
 
     def load_project_for_editing(self):
+        """Loads the project being edited if a project id was passed to the view"""
         if not self.project_id_if_editing:
             return  # user is not updating a project
 
         result = self.intent.get_project_by_id(self.project_id_if_editing)
         if not result.was_intent_successful or not result.data:
             self.show_snack(result.error_msg)
-            return
+            return  # error loading project
         self.old_project_if_editing = result.data
-        # set form values
-        self.set_form_values()
+        self.set_form_values()  # set form values
 
     def set_form_values(self):
         """Sets form data with info of project being edited"""
@@ -819,6 +851,7 @@ class ProjectEditorScreen(TuttleView, UserControl):
     def reload_contracts(
         self,
     ):
+        """Reloads the contracts for the dropdown field"""
         self.contracts_map = self.intent.get_all_contracts_as_map_intent()
         self.contracts_field.error_text = (
             "Please create a new contract" if len(self.contracts_map) == 0 else None
@@ -826,9 +859,11 @@ class ProjectEditorScreen(TuttleView, UserControl):
         views.update_dropdown_items(self.contracts_field, self.get_contracts_as_list())
 
     def on_add_contract(self, e):
+        """Called when the add contract button is clicked, redirects to the contract editor screen"""
         self.navigate_to_route(res_utils.CONTRACT_EDITOR_SCREEN_ROUTE)
 
     def on_save(self, e):
+        """Called when the save button is clicked, validates the form and saves the project"""
         if not self.title:
             self.title_field.error_text = "Project title is required"
             self.update_self()
@@ -889,21 +924,22 @@ class ProjectEditorScreen(TuttleView, UserControl):
             self.on_navigate_back()
 
     def build(self):
+        """Builds the view"""
         self.title_field = views.get_std_txt_field(
             label="Title",
-            hint="Project's title",
+            hint="A short, unique title",
             on_change=self.on_title_changed,
             on_focus=self.clear_title_error,
         )
         self.description_field = views.get_std_multiline_field(
             label="Description",
-            hint="Project's description",
+            hint="A longer description of the project",
             on_change=self.on_description_changed,
             on_focus=self.clear_description_error,
         )
         self.tag_field = views.get_std_txt_field(
             label="Tag",
-            hint="unique tag for your project",
+            hint="A unique tag",
             on_change=self.on_tag_changed,
         )
 
@@ -981,13 +1017,16 @@ class ProjectEditorScreen(TuttleView, UserControl):
         return view
 
     def did_mount(self):
+        """Called when the view is mounted"""
         self.mounted = True
         self.initialize_data()
 
     def on_resume_after_back_pressed(self):
+        """Called when the view is resumed from another screen by back press"""
         self.initialize_data(skip_project_reload=True)
 
     def initialize_data(self, skip_project_reload: bool = False):
+        """Initializes the data for the view"""
         self.toggle_progress_indicator(is_action_ongoing=True)
         if not skip_project_reload:
             self.load_project_for_editing()
@@ -996,4 +1035,5 @@ class ProjectEditorScreen(TuttleView, UserControl):
         self.update_self()
 
     def will_unmount(self):
+        """Called when the view is unmounted"""
         self.mounted = False

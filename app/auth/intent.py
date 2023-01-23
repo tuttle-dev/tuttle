@@ -1,8 +1,8 @@
-from typing import Type, Union
+from typing import Type, Union, Optional
 
 from core.intent_result import IntentResult
 
-from tuttle.model import User
+from tuttle.model import User, Address
 
 from .data_source import UserDataSource
 
@@ -55,16 +55,29 @@ class AuthIntent:
         IntentResult
             Result object with the status of the intent and other details
         """
-        result = self._data_source.create_user(
-            title, name, email, phone, street, street_num, postal_code, city, country
+        address = Address(
+            street=street,
+            number=street_num,
+            postal_code=postal_code,
+            city=city,
+            country=country,
         )
+        user = User(
+            name=name,
+            subtitle=title,
+            email=email,
+            phone_number=phone,
+            address=address,
+            VAT_number="",
+        )
+        result = self._data_source.save_user(user)
 
         if not result.was_intent_successful:
             result.error_msg = "Login failed! Please check the info and re-try"
             result.log_message_if_any()
         return result
 
-    def get_user_if_exists(self) -> IntentResult[Union[Type[User], None]]:
+    def get_user_if_exists(self) -> IntentResult[Optional[User]]:
         """
         Fetches the current user if it exists.
         Returns an IntentResult object with the status of the intent and other details
@@ -80,7 +93,19 @@ class AuthIntent:
             result.log_message_if_any()
         return result
 
-    def update_user(
+    def update_user(self, user: User) -> IntentResult[User]:
+        """stores the user in the data source"""
+        result: IntentResult = self._data_source.save_user(user)
+        if not result.was_intent_successful:
+            # get old user
+            old_user_result: IntentResult = self.get_user_if_exists()
+            if old_user_result.was_intent_successful:
+                result.data = old_user_result.data
+            result.error_msg = "Saving changes failed!"
+            result.log_message_if_any()
+        return result
+
+    def update_user_with_info(
         self,
         user: User,
         title: str,
@@ -92,19 +117,7 @@ class AuthIntent:
         postal_code: str,
         city: str,
         country: str,
-    ) -> IntentResult[Union[Type[User], None]]:
-        result = self._data_source.update_user(
-            user,
-            title,
-            name,
-            email,
-            phone,
-            street,
-            street_num,
-            postal_code,
-            city,
-            country,
-        )
+    ) -> IntentResult[Optional[User]]:
         """
         Updates the user with the given details.
         Returns an IntentResult object with the status of the intent and other details
@@ -137,6 +150,20 @@ class AuthIntent:
         IntentResult
             Result object with the status of the intent and other details
         """
+        address = user.address
+        address.street = street
+        address.number = street_num
+        address.postal_code = postal_code
+        address.city = city
+        address.country = country
+
+        user.name = name
+        user.subtitle = title
+        user.email = email
+        user.phone_number = phone
+        user.address = address
+        user.profile_photo_path = user.profile_photo_path
+        result = self._data_source.save_user(user)
 
         if not result.was_intent_successful:
             result.error_msg = "Failed to update your info! Please retry"

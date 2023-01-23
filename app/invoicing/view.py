@@ -4,22 +4,14 @@ from datetime import datetime, timedelta
 
 from flet import (
     AlertDialog,
-    Card,
     Column,
     Container,
-    GridView,
-    Icon,
-    IconButton,
-    Image,
     ListTile,
     ListView,
     ResponsiveRow,
     Row,
-    Text,
     UserControl,
-    border_radius,
     icons,
-    padding,
 )
 
 from core import utils, views
@@ -29,13 +21,24 @@ from loguru import logger
 from pandas import DataFrame
 from res import colors, dimens, fonts, res_utils
 
-from tuttle.model import Invoice, Project
+from tuttle.model import Invoice, Project, User
 
 from .intent import InvoicingIntent
 
 
 class InvoicingEditorPopUp(DialogHandler, UserControl):
-    """Pop up used for editing or creating an invoice"""
+    """Pop up used for editing or creating an invoice
+
+    Parameters:
+        dialog_controller (Callable[[any, utils.AlertDialogControls], None]):
+            The dialog controller
+        on_submit (Callable):
+            function that is called when the "Done" button is clicked
+        projects_map (dict):
+            a dictionary of projects mapped by their id
+        invoice (Invoice, optional):
+            an invoice object to edit, defaults to None if a new one is to be created
+    """
 
     def __init__(
         self,
@@ -44,7 +47,7 @@ class InvoicingEditorPopUp(DialogHandler, UserControl):
         projects_map,
         invoice: Optional[Invoice] = None,
     ):
-
+        # set the dimensions of the pop up
         pop_up_height = dimens.MIN_WINDOW_HEIGHT * 0.9
         pop_up_width = int(dimens.MIN_WINDOW_WIDTH * 0.8)
 
@@ -79,7 +82,6 @@ class InvoicingEditorPopUp(DialogHandler, UserControl):
                         views.get_heading(title=title, size=fonts.HEADLINE_4_SIZE),
                         views.xsSpace,
                         views.get_std_txt_field(
-                            on_change=self.on_number_changed,
                             label="Invoice Number",
                             hint=self.invoice.number,
                             initial_value=self.invoice.number,
@@ -110,23 +112,18 @@ class InvoicingEditorPopUp(DialogHandler, UserControl):
             ],
         )
         super().__init__(dialog=dialog, dialog_controller=dialog_controller)
-        self.number = self.invoice.number
         self.project = self.invoice.project if is_editing else None
         self.on_submit = on_submit
 
-    def on_number_changed(self, e):
-        self.number = e.control.value
-
     def on_project_selected(self, e):
         selected_project = e.control.value
-        # extract id
+        # extract id from selected text
         id_ = int(selected_project.split(" ")[0])
         if id_ in self.projects_as_map:
             self.project = self.projects_as_map[id_]
-            logger.debug(f"Selected project: {self.project.title} with id {id_}")
 
     def on_submit_btn_clicked(self, e):
-        self.invoice.number = self.number
+        """Called when the "Done" button is clicked"""
         date = self.date_field.get_date()
         if date:
             self.invoice.date = date
@@ -137,20 +134,62 @@ class InvoicingEditorPopUp(DialogHandler, UserControl):
 
 
 class InvoicingListView(TuttleView, UserControl):
+    """The view for displaying the list of invoices"""
+
     def __init__(self, params: TuttleViewParams):
         super().__init__(params=params)
-        self.intent = InvoicingIntent(local_storage=params.local_storage)
+        self.intent = InvoicingIntent(client_storage=params.client_storage)
         self.invoices_to_display = {}
         self.contacts = {}
         self.active_projects = {}
         self.editor = None
+        self.time_tracking_data: DataFrame = None
+        self.user: User = None
+
+    def load_user_data(
+        self,
+    ):
+        """Loads the user for payment info"""
+        user_result: IntentResult = self.intent.get_user()
+        if user_result.was_intent_successful:
+            self.user: User = user_result.data
+            self.is_user_missing_payment_info()
+        else:
+            self.show_snack(
+                "Something went wrong! Failed to load your info.",
+                is_error=True,
+            )
+
+    def is_user_missing_payment_info(
+        self,
+    ):
+        """Checks if the user has set up their payment info.
+        Displays a snack if they haven't."""
+        if not self.user.VAT_number:
+            self.show_snack(
+                "You have not set up your VAT number yet. "
+                "Please do so in the profile section",
+                is_error=True,
+            )
+            return True
+        if self.user.bank_account_not_set:
+            self.show_snack(
+                "You have not set up your payment information yet. "
+                "Please do so in the profile section",
+                is_error=True,
+            )
+            return True
+        return False
 
     def parent_intent_listener(self, intent: str, data: any):
+        """Handles the intent from the parent view"""
         if intent == res_utils.CREATE_INVOICE_INTENT:
-            timetracking_data = self.intent.get_time_tracking_data_as_dataframe()
-            if not isinstance(timetracking_data, DataFrame):
+            # create a new invoice
+            if self.is_user_missing_payment_info():
+                return  # can't create invoice without payment info
+            if self.time_tracking_data is None:
                 self.show_snack("Please set timetracking data!", is_error=True)
-                return
+                return  # can't create invoice without time tracking data
             if self.editor is not None:
                 self.editor.close_dialog()
             self.editor = InvoicingEditorPopUp(
@@ -158,9 +197,14 @@ class InvoicingListView(TuttleView, UserControl):
                 on_submit=self.on_save_invoice,
                 projects_map=self.active_projects,
             )
-        self.editor.open_dialog()
+            self.editor.open_dialog()
+
+        elif intent == res_utils.RELOAD_INTENT:
+            # reload the data
+            self.initialize_data()
 
     def refresh_invoices(self):
+        """Refreshes the invoices"""
         self.invoices_list_control.controls.clear()
         for key in self.invoices_to_display:
             try:
@@ -184,16 +228,19 @@ class InvoicingListView(TuttleView, UserControl):
                 self.invoices_list_control.controls.append(invoiceItemControl)
 
     def on_mail_invoice(self, invoice: Invoice):
+        """Called when the user clicks send in the context menu of an invoice"""
         result = self.intent.send_invoice_by_mail(invoice)
         if not result.was_intent_successful:
             self.show_snack(result.error_msg, is_error=True)
 
     def on_view_invoice(self, invoice: Invoice):
+        """Called when the user clicks view in the context menu of an invoice"""
         result = self.intent.view_invoice(invoice)
         if not result.was_intent_successful:
             self.show_snack(result.error_msg, is_error=True)
 
     def on_delete_invoice_clicked(self, invoice: Invoice):
+        """Called when the user clicks delete in the context menu of an invoice"""
         if self.editor is not None:
             self.editor.close_dialog()
         self.editor = views.ConfirmDisplayPopUp(
@@ -207,6 +254,7 @@ class InvoicingListView(TuttleView, UserControl):
         self.editor.open_dialog()
 
     def on_delete_confirmed(self, invoice_id):
+        """Called when the user confirms the deletion of an invoice"""
         self.loading_indicator.visible = True
         self.update_self()
         result = self.intent.delete_invoice_by_id(invoice_id)
@@ -226,8 +274,9 @@ class InvoicingListView(TuttleView, UserControl):
         from_date: Optional[datetime.date],
         to_date: Optional[datetime.date],
     ):
+        """Called when the user clicks on the submit button in the editor"""
         if not invoice:
-            return
+            return  # this should never happen
 
         if not project:
             self.show_snack("Please specify the project")
@@ -271,6 +320,7 @@ class InvoicingListView(TuttleView, UserControl):
         self.update_self()
 
     def toggle_paid_status(self, invoice: Invoice):
+        """toggle the paid status of the invoice"""
         result: IntentResult = self.intent.toggle_invoice_paid_status(invoice)
         is_error = not result.was_intent_successful
         msg = result.error_msg if is_error else "Invoice status updated."
@@ -280,6 +330,7 @@ class InvoicingListView(TuttleView, UserControl):
         self.update_self()
 
     def toggle_sent_status(self, invoice: Invoice):
+        """toggle the sent status of the invoice"""
         result: IntentResult = self.intent.toggle_invoice_sent_status(invoice)
         is_error = not result.was_intent_successful
         msg = result.error_msg if is_error else "Invoice status updated."
@@ -289,6 +340,7 @@ class InvoicingListView(TuttleView, UserControl):
         self.update_self()
 
     def toggle_cancelled_status(self, invoice: Invoice):
+        """toggle the cancelled status of the invoice"""
         result: IntentResult = self.intent.toggle_invoice_cancelled_status(invoice)
         is_error = not result.was_intent_successful
         msg = result.error_msg if is_error else "Invoice status updated."
@@ -298,10 +350,16 @@ class InvoicingListView(TuttleView, UserControl):
         self.update_self()
 
     def did_mount(self):
+        """Called when the view is mounted"""
+        self.initialize_data()
+
+    def initialize_data(self):
+        """initialize the data for the view"""
         self.mounted = True
         self.loading_indicator.visible = True
         self.active_projects = self.intent.get_active_projects_as_map()
-
+        self.time_tracking_data = self.intent.get_time_tracking_data_as_dataframe()
+        self.load_user_data()
         self.invoices_to_display = self.intent.get_all_invoices_as_map()
         count = len(self.invoices_to_display)
         self.loading_indicator.visible = False
@@ -312,6 +370,7 @@ class InvoicingListView(TuttleView, UserControl):
         self.update_self()
 
     def build(self):
+        """build the view"""
         self.loading_indicator = views.horizontal_progress
         self.no_invoices_control = views.get_body_txt(
             txt="You have not created any invoices yet",
@@ -377,12 +436,18 @@ class InvoiceTile(UserControl):
         """
         Build and return a ListTile displaying the invoice information
         """
-
+        _project_title = ""
+        if self.invoice.project:
+            _project_title = self.invoice.project.title
+        _currency = ""
+        if self.invoice.contract:
+            _currency = self.invoice.contract.currency
+        _client_name = ""
+        if self.invoice.contract and self.invoice.contract.client:
+            _client_name = self.invoice.contract.client.name
         return ListTile(
             leading=views.get_body_txt(self.invoice.number),
-            title=views.get_body_txt(
-                f"{self.invoice.project.title} ➡ {self.invoice.contract.client.name}"
-            ),
+            title=views.get_body_txt(f"{_project_title} ➡ {_client_name}"),
             subtitle=Column(
                 controls=[
                     views.get_body_txt(
@@ -391,7 +456,7 @@ class InvoiceTile(UserControl):
                     Row(
                         controls=[
                             views.get_body_txt(
-                                f"Total: {self.invoice.total:.2f} {self.invoice.contract.currency}"
+                                f"Total: {self.invoice.total:.2f} {_currency}"
                             ),
                             views.status_label(txt="Paid", is_done=self.invoice.paid),
                             views.status_label(
