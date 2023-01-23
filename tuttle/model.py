@@ -552,7 +552,9 @@ class Invoice(SQLModel, table=True):
     @property
     def prefix(self):
         """A string that can be used as the prefix of a file name, or a folder name."""
-        client_suffix = self.client.name.lower().split()[0]
+        client_suffix = ""
+        if self.client:
+            client_suffix = self.client.name.lower().split()[0]
         prefix = f"{self.number}-{client_suffix}"
         return prefix
 

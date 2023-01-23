@@ -397,12 +397,18 @@ class InvoiceTile(UserControl):
         """
         Build and return a ListTile displaying the invoice information
         """
-
+        _project_title = ""
+        if self.invoice.project:
+            _project_title = self.invoice.project.title
+        _currency = ""
+        if self.invoice.contract:
+            _currency = self.invoice.contract.currency
+        _client_name = ""
+        if self.invoice.contract and self.invoice.contract.client:
+            _client_name = self.invoice.contract.client.name
         return ListTile(
             leading=views.get_body_txt(self.invoice.number),
-            title=views.get_body_txt(
-                f"{self.invoice.project.title} ➡ {self.invoice.contract.client.name}"
-            ),
+            title=views.get_body_txt(f"{_project_title} ➡ {_client_name}"),
             subtitle=Column(
                 controls=[
                     views.get_body_txt(
@@ -411,7 +417,7 @@ class InvoiceTile(UserControl):
                     Row(
                         controls=[
                             views.get_body_txt(
-                                f"Total: {self.invoice.total:.2f} {self.invoice.contract.currency}"
+                                f"Total: {self.invoice.total:.2f} {_currency}"
                             ),
                             views.status_label(txt="Paid", is_done=self.invoice.paid),
                             views.status_label(
