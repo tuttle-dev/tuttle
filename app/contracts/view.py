@@ -93,7 +93,6 @@ class ContractCard(UserControl):
                 run_spacing=0,
                 vertical_alignment=utils.CENTER_ALIGNMENT,
             ),
-            # add ResponsiveRow for billing cycle
             ResponsiveRow(
                 controls=[
                     views.get_body_txt(
@@ -104,6 +103,25 @@ class ContractCard(UserControl):
                     ),
                     views.get_body_txt(
                         txt=f"{self.contract.billing_cycle}",
+                        size=fonts.BODY_2_SIZE,
+                        col={"xs": "12"},
+                    ),
+                ],
+                spacing=dimens.SPACE_XS,
+                run_spacing=0,
+                vertical_alignment=utils.CENTER_ALIGNMENT,
+            ),
+            # add responsive row for contract volume
+            ResponsiveRow(
+                controls=[
+                    views.get_body_txt(
+                        txt="Volume",
+                        color=colors.GRAY_COLOR,
+                        size=fonts.BODY_2_SIZE,
+                        col={"xs": "12"},
+                    ),
+                    views.get_body_txt(
+                        txt=f"{self.contract.volume} {self.contract.unit}s",
                         size=fonts.BODY_2_SIZE,
                         col={"xs": "12"},
                     ),
