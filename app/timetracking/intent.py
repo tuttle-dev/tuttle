@@ -69,9 +69,7 @@ class TimeTrackingIntent(Intent):
                 spreadsheet_file_name=file_name, spreadsheet_file_path=file_path
             )
         if not result.was_intent_successful:
-            result.error_msg = (
-                "Failed to process the file! Please make sure it has a valid format."
-            )
+            result.error_msg = "Failed to process the spreadsheet."
             result.log_message_if_any()
         return result
 

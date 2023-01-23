@@ -36,7 +36,7 @@ class TimeTrackingFileCalendarSource:
         self,
         spreadsheet_file_name: str,
         spreadsheet_file_path: str,
-    ):
+    ) -> DataFrame:
         """TODO loads time tracking data from a spreadsheet file
 
         Arguments:
@@ -44,16 +44,9 @@ class TimeTrackingFileCalendarSource:
             file_path : path to an uploaded ics or spreadsheet file
 
         Returns:
-            IntentResult:
-                was_intent_successful : bool
-                data : Calendar if was_intent_successful else None
-                log_message  : str  if an error or exception occurs
-                exception : Exception if an exception occurs
+            DataFrame: time tracking data
         """
-        return IntentResult(
-            was_intent_successful=False,
-            log_message="Un impemented error @TimeTrackingDataSource.load_timetracking_data_from_spreadsheet",
-        )
+        raise NotImplementedError("TODO")
 
     def load_timetracking_data_from_ics_file(
         self,
