@@ -148,6 +148,7 @@ class InvoicingListView(TuttleView, UserControl):
         """Handles the intent from the parent view"""
         if intent == res_utils.CREATE_INVOICE_INTENT:
             # create a new invoice
+            
             timetracking_data = self.intent.get_time_tracking_data_as_dataframe()
             if not isinstance(timetracking_data, DataFrame):
                 self.show_snack("Please set timetracking data!", is_error=True)

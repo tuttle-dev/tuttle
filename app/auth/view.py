@@ -1,15 +1,17 @@
-from typing import Callable
+from typing import Callable, Optional
 
-from flet import (Card,
-                  Column,
-                  Container,
-                  IconButton,
-                  ResponsiveRow,
-                  Row,
-                  UserControl,
-                  icons,
-                  margin,
-                  padding,)
+from flet import (
+    Card,
+    Column,
+    Container,
+    IconButton,
+    ResponsiveRow,
+    Row,
+    UserControl,
+    icons,
+    margin,
+    padding,
+)
 
 from auth.intent import AuthIntent
 from core import utils, views
@@ -17,9 +19,95 @@ from core.abstractions import TuttleView, TuttleViewParams
 from core.intent_result import IntentResult
 from res import dimens, fonts, image_paths, res_utils
 
-from tuttle.model import User
+from tuttle.model import User, BankAccount
 
 from .intent import AuthIntent
+
+
+class PaymentDataForm(UserControl):
+    """Form view for setting the user's payment info"""
+
+    def __init__(
+        self,
+        on_form_submit: Callable[[User], None],
+        user: User,
+    ):
+        super().__init__()
+        self.on_form_submit = on_form_submit
+        self.user = user
+        self.set_form_data()
+
+    def set_form_data(self):
+        """Sets the form data to the user's current data"""
+        if not self.user.bank_account:
+            # Create a new bank account if none exists
+            self.user.bank_account = BankAccount(name="", BIC="", IBAN="")
+        self.bank_bic = self.user.bank_account.BIC
+        self.bank_name = self.user.bank_account.name
+        self.bank_iban = self.user.bank_account.IBAN
+        self.vat_number = self.user.VAT_number
+
+    def update_form_data(self, user: User):
+        """Updates the user's data with the form data"""
+        self.user = user
+        self.set_form_data()
+        self.update()
+
+    def on_vat_number_changed(self, e):
+        """Called when the VAT number field is changed"""
+        self.vat_number = e.control.value
+        self.user.VAT_number = self.vat_number
+
+    def on_bank_bic_changed(self, e):
+        """Called when the bank BIC field is changed"""
+        self.bank_bic = e.control.value
+        self.user.bank_account.BIC = self.bank_bic
+
+    def on_bank_iban_changed(self, e):
+        """Called when the bank IBAN field is changed"""
+        self.bank_iban = e.control.value
+        self.user.bank_account.IBAN = self.bank_iban
+
+    def on_bank_name_changed(self, e):
+        """Called when the bank name field is changed"""
+        self.bank_name = e.control.value
+        self.user.bank_account.name = self.bank_name
+
+    def build(self):
+        """Called when form is built"""
+        return Column(
+            spacing=dimens.SPACE_MD,
+            controls=[
+                views.get_std_txt_field(
+                    on_change=self.on_vat_number_changed,
+                    label="VAT Number",
+                    hint="Value Added Tax number of the user, legally required for invoices.",
+                    initial_value=self.vat_number,
+                ),
+                views.xsSpace,
+                views.get_sub_heading_txt("Bank Account"),
+                views.get_std_txt_field(
+                    on_change=self.on_bank_name_changed,
+                    label="Name",
+                    initial_value=self.bank_name,
+                ),
+                views.get_std_txt_field(
+                    on_change=self.on_bank_iban_changed,
+                    label="IBAN",
+                    initial_value=self.bank_iban,
+                ),
+                views.get_std_txt_field(
+                    on_change=self.on_bank_bic_changed,
+                    label="BIC",
+                    initial_value=self.bank_bic,
+                ),
+                views.stdSpace,
+                views.get_primary_btn(
+                    label="Save",
+                    on_click=lambda e: self.on_form_submit(self.user),
+                ),
+            ],
+        )
 
 
 class UserDataForm(UserControl):
@@ -93,9 +181,6 @@ class UserDataForm(UserControl):
         elif utils.is_empty_str(self.email):
             missing_required_data_err = "Your email is required."
             self.email_field.error_text = missing_required_data_err
-        elif utils.is_empty_str(self.phone):
-            missing_required_data_err = "Your phone number is required."
-            self.phone_field.error_text = missing_required_data_err
         elif utils.is_empty_str(self.title):
             missing_required_data_err = "Please specify your job title. e.g. freelancer"
             self.title_field.error_text = missing_required_data_err
@@ -151,7 +236,7 @@ class UserDataForm(UserControl):
         )
         self.phone_field = views.get_std_txt_field(
             lambda e: self.on_field_value_changed("phone", e),
-            "Phone",
+            "Phone (optional)",
             "your phone number",
             on_focus=self.on_field_focus,
             keyboard_type=utils.KEYBOARD_PHONE,
@@ -372,20 +457,40 @@ class ProfileScreen(TuttleView, UserControl):
 
     Displays a UserDataForm for updating user profile
     Displays the User's photo if set and provides a way to update it
+    Displays the User's payment information if set and provides a way to update it
     """
 
     def __init__(self, params: TuttleViewParams):
         super().__init__(params=params)
-        self.horizontal_alignment_in_parent = utils.CENTER_ALIGNMENT
         self.intent = AuthIntent()
         self.uploaded_photo_path = ""
         self.user_profile: User = None
 
+    def refresh_payment_section(self):
+        """Refreshes the payment section of the profile screen"""
+        self.payment_data_form = PaymentDataForm(
+            on_form_submit=self.on_update_user_invoice_data,
+            user=self.user_profile,
+        )
+        self.payment_info_controls.append(self.payment_data_form)
+
+    def on_update_user_invoice_data(self, user: User):
+        """Callback for when user updates their payment information"""
+        result: IntentResult = self.intent.update_user(user)
+        if result.was_intent_successful:
+            self.show_snack("Payment information updated successfully")
+            self.user_profile = result.data
+            self.payment_data_form.update_form_data(user=self.user_profile)
+        else:
+            self.show_snack(result.error_msg, is_error=True)
+
     def on_profile_updated(self, data):
-        self.show_snack("Your profile has been updated", False)
+        """Callback for when user profile has been updated successfully"""
+        self.show_snack("Your profile has been updated")
         self.user_profile: User = data
 
     def on_update_photo_clicked(self, e):
+        """Callback for when user clicks on the update photo button"""
         self.pick_file_callback(
             on_file_picker_result=self.on_profile_photo_picked,
             on_upload_progress=self.uploading_profile_pic_progress_listener,
@@ -395,6 +500,7 @@ class ProfileScreen(TuttleView, UserControl):
         )
 
     def on_profile_photo_picked(self, e):
+        """Callback for when profile photo has been picked"""
         if e.files and len(e.files) > 0:
             file = e.files[0]
             self.toggle_progress_bar(f"Uploading file {file.name}")
@@ -403,6 +509,7 @@ class ProfileScreen(TuttleView, UserControl):
                 self.uploaded_photo_path = upload_url
 
     def uploading_profile_pic_progress_listener(self, e):
+        """Callback for when profile photo is being uploaded"""
         if e.progress == 1.0:
             self.toggle_progress_bar(f"Upload complete, processing file...")
             if self.uploaded_photo_path:
@@ -424,12 +531,14 @@ class ProfileScreen(TuttleView, UserControl):
             self.toggle_progress_bar(hide_progress=True)
 
     def toggle_progress_bar(self, msg: str = "", hide_progress: bool = False):
+        """Toggles the progress bar and the ongoing action hint"""
         self.progressBar.visible = not hide_progress
         self.ongoing_action_hint.value = msg
         self.ongoing_action_hint.visible = msg != ""
         self.update_self()
 
     def build(self):
+        """Builds the profile screen"""
         self.progressBar = views.horizontal_progress
         self.progressBar.visible = False
         self.ongoing_action_hint = views.get_body_txt(txt="")
@@ -438,7 +547,7 @@ class ProfileScreen(TuttleView, UserControl):
             label="Update profile picture", on_click=self.on_update_photo_clicked
         )
         self.user_data_form = UserDataForm(
-            on_form_submit=lambda title, name, email, phone, street, street_num, postal_code, city, country: self.intent.update_user(
+            on_form_submit=lambda title, name, email, phone, street, street_num, postal_code, city, country: self.intent.update_user_with_info(
                 title=title,
                 name=name,
                 email=email,
@@ -454,14 +563,21 @@ class ProfileScreen(TuttleView, UserControl):
             submit_btn_label="Update Profile",
         )
 
-        return Card(
-            Container(
-                padding=padding.all(dimens.SPACE_MD),
-                margin=margin.symmetric(vertical=dimens.SPACE_LG),
-                content=Column(
-                    spacing=dimens.SPACE_STD,
-                    run_spacing=0,
-                    controls=[
+        self.payment_info_controls = [
+            views.get_heading(
+                "Payment Settings",
+                size=fonts.HEADLINE_4_SIZE,
+            ),
+        ]
+
+        return ResponsiveRow(
+            spacing=0,
+            run_spacing=0,
+            alignment=utils.START_ALIGNMENT,
+            vertical_alignment=utils.START_ALIGNMENT,
+            controls=[
+                self.view_section(
+                    [
                         Row(
                             spacing=dimens.SPACE_STD,
                             run_spacing=0,
@@ -477,10 +593,6 @@ class ProfileScreen(TuttleView, UserControl):
                                 ),
                             ],
                         ),
-                        Container(
-                            self.progressBar,
-                            margin=margin.symmetric(horizontal=dimens.SPACE_MD),
-                        ),
                         self.ongoing_action_hint,
                         Column(
                             spacing=dimens.SPACE_MD,
@@ -490,13 +602,30 @@ class ProfileScreen(TuttleView, UserControl):
                                 self.user_data_form,
                             ],
                         ),
-                    ],
+                    ]
+                ),
+                self.view_section(self.payment_info_controls),
+            ],
+        )
+
+    def view_section(self, controls: list[UserControl]) -> Card:
+        """Returns a Card with the controls set to the contents of the card"""
+        return Card(
+            margin=margin.all(dimens.SPACE_LG),
+            col={"xs": 12, "md": 6},
+            content=Container(
+                padding=padding.all(dimens.SPACE_MD),
+                margin=margin.symmetric(vertical=dimens.SPACE_LG),
+                content=Column(
+                    spacing=dimens.SPACE_STD,
+                    run_spacing=0,
+                    controls=controls,
                 ),
             ),
-            width=dimens.MIN_WINDOW_WIDTH,
         )
 
     def did_mount(self):
+        """Called when the view is mounted on page"""
         self.mounted = True
         self.toggle_progress_bar()
         result: IntentResult = self.intent.get_user_if_exists()
@@ -504,9 +633,12 @@ class ProfileScreen(TuttleView, UserControl):
             self.show_snack(result.error_msg, True)
         else:
             self.user_profile: User = result.data
+            # refresh user data form
             self.user_data_form.refresh_user_info(self.user_profile)
             if self.user_profile.profile_photo_path:
                 self.profile_photo_control.src = self.user_profile.profile_photo_path
+            # refresh invoice data form
+            self.refresh_payment_section()
         self.toggle_progress_bar(hide_progress=True)
 
     def will_unmount(self):
