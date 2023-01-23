@@ -106,18 +106,31 @@ class Address(SQLModel, table=True):
 
 
 class User(SQLModel, table=True):
+    """User of the application, a freelancer."""
+
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
-    subtitle: str
-    website: Optional[str]
-    email: str
-    phone_number: str
+    subtitle: str = Field(
+        description="Role or job title of the user, e.g. 'Freelance web developer'."
+    )
+    website: Optional[str] = Field(
+        default=None,
+        description="URL of the user's website.",
+    )
+    email: str = Field(description="Email address of the user.")
+    phone_number: Optional[str] = Field(
+        default=None,
+        description="Phone number of the user.",
+    )
     profile_photo_path: Optional[str] = Field(default=None)
     address_id: Optional[int] = Field(default=None, foreign_key="address.id")
     address: Optional[Address] = Relationship(
-        back_populates="users", sa_relationship_kwargs={"lazy": "subquery"}
+        back_populates="users",
+        sa_relationship_kwargs={"lazy": "subquery"},
     )
-    VAT_number: Optional[str]
+    VAT_number: str = Field(
+        description="Value Added Tax number of the user, legally required for invoices.",
+    )
     # User 1:1* ICloudAccount
     icloud_account_id: Optional[int] = Field(
         default=None, foreign_key="icloudaccount.id"
@@ -290,7 +303,10 @@ class Contract(SQLModel, table=True):
         description="How many days after receipt of invoice this invoice is due.",
         default=31,
     )
-    billing_cycle: Cycle = Field(sa_column=sqlalchemy.Column(sqlalchemy.Enum(Cycle)))
+    billing_cycle: Cycle = Field(
+        sa_column=sqlalchemy.Column(sqlalchemy.Enum(Cycle)),
+        description="How often is an invoice sent?",
+    )
     projects: List["Project"] = Relationship(
         back_populates="contract", sa_relationship_kwargs={"lazy": "subquery"}
     )
@@ -399,18 +415,24 @@ class TimeTrackingItem(SQLModel, table=True):
     timesheet_id: Optional[int] = Field(default=None, foreign_key="timesheet.id")
     timesheet: Optional["Timesheet"] = Relationship(back_populates="items")
     #
-    begin: datetime.datetime
-    end: Optional[datetime.datetime]
-    duration: datetime.timedelta
-    title: str
-    tag: str
-    description: Optional[str]
+    begin: datetime.datetime = Field(description="Start time of the time interval.")
+    end: Optional[datetime.datetime] = Field(
+        description="End time of the time interval."
+    )
+    duration: datetime.timedelta = Field(description="Duration of the time interval.")
+    title: str = Field(description="A short description of the time interval.")
+    tag: str = Field(
+        description="A short tag to identify the project the time interval belongs to."
+    )
+    description: Optional[str] = Field(
+        description="A longer description of the time interval."
+    )
 
 
 class Timesheet(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     title: str
-    date: datetime.date
+    date: datetime.date = Field(description="The date of creation of the timesheet")
     # period: str
     # table: pandas.DataFrame
     # TODO: store dataframe as dict
@@ -423,7 +445,7 @@ class Timesheet(SQLModel, table=True):
     )
     # invoice: "Invoice" = Relationship(back_populates="timesheet")
     # period: str
-    comment: Optional[str]
+    comment: Optional[str] = Field(description="A comment on the timesheet.")
     items: List[TimeTrackingItem] = Relationship(back_populates="timesheet")
 
     # class Config:
@@ -451,7 +473,9 @@ class Invoice(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     number: str
     # date and time
-    date: datetime.date
+    date: datetime.date = Field(
+        description="The date of the invoice",
+    )
     # due_date: datetime.date
     # sent_date: datetime.date
     # Invoice 1:n Timesheet ?
@@ -472,14 +496,20 @@ class Invoice(SQLModel, table=True):
     # status -- corresponds to InvoiceStatus enum above
     sent: Optional[bool] = Field(default=False)
     paid: Optional[bool] = Field(default=False)
-    cancelled: Optional[bool] = Field(default=False)
+    cancelled: Optional[bool] = Field(
+        default=False,
+        description="If the invoice has been cancelled, e.g. because it was incorrect.",
+    )
     # payment: Optional["Payment"] = Relationship(back_populates="invoice")
     # invoice items
     items: List["InvoiceItem"] = Relationship(
         back_populates="invoice",
         sa_relationship_kwargs={"lazy": "subquery"},
     )
-    rendered: bool = Field(default=False)
+    rendered: bool = Field(
+        default=False,
+        description="If the invoice has been rendered as a PDF.",
+    )
 
     #
     @property
@@ -576,7 +606,3 @@ class TimelineItem(SQLModel, table=True):
         )
     )
     content: str
-
-
-class Settings(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)

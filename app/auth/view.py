@@ -307,7 +307,8 @@ class SplashScreen(TuttleView, UserControl):
             controls=[
                 views.get_labelled_logo(),
                 views.get_heading_with_subheading(
-                    "Hi, Welcome to Tuttle.", "Let's get you started"
+                    "Hi, Welcome to Tuttle.",
+                    "Let's get you started: Please enter your details below. Your data will be stored locally and will not be sent to a server.",
                 ),
                 self.loading_indicator,
                 views.stdSpace,

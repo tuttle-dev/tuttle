@@ -85,8 +85,20 @@ local development.
     ``` shell
     $ pre-commit install
     ```
+5.  If you haven't done so already, install and/or activate
+    [pyright](https://github.com/microsoft/pyright).
+    The "basic" level should suffice and help you to avoid type errors.
+    If you are getting a type error, ask yourself:
+    Can this occur at runtime?
 
-5.  When you\'re done making changes, check that your changes pass
+    No -> add `#type: ignore` to the end of the line
+
+    Yes -> ensure that it doesn't, e.g. by using an `assert` statement
+
+    Oftentimes, type errors indicate bad design,
+    so keep refactoring in mind as a third option.
+
+6.  When you\'re done making changes, check that your changes pass
     code style checks and the tests:
 
     ``` shell
@@ -94,7 +106,7 @@ local development.
     ```
 
 
-6.  Commit your changes and push your branch to GitHub:
+7.  Commit your changes and push your branch to GitHub:
 
     ``` shell
     $ git add .
@@ -102,7 +114,7 @@ local development.
     $ git push origin name-of-your-bugfix-or-feature
     ```
 
-7.  Submit a pull request through the GitHub website.
+8.  Submit a pull request through the GitHub website.
 
 # Pull Request Guidelines
 
