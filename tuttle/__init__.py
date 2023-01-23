@@ -4,7 +4,7 @@ __authors__ = [
     "Christian Staudt",
     "Vladimir Peter",
 ]
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 
 from . import (
     banking,
