@@ -24,6 +24,7 @@ class AuthIntent:
         postal_code: str,
         city: str,
         country: str,
+        website: str,
     ) -> IntentResult[Union[Type[User], None]]:
         """
         Creates a user with the given details.
@@ -49,6 +50,8 @@ class AuthIntent:
             City of the user
         country : str
             Country of the user
+        website : str
+            "URL of the user's website."
 
         Returns
         -------
@@ -69,6 +72,7 @@ class AuthIntent:
             phone_number=phone,
             address=address,
             VAT_number="",
+            website=website,
         )
         result = self._data_source.save_user(user)
 
@@ -117,6 +121,7 @@ class AuthIntent:
         postal_code: str,
         city: str,
         country: str,
+        website: str,
     ) -> IntentResult[Optional[User]]:
         """
         Updates the user with the given details.
@@ -144,7 +149,8 @@ class AuthIntent:
             City of the user
         country : str
             Country of the user
-
+        website : str
+            "URL of the user's website."
         Returns
         -------
         IntentResult
@@ -162,6 +168,7 @@ class AuthIntent:
         user.email = email
         user.phone_number = phone
         user.address = address
+        user.website = website
         user.profile_photo_path = user.profile_photo_path
         result = self._data_source.save_user(user)
 

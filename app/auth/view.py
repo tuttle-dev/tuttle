@@ -139,6 +139,7 @@ class UserDataForm(UserControl):
         self.postal_code = ""
         self.city = ""
         self.country = ""
+        self.website = ""
         self.on_form_submit = on_form_submit
         self.on_submit_success = on_submit_success
         self.submit_btn_label = submit_btn_label
@@ -208,6 +209,7 @@ class UserDataForm(UserControl):
                 postal_code=self.postal_code,
                 city=self.city,
                 country=self.country,
+                website=self.website,
             )
             if not result.was_intent_successful:
                 self.toggle_form_err(result.error_msg)
@@ -247,6 +249,11 @@ class UserDataForm(UserControl):
             "What is your role as a freelancer?",
             on_focus=self.on_field_focus,
             keyboard_type=utils.KEYBOARD_TEXT,
+        )
+        self.website_field = views.get_std_txt_field(
+            lambda e: self.on_field_value_changed("website", e),
+            "Website (optional)",
+            "URL of your website.",
         )
         self.street_field = views.get_std_txt_field(
             lambda e: self.on_field_value_changed("street", e),
@@ -290,6 +297,7 @@ class UserDataForm(UserControl):
                 self.name_field,
                 self.email_field,
                 self.phone_field,
+                self.website_field,
                 Row(
                     vertical_alignment=utils.CENTER_ALIGNMENT,
                     controls=[
@@ -322,6 +330,7 @@ class UserDataForm(UserControl):
         self.street_number_field.value = self.street_number = user.address.number
         self.city_field.value = self.city = user.address.city
         self.country_field.value = self.country = user.address.country
+        self.website_field.value = self.website = user.website
         self.update()
 
 
@@ -361,7 +370,7 @@ class SplashScreen(TuttleView, UserControl):
             on_submit_success=lambda _: self.navigate_to_route(
                 res_utils.HOME_SCREEN_ROUTE
             ),
-            on_form_submit=lambda title, name, email, phone, street, street_num, postal_code, city, country: self.intent.create_user(
+            on_form_submit=lambda title, name, email, phone, street, street_num, postal_code, city, country, website: self.intent.create_user(
                 title=title,
                 name=name,
                 email=email,
@@ -371,6 +380,7 @@ class SplashScreen(TuttleView, UserControl):
                 postal_code=postal_code,
                 city=city,
                 country=country,
+                website=website,
             ),
             submit_btn_label="Save Profile",
         )
@@ -547,7 +557,7 @@ class ProfileScreen(TuttleView, UserControl):
             label="Update profile picture", on_click=self.on_update_photo_clicked
         )
         self.user_data_form = UserDataForm(
-            on_form_submit=lambda title, name, email, phone, street, street_num, postal_code, city, country: self.intent.update_user_with_info(
+            on_form_submit=lambda title, name, email, phone, street, street_num, postal_code, city, country, website: self.intent.update_user_with_info(
                 title=title,
                 name=name,
                 email=email,
@@ -557,6 +567,7 @@ class ProfileScreen(TuttleView, UserControl):
                 postal_code=postal_code,
                 city=city,
                 country=country,
+                website=website,
                 user=self.user_profile,
             ),
             on_submit_success=self.on_profile_updated,
