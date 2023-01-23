@@ -384,6 +384,10 @@ class ContractEditorScreen(TuttleView, UserControl):
             dialog_controller=self.dialog_controller,
             on_submit=self.on_client_set_from_pop_up,
             contacts_map=self.contacts_map,
+            on_error=lambda error: self.show_snack(
+                error,
+                is_error=True,
+            ),
         )
         self.new_client_pop_up.open_dialog()
 

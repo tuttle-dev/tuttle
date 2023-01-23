@@ -131,6 +131,7 @@ class ClientEditorPopUp(DialogHandler, UserControl):
         self,
         dialog_controller: Callable[[any, utils.AlertDialogControls], None],
         on_submit: Callable,
+        on_error: Callable[[str], None],
         contacts_map: Mapping[int, Contact],
         client: Optional[Client] = None,
     ):
@@ -223,6 +224,8 @@ class ClientEditorPopUp(DialogHandler, UserControl):
             initial_value=self.invoicing_contact.address.country,
         )
 
+        self.form_error_field = views.get_error_txt(txt="", show=False)
+
         dialog = AlertDialog(
             content=Container(
                 height=pop_up_height,
@@ -230,6 +233,8 @@ class ClientEditorPopUp(DialogHandler, UserControl):
                     scroll=utils.AUTO_SCROLL,
                     controls=[
                         views.get_heading(title=title, size=fonts.HEADLINE_4_SIZE),
+                        views.xsSpace,
+                        self.form_error_field,
                         views.xsSpace,
                         views.get_std_txt_field(
                             on_change=self.on_client_name_changed,
@@ -267,7 +272,7 @@ class ClientEditorPopUp(DialogHandler, UserControl):
                             ],
                         ),
                         self.country_field,
-                        views.xsSpace,
+                        views.stdSpace,
                     ],
                 ),
                 width=pop_up_width,
@@ -289,7 +294,9 @@ class ClientEditorPopUp(DialogHandler, UserControl):
         self.postal_code = ""
         self.city = ""
         self.country = ""
-        self.on_submit = on_submit
+        self.on_submit_callback = on_submit
+        self.on_error_callback = on_error
+        self.form_error = ""
 
     def get_contacts_as_list(self):
         """transforms a map of id-contact_name to a list for dropdown options"""
@@ -331,6 +338,12 @@ class ClientEditorPopUp(DialogHandler, UserControl):
         self.country_field.value = self.invoicing_contact.address.country
         self.dialog.update()
 
+    def toggle_form_error(self):
+        """toggles the form error field visibility"""
+        self.form_error_field.value = self.form_error
+        self.form_error_field.visible = True if self.form_error else False
+        self.dialog.update()
+
     def on_client_name_changed(self, e):
         self.title = e.control.value
 
@@ -362,6 +375,10 @@ class ClientEditorPopUp(DialogHandler, UserControl):
         self.country = e.control.value
 
     def on_submit_btn_clicked(self, e):
+        """validates the form and calls the on_submit callback"""
+        self.form_error = ""
+        self.toggle_form_error()
+
         self.client.name = (
             self.title.strip() if self.title.strip() else self.client.name
         )
@@ -411,10 +428,37 @@ class ClientEditorPopUp(DialogHandler, UserControl):
         )
         self.invoicing_contact.address = self.address
         self.client.invoicing_contact = self.invoicing_contact
+        if not self.is_valid():
+            self.toggle_form_error()
+            return
         self.close_dialog()
-        self.on_submit(self.client)
+        self.on_submit_callback(self.client)
+
+    def is_valid(self) -> bool:
+        """Checks if the provided client info is valid"""
+        if not self.client.name:
+            self.form_error = "Please provide the client's name"
+            self.on_error_callback(self.form_error)
+            return False
+        if not self.client.invoicing_contact:
+            self.form_error = "Please set the invoicing contact"
+            self.on_error_callback(self.form_error)
+            return False
+        if (
+            not self.client.invoicing_contact.first_name
+            or not self.client.invoicing_contact.last_name
+        ):
+            self.form_error = "Please provide the contact's name"
+            self.on_error_callback(self.form_error)
+            return False
+        if self.client.invoicing_contact.address.is_empty:
+            self.form_error = "Please provide the invoice contact's address"
+            self.on_error_callback(self.form_error)
+            return False
+        return True
 
     def build(self):
+        """Builds the dialog"""
         return self.dialog
 
 
@@ -465,6 +509,10 @@ class ClientsListView(TuttleView, UserControl):
                 self.dialog_controller,
                 on_submit=self.on_save_client,
                 contacts_map=self.contacts,
+                on_error=lambda error: self.show_snack(
+                    error,
+                    is_error=True,
+                ),
             )
             self.editor.open_dialog()
         elif intent == res_utils.RELOAD_INTENT:
@@ -500,6 +548,10 @@ class ClientsListView(TuttleView, UserControl):
             on_submit=self.on_save_client,
             contacts_map=self.contacts,
             client=client,
+            on_error=lambda error: self.show_snack(
+                error,
+                is_error=True,
+            ),
         )
         self.editor.open_dialog()
 
