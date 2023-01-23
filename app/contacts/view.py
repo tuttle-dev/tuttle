@@ -7,14 +7,11 @@ from flet import (
     Container,
     GridView,
     Icon,
-    IconButton,
     ListTile,
     ResponsiveRow,
     Row,
-    Text,
     UserControl,
     border_radius,
-    icons,
     padding,
 )
 
@@ -46,6 +43,7 @@ class ContactCard(UserControl):
         self.on_deleted_clicked = on_deleted_clicked
 
     def build(self):
+        """Builds the contact card"""
         self.contact_info_container.controls = [
             ListTile(
                 leading=Icon(
@@ -103,7 +101,7 @@ class ContactCard(UserControl):
                 run_spacing=0,
             ),
         ]
-        card = Card(
+        return Card(
             elevation=2,
             expand=True,
             content=Container(
@@ -113,7 +111,6 @@ class ContactCard(UserControl):
                 content=self.contact_info_container,
             ),
         )
-        return card
 
 
 class ContactEditorPopUp(DialogHandler):
@@ -125,6 +122,7 @@ class ContactEditorPopUp(DialogHandler):
         on_submit: Callable,
         contact: Optional[Contact] = None,
     ):
+        # dimensions of the pop up
         pop_up_height = 550
         pop_up_width = int(dimens.MIN_WINDOW_WIDTH * 0.8)
         width_spanning_half_of_container = int(dimens.MIN_WINDOW_WIDTH * 0.35)
@@ -235,37 +233,46 @@ class ContactEditorPopUp(DialogHandler):
         self.postal_code = ""
         self.city = ""
         self.country = ""
-        self.on_submit = on_submit
+        self.on_submit_callback = on_submit
 
     def on_fname_changed(self, e):
+        """Called when the first name field is changed"""
         self.fname = e.control.value
 
     def on_lname_changed(self, e):
+        """Called when the last name field is changed"""
         self.lname = e.control.value
 
     def on_company_changed(self, e):
+        """Called when the company field is changed"""
         self.company = e.control.value
 
     def on_email_changed(self, e):
+        """Called when the email field is changed"""
         self.email = e.control.value
 
     def on_street_changed(self, e):
+        """Called when the street field is changed"""
         self.street = e.control.value
 
     def on_street_num_changed(self, e):
+        """Called when the street number field is changed"""
         self.street_num = e.control.value
 
     def on_postal_code_changed(self, e):
+        """Called when the postal code field is changed"""
         self.postal_code = e.control.value
 
     def on_city_changed(self, e):
+        """Called when the city field is changed"""
         self.city = e.control.value
 
     def on_country_changed(self, e):
+        """Called when the country field is changed"""
         self.country = e.control.value
 
     def on_submit_btn_clicked(self, e):
-
+        """Called when the submit button is clicked"""
         self.contact.first_name = (
             self.fname.strip() if self.fname.strip() else self.contact.first_name
         )
@@ -302,10 +309,12 @@ class ContactEditorPopUp(DialogHandler):
         )
         self.contact.address = self.address
         self.close_dialog()
-        self.on_submit(self.contact)
+        self.on_submit_callback(self.contact)
 
 
 class ContactsListView(TuttleView, UserControl):
+    """The view for the contacts list page"""
+
     def __init__(self, params: TuttleViewParams):
         super().__init__(params)
         self.intent = ContactsIntent()
@@ -340,7 +349,9 @@ class ContactsListView(TuttleView, UserControl):
         self.editor = None
 
     def parent_intent_listener(self, intent: str, data: any):
+        """Called when the parent view passes an intent"""
         if intent == res_utils.ADD_CONTACT_INTENT:
+            # Open the contact editor
             if self.editor:
                 self.editor.close_dialog()
             self.editor = ContactEditorPopUp(
@@ -348,9 +359,12 @@ class ContactsListView(TuttleView, UserControl):
                 on_submit=self.on_new_contact_added,
             )
             self.editor.open_dialog()
-        return
+        elif intent == res_utils.RELOAD_INTENT:
+            # Reload the contacts
+            self.reload_all_data()
 
     def on_new_contact_added(self, contact):
+        """Called when a new contact is added"""
         self.loading_indicator.visible = True
         self.update_self()
         result: IntentResult = self.intent.save_contact(contact)
@@ -365,9 +379,11 @@ class ContactsListView(TuttleView, UserControl):
         self.update_self()
 
     def load_all_contacts(self):
+
         self.contacts_to_display = self.intent.get_all_contacts_as_map()
 
     def refresh_list(self):
+        """Refreshes the displayed list of contacts"""
         self.contacts_container.controls.clear()
         for key in self.contacts_to_display:
             contact = self.contacts_to_display[key]
@@ -379,6 +395,7 @@ class ContactsListView(TuttleView, UserControl):
             self.contacts_container.controls.append(contactCard)
 
     def on_edit_contact_clicked(self, contact: Contact):
+        """Called when the edit button is clicked"""
         if self.editor:
             self.editor.close_dialog()
         self.editor = ContactEditorPopUp(
@@ -390,8 +407,10 @@ class ContactsListView(TuttleView, UserControl):
         self.editor.open_dialog()
 
     def on_delete_contact_clicked(self, contact: Contact):
+        """Called when the delete button is clicked"""
         if self.editor:
             self.editor.close_dialog()
+        # Open the confirmation dialog
         self.editor = views.ConfirmDisplayPopUp(
             dialog_controller=self.dialog_controller,
             title="Are You Sure?",
@@ -404,6 +423,7 @@ class ContactsListView(TuttleView, UserControl):
         self.editor.open_dialog()
 
     def on_delete_confirmed(self, contact_id):
+        """Called when the user confirms the deletion of a contact"""
         self.loading_indicator.visible = True
         self.update_self()
         result = self.intent.delete_contact_by_id(contact_id)
@@ -417,6 +437,7 @@ class ContactsListView(TuttleView, UserControl):
         self.update_self()
 
     def on_update_contact(self, contact):
+        """Called when a contact is updated"""
         self.loading_indicator.visible = True
         self.update_self()
         result = self.intent.save_contact(contact)
@@ -433,32 +454,37 @@ class ContactsListView(TuttleView, UserControl):
             self.refresh_list()
         self.update_self()
 
-    def show_no_contacts(self):
-        self.no_contacts_control.visible = True
-
     def did_mount(self):
+        """Called when the view is mounted"""
+        self.reload_all_data()
+
+    def reload_all_data(self):
+        """Reloads all the data when view is mounted or parent view passes a reload intent"""
         self.mounted = True
         self.loading_indicator.visible = True
         self.load_all_contacts()
         count = len(self.contacts_to_display)
         self.loading_indicator.visible = False
         if count == 0:
-            self.show_no_contacts()
+            self.no_contacts_control.visible = True
+            self.contacts_container.controls.clear()
         else:
+            self.no_contacts_control.visible = False
             self.refresh_list()
         self.update_self()
 
     def build(self):
-        view = Column(
+        """Builds the view"""
+        return Column(
             controls=[
                 self.title_control,
                 views.mdSpace,
                 Container(self.contacts_container, expand=True),
             ]
         )
-        return view
 
     def will_unmount(self):
+        """Called when the view is unmounted"""
         self.mounted = False
         if self.editor:
             self.editor.dimiss_open_dialogs()
