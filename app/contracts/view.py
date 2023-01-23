@@ -609,6 +609,7 @@ class ContractEditorScreen(TuttleView, UserControl):
                             self.currency_ui_field,
                             self.rate_ui_field,
                             self.term_of_payment_ui_field,
+                            self.units_ui_field,
                             self.unit_PW_ui_field,
                             self.vat_rate_ui_field,
                             self.volume_ui_field,
@@ -626,8 +627,6 @@ class ContractEditorScreen(TuttleView, UserControl):
                                     ),
                                 ],
                             ),
-                            views.smSpace,
-                            self.units_ui_field,
                             views.smSpace,
                             self.billing_cycle_ui_field,
                             views.smSpace,
@@ -1102,7 +1101,7 @@ class ViewContractScreen(TuttleView, UserControl):
                             ),
                             self.get_body_element("Volume", self.volume_control),
                             self.get_body_element(
-                                "Term of Payment", self.term_of_payment_control
+                                "Term of Payment (days)", self.term_of_payment_control
                             ),
                             self.get_body_element(
                                 "Signed on Date", self.signature_date_control

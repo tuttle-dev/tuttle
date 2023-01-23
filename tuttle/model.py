@@ -283,6 +283,7 @@ class Contract(SQLModel, table=True):
     )
     end_date: Optional[datetime.date] = Field(
         description="Date until which the contract is valid",
+        default=None,
     )
     # Contract n:1 Client
     client_id: Optional[int] = Field(

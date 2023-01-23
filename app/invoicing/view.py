@@ -188,7 +188,10 @@ class InvoicingListView(TuttleView, UserControl):
             if self.is_user_missing_payment_info():
                 return  # can't create invoice without payment info
             if self.time_tracking_data is None:
-                self.show_snack("Please set timetracking data!", is_error=True)
+                self.show_snack(
+                    "You need to import time tracking data before invoices can be created.",
+                    is_error=True,
+                )
                 return  # can't create invoice without time tracking data
             if self.editor is not None:
                 self.editor.close_dialog()
