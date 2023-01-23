@@ -1,19 +1,19 @@
 from typing import Callable, Mapping, Optional
 
-from flet import (AlertDialog,
-                  Card,
-                  Column,
-                  Container,
-                  GridView,
-                  Icon,
-                  ListTile,
-                  ResponsiveRow,
-                  Row,
-                  Text,
-                  UserControl,
-                  border_radius,
-                  icons,
-                  padding,)
+from flet import (
+    AlertDialog,
+    Card,
+    Column,
+    Container,
+    GridView,
+    Icon,
+    ListTile,
+    ResponsiveRow,
+    Row,
+    UserControl,
+    border_radius,
+    padding,
+)
 
 from clients.intent import ClientsIntent
 from core import utils, views
@@ -40,6 +40,7 @@ class ClientCard(UserControl):
         self.on_delete_clicked = on_delete
 
     def build(self):
+        """Builds the client card"""
         if self.client.invoicing_contact:
             invoicing_contact_info = self.client.invoicing_contact.print_address()
         else:
@@ -418,6 +419,8 @@ class ClientEditorPopUp(DialogHandler, UserControl):
 
 
 class ClientsListView(TuttleView, UserControl):
+    """View for displaying a list of clients"""
+
     def __init__(self, params: TuttleViewParams):
         super().__init__(params=params)
         self.intent = ClientsIntent()
@@ -453,7 +456,9 @@ class ClientsListView(TuttleView, UserControl):
         self.editor = None
 
     def parent_intent_listener(self, intent: str, data: any):
+        """Handles intents from the parent view"""
         if intent == res_utils.ADD_CLIENT_INTENT:
+            # Open the client editor
             if self.editor is not None:
                 self.editor.close_dialog()
             self.editor = ClientEditorPopUp(
@@ -462,15 +467,20 @@ class ClientsListView(TuttleView, UserControl):
                 contacts_map=self.contacts,
             )
             self.editor.open_dialog()
-        return
+        elif intent == res_utils.RELOAD_INTENT:
+            # Reload all data for the view
+            self.reload_all_data()
 
     def load_all_clients(self):
+        """Loads all clients from the store"""
         self.clients_to_display = self.intent.get_all_clients_as_map()
 
     def load_all_contacts(self):
+        """Loads all contacts from the store"""
         self.contacts = self.intent.get_all_contacts_as_map()
 
     def refresh_clients(self):
+        """Refreshes the clients list"""
         self.clients_container.controls.clear()
         for key in self.clients_to_display:
             client = self.clients_to_display[key]
@@ -482,6 +492,7 @@ class ClientsListView(TuttleView, UserControl):
             self.clients_container.controls.append(clientCard)
 
     def on_edit_client_clicked(self, client: Client):
+        """Handles the edit button click event"""
         if self.editor is not None:
             self.editor.close_dialog()
         self.editor = ClientEditorPopUp(
@@ -493,8 +504,10 @@ class ClientsListView(TuttleView, UserControl):
         self.editor.open_dialog()
 
     def on_delete_client_clicked(self, client: Client):
+        """Handles the delete button click event"""
         if self.editor is not None:
             self.editor.close_dialog()
+        # Open a confirmation dialog
         self.editor = views.ConfirmDisplayPopUp(
             dialog_controller=self.dialog_controller,
             title="Are You Sure?",
@@ -506,6 +519,7 @@ class ClientsListView(TuttleView, UserControl):
         self.editor.open_dialog()
 
     def on_delete_confirmed(self, client_id):
+        """called when the user confirms the deletion of a client"""
         self.loading_indicator.visible = True
         self.update_self()
         result = self.intent.delete_client_by_id(client_id)
@@ -519,6 +533,7 @@ class ClientsListView(TuttleView, UserControl):
         self.update_self()
 
     def on_save_client(self, client_to_save: Client):
+        """Handles the save event from the client editor"""
         is_updating = client_to_save.id is not None
         self.loading_indicator.visible = True
         self.update_self()
@@ -537,23 +552,28 @@ class ClientsListView(TuttleView, UserControl):
         self.loading_indicator.visible = False
         self.update_self()
 
-    def show_no_clients(self):
-        self.no_clients_control.visible = True
-
     def did_mount(self):
+        """Called when the view is mounted"""
+        self.reload_all_data()
+
+    def reload_all_data(self):
+        """Reloads all data for the view when the view is mounted or a reload-intent is received"""
         self.mounted = True
         self.loading_indicator.visible = True
         self.load_all_clients()
         count = len(self.clients_to_display)
         self.loading_indicator.visible = False
         if count == 0:
-            self.show_no_clients()
+            self.no_clients_control.visible = True
+            self.clients_container.controls.clear()
         else:
+            self.no_clients_control.visible = False
             self.refresh_clients()
         self.load_all_contacts()
         self.update_self()
 
     def build(self):
+        """Builds the view"""
         view = Column(
             controls=[
                 self.title_control,
@@ -564,6 +584,7 @@ class ClientsListView(TuttleView, UserControl):
         return view
 
     def will_unmount(self):
+        """Called when the view is unmounted"""
         self.mounted = False
         if self.editor:
             self.editor.dimiss_open_dialogs()
