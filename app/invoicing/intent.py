@@ -114,7 +114,6 @@ class InvoicingIntent:
                 project=project,
                 date=invoice_date,
             )
-            self._invoicing_data_source.save_invoice(invoice)
 
             if render:
                 # TODO: render timesheet
@@ -133,6 +132,7 @@ class InvoicingIntent:
                     logger.error(f"❌ Error rendering invoice for {project.title}: {ex}")
                     logger.exception(ex)
 
+            self._invoicing_data_source.save_invoice(invoice)
             return IntentResult(
                 was_intent_successful=True,
                 data=invoice,
