@@ -334,6 +334,7 @@ class Contract(SQLModel, table=True):
         return self.volume * self.unit.to_timedelta()
 
     def is_active(self) -> bool:
+        """Check if contract is active.A contract is active if it is not completed and the end date is in the future."""
         if self.is_completed:
             return False
         if self.end_date:
@@ -406,6 +407,7 @@ class Project(SQLModel, table=True):
             return f"{self.description[0:108]}..."
 
     def is_active(self) -> bool:
+        """Is the project active? A project is active if it is not completed and if the end date is in the future."""
         if self.is_completed:
             return False
         if self.end_date:

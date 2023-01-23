@@ -152,6 +152,30 @@ class ContractStates(Enum):
     UPCOMING = 4
 
 
+def get_filter_button_label(state: ContractStates):
+    """Returns the label for the given state"""
+    if state.value == ContractStates.ACTIVE.value:
+        return "Active"
+    elif state.value == ContractStates.UPCOMING.value:
+        return "Upcoming"
+    elif state.value == ContractStates.COMPLETED.value:
+        return "Completed"
+    else:
+        return "All"
+
+
+def get_filter_button_tooltip(state: ContractStates):
+    """Returns the tooltip for the given state"""
+    if state.value == ContractStates.ACTIVE.value:
+        return "Not completed and not due"
+    elif state.value == ContractStates.UPCOMING.value:
+        return "Scheduled for the future"
+    elif state.value == ContractStates.COMPLETED.value:
+        return "Marked as completed"
+    else:
+        return "All Contracts"
+
+
 class ContractFiltersView(UserControl):
     """Create and Handles contracts view filtering buttons"""
 
@@ -166,6 +190,7 @@ class ContractFiltersView(UserControl):
         state: ContractStates,
         label: str,
         onClick: Callable[[ContractStates], None],
+        tooltip: str,
     ):
         """Creates a filter button for the given state"""
         button = ElevatedButton(
@@ -176,6 +201,7 @@ class ContractFiltersView(UserControl):
             color=colors.PRIMARY_COLOR
             if state == self.current_state
             else colors.GRAY_COLOR,
+            tooltip=tooltip,
             style=ButtonStyle(
                 elevation={
                     utils.PRESSED: 3,
@@ -195,24 +221,14 @@ class ContractFiltersView(UserControl):
         self.update()
         self.on_state_changed_callback(state)
 
-    def get_filter_button_label(self, state: ContractStates):
-        """Returns the label for the given state"""
-        if state.value == ContractStates.ACTIVE.value:
-            return "Active"
-        elif state.value == ContractStates.UPCOMING.value:
-            return "Upcoming"
-        elif state.value == ContractStates.COMPLETED.value:
-            return "Completed"
-        else:
-            return "All"
-
     def set_filter_buttons(self):
         """Sets all the filter buttons"""
         for state in ContractStates:
             button = self.filter_button(
-                label=self.get_filter_button_label(state),
+                label=get_filter_button_label(state),
                 state=state,
                 onClick=self.on_filter_button_clicked,
+                tooltip=get_filter_button_tooltip(state),
             )
             self.state_to_filter_btns_map[state] = button
 
