@@ -97,16 +97,10 @@ Calculate your effective income and see how much you can spend without risking y
 3. Install the Python module in development mode:
 
 ```shell
-$ python setup.py develop
-```
-
-or
-
-```shell
 pip install -e .
 ```
 
-4. To verify, run the unit tests:
+1. To verify, run the unit tests:
 
 ```shell
 $ pytest
