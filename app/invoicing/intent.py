@@ -1,38 +1,31 @@
 from typing import Mapping, Optional, Type, Union
 
 import datetime
+import textwrap
 from datetime import date
 from pathlib import Path
-import textwrap
 
+from auth.data_source import UserDataSource
 from core.abstractions import ClientStorage
 from core.intent_result import IntentResult
 from loguru import logger
 from pandas import DataFrame
-
 from projects.intent import ProjectsIntent
 from timetracking.data_source import TimeTrackingDataFrameSource
 from timetracking.intent import TimeTrackingIntent
-from auth.data_source import UserDataSource
 
-from tuttle.model import Invoice, Project, Timesheet
+from tuttle import invoicing, mail, os_functions, rendering, timetracking
+from tuttle.model import Invoice, Project, Timesheet, User
 from tuttle.os_functions import preview_pdf
 
 from .data_source import InvoicingDataSource
-
-from tuttle import (
-    timetracking,
-    invoicing,
-    rendering,
-    mail,
-    os_functions,
-)
+from auth.intent import AuthIntent
 
 
 class InvoicingIntent:
     """Handles Invoicing C_R_U_D intents"""
 
-    def __init__(self, local_storage: ClientStorage):
+    def __init__(self, client_storage: ClientStorage):
         """
         Attributes
         ----------
@@ -42,12 +35,19 @@ class InvoicingIntent:
             reference to the invoicing data source
         _projects_intent : ProjectsIntent
             reference to the ProjectsIntent for forwarding project related intents
+        _auth_intent : AuthIntent
+            reference to the AuthIntent for forwarding auth related intents
         """
-        self._timetracking_intent = TimeTrackingIntent(local_storage=local_storage)
+        self._timetracking_intent = TimeTrackingIntent(client_storage=client_storage)
         self._projects_intent = ProjectsIntent()
         self._invoicing_data_source = InvoicingDataSource()
         self._timetracking_data_source = TimeTrackingDataFrameSource()
         self._user_data_source = UserDataSource()
+        self._auth_intent = AuthIntent()
+
+    def get_user(self) -> Optional[User]:
+        """Get the current user."""
+        return self._auth_intent.get_user_if_exists()
 
     def get_active_projects_as_map(self) -> Mapping[int, Project]:
         return self._projects_intent.get_active_projects_as_map()
@@ -83,7 +83,7 @@ class InvoicingIntent:
             logger.exception(ex)
             return IntentResult(
                 was_intent_successful=False,
-                message="Could not delete invoice. Check the log for details.",
+                message="Could not delete invoice. ",
             )
 
     def create_invoice(
@@ -145,7 +145,7 @@ class InvoicingIntent:
                 error_msg=error_message,
             )
         except Exception as ex:
-            error_message = "Failed to create invoice. Check the logs for more details."
+            error_message = "Failed to create invoice. "
             logger.error(error_message)
             logger.exception(ex)
             return IntentResult(
@@ -208,7 +208,7 @@ class InvoicingIntent:
             logger.exception(ex)
             return IntentResult(
                 was_intent_successful=False,
-                error_msg="Failed to send the invoice by mail. Check the logs for more details.",
+                error_msg="Failed to send the invoice by mail. ",
             )
 
     def generate_invoice_doc(self, invoice: Invoice) -> IntentResult:
@@ -239,7 +239,7 @@ class InvoicingIntent:
             logger.exception(ex)
             return IntentResult(
                 was_intent_successful=False,
-                error_msg="Failed to toggle the invoice sent status. Check the logs for more details.",
+                error_msg="Failed to toggle the invoice sent status. ",
             )
 
     def toggle_invoice_paid_status(self, invoice: Invoice) -> IntentResult[Invoice]:
@@ -266,7 +266,7 @@ class InvoicingIntent:
             logger.exception(ex)
             return IntentResult(
                 was_intent_successful=False,
-                error_msg="Failed to toggle the invoice paid status. Check the logs for more details.",
+                error_msg="Failed to toggle the invoice paid status. ",
             )
 
     def toggle_invoice_cancelled_status(
@@ -295,7 +295,7 @@ class InvoicingIntent:
             logger.exception(ex)
             return IntentResult(
                 was_intent_successful=False,
-                error_msg="Failed to toggle the invoice cancelled status. Check the logs for more details.",
+                error_msg="Failed to toggle the invoice cancelled status. ",
             )
 
     def view_invoice(self, invoice: Invoice) -> IntentResult[None]:

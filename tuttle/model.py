@@ -151,6 +151,19 @@ class User(SQLModel, table=True):
     # TODO: path to logo image
     logo: Optional[str]
 
+    @property
+    def bank_account_not_set(self) -> bool:
+        """True if bank account is not set."""
+        if not self.bank_account:
+            return True
+        if (
+            not self.bank_account.BIC
+            or not self.bank_account.IBAN
+            or not self.bank_account.name
+        ):
+            return True
+        return False
+
 
 class ICloudAccount(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -251,6 +264,9 @@ class Client(SQLModel, table=True):
     # non-invoice related contact person?
 
 
+CONTRACT_DEFAULT_VAT_RATE = 0.19
+
+
 class Contract(SQLModel, table=True):
     """A contract defines the business conditions of a project"""
 
@@ -282,7 +298,7 @@ class Contract(SQLModel, table=True):
     currency: str  # TODO: currency representation
     VAT_rate: Decimal = Field(
         description="VAT rate applied to the contractual rate.",
-        default=0.19,  # TODO: configure by country?
+        default=CONTRACT_DEFAULT_VAT_RATE,  # TODO: configure by country?
     )
     unit: TimeUnit = Field(
         description="Unit of time tracked. The rate applies to this unit.",
@@ -327,7 +343,7 @@ class Contract(SQLModel, table=True):
         today = datetime.date.today()
         return self.start_date > today
 
-    def get_status(self) -> str:
+    def get_status(self, default: str = "All") -> str:
         if self.is_active():
             return "Active"
         elif self.is_upcoming():
@@ -336,7 +352,7 @@ class Contract(SQLModel, table=True):
             return "Completed"
         else:
             # default
-            return "All"
+            return default
 
 
 class Project(SQLModel, table=True):
@@ -374,8 +390,11 @@ class Project(SQLModel, table=True):
     )
 
     @property
-    def client(self):
-        return self.contract.client
+    def client(self) -> Optional[Client]:
+        if self.contract:
+            return self.contract.client
+        else:
+            return None
 
     def get_brief_description(self):
         if len(self.description) <= 108:
@@ -394,7 +413,7 @@ class Project(SQLModel, table=True):
         today = datetime.date.today()
         return self.start_date > today
 
-    def get_status(self) -> str:
+    def get_status(self, default: str = "") -> str:
         if self.is_active():
             return "Active"
         elif self.is_upcoming():
@@ -403,7 +422,7 @@ class Project(SQLModel, table=True):
             return "Completed"
         else:
             # default
-            return "All"
+            return default
 
 
 class TimeTrackingItem(SQLModel, table=True):
@@ -546,7 +565,9 @@ class Invoice(SQLModel, table=True):
     @property
     def prefix(self):
         """A string that can be used as the prefix of a file name, or a folder name."""
-        client_suffix = self.client.name.lower().split()[0]
+        client_suffix = ""
+        if self.client:
+            client_suffix = self.client.name.lower().split()[0]
         prefix = f"{self.number}-{client_suffix}"
         return prefix
 

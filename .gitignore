@@ -140,3 +140,6 @@ notebooks/tmp
 tuttle_tests/tmp
 app/tmp
 app/assets/uploads
+
+# visual studio workspaces
+*.code-workspace

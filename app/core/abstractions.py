@@ -3,6 +3,7 @@ from typing import Any, Callable, List, Optional, Type
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
+import functools
 
 from flet import AlertDialog, file_picker
 
@@ -14,7 +15,7 @@ from .utils import AUTO_SCROLL, START_ALIGNMENT, AlertDialogControls
 
 
 class ClientStorage(ABC):
-    """An abstraction that defines methods for caching data"""
+    """Abstract class for client storage"""
 
     def __init__(
         self,
@@ -54,7 +55,7 @@ class TuttleViewParams:
     dialog_controller: Callable
     upload_file_callback: Callable
     pick_file_callback: Callable[[file_picker.FilePickerFile], str]
-    local_storage: Optional[ClientStorage] = None
+    client_storage: Optional[ClientStorage] = None
     vertical_alignment_in_parent: str = START_ALIGNMENT
     horizontal_alignment_in_parent: str = START_ALIGNMENT
     keep_back_stack: bool = True
@@ -68,7 +69,7 @@ class TuttleView(ABC):
     def __init__(self, params: TuttleViewParams):
         super().__init__()
         self.navigate_to_route = params.navigate_to_route
-        self.show_snack = params.show_snack
+        self.show_snack: Callable[[str, bool], None] = params.show_snack
         self.dialog_controller = params.dialog_controller
         self.vertical_alignment_in_parent = params.vertical_alignment_in_parent
         self.horizontal_alignment_in_parent = params.horizontal_alignment_in_parent
@@ -77,7 +78,7 @@ class TuttleView(ABC):
         self.page_scroll_type = params.page_scroll_type
         self.upload_file_callback = params.upload_file_callback
         self.pick_file_callback = params.pick_file_callback
-        self.local_storage = params.local_storage
+        self.client_storage = params.client_storage
         self.mounted = False
 
     def parent_intent_listener(self, intent: str, data: any):
@@ -142,7 +143,7 @@ class SQLModelDataSourceMixin:
     ):
         db_path = Path.home() / ".tuttle" / "tuttle.db"
         db_path = f"sqlite:///{db_path}"
-        logger.info(f"Creating {self.__class__.__name__} with db_path: {db_path}")
+        logger.debug(f"Creating {self.__class__.__name__} with db_path: {db_path}")
         self.db_engine = sqlmodel.create_engine(
             db_path,
             echo=False,
@@ -164,7 +165,7 @@ class SQLModelDataSourceMixin:
         if len(entities) == 0:
             logger.warning(f"No instances of {entity_type} found")
         else:
-            logger.info(f"Found {len(entities)} instances of {entity_type}")
+            logger.debug(f"Found {len(entities)} instances of {entity_type}")
         return entities
 
     def query_by_id(
@@ -230,3 +231,25 @@ class SQLModelDataSourceMixin:
                 sqlmodel.delete(entity_type).where(entity_type.id == entity_id)
             )
             session.commit()
+
+
+class Intent(ABC):
+    """Abstract base class for intent classes."""
+
+    def __getattribute__(self, name):
+        """Logs all calls to methods of this class""" ""
+        attr = object.__getattribute__(self, name)
+        if callable(attr):
+
+            @functools.wraps(attr)
+            def wrapped(*args, **kwargs):
+                class_name = self.__class__.__name__
+                # Mask password argument if exists
+                kwargs = {
+                    k: "******" if k == "password" else v for k, v in kwargs.items()
+                }
+                logger.debug(f"Intent: {class_name}:{name} called with: {kwargs}")
+                return attr(*args, **kwargs)
+
+            return wrapped
+        return attr

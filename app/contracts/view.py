@@ -3,7 +3,6 @@ from typing import Callable, Optional
 from enum import Enum
 
 from flet import (
-    AlertDialog,
     ButtonStyle,
     Card,
     Column,
@@ -15,7 +14,6 @@ from flet import (
     ListTile,
     ResponsiveRow,
     Row,
-    Text,
     TextButton,
     UserControl,
     border_radius,
@@ -37,7 +35,7 @@ from core.models import (
 )
 from res import colors, dimens, fonts, res_utils
 
-from tuttle.model import Client, Contract
+from tuttle.model import Client, Contract, CONTRACT_DEFAULT_VAT_RATE
 from tuttle.time import Cycle, TimeUnit
 
 LABEL_WIDTH = 80
@@ -57,6 +55,7 @@ class ContractCard(UserControl):
         self.on_click_delete = on_click_delete
 
     def build(self):
+        """Builds the contract card ui"""
         self.contract_info_container.controls = [
             ListTile(
                 leading=Icon(
@@ -65,7 +64,7 @@ class ContractCard(UserControl):
                 ),
                 title=views.get_body_txt(self.contract.title),
                 subtitle=views.get_body_txt(
-                    self.contract.client.name if self.contract.client else "",
+                    self.contract.client.name if self.contract.client else "Unknown",
                     color=colors.GRAY_COLOR,
                 ),
                 trailing=views.context_pop_up_menu(
@@ -73,6 +72,7 @@ class ContractCard(UserControl):
                     on_click_edit=lambda e: self.on_click_edit(self.contract.id),
                     on_click_delete=lambda e: self.on_click_delete(self.contract.id),
                 ),
+                on_click=lambda e: self.on_click_view(self.contract.id),
             ),
             views.mdSpace,
             ResponsiveRow(
@@ -126,6 +126,8 @@ class ContractCard(UserControl):
 
 
 class ContractStates(Enum):
+    """Contract states for filtering"""
+
     ALL = 1
     ACTIVE = 2
     COMPLETED = 3
@@ -147,6 +149,7 @@ class ContractFiltersView(UserControl):
         label: str,
         onClick: Callable[[ContractStates], None],
     ):
+        """Creates a filter button for the given state"""
         button = ElevatedButton(
             text=label,
             col={"xs": 6, "sm": 3, "lg": 2},
@@ -175,6 +178,7 @@ class ContractFiltersView(UserControl):
         self.on_state_changed_callback(state)
 
     def get_filter_button_label(self, state: ContractStates):
+        """Returns the label for the given state"""
         if state.value == ContractStates.ACTIVE.value:
             return "Active"
         elif state.value == ContractStates.UPCOMING.value:
@@ -185,6 +189,7 @@ class ContractFiltersView(UserControl):
             return "All"
 
     def set_filter_buttons(self):
+        """Sets all the filter buttons"""
         for state in ContractStates:
             button = self.filter_button(
                 label=self.get_filter_button_label(state),
@@ -194,6 +199,7 @@ class ContractFiltersView(UserControl):
             self.state_to_filter_btns_map[state] = button
 
     def build(self):
+        """Builds the filter buttons"""
         if len(self.state_to_filter_btns_map) == 0:
             # set the buttons
             self.set_filter_buttons()
@@ -234,33 +240,43 @@ class ContractEditorScreen(TuttleView, UserControl):
         self.billing_cycle: Cycle = None
 
     def on_title_changed(self, e):
+        """Called when the title of the contract is changed"""
         self.title = e.control.value
 
     def on_rate_changed(self, e):
+        """Called when the rate of the contract is changed"""
         self.rate = e.control.value
 
     def on_currency_changed(self, e):
+        """Called when the currency of the contract is changed"""
         self.currency = e.control.value
 
     def on_volume_changed(self, e):
+        """Called when the volume of the contract is changed"""
         self.volume = e.control.value
 
-    def on_top_changed(self, e):
+    def on_term_of_payment_changed(self, e):
+        """Called when the term of payment of the contract is changed"""
         self.term_of_payment = e.control.value
 
     def on_upw_changed(self, e):
+        """Called when the unit pw of the contract is changed"""
         self.unit_pw = e.control.value
 
     def on_vat_rate_changed(self, e):
+        """Called when the vat rate of the contract is changed"""
         self.vat_rate = e.control.value
 
     def on_unit_selected(self, e):
+        """Called when the unit of the contract is changed""" ""
         self.time_unit = get_time_unit_from_value(e.control.value)
 
     def on_billing_cycle_selected(self, e):
+        """Called when the billing cycle of the contract is changed"""
         self.billing_cycle = get_cycle_from_value(e.control.value)
 
     def clear_ui_field_errors(self, e):
+        """Clears all the errors in the ui form fields"""
         fields = [
             self.title_ui_field,
             self.rate_ui_field,
@@ -281,10 +297,11 @@ class ContractEditorScreen(TuttleView, UserControl):
         self.submit_btn.disabled = is_on_going_action
 
     def did_mount(self):
+        """Called when the view is mounted"""
         self.mounted = True
         self.toggle_progress(is_on_going_action=True)
         self.load_clients()
-        self.load_contacts()
+        self.fetch_and_set_contacts()
         self.load_currencies()
         # contract_for_update should be loaded last
         self.load_contract_for_update()
@@ -292,25 +309,28 @@ class ContractEditorScreen(TuttleView, UserControl):
         self.update_self()
 
     def load_contract_for_update(self):
+        """Loads the contract for update if it is an update operation i.e self.contract_id_if_editing is not None"""
         if not self.contract_id_if_editing:
             return  # a new contract is being created
         result = self.intent.get_contract_by_id(contractId=self.contract_id_if_editing)
         if not result.was_intent_successful or not result.data:
-            self.show_snack(result.error_msg)
+            self.show_snack(result.error_msg, is_error=True)
         self.old_contract_if_editing = result.data
         self.display_with_contract_info()
 
     def load_currencies(self):
+        """Loads the available currencies into a dropdown"""
         self.available_currencies = [
             abbreviation for (name, abbreviation, symbol) in utils.get_currencies()
         ]
         views.update_dropdown_items(self.currency_ui_field, self.available_currencies)
-        result = self.intent.get_preferred_currency_intent(self.local_storage)
+        result = self.intent.get_preferred_currency_intent(self.client_storage)
         if result.was_intent_successful:
             preferred_currency = result.data
             self.currency_ui_field.value = preferred_currency
 
     def load_clients(self):
+        """Loads the clients into a dropdown"""
         self.clients_map = self.intent.get_all_clients_as_map()
         self.clients_ui_field.error_text = (
             "Please create a new client" if len(self.clients_map) == 0 else None
@@ -319,7 +339,8 @@ class ContractEditorScreen(TuttleView, UserControl):
             self.clients_ui_field, self.get_clients_names_as_list()
         )
 
-    def load_contacts(self):
+    def fetch_and_set_contacts(self):
+        """fetches the contacts and sets them in the contacts map"""
         self.contacts_map = self.intent.get_all_contacts_as_map()
 
     def get_clients_names_as_list(self):
@@ -330,40 +351,48 @@ class ContractEditorScreen(TuttleView, UserControl):
         return client_names_list
 
     def get_client_dropdown_item(self, client_id):
+        """returns a string for the client's dropdown item"""
         if client_id not in self.clients_map:
             return ""
-        """prefixes client name with a key {client_id} for display in Ui as dropdown item"""
+        # prefix client name with a key {client_id}
         return f"#{client_id} {self.clients_map[client_id].name}"
 
     def on_client_selected(self, e):
         # parse selected value to extract id
         selected = e.control.value
-        id = ""
+        _id = ""
         for c in selected:
             if c == "#":
                 continue
             if c == " ":
                 break
-            id = id + c
+            _id = _id + c
 
-        if self.clients_ui_field.error_text:
-            self.clients_ui_field.error_text = None
-            self.update_self()
-        if int(id) in self.clients_map:
-            self.client = self.clients_map[int(id)]
+        # clear the error text if any
+        self.clients_ui_field.error_text = None
+        self.update_self()
+        if int(_id) in self.clients_map:
+            # set the client
+            self.client = self.clients_map[int(_id)]
 
     def on_add_client_clicked(self, e):
+        """Called when the add client button is clicked"""
         if self.new_client_pop_up:
             self.new_client_pop_up.close_dialog()
-
+        # open the client editor pop up
         self.new_client_pop_up = ClientEditorPopUp(
             dialog_controller=self.dialog_controller,
             on_submit=self.on_client_set_from_pop_up,
             contacts_map=self.contacts_map,
+            on_error=lambda error: self.show_snack(
+                error,
+                is_error=True,
+            ),
         )
         self.new_client_pop_up.open_dialog()
 
     def on_client_set_from_pop_up(self, client):
+        """Called when the client is set from the client editor pop up"""
         if client:
             result: IntentResult = self.intent.save_client(client)
             if result.was_intent_successful:
@@ -415,36 +444,37 @@ class ContractEditorScreen(TuttleView, UserControl):
         self.submit_btn.text = "Save changes"
 
     def on_save(self, e):
+        """Called when the edit / save button is clicked"""
         if not self.title:
             self.title_ui_field.error_text = "Contract title is required"
             self.update_self()
-            return
+            return  # error occurred, stop here
 
         if self.client is None:
             self.clients_ui_field.error_text = "Please select a client"
             self.update_self()
-            return
+            return  # error occurred, stop here
 
         signatureDate = self.signature_date_ui_field.get_date()
         if signatureDate is None:
             self.show_snack("Please specify the signature date", True)
-            return
+            return  # error occurred, stop here
 
         startDate = self.start_date_ui_field.get_date()
         if startDate is None:
             self.show_snack("Please specify the start date", True)
-            return
+            return  # error occurred, stop here
 
         endDate = self.end_date_ui_field.get_date()
         if endDate is None:
             self.show_snack("Please specify the end date", True)
-            return
+            return  # error occurred, stop here
 
         if startDate > endDate:
             self.show_snack(
                 "The end date of the contract cannot be before the start date", True
             )
-            return
+            return  # error occurred, stop here
 
         self.toggle_progress(is_on_going_action=True)
         result: IntentResult = self.intent.save_contract(
@@ -461,7 +491,7 @@ class ContractEditorScreen(TuttleView, UserControl):
             volume=self.volume,
             term_of_payment=self.term_of_payment,
             billing_cycle=self.billing_cycle,
-            contract_to_update=self.old_contract_if_editing,
+            contract=self.old_contract_if_editing,
         )
         success_msg = (
             "Changes saved"
@@ -477,15 +507,16 @@ class ContractEditorScreen(TuttleView, UserControl):
             self.on_navigate_back()
 
     def build(self):
+        """Build the UI"""
         self.title_ui_field = views.get_std_txt_field(
             label="Title",
-            hint="Contract's title",
+            hint="Short description of the contract.",
             on_change=self.on_title_changed,
             on_focus=self.clear_ui_field_errors,
         )
         self.rate_ui_field = views.get_std_txt_field(
             label="Rate",
-            hint="Contract's rate",
+            hint="Rate of remuneration",
             on_change=self.on_rate_changed,
             on_focus=self.clear_ui_field_errors,
             keyboard_type=utils.KEYBOARD_NUMBER,
@@ -498,29 +529,29 @@ class ContractEditorScreen(TuttleView, UserControl):
         )
         self.vat_rate_ui_field = views.get_std_txt_field(
             label="VAT rate",
-            hint="VAT rate",
+            hint=f"VAT rate applied to the contractual rate. default is {CONTRACT_DEFAULT_VAT_RATE}",
             on_change=self.on_vat_rate_changed,
             on_focus=self.clear_ui_field_errors,
             keyboard_type=utils.KEYBOARD_NUMBER,
         )
         self.unit_PW_ui_field = views.get_std_txt_field(
             label="Units per workday",
-            hint="",
+            hint="How many units (e.g. hours) constitute a whole work day?",
             on_change=self.on_upw_changed,
             on_focus=self.clear_ui_field_errors,
             keyboard_type=utils.KEYBOARD_NUMBER,
         )
         self.volume_ui_field = views.get_std_txt_field(
             label="Volume (optional)",
-            hint="",
+            hint="Number of time units agreed on",
             on_change=self.on_volume_changed,
             on_focus=self.clear_ui_field_errors,
             keyboard_type=utils.KEYBOARD_NUMBER,
         )
         self.term_of_payment_ui_field = views.get_std_txt_field(
             label="Term of payment (optional)",
-            hint="",
-            on_change=self.on_top_changed,
+            hint="How many days after receipt of invoice this invoice is due.",
+            on_change=self.on_term_of_payment_changed,
             on_focus=self.clear_ui_field_errors,
             keyboard_type=utils.KEYBOARD_NUMBER,
         )
@@ -530,7 +561,7 @@ class ContractEditorScreen(TuttleView, UserControl):
             items=self.get_clients_names_as_list(),
         )
         self.units_ui_field = views.get_dropdown(
-            label="Time Unit",
+            label="Unit of time tracked.",
             on_change=self.on_unit_selected,
             items=get_time_unit_values_as_list(),
         )
@@ -539,9 +570,9 @@ class ContractEditorScreen(TuttleView, UserControl):
             on_change=self.on_billing_cycle_selected,
             items=get_cycle_values_as_list(),
         )
-        self.signature_date_ui_field = views.DateSelector(label="Signed on Date")
-        self.start_date_ui_field = views.DateSelector(label="Start Date")
-        self.end_date_ui_field = views.DateSelector(label="End Date")
+        self.signature_date_ui_field = views.DateSelector(label="Signed on")
+        self.start_date_ui_field = views.DateSelector(label="Valid from")
+        self.end_date_ui_field = views.DateSelector(label="Valid until")
         self.submit_btn = views.get_primary_btn(
             label="Create Contract", on_click=self.on_save
         )
@@ -614,12 +645,15 @@ class ContractEditorScreen(TuttleView, UserControl):
         return view
 
     def will_unmount(self):
+        """Called when the view is about to be unmounted."""
         self.mounted = True
         if self.new_client_pop_up:
             self.new_client_pop_up.dimiss_open_dialogs()
 
 
 class ContractsListView(TuttleView, UserControl):
+    """View for displaying a list of contracts."""
+
     def __init__(self, params: TuttleViewParams):
         super().__init__(params)
         self.intent = ContractsIntent()
@@ -654,6 +688,7 @@ class ContractsListView(TuttleView, UserControl):
         self.pop_up_handler = None
 
     def display_currently_filtered_contracts(self):
+        """Display the contracts that match the current filter."""
         self.contracts_container.controls.clear()
         for key in self.contracts_to_display:
             contract = self.contracts_to_display[key]
@@ -666,17 +701,21 @@ class ContractsListView(TuttleView, UserControl):
             self.contracts_container.controls.append(contractCard)
 
     def on_view_contract_clicked(self, contract_id: str):
+        """Called when the user clicks on the view button for a contract. Redirects to the contract details screen."""
         self.navigate_to_route(res_utils.CONTRACT_DETAILS_SCREEN_ROUTE, contract_id)
 
     def on_edit_contract_clicked(self, contract_id: str):
+        """Called when the user clicks on the edit button for a contract. Redirects to the contract editor screen."""
         self.navigate_to_route(res_utils.CONTRACT_EDITOR_SCREEN_ROUTE, contract_id)
 
     def on_delete_contract_clicked(self, contract_id: str):
+        """Called when the user clicks on the delete button for a contract. Displays a confirmation dialog."""
         if contract_id not in self.contracts_to_display:
-            return
+            return  # should never happen
         contract_title = self.contracts_to_display[contract_id].title
         if self.pop_up_handler:
             self.pop_up_handler.close_dialog()
+        # display a dialog to confirm delete action
         self.pop_up_handler = views.ConfirmDisplayPopUp(
             dialog_controller=self.dialog_controller,
             title="Are You Sure?",
@@ -688,19 +727,24 @@ class ContractsListView(TuttleView, UserControl):
         self.pop_up_handler.open_dialog()
 
     def on_delete_contract_confirmed(self, contract_id: str):
+        """Called when the user confirms the delete action. Deletes the contract and reloads the list of contracts."""
         self.loading_indicator.visible = True
         self.update_self()
         result = self.intent.delete_contract_by_id(contract_id=contract_id)
         is_error = not result.was_intent_successful
         msg = "Contract deleted!" if not is_error else result.error_msg
         self.show_snack(msg, is_error)
-        if not is_error and contract_id in self.contracts_to_display:
-            del self.contracts_to_display[contract_id]
+        if not is_error:
+            if int(contract_id) in self.contracts_to_display:
+                # remove deleted contract from displayed contracts
+                del self.contracts_to_display[int(contract_id)]
+            # reload displayed contracts
             self.display_currently_filtered_contracts()
         self.loading_indicator.visible = False
         self.update_self()
 
     def on_filter_contracts(self, filterByState: ContractStates):
+        """Called when the user changes the filter for the contracts. Reloads the list of contracts."""
         if filterByState.value == ContractStates.ACTIVE.value:
             self.contracts_to_display = self.intent.get_active_contracts()
         elif filterByState.value == ContractStates.UPCOMING.value:
@@ -712,34 +756,36 @@ class ContractsListView(TuttleView, UserControl):
         self.display_currently_filtered_contracts()
         self.update_self()
 
-    def show_no_contracts(self):
-        self.no_contracts_control.visible = True
-
     def did_mount(self):
-        self.mounted = True
-        self.initialize_data()
+        """Called when the screen is mounted. Initializes the data."""
+        self.reload_all_data()
 
-    def on_resume_after_back_pressed(self):
-        self.mounted = True
-        self.initialize_data()
+    def parent_intent_listener(self, intent: str, data: any):
+        """Called when the parent screen sends an intent."""
+        if intent == res_utils.RELOAD_INTENT:
+            # reload data
+            self.reload_all_data()
 
-    def initialize_data(self):
+    def reload_all_data(self):
+        """Reloads the data for the screen after mounting or resumed"""
+        self.mounted = True
         self.loading_indicator.visible = True
         self.update_self()
 
         # fetch contracts
-        self.contracts_to_display = self.intent.get_all_contracts_as_map(
-            reload_cache=True
-        )
+        self.contracts_to_display = self.intent.get_all_contracts_as_map()
         count = len(self.contracts_to_display)
         if count == 0:
-            self.show_no_contracts()
+            self.no_contracts_control.visible = True
+            self.contracts_container.controls.clear()
         else:
+            self.no_contracts_control.visible = False
             self.display_currently_filtered_contracts()
         self.loading_indicator.visible = False
         self.update_self()
 
     def build(self):
+        """Builds the view for the screen."""
         view = Column(
             controls=[
                 self.title_control,
@@ -752,12 +798,15 @@ class ContractsListView(TuttleView, UserControl):
         return view
 
     def will_unmount(self):
+        """Called when the screen is unmounted. Sets the mounted flag to false."""
         self.mounted = False
         if self.pop_up_handler:
             self.pop_up_handler.dimiss_open_dialogs()
 
 
 class ViewContractScreen(TuttleView, UserControl):
+    """Screen to view the details of a contract."""
+
     def __init__(
         self,
         params: TuttleViewParams,
@@ -771,14 +820,17 @@ class ViewContractScreen(TuttleView, UserControl):
         self.pop_up_handler = None
 
     def display_contract_data(self):
+        """Displays the data for the contract."""
         self.contract_title_control.value = self.contract.title
         self.client_control.value = (
-            self.contract.client.name if self.contract.client else ""
+            self.contract.client.name if self.contract.client else "Unknown"
         )
         self.contract_title_control.value = self.contract.title
         self.start_date_control.value = self.contract.start_date
         self.end_date_control.value = self.contract.end_date
-        self.status_control.value = f"Status {self.contract.get_status()}"
+        _status = self.contract.get_status(default="")
+        if _status:
+            self.status_control.value = f"Status {_status}"
         self.billing_cycle_control.value = (
             self.contract.billing_cycle.value if self.contract.billing_cycle else ""
         )
@@ -793,8 +845,25 @@ class ViewContractScreen(TuttleView, UserControl):
         self.volume_control.value = f"{self.contract.volume} {time_unit}"
         self.term_of_payment_control.value = f"{self.contract.term_of_payment} days"
         self.signature_date_control.value = self.contract.signature_date
+        self.toggle_compete_status_btn.tooltip = (
+            "Mark as incomplete" if self.contract.is_completed else "Mark as completed"
+        )
+        self.toggle_compete_status_btn.icon = (
+            icons.RADIO_BUTTON_CHECKED_OUTLINED
+            if self.contract.is_completed
+            else icons.RADIO_BUTTON_UNCHECKED_OUTLINED
+        )
 
     def did_mount(self):
+        """Called when the screen is mounted. Initializes the data."""
+        self.reload_data()
+
+    def on_resume_after_back_pressed(self):
+        """Called when the screen is resumed after the back button was pressed."""
+        self.reload_data()
+
+    def reload_data(self):
+        """Reloads the data for the screen after mounting or resumed"""
         self.mounted = True
         result: IntentResult = self.intent.get_contract_by_id(self.contract_id)
         if not result.was_intent_successful:
@@ -806,6 +875,7 @@ class ViewContractScreen(TuttleView, UserControl):
         self.update_self()
 
     def on_view_client_clicked(self, e):
+        """Called when the view client button is clicked."""
         if not self.contract or not self.contract.client:
             return
         if self.pop_up_handler:
@@ -815,19 +885,32 @@ class ViewContractScreen(TuttleView, UserControl):
         )
         self.pop_up_handler.open_dialog()
 
-    def on_mark_as_complete_clicked(self, e):
-        self.show_snack("Coming soon", False)
-
-    def on_edit_clicked(self, e):
+    def on_toggle_complete_status(self, e):
+        """Called when the toggle complete status button is clicked."""
         if not self.contract:
             return
+        result: IntentResult = self.intent.toggle_complete_status(self.contract)
+        is_error = not result.was_intent_successful
+        msg = "Updated contract." if not is_error else result.error_msg
+        self.show_snack(msg, is_error)
+        if not is_error:
+            self.contract = result.data
+            self.display_contract_data()
+            self.update_self()
+
+    def on_edit_clicked(self, e):
+        """Called when the edit button is clicked. Redirects to the contract editor screen."""
+        if not self.contract:
+            return  # should not happen
         self.navigate_to_route(res_utils.CONTRACT_EDITOR_SCREEN_ROUTE, self.contract.id)
 
     def on_delete_clicked(self, e):
+        """Called when the delete button is clicked. Opens a confirmation dialog."""
         if self.contract is None:
             return
         if self.pop_up_handler:
             self.pop_up_handler.close_dialog()
+        # open confirmation dialog
         self.pop_up_handler = views.ConfirmDisplayPopUp(
             dialog_controller=self.dialog_controller,
             title="Are You Sure?",
@@ -839,6 +922,7 @@ class ViewContractScreen(TuttleView, UserControl):
         self.pop_up_handler.open_dialog()
 
     def on_delete_confirmed(self, contract_id):
+        """Called when the user confirms the deletion of the contract."""
         result = self.intent.delete_contract_by_id(contract_id)
         is_err = not result.was_intent_successful
         msg = result.error_msg if is_err else "Contract deleted!"
@@ -848,6 +932,7 @@ class ViewContractScreen(TuttleView, UserControl):
             self.on_navigate_back()
 
     def get_body_element(self, label, control):
+        """Returns a row with a label and a control."""
         return ResponsiveRow(
             controls=[
                 views.get_body_txt(
@@ -873,12 +958,12 @@ class ViewContractScreen(TuttleView, UserControl):
             on_click=self.on_edit_clicked,
             icon_size=dimens.ICON_SIZE,
         )
-        self.mark_as_complete_btn = IconButton(
-            icon=icons.CHECK_CIRCLE_OUTLINE,
+        self.toggle_compete_status_btn = IconButton(
+            icon=icons.RADIO_BUTTON_CHECKED_OUTLINED,
             icon_color=colors.PRIMARY_COLOR,
             icon_size=dimens.ICON_SIZE,
             tooltip="Mark contract as completed",
-            on_click=self.on_mark_as_complete_clicked,
+            on_click=self.on_toggle_complete_status,
         )
         self.delete_contract_btn = IconButton(
             icon=icons.DELETE_OUTLINE_ROUNDED,
@@ -930,7 +1015,7 @@ class ViewContractScreen(TuttleView, UserControl):
             color=colors.PRIMARY_COLOR,
         )
 
-        page_view = Row(
+        return Row(
             [
                 Container(
                     padding=padding.all(dimens.SPACE_STD),
@@ -983,7 +1068,7 @@ class ViewContractScreen(TuttleView, UserControl):
                                                         run_spacing=dimens.SPACE_STD,
                                                         controls=[
                                                             self.edit_contract_btn,
-                                                            self.mark_as_complete_btn,
+                                                            self.toggle_compete_status_btn,
                                                             self.delete_contract_btn,
                                                         ],
                                                     ),
@@ -1049,7 +1134,7 @@ class ViewContractScreen(TuttleView, UserControl):
             vertical_alignment=utils.START_ALIGNMENT,
             expand=True,
         )
-        return page_view
 
     def will_unmount(self):
+        """called when the view is about to be unmounted"""
         self.mounted = False

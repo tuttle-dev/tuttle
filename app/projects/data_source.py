@@ -38,19 +38,9 @@ class ProjectDataSource(SQLModelDataSourceMixin):
 
     def save_project(
         self,
-        contract: Contract,
-        title: str,
-        description: str,
-        unique_tag: str,
-        start_date: datetime.date,
-        end_date: datetime.date,
-        is_completed: bool = False,
-        project: Optional[Project] = None,
+        project: Project,
     ) -> IntentResult[Union[Project, None]]:
-        """If project is provided,
-        update the project with given info,
-        else create a new project
-        and store in the database
+        """store the project in the database
 
         Returns:
             IntentResult:
@@ -60,23 +50,11 @@ class ProjectDataSource(SQLModelDataSourceMixin):
                 exception : Exception if an exception occurs
         """
         try:
-            if not project:
-                # create a project, this is not an update
-                project = Project()
-
-            project.title = title
-            project.description = description
-            project.tag = unique_tag
-            project.start_date = start_date
-            project.end_date = end_date
-            project.is_completed = is_completed
-            project.contract = contract
             self.store(project)
             return IntentResult(was_intent_successful=True, data=project)
         except Exception as e:
             return IntentResult(
                 was_intent_successful=False,
-                data=None,
                 log_message=f"Saving project failed with exception {e.__class__.__name__}",
                 exception=e,
             )
