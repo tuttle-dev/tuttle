@@ -1,7 +1,7 @@
-from typing import Optional
+from typing import Optional, Any
 
 import threading
-import time
+
 
 from flet import Page
 
@@ -14,62 +14,50 @@ class ClientStorageImpl(ClientStorage):
 
     def __init__(self, page: Page):
         super().__init__()
-        self.page = page
-        self.pending_saving_data_key = None
-        self.pending_saving_value = None
+        self.__page = page
 
-    def save_value(
-        self,
-    ):
-        self.page.client_storage.set(
-            self.pending_saving_data_key, self.pending_saving_value
-        )
-        # clear
-        self.pending_saving_data_key = None
-        self.pending_saving_value = None
-
-    def set_value(self, key: str, value: any):
+    def set_value(self, key: str, value: Any):
+        """appends an identifier prefix to the key and stores the key-value pair
+        value can be a string, number, boolean or list
+        """
         try:
-            prefixedKey = self.keys_prefix + key
-            self.pending_saving_data_key = prefixedKey
-            self.pending_saving_value = value
-            self.th = threading.Thread(
-                target=self.save_value,
-                args=(),
-                daemon=True,
-            )
-            self.th.start()
+            threading.Thread(
+                target=self.__page.client_storage.set,
+                args=(self.keys_prefix + key, value),
+            ).start()
         except Exception as e:
             logger.error(
-                f"ClientStorageImpl.set_value threw an exception {e.__class__.__name__}"
+                f"Error while setting client storage value {key} {value}: {e.__class__.__name__}"
             )
             logger.exception(e)
 
-    def get_value(self, key: str) -> Optional[str]:
+    def get_value(self, key: str) -> Optional[Any]:
+        """appends an identifier prefix to the key and gets the value if exists"""
         try:
-            prefixedKey = self.keys_prefix + key
-            keyExists = self.page.client_storage.contains_key(prefixedKey)
-            if not keyExists:
-                return None
-            return self.page.client_storage.get(prefixedKey)
+            return self.__page.client_storage.get(self.keys_prefix + key)
         except Exception as e:
             logger.error(
-                f"ClientStorageImpl.get_value({key}) threw an exception {e.__class__.__name__}"
+                f"Error while getting client storage value {key}: {e.__class__.__name__}"
             )
             logger.exception(e)
             return None
 
     def remove_value(self, key: str):
-        prefixedKey = self.keys_prefix + key
-        keyExists = self.page.client_storage.contains_key(prefixedKey)
-        if keyExists:
-            self.page.client_storage.remove(prefixedKey)
-
-    def clear_preferences(self):
+        """appends an identifier prefix to the key and removes associated key-value pair if exists"""
         try:
-            self.page.client_storage.clear()
+            threading.Thread(
+                target=self.__page.client_storage.remove, args=(self.keys_prefix + key,)
+            ).start()
         except Exception as e:
             logger.error(
-                f"Exception raised @ClientStorageImpl.clear_preferences {e.__class__.__name__}"
+                f"Error while removing client storage value {key}: {e.__class__.__name__}"
             )
+            logger.exception(e)
+
+    def clear_preferences(self):
+        """Deletes all of preferences permanently"""
+        try:
+            threading.Thread(target=self.__page.client_storage.clear, args=()).start()
+        except Exception as e:
+            logger.error(f"Error while clearing client storage: {e.__class__.__name__}")
             logger.exception(e)

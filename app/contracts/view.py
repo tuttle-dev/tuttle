@@ -64,7 +64,7 @@ class ContractCard(UserControl):
                 ),
                 title=views.get_body_txt(self.contract.title),
                 subtitle=views.get_body_txt(
-                    self.contract.client.name if self.contract.client else "",
+                    self.contract.client.name if self.contract.client else "Unknown",
                     color=colors.GRAY_COLOR,
                 ),
                 trailing=views.context_pop_up_menu(
@@ -819,7 +819,7 @@ class ViewContractScreen(TuttleView, UserControl):
         """Displays the data for the contract."""
         self.contract_title_control.value = self.contract.title
         self.client_control.value = (
-            self.contract.client.name if self.contract.client else ""
+            self.contract.client.name if self.contract.client else "Unknown"
         )
         self.contract_title_control.value = self.contract.title
         self.start_date_control.value = self.contract.start_date

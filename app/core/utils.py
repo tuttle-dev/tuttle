@@ -87,9 +87,10 @@ def is_empty_str(txt: str) -> bool:
     return len(txt.strip()) == 0
 
 
-@deprecated
+
 def truncate_str(txt: str, max_chars: int = 25) -> str:
-    # TODO: square wheel reinvention antipattern: this is equivalent to txt[:max_chars] so remove this function
+    if not txt:
+        return ""
     if len(txt) <= max_chars:
         return txt
     else:

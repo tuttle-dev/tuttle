@@ -48,6 +48,12 @@ class ProjectCard(UserControl):
 
     def build(self):
         """Builds the project card"""
+        _contract_title = "Unknown contract"
+        if self.project.contract:
+            _contract_title = self.project.contract.title
+        _client_title = "Unknown client"
+        if self.project.client:
+            _client_title = self.project.client.name
         self.project_info_container.controls = [
             ListTile(
                 leading=Icon(
@@ -98,9 +104,7 @@ class ProjectCard(UserControl):
                     ),
                     Container(
                         views.get_body_txt(
-                            txt=self.project.client.name
-                            if self.project.client
-                            else "Unknown client",
+                            txt=_client_title,
                             col={"xs": "12"},
                         ),
                     ),
@@ -121,7 +125,7 @@ class ProjectCard(UserControl):
                     ),
                     Container(
                         views.get_body_txt(
-                            txt=self.project.contract.title,
+                            txt=_contract_title,
                             col={"xs": "12"},
                         ),
                     ),
@@ -336,7 +340,7 @@ class ViewProjectScreen(TuttleView, UserControl):
 
     def on_view_contract_clicked(self, e):
         """redirects to the contract view screen when the contract button is clicked"""
-        if not self.project:
+        if not self.project or not self.project.contract:
             return
         self.navigate_to_route(
             res_utils.CONTRACT_DETAILS_SCREEN_ROUTE, self.project.contract.id

@@ -377,8 +377,11 @@ class Project(SQLModel, table=True):
     )
 
     @property
-    def client(self):
-        return self.contract.client
+    def client(self) -> Optional[Client]:
+        if self.contract:
+            return self.contract.client
+        else:
+            return None
 
     def get_brief_description(self):
         if len(self.description) <= 108:
