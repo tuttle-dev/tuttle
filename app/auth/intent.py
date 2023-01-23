@@ -77,7 +77,7 @@ class AuthIntent:
             result.log_message_if_any()
         return result
 
-    def get_user_if_exists(self) -> IntentResult[Union[Type[User], None]]:
+    def get_user_if_exists(self) -> IntentResult[Optional[User]]:
         """
         Fetches the current user if it exists.
         Returns an IntentResult object with the status of the intent and other details

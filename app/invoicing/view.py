@@ -21,7 +21,7 @@ from loguru import logger
 from pandas import DataFrame
 from res import colors, dimens, fonts, res_utils
 
-from tuttle.model import Invoice, Project
+from tuttle.model import Invoice, Project, User
 
 from .intent import InvoicingIntent
 
@@ -143,16 +143,53 @@ class InvoicingListView(TuttleView, UserControl):
         self.contacts = {}
         self.active_projects = {}
         self.editor = None
+        self.time_tracking_data: DataFrame = None
+        self.user: User = None
+
+    def load_user_data(
+        self,
+    ):
+        """Loads the user for payment info"""
+        user_result: IntentResult = self.intent.get_user()
+        if user_result.was_intent_successful:
+            self.user: User = user_result.data
+            self.is_user_missing_payment_info()
+        else:
+            self.show_snack(
+                "Something went wrong! Failed to load your info.",
+                is_error=True,
+            )
+
+    def is_user_missing_payment_info(
+        self,
+    ):
+        """Checks if the user has set up their payment info.
+        Displays a snack if they haven't."""
+        if not self.user.VAT_number:
+            self.show_snack(
+                "You have not set up your VAT number yet. "
+                "Please do so in the profile section",
+                is_error=True,
+            )
+            return True
+        if self.user.bank_account_not_set:
+            self.show_snack(
+                "You have not set up your payment information yet. "
+                "Please do so in the profile section",
+                is_error=True,
+            )
+            return True
+        return False
 
     def parent_intent_listener(self, intent: str, data: any):
         """Handles the intent from the parent view"""
         if intent == res_utils.CREATE_INVOICE_INTENT:
             # create a new invoice
-            
-            timetracking_data = self.intent.get_time_tracking_data_as_dataframe()
-            if not isinstance(timetracking_data, DataFrame):
+            if self.is_user_missing_payment_info():
+                return  # can't create invoice without payment info
+            if self.time_tracking_data is None:
                 self.show_snack("Please set timetracking data!", is_error=True)
-                return
+                return  # can't create invoice without time tracking data
             if self.editor is not None:
                 self.editor.close_dialog()
             self.editor = InvoicingEditorPopUp(
@@ -321,7 +358,8 @@ class InvoicingListView(TuttleView, UserControl):
         self.mounted = True
         self.loading_indicator.visible = True
         self.active_projects = self.intent.get_active_projects_as_map()
-
+        self.timetracking_data = self.intent.get_time_tracking_data_as_dataframe()
+        self.load_user_data()
         self.invoices_to_display = self.intent.get_all_invoices_as_map()
         count = len(self.invoices_to_display)
         self.loading_indicator.visible = False

@@ -15,10 +15,11 @@ from timetracking.data_source import TimeTrackingDataFrameSource
 from timetracking.intent import TimeTrackingIntent
 
 from tuttle import invoicing, mail, os_functions, rendering, timetracking
-from tuttle.model import Invoice, Project, Timesheet
+from tuttle.model import Invoice, Project, Timesheet, User
 from tuttle.os_functions import preview_pdf
 
 from .data_source import InvoicingDataSource
+from auth.intent import AuthIntent
 
 
 class InvoicingIntent:
@@ -34,12 +35,19 @@ class InvoicingIntent:
             reference to the invoicing data source
         _projects_intent : ProjectsIntent
             reference to the ProjectsIntent for forwarding project related intents
+        _auth_intent : AuthIntent
+            reference to the AuthIntent for forwarding auth related intents
         """
         self._timetracking_intent = TimeTrackingIntent(client_storage=client_storage)
         self._projects_intent = ProjectsIntent()
         self._invoicing_data_source = InvoicingDataSource()
         self._timetracking_data_source = TimeTrackingDataFrameSource()
         self._user_data_source = UserDataSource()
+        self._auth_intent = AuthIntent()
+
+    def get_user(self) -> Optional[User]:
+        """Get the current user."""
+        return self._auth_intent.get_user_if_exists()
 
     def get_active_projects_as_map(self) -> Mapping[int, Project]:
         return self._projects_intent.get_active_projects_as_map()

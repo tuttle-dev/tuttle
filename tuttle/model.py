@@ -151,6 +151,19 @@ class User(SQLModel, table=True):
     # TODO: path to logo image
     logo: Optional[str]
 
+    @property
+    def bank_account_not_set(self) -> bool:
+        """True if bank account is not set."""
+        if not self.bank_account:
+            return True
+        if (
+            not self.bank_account.BIC
+            or not self.bank_account.IBAN
+            or not self.bank_account.name
+        ):
+            return True
+        return False
+
 
 class ICloudAccount(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
