@@ -358,7 +358,7 @@ class InvoicingListView(TuttleView, UserControl):
         self.mounted = True
         self.loading_indicator.visible = True
         self.active_projects = self.intent.get_active_projects_as_map()
-        self.timetracking_data = self.intent.get_time_tracking_data_as_dataframe()
+        self.time_tracking_data = self.intent.get_time_tracking_data_as_dataframe()
         self.load_user_data()
         self.invoices_to_display = self.intent.get_all_invoices_as_map()
         count = len(self.invoices_to_display)

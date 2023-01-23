@@ -476,6 +476,9 @@ class ContractEditorScreen(TuttleView, UserControl):
             )
             return  # error occurred, stop here
 
+        if not self.vat_rate:
+            self.vat_rate = CONTRACT_DEFAULT_VAT_RATE
+
         self.toggle_progress(is_on_going_action=True)
         result: IntentResult = self.intent.save_contract(
             title=self.title,
