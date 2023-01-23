@@ -31,6 +31,7 @@ from core.views import (
 )
 from preferences.intent import PreferencesIntent
 from preferences.model import Preferences
+from res import dimens
 from res.dimens import (
     MIN_WINDOW_HEIGHT,
     MIN_WINDOW_WIDTH,
@@ -40,8 +41,8 @@ from res.dimens import (
     SPACE_XS,
 )
 from res.theme import THEME_MODES
-from res import dimens
-from .model import CloudAccounts
+
+from tuttle.cloud import CloudProvider
 
 
 class PreferencesScreen(TuttleView, UserControl):
@@ -51,7 +52,7 @@ class PreferencesScreen(TuttleView, UserControl):
         on_theme_changed,
     ):
         super().__init__(params=params)
-        self.intent = PreferencesIntent(client_storage=params.local_storage)
+        self.intent = PreferencesIntent(client_storage=params.client_storage)
         self.on_theme_changed_callback = on_theme_changed
         self.preferences: Optional[Preferences] = None
         self.currencies = []
@@ -157,7 +158,7 @@ class PreferencesScreen(TuttleView, UserControl):
         self.cloud_provider_control = get_dropdown(
             label="Cloud Provider",
             on_change=self.on_cloud_provider_selected,
-            items=[item.value for item in CloudAccounts],
+            items=[item.value for item in CloudProvider],
         )
         self.cloud_account_id_control = get_std_txt_field(
             label="Cloud Account Name",
@@ -193,6 +194,10 @@ class PreferencesScreen(TuttleView, UserControl):
                     "Cloud",
                     icons.CLOUD_OUTLINED,
                     [
+                        views.get_body_txt(
+                            txt="Setting up your cloud account will enable you to import time tracking data from your cloud calendar.",
+                        ),
+                        smSpace,
                         self.cloud_provider_control,
                         self.cloud_account_id_control,
                     ],

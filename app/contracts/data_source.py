@@ -58,42 +58,14 @@ class ContractDataSource(SQLModelDataSourceMixin):
                 exception=e,
             )
 
-    def save_or_update_contract(
+    def save_contract(
         self,
-        title: str,
-        signature_date: datetime.date,
-        start_date: datetime.date,
-        end_date: Optional[datetime.date],
-        client: Client,
-        rate: str,
-        currency: str,
-        VAT_rate: str,
-        unit: TimeUnit,
-        units_per_workday: str,
-        volume: Optional[str],
-        term_of_payment: Optional[str],
-        billing_cycle: Cycle = Cycle.hourly,
-        is_completed: bool = False,
-        contract: Optional[Contract] = None,
-    ) -> IntentResult[Union[Contract, None]]:
+        contract: Contract,
+    ) -> IntentResult[Optional[Contract]]:
         """Creates or updates a contract in the database
 
         Args:
-            title (str): The title of the contract
-            signature_date (datetime.date): The date the contract was signed
-            start_date (datetime.date): The start date of the contract
-            end_date (Optional[datetime.date]): The end date of the contract
-            client (Client): The client associated with the contract
-            rate (str): The rate for the contract
-            currency (str): The currency for the contract
-            VAT_rate (str): The VAT rate for the contract
-            unit (TimeUnit): The unit of time for the contract
-            units_per_workday (str): The number of units per workday
-            volume (Optional[str]): The volume of the contract
-            term_of_payment (Optional[str]): The term of payment for the contract
-            billing_cycle (Cycle): The billing cycle for the contract
-            is_completed (bool): Indicates if the contract is completed or not
-            contract (Optional[Contract]): The contract to update
+            contract Contract: The contract to save
 
         Returns:
             IntentResult:
@@ -104,23 +76,6 @@ class ContractDataSource(SQLModelDataSourceMixin):
         """
 
         try:
-            if not contract:
-                # Create a new contract
-                contract = Contract()
-            contract.title = title
-            contract.signature_date = signature_date
-            contract.start_date = start_date
-            contract.end_date = end_date
-            contract.client = client
-            contract.rate = rate
-            contract.currency = currency
-            contract.VAT_rate = VAT_rate
-            contract.unit = unit
-            contract.units_per_workday = units_per_workday
-            contract.volume = volume
-            contract.term_of_payment = term_of_payment
-            contract.billing_cycle = billing_cycle
-            contract.is_completed = is_completed
             self.store(contract)
             return IntentResult(
                 was_intent_successful=True,

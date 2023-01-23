@@ -20,7 +20,7 @@ import sqlmodel
 from auth.view import ProfileScreen, SplashScreen
 from contracts.view import ContractEditorScreen, ViewContractScreen
 from core.abstractions import TuttleView, TuttleViewParams
-from core.local_storage_impl import ClientStorageImpl
+from core.client_storage_impl import ClientStorageImpl
 from core.models import RouteView
 from core.utils import AlertDialogControls
 from core.views import get_heading
@@ -57,8 +57,8 @@ class TuttleApp:
         self.page.title = "Tuttle"
         self.page.fonts = APP_FONTS
         self.page.theme = APP_THEME
-        self.local_storage = ClientStorageImpl(page=self.page)
-        preferences = PreferencesIntent(self.local_storage)
+        self.client_storage = ClientStorageImpl(page=self.page)
+        preferences = PreferencesIntent(self.client_storage)
         preferences_result = preferences.get_preference_by_key(
             PreferencesStorageKeys.theme_mode_key
         )
@@ -70,7 +70,7 @@ class TuttleApp:
         self.page.theme_mode = theme
         self.page.window_min_width = MIN_WINDOW_WIDTH
         self.page.window_min_height = MIN_WINDOW_HEIGHT
-        self.page.window_width = MIN_WINDOW_WIDTH * 2
+        self.page.window_width = MIN_WINDOW_HEIGHT * 3
         self.page.window_height = MIN_WINDOW_HEIGHT * 2
         self.file_picker = FilePicker()
         self.page.overlay.append(self.file_picker)
@@ -139,7 +139,7 @@ class TuttleApp:
     def show_snack(
         self,
         message: str,
-        is_error: bool = True,
+        is_error: bool = False,
         action_label: Optional[str] = None,
         action_callback: Optional[Callable] = None,
     ):
@@ -269,7 +269,9 @@ class TuttleApp:
 
     def store_demo_timetracking_dataframe(self, time_tracking_data: DataFrame):
         """Caches the time tracking dataframe created from a demo installation"""
-        self.timetracking_intent = TimeTrackingIntent(local_storage=self.local_storage)
+        self.timetracking_intent = TimeTrackingIntent(
+            client_storage=self.client_storage
+        )
         self.timetracking_intent.set_timetracking_data(data=time_tracking_data)
 
     def install_demo_data(self):
@@ -313,7 +315,7 @@ class TuttleRoutes:
             show_snack=app.show_snack,
             dialog_controller=app.control_alert_dialog,
             on_navigate_back=app.on_view_pop,
-            local_storage=app.local_storage,
+            client_storage=app.client_storage,
             upload_file_callback=app.upload_file_callback,
             pick_file_callback=app.pick_file_callback,
         )

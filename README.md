@@ -47,6 +47,45 @@ We develop the solution as a desktop application. Sensitive financial data is pr
 
 Desktop apps are great - let's have more of them. We are consciously developing a desktop app with local data storage, not a web app, since your business data is none of our business.
 
+
+## Features
+
+
+### Business Data Management
+
+Manage your business contacts and contract terms for your project - all in one place.
+
+<img src="assets/images/screenshot-contracts.png" width=768 />
+
+### Time Tracking
+
+Track the time you spend on your projects. Import from your cloud calendar or from your favorite time tracking tool.
+
+<img src="assets/images/screenshot-timetracking.png" width=768 />
+
+
+### Invoicing
+
+Generate invoices and timesheets automatically from your time tracking data. Export to PDF and send via email.
+
+<img src="assets/images/screenshot-invoicing.png" width=768 />
+
+
+## Roadmap
+
+### Income Forecasting
+
+Project your income for the next months based on your project planning. See how changes in your schedule affect your bottom line.
+
+### Expense Tracking & Forecasting
+
+Track regular expenses, taxes and social security contributions. Estimate them for the future based on expected revenue.
+
+### Safe to Spend
+
+Calculate your effective income and see how much you can spend without risking your financial security.
+
+
 ## Prototype Test
 
 ### Setup
@@ -55,7 +94,13 @@ Desktop apps are great - let's have more of them. We are consciously developing 
 
 2. We recommend installation into a new [virtual environment](https://calmcode.io/virtualenv/intro.html).
 
-3. From the repository's directory, install the Python module in development mode:
+3. Install the Python module in development mode:
+
+```shell
+$ python setup.py develop
+```
+
+or
 
 ```shell
 pip install -e .

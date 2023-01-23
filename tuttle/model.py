@@ -106,18 +106,31 @@ class Address(SQLModel, table=True):
 
 
 class User(SQLModel, table=True):
+    """User of the application, a freelancer."""
+
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
-    subtitle: str
-    website: Optional[str]
-    email: str
-    phone_number: str
+    subtitle: str = Field(
+        description="Role or job title of the user, e.g. 'Freelance web developer'."
+    )
+    website: Optional[str] = Field(
+        default=None,
+        description="URL of the user's website.",
+    )
+    email: str = Field(description="Email address of the user.")
+    phone_number: Optional[str] = Field(
+        default=None,
+        description="Phone number of the user.",
+    )
     profile_photo_path: Optional[str] = Field(default=None)
     address_id: Optional[int] = Field(default=None, foreign_key="address.id")
     address: Optional[Address] = Relationship(
-        back_populates="users", sa_relationship_kwargs={"lazy": "subquery"}
+        back_populates="users",
+        sa_relationship_kwargs={"lazy": "subquery"},
     )
-    VAT_number: Optional[str]
+    VAT_number: str = Field(
+        description="Value Added Tax number of the user, legally required for invoices.",
+    )
     # User 1:1* ICloudAccount
     icloud_account_id: Optional[int] = Field(
         default=None, foreign_key="icloudaccount.id"
@@ -137,6 +150,19 @@ class User(SQLModel, table=True):
     )
     # TODO: path to logo image
     logo: Optional[str]
+
+    @property
+    def bank_account_not_set(self) -> bool:
+        """True if bank account is not set."""
+        if not self.bank_account:
+            return True
+        if (
+            not self.bank_account.BIC
+            or not self.bank_account.IBAN
+            or not self.bank_account.name
+        ):
+            return True
+        return False
 
 
 class ICloudAccount(SQLModel, table=True):
@@ -238,6 +264,9 @@ class Client(SQLModel, table=True):
     # non-invoice related contact person?
 
 
+CONTRACT_DEFAULT_VAT_RATE = 0.19
+
+
 class Contract(SQLModel, table=True):
     """A contract defines the business conditions of a project"""
 
@@ -269,7 +298,7 @@ class Contract(SQLModel, table=True):
     currency: str  # TODO: currency representation
     VAT_rate: Decimal = Field(
         description="VAT rate applied to the contractual rate.",
-        default=0.19,  # TODO: configure by country?
+        default=CONTRACT_DEFAULT_VAT_RATE,  # TODO: configure by country?
     )
     unit: TimeUnit = Field(
         description="Unit of time tracked. The rate applies to this unit.",
@@ -287,7 +316,10 @@ class Contract(SQLModel, table=True):
         description="How many days after receipt of invoice this invoice is due.",
         default=31,
     )
-    billing_cycle: Cycle = Field(sa_column=sqlalchemy.Column(sqlalchemy.Enum(Cycle)))
+    billing_cycle: Cycle = Field(
+        sa_column=sqlalchemy.Column(sqlalchemy.Enum(Cycle)),
+        description="How often is an invoice sent?",
+    )
     projects: List["Project"] = Relationship(
         back_populates="contract", sa_relationship_kwargs={"lazy": "subquery"}
     )
@@ -311,7 +343,7 @@ class Contract(SQLModel, table=True):
         today = datetime.date.today()
         return self.start_date > today
 
-    def get_status(self) -> str:
+    def get_status(self, default: str = "All") -> str:
         if self.is_active():
             return "Active"
         elif self.is_upcoming():
@@ -320,7 +352,7 @@ class Contract(SQLModel, table=True):
             return "Completed"
         else:
             # default
-            return "All"
+            return default
 
 
 class Project(SQLModel, table=True):
@@ -358,8 +390,11 @@ class Project(SQLModel, table=True):
     )
 
     @property
-    def client(self):
-        return self.contract.client
+    def client(self) -> Optional[Client]:
+        if self.contract:
+            return self.contract.client
+        else:
+            return None
 
     def get_brief_description(self):
         if len(self.description) <= 108:
@@ -378,7 +413,7 @@ class Project(SQLModel, table=True):
         today = datetime.date.today()
         return self.start_date > today
 
-    def get_status(self) -> str:
+    def get_status(self, default: str = "") -> str:
         if self.is_active():
             return "Active"
         elif self.is_upcoming():
@@ -387,7 +422,7 @@ class Project(SQLModel, table=True):
             return "Completed"
         else:
             # default
-            return "All"
+            return default
 
 
 class TimeTrackingItem(SQLModel, table=True):
@@ -396,18 +431,24 @@ class TimeTrackingItem(SQLModel, table=True):
     timesheet_id: Optional[int] = Field(default=None, foreign_key="timesheet.id")
     timesheet: Optional["Timesheet"] = Relationship(back_populates="items")
     #
-    begin: datetime.datetime
-    end: Optional[datetime.datetime]
-    duration: datetime.timedelta
-    title: str
-    tag: str
-    description: Optional[str]
+    begin: datetime.datetime = Field(description="Start time of the time interval.")
+    end: Optional[datetime.datetime] = Field(
+        description="End time of the time interval."
+    )
+    duration: datetime.timedelta = Field(description="Duration of the time interval.")
+    title: str = Field(description="A short description of the time interval.")
+    tag: str = Field(
+        description="A short tag to identify the project the time interval belongs to."
+    )
+    description: Optional[str] = Field(
+        description="A longer description of the time interval."
+    )
 
 
 class Timesheet(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     title: str
-    date: datetime.date
+    date: datetime.date = Field(description="The date of creation of the timesheet")
     # period: str
     # table: pandas.DataFrame
     # TODO: store dataframe as dict
@@ -420,7 +461,7 @@ class Timesheet(SQLModel, table=True):
     )
     # invoice: "Invoice" = Relationship(back_populates="timesheet")
     # period: str
-    comment: Optional[str]
+    comment: Optional[str] = Field(description="A comment on the timesheet.")
     items: List[TimeTrackingItem] = Relationship(back_populates="timesheet")
 
     # class Config:
@@ -448,7 +489,9 @@ class Invoice(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     number: str
     # date and time
-    date: datetime.date
+    date: datetime.date = Field(
+        description="The date of the invoice",
+    )
     # due_date: datetime.date
     # sent_date: datetime.date
     # Invoice 1:n Timesheet ?
@@ -469,14 +512,20 @@ class Invoice(SQLModel, table=True):
     # status -- corresponds to InvoiceStatus enum above
     sent: Optional[bool] = Field(default=False)
     paid: Optional[bool] = Field(default=False)
-    cancelled: Optional[bool] = Field(default=False)
+    cancelled: Optional[bool] = Field(
+        default=False,
+        description="If the invoice has been cancelled, e.g. because it was incorrect.",
+    )
     # payment: Optional["Payment"] = Relationship(back_populates="invoice")
     # invoice items
     items: List["InvoiceItem"] = Relationship(
         back_populates="invoice",
         sa_relationship_kwargs={"lazy": "subquery"},
     )
-    rendered: bool = Field(default=False)
+    rendered: bool = Field(
+        default=False,
+        description="If the invoice has been rendered as a PDF.",
+    )
 
     #
     @property
@@ -516,7 +565,9 @@ class Invoice(SQLModel, table=True):
     @property
     def prefix(self):
         """A string that can be used as the prefix of a file name, or a folder name."""
-        client_suffix = self.client.name.lower().split()[0]
+        client_suffix = ""
+        if self.client:
+            client_suffix = self.client.name.lower().split()[0]
         prefix = f"{self.number}-{client_suffix}"
         return prefix
 
@@ -573,7 +624,3 @@ class TimelineItem(SQLModel, table=True):
         )
     )
     content: str
-
-
-class Settings(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
