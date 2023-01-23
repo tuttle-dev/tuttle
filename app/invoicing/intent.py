@@ -117,10 +117,21 @@ class InvoicingIntent:
 
             if render:
                 # TODO: render timesheet
-
+                user = self._user_data_source.get_user()
+                try:
+                    rendering.render_timesheet(
+                        user=user,
+                        timesheet=timesheet,
+                        out_dir=Path.home() / ".tuttle" / "Timesheets",
+                    )
+                    logger.info(f"✅ rendered timesheet for {project.title}")
+                except Exception as ex:
+                    logger.error(
+                        f"❌ Error rendering timesheet for {project.title}: {ex}"
+                    )
+                    logger.exception(ex)
                 # render invoice
                 try:
-                    user = self._user_data_source.get_user()
                     rendering.render_invoice(
                         user=user,
                         invoice=invoice,

@@ -25,6 +25,8 @@ from tuttle.model import (
     BankAccount,
     Invoice,
     InvoiceItem,
+    Timesheet,
+    TimeTrackingItem,
 )
 from tuttle import rendering
 
@@ -129,6 +131,46 @@ def invoice_number_counting():
 invoice_number_counter = invoice_number_counting()
 
 
+def create_fake_timesheet(
+    project: Project,
+    fake: faker.Faker,
+) -> Timesheet:
+    """
+    Create a fake timesheet object with random values.
+
+    Args:
+    project (Project): The project associated with the timesheet.
+    fake (faker.Faker): An instance of the Faker class to generate random values.
+
+    Returns:
+    Timesheet: A fake timesheet object.
+    """
+    timesheet = Timesheet(
+        title=fake.bs(),
+        comment=fake.paragraph(nb_sentences=2),
+        date=datetime.date.today(),
+        project=project,
+    )
+    number_of_items = fake.random_int(min=1, max=5)
+    for _ in range(number_of_items):
+        unit = fake.random_element(elements=("hours", "days"))
+        if unit == "hours":
+            unit_price = abs(round(numpy.random.normal(50, 20), 2))
+        elif unit == "days":
+            unit_price = abs(round(numpy.random.normal(400, 200), 2))
+        time_tracking_item = TimeTrackingItem(
+            timesheet=timesheet,
+            begin=fake.date_time_this_year(before_now=True, after_now=False),
+            end=fake.date_time_this_year(before_now=True, after_now=False),
+            duration=datetime.timedelta(hours=fake.random_int(min=1, max=8)),
+            title=f"{fake.bs()} for #{project.tag}",
+            tag=project.tag,
+            description=fake.paragraph(nb_sentences=2),
+        )
+        timesheet.items.append(time_tracking_item)
+    return timesheet
+
+
 def create_fake_invoice(
     project: Project,
     user: User,
@@ -146,7 +188,7 @@ def create_fake_invoice(
     """
     invoice_number = next(invoice_number_counter)
     invoice = Invoice(
-        number=invoice_number,
+        number=str(invoice_number),  # TODO: replace with generated number
         date=datetime.date.today(),
         sent=fake.pybool(),
         paid=fake.pybool(),

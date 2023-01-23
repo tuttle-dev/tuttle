@@ -439,9 +439,7 @@ class TimeTrackingItem(SQLModel, table=True):
     timesheet: Optional["Timesheet"] = Relationship(back_populates="items")
     #
     begin: datetime.datetime = Field(description="Start time of the time interval.")
-    end: Optional[datetime.datetime] = Field(
-        description="End time of the time interval."
-    )
+    end: datetime.datetime = Field(description="End time of the time interval.")
     duration: datetime.timedelta = Field(description="Duration of the time interval.")
     title: str = Field(description="A short description of the time interval.")
     tag: str = Field(
