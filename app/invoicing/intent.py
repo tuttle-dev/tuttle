@@ -75,7 +75,7 @@ class InvoicingIntent:
             logger.exception(ex)
             return IntentResult(
                 was_intent_successful=False,
-                message="Could not delete invoice. Check the log for details.",
+                message="Could not delete invoice. ",
             )
 
     def create_invoice(
@@ -137,7 +137,7 @@ class InvoicingIntent:
                 error_msg=error_message,
             )
         except Exception as ex:
-            error_message = "Failed to create invoice. Check the logs for more details."
+            error_message = "Failed to create invoice. "
             logger.error(error_message)
             logger.exception(ex)
             return IntentResult(
@@ -200,7 +200,7 @@ class InvoicingIntent:
             logger.exception(ex)
             return IntentResult(
                 was_intent_successful=False,
-                error_msg="Failed to send the invoice by mail. Check the logs for more details.",
+                error_msg="Failed to send the invoice by mail. ",
             )
 
     def generate_invoice_doc(self, invoice: Invoice) -> IntentResult:
@@ -231,7 +231,7 @@ class InvoicingIntent:
             logger.exception(ex)
             return IntentResult(
                 was_intent_successful=False,
-                error_msg="Failed to toggle the invoice sent status. Check the logs for more details.",
+                error_msg="Failed to toggle the invoice sent status. ",
             )
 
     def toggle_invoice_paid_status(self, invoice: Invoice) -> IntentResult[Invoice]:
@@ -258,7 +258,7 @@ class InvoicingIntent:
             logger.exception(ex)
             return IntentResult(
                 was_intent_successful=False,
-                error_msg="Failed to toggle the invoice paid status. Check the logs for more details.",
+                error_msg="Failed to toggle the invoice paid status. ",
             )
 
     def toggle_invoice_cancelled_status(
@@ -287,7 +287,7 @@ class InvoicingIntent:
             logger.exception(ex)
             return IntentResult(
                 was_intent_successful=False,
-                error_msg="Failed to toggle the invoice cancelled status. Check the logs for more details.",
+                error_msg="Failed to toggle the invoice cancelled status. ",
             )
 
     def view_invoice(self, invoice: Invoice) -> IntentResult[None]:

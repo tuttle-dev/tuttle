@@ -120,6 +120,7 @@ class ContactEditorPopUp(DialogHandler):
         self,
         dialog_controller: Callable[[any, utils.AlertDialogControls], None],
         on_submit: Callable,
+        on_error: Callable,
         contact: Optional[Contact] = None,
     ):
         # dimensions of the pop up
@@ -234,6 +235,7 @@ class ContactEditorPopUp(DialogHandler):
         self.city = ""
         self.country = ""
         self.on_submit_callback = on_submit
+        self.on_error_callback = on_error
 
     def on_fname_changed(self, e):
         """Called when the first name field is changed"""
@@ -308,6 +310,12 @@ class ContactEditorPopUp(DialogHandler):
             else self.contact.address.country
         )
         self.contact.address = self.address
+        if self.contact.address.is_empty:
+            self.on_error_callback("Address cannot be empty")
+            return
+        if not self.contact.first_name or not self.contact.last_name:
+            self.on_error_callback("First and last name cannot be empty")
+            return
         self.close_dialog()
         self.on_submit_callback(self.contact)
 
@@ -357,6 +365,7 @@ class ContactsListView(TuttleView, UserControl):
             self.editor = ContactEditorPopUp(
                 dialog_controller=self.dialog_controller,
                 on_submit=self.on_new_contact_added,
+                on_error=lambda error: self.show_snack(error, is_error=True),
             )
             self.editor.open_dialog()
         elif intent == res_utils.RELOAD_INTENT:
@@ -402,6 +411,7 @@ class ContactsListView(TuttleView, UserControl):
             dialog_controller=self.dialog_controller,
             contact=contact,
             on_submit=self.on_update_contact,
+            on_error=lambda error: self.show_snack(error, is_error=True),
         )
 
         self.editor.open_dialog()

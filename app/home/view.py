@@ -24,7 +24,7 @@ from flet import (
 )
 
 from clients.view import ClientsListView
-from contacts.view import ContactEditorPopUp, ContactsListView
+from contacts.view import ContactsListView
 from contracts.view import ContractsListView
 from core import utils, views
 from core.abstractions import DialogHandler, TuttleView, TuttleViewParams
