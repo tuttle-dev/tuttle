@@ -63,7 +63,7 @@ def get_action_bar(
         border=border.only(
             bottom=border.BorderSide(
                 width=0.2,
-                color=colors.BORDER_COLOR,
+                color=colors.BORDER_DARK_COLOR,
             )
         ),
         content=Row(
@@ -413,7 +413,7 @@ class HomeScreen(TuttleView, UserControl):
             content=views.get_heading(),
             alignment=alignment.center,
             border=border.only(
-                top=border.BorderSide(width=0.2, color=colors.BORDER_COLOR)
+                top=border.BorderSide(width=0.2, color=colors.BORDER_DARK_COLOR)
             ),
             height=dimens.FOOTER_HEIGHT,
         )
@@ -446,7 +446,7 @@ class HomeScreen(TuttleView, UserControl):
             border=border.only(
                 right=border.BorderSide(
                     width=0.2,
-                    color=colors.BORDER_COLOR,
+                    color=colors.BORDER_DARK_COLOR,
                 )
             ),
         )
