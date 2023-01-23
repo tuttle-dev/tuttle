@@ -15,7 +15,6 @@ from flet import (
     ListTile,
     ResponsiveRow,
     Row,
-    Text,
     TextButton,
     UserControl,
     border_radius,
@@ -27,8 +26,6 @@ from flet import (
 from clients.view import ClientViewPopUp
 from core import utils, views
 from core.abstractions import TuttleView, TuttleViewParams
-from core.charts import BarChart
-from core.date_time_utils import get_last_seven_days
 from core.intent_result import IntentResult
 from projects.intent import ProjectsIntent
 from res import colors, dimens, fonts, res_utils
@@ -312,15 +309,17 @@ class ViewProjectScreen(TuttleView, UserControl):
         self.project_description_control.value = self.project.description
         self.project_start_date_control.value = f"Start Date: {self.project.start_date}"
         self.project_end_date_control.value = f"End Date: {self.project.end_date}"
-        self.project_status_control.value = f"Status {self.project.get_status()}"
+        _status = self.project.get_status(default="")
+        if _status:
+            self.project_status_control.value = f"Status {_status}"
         self.project_tagline_control.value = f"{self.project.tag}"
         is_project_completed = self.project.is_completed
-        self.mark_as_complete_btn.icon = (
+        self.toggle_complete_status_btn.icon = (
             icons.RADIO_BUTTON_CHECKED_OUTLINED
             if is_project_completed
             else icons.RADIO_BUTTON_UNCHECKED_OUTLINED
         )
-        self.mark_as_complete_btn.tooltip = (
+        self.toggle_complete_status_btn.tooltip = (
             "Mark as incomplete" if is_project_completed else "Mark as complete"
         )
 
@@ -399,7 +398,7 @@ class ViewProjectScreen(TuttleView, UserControl):
             icon_size=dimens.ICON_SIZE,
         )
 
-        self.mark_as_complete_btn = IconButton(
+        self.toggle_complete_status_btn = IconButton(
             icon=icons.RADIO_BUTTON_UNCHECKED_OUTLINED,
             icon_color=colors.PRIMARY_COLOR,
             tooltip="Mark as complete",
@@ -500,7 +499,7 @@ class ViewProjectScreen(TuttleView, UserControl):
                                                         run_spacing=dimens.SPACE_STD,
                                                         controls=[
                                                             self.edit_project_btn,
-                                                            self.mark_as_complete_btn,
+                                                            self.toggle_complete_status_btn,
                                                             self.delete_project_btn,
                                                         ],
                                                     ),
@@ -705,6 +704,7 @@ class ProjectsListView(TuttleView, UserControl):
         if count == 0:
             # Show the no projects message
             self.no_projects_control.visible = True
+            self.projects_container.controls.clear()
         else:
             self.no_projects_control.visible = False
             self.display_currently_filtered_projects()

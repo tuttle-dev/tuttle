@@ -238,6 +238,9 @@ class Client(SQLModel, table=True):
     # non-invoice related contact person?
 
 
+CONTRACT_DEFAULT_VAT_RATE = 0.19
+
+
 class Contract(SQLModel, table=True):
     """A contract defines the business conditions of a project"""
 
@@ -269,7 +272,7 @@ class Contract(SQLModel, table=True):
     currency: str  # TODO: currency representation
     VAT_rate: Decimal = Field(
         description="VAT rate applied to the contractual rate.",
-        default=0.19,  # TODO: configure by country?
+        default=CONTRACT_DEFAULT_VAT_RATE,  # TODO: configure by country?
     )
     unit: TimeUnit = Field(
         description="Unit of time tracked. The rate applies to this unit.",
@@ -311,7 +314,7 @@ class Contract(SQLModel, table=True):
         today = datetime.date.today()
         return self.start_date > today
 
-    def get_status(self) -> str:
+    def get_status(self, default: str = "All") -> str:
         if self.is_active():
             return "Active"
         elif self.is_upcoming():
@@ -320,7 +323,7 @@ class Contract(SQLModel, table=True):
             return "Completed"
         else:
             # default
-            return "All"
+            return default
 
 
 class Project(SQLModel, table=True):
@@ -378,7 +381,7 @@ class Project(SQLModel, table=True):
         today = datetime.date.today()
         return self.start_date > today
 
-    def get_status(self) -> str:
+    def get_status(self, default: str = "") -> str:
         if self.is_active():
             return "Active"
         elif self.is_upcoming():
@@ -387,7 +390,7 @@ class Project(SQLModel, table=True):
             return "Completed"
         else:
             # default
-            return "All"
+            return default
 
 
 class TimeTrackingItem(SQLModel, table=True):

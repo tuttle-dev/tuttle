@@ -22,10 +22,6 @@ class ContractsIntent:
         self._clients_intent = ClientsIntent()
         self._contacts_intent = ContactsIntent()
         self._data_source = ContractDataSource()
-        self._all_contracts_cache: Mapping[str, Contract] = None
-        self._completed_contracts_cache: Mapping[str, Contract] = None
-        self._active_contracts_cache: Mapping[str, Contract] = None
-        self._upcoming_contracts_cache: Mapping[str, Contract] = None
 
     def get_preferred_currency_intent(
         self, client_storage: ClientStorage
@@ -44,12 +40,12 @@ class ContractsIntent:
             preference_key=PreferencesStorageKeys.default_currency_key
         )
 
-    def get_contract_by_id(self, contractId) -> IntentResult:
+    def get_contract_by_id(self, contractId) -> IntentResult[Optional[Contract]]:
         """
         Retrieves a contract by its id
 
         Parameters:
-        contractId (str): The id of the contract to retrieve
+        contractId : The id of the contract to retrieve
 
         Returns:
         IntentResult : An intent result object indicating the success or failure of the operation and the contract details if successful
@@ -105,9 +101,9 @@ class ContractsIntent:
         term_of_payment: Optional[str],
         billing_cycle: Cycle = Cycle.hourly,
         is_completed: bool = False,
-        contract_to_update: Optional[Contract] = None,
+        contract: Optional[Contract] = None,
     ) -> IntentResult:
-        """Saves or updates a contract
+        """Creates a new contract or updates the given contract
 
         Parameters:
             title (str) : The title of the contract
@@ -130,116 +126,100 @@ class ContractsIntent:
         IntentResult : An intent result object indicating the success or failure of the operation
 
         """
-        result: IntentResult = self._data_source.save_or_update_contract(
-            title=title,
-            signature_date=signature_date,
-            start_date=start_date,
-            end_date=end_date,
-            client=client,
-            rate=rate,
-            currency=currency,
-            VAT_rate=VAT_rate,
-            unit=unit,
-            units_per_workday=units_per_workday,
-            volume=volume,
-            term_of_payment=term_of_payment,
-            billing_cycle=billing_cycle,
-            is_completed=is_completed,
-            contract=contract_to_update,
+        is_updating = True
+        if not contract:
+            # Create a new contract
+            contract = Contract()
+            is_updating = False
+        contract.title = title
+        contract.signature_date = signature_date
+        contract.start_date = start_date
+        contract.end_date = end_date
+        contract.client = client
+        contract.rate = rate
+        contract.currency = currency
+        contract.VAT_rate = VAT_rate
+        contract.unit = unit
+        contract.units_per_workday = units_per_workday
+        contract.volume = volume
+        contract.term_of_payment = term_of_payment
+        contract.billing_cycle = billing_cycle
+        contract.is_completed = is_completed
+        result: IntentResult = self._data_source.save_contract(
+            contract=contract,
         )
         if not result.was_intent_successful:
+            if is_updating:
+                # recover old contract state
+                old_contract_result: IntentResult = self.get_contract_by_id(contract.id)
+                result.data = (
+                    old_contract_result.data
+                    if old_contract_result.was_intent_successful
+                    else None
+                )
             result.error_msg = "Failed to save the contract. Verify the info and retry."
             result.log_message_if_any()
         return result
 
-    def get_all_contracts_as_map(
-        self, reload_cache: bool = False
-    ) -> Mapping[int, Contract]:
-        """Retrieves all completed contracts as a map
-
-        Parameters:
-        reload_cache (bool) : Whether to reload the cache or use the existing one (defaults to False)
-
-        Returns:
-        Mapping[str, Contract] : A map containing all completed contracts in the system
-        """
-        if self._all_contracts_cache and not reload_cache:
-            # return cached results
-            return self._all_contracts_cache
-        self._clear_cached_results()
+    def get_all_contracts_as_map(self) -> Mapping[int, Contract]:
+        """Retrieves all completed contracts as a map"""
         result = self._data_source.get_all_contracts()
         if result.was_intent_successful:
             contracts = result.data
             contracts_map = {contract.id: contract for contract in contracts}
-            self._all_contracts_cache = contracts_map
+            return contracts_map
         else:
             result.log_message_if_any()
-            self._all_contracts_cache = {}
-        return self._all_contracts_cache
+            return {}
 
-    def get_completed_contracts(self) -> Mapping[str, Contract]:
-        if not self._all_contracts_cache:
-            self.get_all_contracts_as_map()
-        if not self._completed_contracts_cache:
-            self._completed_contracts_cache = {}
-            for key in self._all_contracts_cache:
-                c = self._all_contracts_cache[key]
-                if c.is_completed:
-                    self._completed_contracts_cache[key] = c
-        return self._completed_contracts_cache
+    def get_completed_contracts(self) -> Mapping[int, Contract]:
+        """Retrieves all completed contracts as a map"""
+        _all_contracts = self.get_all_contracts_as_map()
+        _completed_contracts = {}
+        for key in _all_contracts:
+            c = _all_contracts[key]
+            if c.is_completed:
+                _completed_contracts[key] = c
+        return _completed_contracts
 
     def get_active_contracts(self):
-        if not self._all_contracts_cache:
-            self.get_all_contracts_as_map()
-        if not self._active_contracts_cache:
-            self._active_contracts_cache = {}
-            for key in self._all_contracts_cache:
-                c = self._all_contracts_cache[key]
-                if c.is_active():
-                    self._active_contracts_cache[key] = c
-        return self._active_contracts_cache
+        """Retrieves all active contracts as a map"""
+        _all_contracts = self.get_all_contracts_as_map()
+        _active_contracts = {}
+        for key in _all_contracts:
+            c = _all_contracts[key]
+            if c.is_active():
+                _active_contracts[key] = c
+        return _active_contracts
 
     def get_upcoming_contracts(self):
-        if not self._all_contracts_cache:
-            self.get_all_contracts_as_map()
-        if not self._upcoming_contracts_cache:
-            self._upcoming_contracts_cache = {}
-            for key in self._all_contracts_cache:
-                c = self._all_contracts_cache[key]
-                if c.is_upcoming():
-                    self._upcoming_contracts_cache[key] = c
-        return self._upcoming_contracts_cache
+        """Retrieves all upcoming contracts as a map"""
+        _all_contracts = self.get_all_contracts_as_map()
+        _upcoming_contracts = {}
+        for key in _all_contracts:
+            c = _all_contracts[key]
+            if c.is_upcoming():
+                _upcoming_contracts[key] = c
+        return _upcoming_contracts
 
     def delete_contract_by_id(self, contract_id: str):
+        """Deletes the contract with the given id"""
         result: IntentResult = self._data_source.delete_contract_by_id(contract_id)
         if not result.was_intent_successful:
             result.error_msg = "Failed to delete that contract! Please retry"
             result.log_message_if_any()
-        else:
-            self._remove_contract_from_cache(contract_id)
         return result
 
-    def _remove_contract_from_cache(self, contract_id: str):
-        if self._all_contracts_cache and contract_id in self._all_contracts_cache:
-            del self._all_contracts_cache[contract_id]
-
-        if (
-            self._completed_contracts_cache
-            and contract_id in self._completed_contracts_cache
-        ):
-            del self._completed_contracts_cache[contract_id]
-
-        if self._active_contracts_cache and contract_id in self._active_contracts_cache:
-            del self._active_contracts_cache[contract_id]
-
-        if (
-            self._upcoming_contracts_cache
-            and contract_id in self._upcoming_contracts_cache
-        ):
-            del self._upcoming_contracts_cache[contract_id]
-
-    def _clear_cached_results(self):
-        self._all_contracts_cache = None
-        self._completed_contracts_cache = None
-        self._active_contracts_cache = None
-        self._upcoming_contracts_cache = None
+    def toggle_complete_status(self, contract: Contract) -> IntentResult[Contract]:
+        """Toggles the completed status of the contract with the given id"""
+        contract.is_completed = not contract.is_completed
+        result: IntentResult = self._data_source.save_contract(contract=contract)
+        if not result.was_intent_successful:
+            # undo the change
+            contract.is_completed = not contract.is_completed
+            result.error_msg = (
+                "Failed to update the completed status of the contract. Please retry"
+            )
+            result.log_message_if_any()
+        result.data = contract
+        return result

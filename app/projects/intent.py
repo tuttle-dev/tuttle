@@ -51,7 +51,9 @@ class ProjectsIntent:
             log_message  : str  if an error or exception occurs
             exception : Exception if an exception occurs
         """
+        is_updating = True
         if not project:
+            is_updating = False
             # create a project, this is not an update
             project = Project()
 
@@ -66,6 +68,16 @@ class ProjectsIntent:
             project=project,
         )
         if not result.was_intent_successful:
+            if is_updating:
+                # recover old project
+                old_project_result = self._data_source.get_project_by_id(
+                    projectId=project.id
+                )
+                result.data = (
+                    old_project_result.data
+                    if old_project_result.was_intent_successful
+                    else None
+                )
             result.error_msg = "Failed to save the project. Please retry"
             result.log_message_if_any()
         return result
