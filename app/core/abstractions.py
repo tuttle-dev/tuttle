@@ -69,7 +69,7 @@ class TuttleView(ABC):
     def __init__(self, params: TuttleViewParams):
         super().__init__()
         self.navigate_to_route = params.navigate_to_route
-        self.show_snack = params.show_snack
+        self.show_snack: Callable[[str, bool], None] = params.show_snack
         self.dialog_controller = params.dialog_controller
         self.vertical_alignment_in_parent = params.vertical_alignment_in_parent
         self.horizontal_alignment_in_parent = params.horizontal_alignment_in_parent
