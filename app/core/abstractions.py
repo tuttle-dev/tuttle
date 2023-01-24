@@ -74,7 +74,7 @@ class TuttleView(ABC):
         self.vertical_alignment_in_parent = params.vertical_alignment_in_parent
         self.horizontal_alignment_in_parent = params.horizontal_alignment_in_parent
         self.keep_back_stack = params.keep_back_stack
-        self.on_navigate_back = params.on_navigate_back
+        self.navigate_back = params.on_navigate_back
         self.page_scroll_type = params.page_scroll_type
         self.upload_file_callback = params.upload_file_callback
         self.pick_file_callback = params.pick_file_callback

@@ -87,7 +87,6 @@ def is_empty_str(txt: str) -> bool:
     return len(txt.strip()) == 0
 
 
-
 def truncate_str(txt: str, max_chars: int = 25) -> str:
     if not txt:
         return ""
@@ -123,6 +122,12 @@ class TuttleComponentIcons(Enum):
     invoicing_selected_icon = icons.RECEIPT_ROUNDED
     datatable_icon = icons.TABLE_CHART
     datatable_selected_icon = icons.TABLE_CHART_ROUNDED
+    profile_icon = icons.PERSON_OUTLINE
+    profile_selected_icon = icons.PERSON_ROUNDED
+    payment_icon = icons.PAYMENT
+    payment_selected_icon = icons.PAYMENT_ROUNDED
+    profile_photo_icon = icons.PHOTO_OUTLINED
+    profile_photo_selected_icon = icons.PHOTO_ROUNDED
 
     def __str__(self) -> str:
         return str(self.value)

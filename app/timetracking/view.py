@@ -130,6 +130,14 @@ class NewTimeTrackPopUp(DialogHandler):
                         views.get_or_txt(show_lines=False, show=display_cloud_option),
                         space_between_cloud_controls,
                         views.get_secondary_btn(
+                            label="Upload a calendar (.ics) file",
+                            icon="calendar_month",
+                            on_click=lambda _: on_use_file_callback(is_ics=True),
+                            width=int(dialog_width * 0.9),
+                        ),
+                        views.get_or_txt(show_lines=False),
+                        views.xsSpace,
+                        views.get_secondary_btn(
                             label="Upload a spreadsheet",
                             icon="table_view",
                             on_click=lambda _: on_use_file_callback(
@@ -138,14 +146,6 @@ class NewTimeTrackPopUp(DialogHandler):
                             width=int(dialog_width * 0.9),
                         ),
                         views.xsSpace,
-                        views.get_or_txt(show_lines=False),
-                        views.xsSpace,
-                        views.get_secondary_btn(
-                            label="Upload a calendar (.ics) file",
-                            icon="calendar_month",
-                            on_click=lambda _: on_use_file_callback(is_ics=True),
-                            width=int(dialog_width * 0.9),
-                        ),
                     ],
                 ),
                 width=dialog_width,

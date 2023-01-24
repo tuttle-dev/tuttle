@@ -206,6 +206,30 @@ class ProjectStates(Enum):
     UPCOMING = 4
 
 
+def get_filter_button_label(state: ProjectStates):
+    """returns the label for the filter button"""
+    if state.value == ProjectStates.ACTIVE.value:
+        return "Active"
+    elif state.value == ProjectStates.UPCOMING.value:
+        return "Upcoming"
+    elif state.value == ProjectStates.COMPLETED.value:
+        return "Completed"
+    else:
+        return "All"
+
+
+def get_filter_button_tooltip(state: ProjectStates):
+    """returns the tooltip for the filter button"""
+    if state.value == ProjectStates.ACTIVE.value:
+        return "Not completed and not due."
+    elif state.value == ProjectStates.UPCOMING.value:
+        return "Scheduled for the future."
+    elif state.value == ProjectStates.COMPLETED.value:
+        return "Marked as completed."
+    else:
+        return "All projects."
+
+
 class ProjectFiltersView(UserControl):
     """Create and Handles projects view filtering buttons"""
 
@@ -216,7 +240,11 @@ class ProjectFiltersView(UserControl):
         self.onStateChangedCallback = onStateChanged
 
     def filter_button(
-        self, state: ProjectStates, label: str, onClick: Callable[[ProjectStates], None]
+        self,
+        state: ProjectStates,
+        label: str,
+        onClick: Callable[[ProjectStates], None],
+        tooltip: str,
     ):
         """creates a filter button for project status"""
         button = ElevatedButton(
@@ -227,6 +255,7 @@ class ProjectFiltersView(UserControl):
             color=colors.PRIMARY_COLOR
             if state == self.currentState
             else colors.GRAY_COLOR,
+            tooltip=tooltip,
             style=ButtonStyle(
                 elevation={
                     utils.PRESSED: 3,
@@ -246,24 +275,14 @@ class ProjectFiltersView(UserControl):
         self.update()
         self.onStateChangedCallback(state)
 
-    def get_filter_button_label(self, state: ProjectStates):
-        """returns the label for the filter button"""
-        if state.value == ProjectStates.ACTIVE.value:
-            return "Active"
-        elif state.value == ProjectStates.UPCOMING.value:
-            return "Upcoming"
-        elif state.value == ProjectStates.COMPLETED.value:
-            return "Completed"
-        else:
-            return "All"
-
     def set_filter_buttons(self):
         """sets the filter buttons for each project state"""
         for state in ProjectStates:
             button = self.filter_button(
-                label=self.get_filter_button_label(state),
+                label=get_filter_button_label(state),
                 state=state,
                 onClick=self.on_filter_button_clicked,
+                tooltip=get_filter_button_tooltip(state),
             )
             self.stateTofilterButtonsMap[state] = button
 
@@ -391,7 +410,7 @@ class ViewProjectScreen(TuttleView, UserControl):
         self.show_snack(msg, is_err)
         if not is_err:
             # go back, project has been deleted
-            self.on_navigate_back()
+            self.navigate_back()
 
     def build(self):
         """Called when page is built"""
@@ -454,7 +473,7 @@ class ViewProjectScreen(TuttleView, UserControl):
                         controls=[
                             IconButton(
                                 icon=icons.KEYBOARD_ARROW_LEFT,
-                                on_click=self.on_navigate_back,
+                                on_click=self.navigate_back,
                                 icon_size=dimens.ICON_SIZE,
                             ),
                             TextButton(
@@ -767,7 +786,7 @@ class ProjectEditorScreen(TuttleView, UserControl):
 
     def add_tag_to_dropdown_item_id(self, id, value):
         """given id and value, prepends a # symbol and returns as str"""
-        return f"#{id} {value}"
+        return f"{value}"
 
     def get_id_from_dropdown_selection(self, selected: str):
         """given a dropdown selection, extracts the id from the selection"""
@@ -921,7 +940,7 @@ class ProjectEditorScreen(TuttleView, UserControl):
         self.show_snack(msg, isError)
         if result.was_intent_successful:
             # re -route back
-            self.on_navigate_back()
+            self.navigate_back()
 
     def build(self):
         """Builds the view"""
@@ -985,7 +1004,7 @@ class ProjectEditorScreen(TuttleView, UserControl):
                                 controls=[
                                     IconButton(
                                         icon=icons.CHEVRON_LEFT_ROUNDED,
-                                        on_click=self.on_navigate_back,
+                                        on_click=self.navigate_back,
                                         icon_size=dimens.ICON_SIZE,
                                     ),
                                     self.form_title,

@@ -309,7 +309,7 @@ class ClientEditorPopUp(DialogHandler, UserControl):
 
     def get_contact_dropdown_item(self, key):
         if key is not None and key in self.contacts_as_map:
-            return f"#{key} {self.contacts_as_map[key].name}"
+            return f"{self.contacts_as_map[key].name}"
         return ""
 
     def on_contact_selected(self, e):

@@ -93,7 +93,6 @@ class ContractCard(UserControl):
                 run_spacing=0,
                 vertical_alignment=utils.CENTER_ALIGNMENT,
             ),
-            # add ResponsiveRow for billing cycle
             ResponsiveRow(
                 controls=[
                     views.get_body_txt(
@@ -104,6 +103,25 @@ class ContractCard(UserControl):
                     ),
                     views.get_body_txt(
                         txt=f"{self.contract.billing_cycle}",
+                        size=fonts.BODY_2_SIZE,
+                        col={"xs": "12"},
+                    ),
+                ],
+                spacing=dimens.SPACE_XS,
+                run_spacing=0,
+                vertical_alignment=utils.CENTER_ALIGNMENT,
+            ),
+            # add responsive row for contract volume
+            ResponsiveRow(
+                controls=[
+                    views.get_body_txt(
+                        txt="Volume",
+                        color=colors.GRAY_COLOR,
+                        size=fonts.BODY_2_SIZE,
+                        col={"xs": "12"},
+                    ),
+                    views.get_body_txt(
+                        txt=f"{self.contract.volume} {self.contract.unit}s",
                         size=fonts.BODY_2_SIZE,
                         col={"xs": "12"},
                     ),
@@ -134,6 +152,30 @@ class ContractStates(Enum):
     UPCOMING = 4
 
 
+def get_filter_button_label(state: ContractStates):
+    """Returns the label for the given state"""
+    if state.value == ContractStates.ACTIVE.value:
+        return "Active"
+    elif state.value == ContractStates.UPCOMING.value:
+        return "Upcoming"
+    elif state.value == ContractStates.COMPLETED.value:
+        return "Completed"
+    else:
+        return "All"
+
+
+def get_filter_button_tooltip(state: ContractStates):
+    """Returns the tooltip for the given state"""
+    if state.value == ContractStates.ACTIVE.value:
+        return "Not completed and not due"
+    elif state.value == ContractStates.UPCOMING.value:
+        return "Scheduled for the future"
+    elif state.value == ContractStates.COMPLETED.value:
+        return "Marked as completed"
+    else:
+        return "All Contracts"
+
+
 class ContractFiltersView(UserControl):
     """Create and Handles contracts view filtering buttons"""
 
@@ -148,6 +190,7 @@ class ContractFiltersView(UserControl):
         state: ContractStates,
         label: str,
         onClick: Callable[[ContractStates], None],
+        tooltip: str,
     ):
         """Creates a filter button for the given state"""
         button = ElevatedButton(
@@ -158,6 +201,7 @@ class ContractFiltersView(UserControl):
             color=colors.PRIMARY_COLOR
             if state == self.current_state
             else colors.GRAY_COLOR,
+            tooltip=tooltip,
             style=ButtonStyle(
                 elevation={
                     utils.PRESSED: 3,
@@ -177,24 +221,14 @@ class ContractFiltersView(UserControl):
         self.update()
         self.on_state_changed_callback(state)
 
-    def get_filter_button_label(self, state: ContractStates):
-        """Returns the label for the given state"""
-        if state.value == ContractStates.ACTIVE.value:
-            return "Active"
-        elif state.value == ContractStates.UPCOMING.value:
-            return "Upcoming"
-        elif state.value == ContractStates.COMPLETED.value:
-            return "Completed"
-        else:
-            return "All"
-
     def set_filter_buttons(self):
         """Sets all the filter buttons"""
         for state in ContractStates:
             button = self.filter_button(
-                label=self.get_filter_button_label(state),
+                label=get_filter_button_label(state),
                 state=state,
                 onClick=self.on_filter_button_clicked,
+                tooltip=get_filter_button_tooltip(state),
             )
             self.state_to_filter_btns_map[state] = button
 
@@ -507,7 +541,7 @@ class ContractEditorScreen(TuttleView, UserControl):
         self.show_snack(msg, isError)
         if not isError:
             # re route back
-            self.on_navigate_back()
+            self.navigate_back()
 
     def build(self):
         """Build the UI"""
@@ -596,7 +630,7 @@ class ContractEditorScreen(TuttleView, UserControl):
                                 controls=[
                                     IconButton(
                                         icon=icons.CHEVRON_LEFT_ROUNDED,
-                                        on_click=self.on_navigate_back,
+                                        on_click=self.navigate_back,
                                         icon_size=dimens.ICON_SIZE,
                                     ),
                                     self.form_title_ui_field,
@@ -609,6 +643,7 @@ class ContractEditorScreen(TuttleView, UserControl):
                             self.currency_ui_field,
                             self.rate_ui_field,
                             self.term_of_payment_ui_field,
+                            self.units_ui_field,
                             self.unit_PW_ui_field,
                             self.vat_rate_ui_field,
                             self.volume_ui_field,
@@ -626,8 +661,6 @@ class ContractEditorScreen(TuttleView, UserControl):
                                     ),
                                 ],
                             ),
-                            views.smSpace,
-                            self.units_ui_field,
                             views.smSpace,
                             self.billing_cycle_ui_field,
                             views.smSpace,
@@ -932,7 +965,7 @@ class ViewContractScreen(TuttleView, UserControl):
         self.show_snack(msg, is_err)
         if not is_err:
             # go back
-            self.on_navigate_back()
+            self.navigate_back()
 
     def get_body_element(self, label, control):
         """Returns a row with a label and a control."""
@@ -1027,7 +1060,7 @@ class ViewContractScreen(TuttleView, UserControl):
                         controls=[
                             IconButton(
                                 icon=icons.KEYBOARD_ARROW_LEFT,
-                                on_click=self.on_navigate_back,
+                                on_click=self.navigate_back,
                                 icon_size=dimens.ICON_SIZE,
                             ),
                             TextButton(
@@ -1102,7 +1135,7 @@ class ViewContractScreen(TuttleView, UserControl):
                             ),
                             self.get_body_element("Volume", self.volume_control),
                             self.get_body_element(
-                                "Term of Payment", self.term_of_payment_control
+                                "Term of Payment (days)", self.term_of_payment_control
                             ),
                             self.get_body_element(
                                 "Signed on Date", self.signature_date_control

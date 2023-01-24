@@ -1,46 +1,38 @@
 import typing
 from typing import Callable, List, Optional, Union
-
+from dataclasses import dataclass
 import datetime
 
-from flet import (AlertDialog,
-                  Column,
-                  Container,
-                  Dropdown,
-                  ElevatedButton,
-                  FilledButton,
-                  Icon,
-                  Image,
-                  PopupMenuButton,
-                  PopupMenuItem,
-                  ProgressBar,
-                  ResponsiveRow,
-                  Row,
-                  Text,
-                  TextField,
-                  TextStyle,
-                  UserControl,
-                  alignment,
-                  border_radius,
-                  dropdown,
-                  icons,
-                  padding,)
+from flet import (
+    AlertDialog,
+    Column,
+    Container,
+    Dropdown,
+    ElevatedButton,
+    FilledButton,
+    Icon,
+    Image,
+    PopupMenuButton,
+    PopupMenuItem,
+    ProgressBar,
+    margin,
+    NavigationRail,
+    Row,
+    Text,
+    TextField,
+    TextStyle,
+    UserControl,
+    alignment,
+    border_radius,
+    dropdown,
+    icons,
+    padding,
+)
 
 from res import colors, dimens, fonts, image_paths
 
 from .abstractions import DialogHandler
-from .utils import (AUTO_SCROLL,
-                    CENTER_ALIGNMENT,
-                    CONTAIN,
-                    KEYBOARD_MULTILINE,
-                    KEYBOARD_NONE,
-                    KEYBOARD_PASSWORD,
-                    KEYBOARD_TEXT,
-                    SPACE_BETWEEN_ALIGNMENT,
-                    START_ALIGNMENT,
-                    TXT_ALIGN_CENTER,
-                    TXT_ALIGN_LEFT,
-                    AlertDialogControls,)
+from . import utils
 
 lgSpace = Container(height=dimens.SPACE_LG, width=dimens.SPACE_STD, padding=0, margin=0)
 mdSpace = Container(height=dimens.SPACE_MD, width=dimens.SPACE_MD, padding=0, margin=0)
@@ -55,7 +47,7 @@ def get_heading(
     title: str = "",
     size: int = fonts.SUBTITLE_1_SIZE,
     color: Optional[str] = None,
-    align: str = TXT_ALIGN_LEFT,
+    align: str = utils.TXT_ALIGN_LEFT,
     show: bool = True,
 ):
     """Displays text formatted as a headline"""
@@ -74,7 +66,7 @@ def get_sub_heading_txt(
     subtitle: str = "",
     size: int = fonts.SUBTITLE_2_SIZE,
     color: Optional[str] = None,
-    align: str = TXT_ALIGN_LEFT,
+    align: str = utils.TXT_ALIGN_LEFT,
     show: bool = True,
     expand: bool = False,
 ):
@@ -93,8 +85,8 @@ def get_sub_heading_txt(
 def get_heading_with_subheading(
     title: str,
     subtitle: str,
-    alignment_in_container: str = START_ALIGNMENT,
-    txt_alignment: str = TXT_ALIGN_LEFT,
+    alignment_in_container: str = utils.START_ALIGNMENT,
+    txt_alignment: str = utils.TXT_ALIGN_LEFT,
     title_size: int = fonts.SUBTITLE_1_SIZE,
     subtitle_size: int = fonts.SUBTITLE_2_SIZE,
     subtitle_color: Optional[str] = None,
@@ -125,7 +117,7 @@ def get_body_txt(
     color: Optional[str] = None,
     show: bool = True,
     col: Optional[dict] = None,
-    align: str = TXT_ALIGN_LEFT,
+    align: str = utils.TXT_ALIGN_LEFT,
     **kwargs,
 ):
     """Displays text standard-formatted for body"""
@@ -144,7 +136,7 @@ def get_std_txt_field(
     on_change: typing.Optional[Callable] = None,
     label: str = "",
     hint: str = "",
-    keyboard_type: str = KEYBOARD_TEXT,
+    keyboard_type: str = utils.KEYBOARD_TEXT,
     on_focus: typing.Optional[Callable] = None,
     initial_value: typing.Optional[str] = None,
     expand: typing.Optional[int] = None,
@@ -164,10 +156,10 @@ def get_std_txt_field(
         focused_border_width=1,
         on_focus=on_focus,
         on_change=on_change,
-        password=keyboard_type == KEYBOARD_PASSWORD,
+        password=keyboard_type == utils.KEYBOARD_PASSWORD,
         expand=expand,
         width=width,
-        disabled=keyboard_type == KEYBOARD_NONE,
+        disabled=keyboard_type == utils.KEYBOARD_NONE,
         text_size=fonts.BODY_1_SIZE,
         label_style=TextStyle(size=fonts.BODY_2_SIZE),
         error_style=TextStyle(size=fonts.BODY_2_SIZE, color=colors.ERROR_COLOR),
@@ -180,7 +172,7 @@ def get_std_multiline_field(
     label: str,
     hint: str,
     on_focus: typing.Optional[Callable] = None,
-    keyboardType: str = KEYBOARD_MULTILINE,
+    keyboardType: str = utils.KEYBOARD_MULTILINE,
     minLines: int = 3,
     maxLines: int = 5,
 ):
@@ -244,14 +236,14 @@ def get_profile_photo_img(pic_src: str = image_paths.default_avatar):
         width=72,
         height=72,
         border_radius=border_radius.all(36),
-        fit=CONTAIN,
+        fit=utils.CONTAIN,
     )
 
 
 def get_image(path: str, semantic_label: str, width: int):
     return Container(
         width=width,
-        content=Image(src=path, fit=CONTAIN, semantics_label=semantic_label),
+        content=Image(src=path, fit=utils.CONTAIN, semantics_label=semantic_label),
     )
 
 
@@ -259,14 +251,16 @@ def get_app_logo(width: int = 12):
     """Returns app logo"""
     return Container(
         width=width,
-        content=Image(src=image_paths.logoPath, fit=CONTAIN, semantics_label="logo"),
+        content=Image(
+            src=image_paths.logoPath, fit=utils.CONTAIN, semantics_label="logo"
+        ),
     )
 
 
 def get_labelled_logo():
     """Returns app logo with app name next to it"""
     return Row(
-        vertical_alignment=CENTER_ALIGNMENT,
+        vertical_alignment=utils.CENTER_ALIGNMENT,
         controls=[
             get_app_logo(),
             get_heading(
@@ -494,7 +488,7 @@ class AlertDisplayPopUp(DialogHandler):
 
     def __init__(
         self,
-        dialog_controller: Callable[[any, AlertDialogControls], None],
+        dialog_controller: Callable[[any, utils.AlertDialogControls], None],
         title: str,
         description: str,
         on_complete: Optional[Callable] = None,
@@ -507,7 +501,7 @@ class AlertDisplayPopUp(DialogHandler):
             content=Container(
                 height=pop_up_height,
                 content=Column(
-                    scroll=AUTO_SCROLL,
+                    scroll=utils.AUTO_SCROLL,
                     controls=[
                         get_heading(
                             title=title,
@@ -542,7 +536,7 @@ class ConfirmDisplayPopUp(DialogHandler):
 
     def __init__(
         self,
-        dialog_controller: Callable[[any, AlertDialogControls], None],
+        dialog_controller: Callable[[any, utils.AlertDialogControls], None],
         title: str,
         description: str,
         data_on_confirmed: any,
@@ -557,7 +551,7 @@ class ConfirmDisplayPopUp(DialogHandler):
             content=Container(
                 height=pop_up_height,
                 content=Column(
-                    scroll=AUTO_SCROLL,
+                    scroll=utils.AUTO_SCROLL,
                     controls=[
                         get_heading(
                             title=title,
@@ -675,8 +669,10 @@ def get_or_txt(show_lines: Optional[bool] = True, show: bool = True):
     """Returns a view representing ---- OR ----"""
     return Row(
         visible=show,
-        alignment=SPACE_BETWEEN_ALIGNMENT if show_lines else CENTER_ALIGNMENT,
-        vertical_alignment=CENTER_ALIGNMENT,
+        alignment=utils.SPACE_BETWEEN_ALIGNMENT
+        if show_lines
+        else utils.CENTER_ALIGNMENT,
+        vertical_alignment=utils.CENTER_ALIGNMENT,
         controls=[
             Container(
                 height=2,
@@ -685,7 +681,7 @@ def get_or_txt(show_lines: Optional[bool] = True, show: bool = True):
                 alignment=alignment.center,
                 visible=show_lines,
             ),
-            get_body_txt("OR", align=TXT_ALIGN_CENTER, color=colors.GRAY_COLOR),
+            get_body_txt("OR", align=utils.TXT_ALIGN_CENTER, color=colors.GRAY_COLOR),
             Container(
                 height=2,
                 bgcolor=colors.GRAY_COLOR,
@@ -694,4 +690,60 @@ def get_or_txt(show_lines: Optional[bool] = True, show: bool = True):
                 visible=show_lines,
             ),
         ],
+    )
+
+
+@dataclass
+class NavigationMenuItem:
+    """defines a menu item used in navigation rails"""
+
+    index: int
+    label: str
+    icon: str
+    selected_icon: str
+    destination: UserControl
+    on_new_screen_route: Optional[str] = None
+    on_new_intent: Optional[str] = None
+
+
+def get_std_navigation_menu(
+    title: str,
+    on_change,
+    selected_index: Optional[int] = 0,
+    destinations=[],
+    menu_height: int = 300,
+    width: int = int(dimens.MIN_WINDOW_WIDTH * 0.3),
+    left_padding: int = dimens.SPACE_STD,
+    top_margin: int = dimens.SPACE_STD,
+):
+    """
+    Returns a navigation menu for the application.
+
+    :param title: Title of the navigation menu.
+    :param on_change: Callable function to be called when the selected item in the menu changes.
+    :param selected_index: The index of the selected item in the menu.
+    :param destinations: List of destinations in the menu.
+    :param menu_height: The height of the menu.
+    :return: A NavigationRail widget containing the navigation menu.
+    """
+    return NavigationRail(
+        leading=Container(
+            content=get_sub_heading_txt(
+                subtitle=title,
+                align=utils.START_ALIGNMENT,
+                expand=True,
+                color=colors.GRAY_DARK_COLOR,
+            ),
+            expand=True,
+            width=width,
+            margin=margin.only(top=top_margin),
+            padding=padding.only(left=left_padding),
+        ),
+        selected_index=selected_index,
+        min_width=utils.COMPACT_RAIL_WIDTH,
+        extended=True,
+        height=menu_height,
+        min_extended_width=width,
+        destinations=destinations,
+        on_change=on_change,
     )

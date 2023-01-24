@@ -188,7 +188,10 @@ class InvoicingListView(TuttleView, UserControl):
             if self.is_user_missing_payment_info():
                 return  # can't create invoice without payment info
             if self.time_tracking_data is None:
-                self.show_snack("Please set timetracking data!", is_error=True)
+                self.show_snack(
+                    "You need to import time tracking data before invoices can be created.",
+                    is_error=True,
+                )
                 return  # can't create invoice without time tracking data
             if self.editor is not None:
                 self.editor.close_dialog()
@@ -308,8 +311,7 @@ class InvoicingListView(TuttleView, UserControl):
         if not result.was_intent_successful:
             self.show_snack(result.error_msg, True)
         else:
-            self.invoices_to_display[result.data.id] = result.data
-            self.refresh_invoices()
+            self.update_invoice_from_intent_result(result)
             msg = (
                 "The invoice has been updated"
                 if is_updating
@@ -325,8 +327,8 @@ class InvoicingListView(TuttleView, UserControl):
         is_error = not result.was_intent_successful
         msg = result.error_msg if is_error else "Invoice status updated."
         self.show_snack(msg, is_error)
-        self.invoices_to_display[result.data.id] = result.data
-        self.refresh_invoices()
+        if not is_error and result.data:
+            self.update_invoice_from_intent_result(result)
         self.update_self()
 
     def toggle_sent_status(self, invoice: Invoice):
@@ -335,9 +337,16 @@ class InvoicingListView(TuttleView, UserControl):
         is_error = not result.was_intent_successful
         msg = result.error_msg if is_error else "Invoice status updated."
         self.show_snack(msg, is_error)
-        self.invoices_to_display[result.data.id] = result.data
-        self.refresh_invoices()
+        if not is_error and result.data:
+            self.update_invoice_from_intent_result(result)
         self.update_self()
+
+    def update_invoice_from_intent_result(self, result: IntentResult[Invoice]):
+        """update the invoice from an intent result data"""
+        # update the invoice
+        updated_invoice: Invoice = result.data
+        self.invoices_to_display[updated_invoice.id] = updated_invoice
+        self.refresh_invoices()
 
     def toggle_cancelled_status(self, invoice: Invoice):
         """toggle the cancelled status of the invoice"""
@@ -345,8 +354,8 @@ class InvoicingListView(TuttleView, UserControl):
         is_error = not result.was_intent_successful
         msg = result.error_msg if is_error else "Invoice status updated."
         self.show_snack(msg, is_error)
-        self.invoices_to_display[result.data.id] = result.data
-        self.refresh_invoices()
+        if not is_error and result.data:
+            self.update_invoice_from_intent_result(result)
         self.update_self()
 
     def did_mount(self):
