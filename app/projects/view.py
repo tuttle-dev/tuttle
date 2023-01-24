@@ -410,7 +410,7 @@ class ViewProjectScreen(TuttleView, UserControl):
         self.show_snack(msg, is_err)
         if not is_err:
             # go back, project has been deleted
-            self.on_navigate_back()
+            self.navigate_back()
 
     def build(self):
         """Called when page is built"""
@@ -473,7 +473,7 @@ class ViewProjectScreen(TuttleView, UserControl):
                         controls=[
                             IconButton(
                                 icon=icons.KEYBOARD_ARROW_LEFT,
-                                on_click=self.on_navigate_back,
+                                on_click=self.navigate_back,
                                 icon_size=dimens.ICON_SIZE,
                             ),
                             TextButton(
@@ -940,7 +940,7 @@ class ProjectEditorScreen(TuttleView, UserControl):
         self.show_snack(msg, isError)
         if result.was_intent_successful:
             # re -route back
-            self.on_navigate_back()
+            self.navigate_back()
 
     def build(self):
         """Builds the view"""
@@ -1004,7 +1004,7 @@ class ProjectEditorScreen(TuttleView, UserControl):
                                 controls=[
                                     IconButton(
                                         icon=icons.CHEVRON_LEFT_ROUNDED,
-                                        on_click=self.on_navigate_back,
+                                        on_click=self.navigate_back,
                                         icon_size=dimens.ICON_SIZE,
                                     ),
                                     self.form_title,

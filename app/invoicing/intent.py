@@ -117,7 +117,6 @@ class InvoicingIntent:
 
             if render:
                 # TODO: render timesheet
-
                 # render invoice
                 try:
                     user = self._user_data_source.get_user()
@@ -131,7 +130,7 @@ class InvoicingIntent:
                 except Exception as ex:
                     logger.error(f"❌ Error rendering invoice for {project.title}: {ex}")
                     logger.exception(ex)
-
+            # save invoice
             self._invoicing_data_source.save_invoice(invoice)
             return IntentResult(
                 was_intent_successful=True,

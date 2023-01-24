@@ -23,7 +23,7 @@ class Error404Screen(TuttleView, UserControl):
                 controls=[
                     get_error_txt("OOps! Looks like you took a wrong turn"),
                     get_primary_btn(
-                        label="Go Back".upper(), on_click=self.on_navigate_back
+                        label="Go Back".upper(), on_click=self.navigate_back
                     ),
                 ],
             ),
