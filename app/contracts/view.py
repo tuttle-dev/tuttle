@@ -541,7 +541,7 @@ class ContractEditorScreen(TuttleView, UserControl):
         self.show_snack(msg, isError)
         if not isError:
             # re route back
-            self.on_navigate_back()
+            self.navigate_back()
 
     def build(self):
         """Build the UI"""
@@ -630,7 +630,7 @@ class ContractEditorScreen(TuttleView, UserControl):
                                 controls=[
                                     IconButton(
                                         icon=icons.CHEVRON_LEFT_ROUNDED,
-                                        on_click=self.on_navigate_back,
+                                        on_click=self.navigate_back,
                                         icon_size=dimens.ICON_SIZE,
                                     ),
                                     self.form_title_ui_field,
@@ -965,7 +965,7 @@ class ViewContractScreen(TuttleView, UserControl):
         self.show_snack(msg, is_err)
         if not is_err:
             # go back
-            self.on_navigate_back()
+            self.navigate_back()
 
     def get_body_element(self, label, control):
         """Returns a row with a label and a control."""
@@ -1060,7 +1060,7 @@ class ViewContractScreen(TuttleView, UserControl):
                         controls=[
                             IconButton(
                                 icon=icons.KEYBOARD_ARROW_LEFT,
-                                on_click=self.on_navigate_back,
+                                on_click=self.navigate_back,
                                 icon_size=dimens.ICON_SIZE,
                             ),
                             TextButton(

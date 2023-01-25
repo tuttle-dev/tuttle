@@ -20,14 +20,16 @@ from core import utils, views
 from core.abstractions import TuttleView, TuttleViewParams
 from core.intent_result import IntentResult
 from core.views import (
-    CENTER_ALIGNMENT,
-    START_ALIGNMENT,
     get_dropdown,
     get_std_txt_field,
     horizontal_progress,
     mdSpace,
     smSpace,
     update_dropdown_items,
+)
+from core.utils import (
+    CENTER_ALIGNMENT,
+    START_ALIGNMENT,
 )
 from preferences.intent import PreferencesIntent
 from preferences.model import Preferences
@@ -143,7 +145,7 @@ class PreferencesScreen(TuttleView, UserControl):
                     IconButton(
                         icon=icons.KEYBOARD_ARROW_LEFT,
                         icon_size=dimens.ICON_SIZE,
-                        on_click=self.on_navigate_back,
+                        on_click=self.navigate_back,
                     ),
                 ]
             ),

@@ -1,24 +1,26 @@
 from typing import Callable, Optional
 
 from flet import (
-    Card,
     Column,
     Container,
+    alignment,
     IconButton,
+    icons,
+    border,
     ResponsiveRow,
     Row,
     UserControl,
-    icons,
-    margin,
     padding,
+    NavigationRailDestination,
+    Icon,
 )
 
 from auth.intent import AuthIntent
 from core import utils, views
 from core.abstractions import TuttleView, TuttleViewParams
 from core.intent_result import IntentResult
-from res import dimens, fonts, image_paths, res_utils
-
+from res import dimens, fonts, image_paths, res_utils, colors, theme
+from preferences.intent import PreferencesIntent
 from tuttle.model import User, BankAccount
 
 from .intent import AuthIntent
@@ -462,42 +464,63 @@ class SplashScreen(TuttleView, UserControl):
         self.mounted = False
 
 
-class ProfileScreen(TuttleView, UserControl):
-    """User profile screen
+class ProfileMenuItemsHandler:
+    """Manages profile's main-menu items"""
 
-    Displays a UserDataForm for updating user profile
-    Displays the User's photo if set and provides a way to update it
-    Displays the User's payment information if set and provides a way to update it
-    """
+    def __init__(
+        self,
+        params: TuttleViewParams,
+    ):
+        super().__init__()
+        self.menu_title = "My Profile"
+        self.items = [
+            views.NavigationMenuItem(
+                index=0,
+                label="Profile Photo",
+                icon=utils.TuttleComponentIcons.profile_photo_icon,
+                selected_icon=utils.TuttleComponentIcons.profile_photo_selected_icon,
+                destination=ProfilePhotoContent(params=params),
+            ),
+            views.NavigationMenuItem(
+                index=1,
+                label="Personal Info",
+                icon=utils.TuttleComponentIcons.profile_icon,
+                selected_icon=utils.TuttleComponentIcons.profile_selected_icon,
+                destination=UserInfoContent(params=params),
+            ),
+            views.NavigationMenuItem(
+                index=1,
+                label="Payment Settings",
+                icon=utils.TuttleComponentIcons.payment_icon,
+                selected_icon=utils.TuttleComponentIcons.payment_selected_icon,
+                destination=PaymentInfoContent(params=params),
+            ),
+        ]
+
+
+def profile_destination_content_wrapper(
+    controls: list[
+        UserControl,
+    ],
+):
+    """returns a container that wraps the destination content"""
+    # ADD SPACING TO THE TOP OF THE CONTENT
+    controls.insert(0, views.mdSpace)
+    return Column(
+        spacing=dimens.SPACE_STD,
+        run_spacing=0,
+        controls=controls,
+    )
+
+
+class ProfilePhotoContent(TuttleView, UserControl):
+    """Content for profile photo"""
 
     def __init__(self, params: TuttleViewParams):
-        super().__init__(params=params)
+        super().__init__(params)
         self.intent = AuthIntent()
         self.uploaded_photo_path = ""
         self.user_profile: User = None
-
-    def refresh_payment_section(self):
-        """Refreshes the payment section of the profile screen"""
-        self.payment_data_form = PaymentDataForm(
-            on_form_submit=self.on_update_user_invoice_data,
-            user=self.user_profile,
-        )
-        self.payment_info_controls.append(self.payment_data_form)
-
-    def on_update_user_invoice_data(self, user: User):
-        """Callback for when user updates their payment information"""
-        result: IntentResult = self.intent.update_user(user)
-        if result.was_intent_successful:
-            self.show_snack("Payment information updated successfully")
-            self.user_profile = result.data
-            self.payment_data_form.update_form_data(user=self.user_profile)
-        else:
-            self.show_snack(result.error_msg, is_error=True)
-
-    def on_profile_updated(self, data):
-        """Callback for when user profile has been updated successfully"""
-        self.show_snack("Your profile has been updated")
-        self.user_profile: User = data
 
     def on_update_photo_clicked(self, e):
         """Callback for when user clicks on the update photo button"""
@@ -513,7 +536,6 @@ class ProfileScreen(TuttleView, UserControl):
         """Callback for when profile photo has been picked"""
         if e.files and len(e.files) > 0:
             file = e.files[0]
-            self.toggle_progress_bar(f"Uploading file {file.name}")
             upload_url = self.upload_file_callback(file)
             if upload_url:
                 self.uploaded_photo_path = upload_url
@@ -521,7 +543,6 @@ class ProfileScreen(TuttleView, UserControl):
     def uploading_profile_pic_progress_listener(self, e):
         """Callback for when profile photo is being uploaded"""
         if e.progress == 1.0:
-            self.toggle_progress_bar(f"Upload complete, processing file...")
             if self.uploaded_photo_path:
                 result = self.intent.update_user_photo_path(
                     self.user_profile,
@@ -531,32 +552,66 @@ class ProfileScreen(TuttleView, UserControl):
                 msg = result.error_msg
                 is_err = True
                 if result.was_intent_successful:
-                    self.profile_photo_control.src = self.uploaded_photo_path
+                    self.profile_photo_img.src = self.uploaded_photo_path
                     msg = "Profile photo updated"
                     is_err = False
                 self.show_snack(msg, is_err)
                 if is_err:
                     self.user_profile.profile_photo_path = ""
                 self.uploaded_photo_path = None  # clear
-            self.toggle_progress_bar(hide_progress=True)
-
-    def toggle_progress_bar(self, msg: str = "", hide_progress: bool = False):
-        """Toggles the progress bar and the ongoing action hint"""
-        self.progressBar.visible = not hide_progress
-        self.ongoing_action_hint.value = msg
-        self.ongoing_action_hint.visible = msg != ""
-        self.update_self()
+            self.update_self()
 
     def build(self):
-        """Builds the profile screen"""
-        self.progressBar = views.horizontal_progress
-        self.progressBar.visible = False
-        self.ongoing_action_hint = views.get_body_txt(txt="")
-        self.profile_photo_control = views.get_profile_photo_img()
+        self.profile_photo_img = views.get_profile_photo_img()
         self.update_photo_btn = views.get_secondary_btn(
-            label="Update profile picture", on_click=self.on_update_photo_clicked
+            label="Update Photo",
+            on_click=self.on_update_photo_clicked,
         )
-        self.user_data_form = UserDataForm(
+        self.profile_photo_content = [
+            views.get_heading(
+                "Profile Photo",
+                size=fonts.HEADLINE_4_SIZE,
+            ),
+            self.profile_photo_img,
+            self.update_photo_btn,
+        ]
+        return profile_destination_content_wrapper(
+            controls=self.profile_photo_content,
+        )
+
+    def did_mount(self):
+        """Called when the view is mounted on page"""
+        self.mounted = True
+        result: IntentResult = self.intent.get_user_if_exists()
+        if not result.was_intent_successful:
+            self.show_snack(result.error_msg, True)
+        else:
+            self.user_profile: User = result.data
+            if self.user_profile.profile_photo_path:
+                self.profile_photo_img.src = self.user_profile.profile_photo_path
+            self.update_self()
+
+    def will_unmount(self):
+        """Called when the view is unmounted from page"""
+        self.mounted = False
+
+
+class UserInfoContent(TuttleView, UserControl):
+    """Content for user info"""
+
+    def __init__(self, params: TuttleViewParams):
+        super().__init__(params)
+        self.intent = AuthIntent()
+        self.user_profile: User = None
+
+    def on_profile_updated(self, data):
+        """Callback for when user profile has been updated successfully"""
+        self.show_snack("Your profile has been updated")
+        self.user_profile: User = data
+
+    def build(self):
+        """Builds the view"""
+        self.user_info_form = UserDataForm(
             on_form_submit=lambda title, name, email, phone, street, street_num, postal_code, city, country, website: self.intent.update_user_with_info(
                 title=title,
                 name=name,
@@ -571,86 +626,214 @@ class ProfileScreen(TuttleView, UserControl):
                 user=self.user_profile,
             ),
             on_submit_success=self.on_profile_updated,
-            submit_btn_label="Update Profile",
+            submit_btn_label="Save",
         )
-
-        self.payment_info_controls = [
+        self.user_info_content = [
             views.get_heading(
-                "Payment Settings",
+                "Personal Info",
                 size=fonts.HEADLINE_4_SIZE,
             ),
+            self.user_info_form,
         ]
-
-        return ResponsiveRow(
-            spacing=0,
-            run_spacing=0,
-            alignment=utils.START_ALIGNMENT,
-            vertical_alignment=utils.START_ALIGNMENT,
-            controls=[
-                self.view_section(
-                    [
-                        Row(
-                            spacing=dimens.SPACE_STD,
-                            run_spacing=0,
-                            vertical_alignment=utils.CENTER_ALIGNMENT,
-                            controls=[
-                                IconButton(
-                                    icon=icons.KEYBOARD_ARROW_LEFT,
-                                    on_click=self.on_navigate_back,
-                                    icon_size=dimens.ICON_SIZE,
-                                ),
-                                views.get_heading(
-                                    "Profile", size=fonts.HEADLINE_4_SIZE
-                                ),
-                            ],
-                        ),
-                        self.ongoing_action_hint,
-                        Column(
-                            spacing=dimens.SPACE_MD,
-                            controls=[
-                                self.profile_photo_control,
-                                self.update_photo_btn,
-                                self.user_data_form,
-                            ],
-                        ),
-                    ]
-                ),
-                self.view_section(self.payment_info_controls),
-            ],
-        )
-
-    def view_section(self, controls: list[UserControl]) -> Card:
-        """Returns a Card with the controls set to the contents of the card"""
-        return Card(
-            margin=margin.all(dimens.SPACE_LG),
-            col={"xs": 12, "md": 6},
-            content=Container(
-                padding=padding.all(dimens.SPACE_MD),
-                margin=margin.symmetric(vertical=dimens.SPACE_LG),
-                content=Column(
-                    spacing=dimens.SPACE_STD,
-                    run_spacing=0,
-                    controls=controls,
-                ),
-            ),
-        )
+        return profile_destination_content_wrapper(self.user_info_content)
 
     def did_mount(self):
         """Called when the view is mounted on page"""
         self.mounted = True
-        self.toggle_progress_bar()
         result: IntentResult = self.intent.get_user_if_exists()
         if not result.was_intent_successful:
             self.show_snack(result.error_msg, True)
         else:
             self.user_profile: User = result.data
             # refresh user data form
-            self.user_data_form.refresh_user_info(self.user_profile)
-            if self.user_profile.profile_photo_path:
-                self.profile_photo_control.src = self.user_profile.profile_photo_path
-            # refresh invoice data form
-            self.refresh_payment_section()
-        self.toggle_progress_bar(hide_progress=True)
+            self.user_info_form.refresh_user_info(self.user_profile)
+            self.update_self()
 
     def will_unmount(self):
+        """Called when the view is unmounted from page"""
+        self.mounted = False
+
+
+class PaymentInfoContent(TuttleView, UserControl):
+    """Content for payment info"""
+
+    def __init__(self, params: TuttleViewParams):
+        super().__init__(params)
+        self.intent = AuthIntent()
+        self.user_profile: User = None
+
+    def on_update_payment_info(self, user: User):
+        """Callback for when user updates their payment information"""
+        result: IntentResult = self.intent.update_user(user)
+        if result.was_intent_successful:
+            self.show_snack("Payment information updated successfully")
+            self.user_profile = result.data
+            self.payment_data_form.update_form_data(user=self.user_profile)
+        else:
+            self.show_snack(result.error_msg, is_error=True)
+
+    def build(self):
+        self.payment_info_content = [
+            views.get_heading(
+                "Payment Settings",
+                size=fonts.HEADLINE_4_SIZE,
+            ),
+        ]
+        return profile_destination_content_wrapper(self.payment_info_content)
+
+    def did_mount(self):
+        """Called when the view is mounted on page"""
+        self.mounted = True
+        result: IntentResult = self.intent.get_user_if_exists()
+        if not result.was_intent_successful:
+            self.show_snack(result.error_msg, True)
+            self.navigate_back()  # navigate out
+        else:
+            self.user_profile: User = result.data
+            # setup payment info form
+            self.payment_data_form = PaymentDataForm(
+                on_form_submit=self.on_update_payment_info,
+                user=self.user_profile,
+            )
+            self.payment_info_content.append(self.payment_data_form)
+            self.update_self()
+
+    def will_unmount(self):
+        """Called when the view is unmounted from page"""
+        self.mounted = False
+
+
+class ProfileScreen(TuttleView, UserControl):
+    """User profile screen"""
+
+    def __init__(self, params: TuttleViewParams):
+        super().__init__(params=params)
+        self.preferences_intent = PreferencesIntent(
+            client_storage=params.client_storage,
+        )
+        self.menu_handler = ProfileMenuItemsHandler(
+            params=params,
+        )
+        self.current_menu_index = 0
+        # initialize the side bar menu
+        self.side_bar_menu = views.get_std_navigation_menu(
+            title=self.menu_handler.menu_title,
+            destinations=self.get_menu_destinations(),
+            on_change=lambda e: self.on_menu_destination_change(e),
+            top_margin=0,
+        )
+        # initialize the destination view to the first menu item's destination
+        self.destination_view = self.menu_handler.items[
+            self.current_menu_index
+        ].destination
+
+    def get_menu_destinations(self):
+        """Returns the destinations for the navigation menu"""
+        items = []
+        for item in self.menu_handler.items:
+            itemDestination = NavigationRailDestination(
+                icon_content=Icon(
+                    item.icon,
+                    size=dimens.ICON_SIZE,
+                ),
+                selected_icon_content=Icon(
+                    item.selected_icon,
+                    size=dimens.ICON_SIZE,
+                ),
+                label_content=views.get_body_txt(item.label),
+                padding=padding.symmetric(horizontal=dimens.SPACE_SM),
+            )
+            items.append(itemDestination)
+        return items
+
+    def on_menu_destination_change(self, e):
+        """Handles menu destination change"""
+        if self.mounted:
+            self.current_menu_index: int = e.control.selected_index
+            menu_item = self.menu_handler.items[self.current_menu_index]
+            self.destination_view = menu_item.destination
+            self.destination_content_container.content = self.destination_view
+            self.update_self()
+
+    def build(self):
+        """Builds the profile screen"""
+        self.destination_content_container = Container(
+            padding=padding.all(dimens.SPACE_MD),
+            content=self.destination_view,
+            col={
+                "xs": 7,
+                "md": 8,
+                "lg": 9,
+            },
+        )
+        self.side_bar = Container(
+            col={"xs": 4, "md": 3, "lg": 2},
+            padding=padding.only(top=dimens.SPACE_SM),
+            content=Column(
+                controls=[
+                    Container(
+                        IconButton(
+                            icon=icons.KEYBOARD_ARROW_LEFT,
+                            on_click=self.navigate_back,
+                            icon_size=dimens.MD_ICON_SIZE,
+                        ),
+                        padding=padding.symmetric(vertical=dimens.SPACE_STD),
+                    ),
+                    self.side_bar_menu,
+                ]
+            ),
+            alignment=alignment.center,
+            border=border.only(
+                right=border.BorderSide(
+                    width=0.2,
+                    color=colors.BORDER_DARK_COLOR,
+                )
+            ),
+        )
+
+        self.profile_screen_view = ResponsiveRow(
+            controls=[
+                self.side_bar,
+                self.destination_content_container,
+            ],
+            spacing=0,
+            alignment=utils.START_ALIGNMENT,
+            vertical_alignment=utils.START_ALIGNMENT,
+            expand=1,
+        )
+        return self.profile_screen_view
+
+    def did_mount(self):
+        """Called when the view is mounted on page"""
+        self.mounted = True
+        self.load_preferred_theme()
+
+    def load_preferred_theme(self):
+        """Sets the UI theme from the user's preferences"""
+        result = self.preferences_intent.get_preferred_theme()
+        if not result.was_intent_successful:
+            self.show_snack(result.error_msg, is_error=True)
+            return
+        self.preferred_theme = result.data
+        side_bar_components = [
+            self.side_bar,
+            self.side_bar_menu,
+        ]
+        side_bar_bg_color = colors.SIDEBAR_DARK_COLOR  # default is dark mode
+        if self.preferred_theme == theme.THEME_MODES.light.value:
+            side_bar_bg_color = colors.SIDEBAR_LIGHT_COLOR
+        for component in side_bar_components:
+            component.bgcolor = side_bar_bg_color
+        self.update_self()
+
+    def on_window_resized_listener(self, width, height):
+        if not self.mounted:
+            return
+        super().on_window_resized_listener(width, height)
+        self.profile_screen_view.height = self.page_height
+        self.destination_content_container.height = self.page_height
+        self.update_self()
+
+    def will_unmount(self):
+        """Called when the view is unmounted from page"""
         self.mounted = False
