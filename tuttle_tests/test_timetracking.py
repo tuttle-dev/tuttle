@@ -10,7 +10,7 @@ def test_timetracking_import_toggl():
     """Test import of time tracking data from csv exported by Toggl."""
     data = timetracking.import_from_spreadsheet(
         path="tuttle_tests/data/test_time_tracking_toggl.csv",
-        preset=timetracking.TimetrackingSpreadsheetPreset.Toggl,
+        preset=timetracking.TogglPreset,
     )
     assert not data.empty
 

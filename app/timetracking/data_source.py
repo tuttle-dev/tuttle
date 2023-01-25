@@ -10,6 +10,7 @@ from pandas import DataFrame
 from tuttle.calendar import ICSCalendar, ICloudCalendar, CloudCalendar
 from tuttle.dev import singleton
 from tuttle.cloud import CloudConnector, CloudProvider
+from tuttle import timetracking
 
 
 @singleton
@@ -37,17 +38,20 @@ class TimeTrackingSpreadsheetSource:
         self,
         file_path: str,
     ) -> DataFrame:
-        """TODO loads time tracking data from a spreadsheet file
+        """loads time tracking data from a spreadsheet file
 
         Arguments:
-            file_name : name of the uploaded file
-            file_path : path to an uploaded ics or spreadsheet file
+            file_path : path to an uploaded spreadsheet file
 
         Returns:
             DataFrame: time tracking data
         """
-        logger.error(f"file_path: {file_path}")
-        raise NotImplementedError("TODO")
+        logger.info(f"Loading time tracking data from {file_path}...")
+        timetracking_data: DataFrame = timetracking.import_from_spreadsheet(
+            path=file_path,
+            preset=timetracking.TogglPreset,
+        )
+        return timetracking_data
 
 
 class TimeTrackingFileCalendarSource:
