@@ -1,14 +1,15 @@
 from typing import Type, Union, Optional
 
 from core.intent_result import IntentResult
+from core.abstractions import Intent
 
 from tuttle.model import User, Address
 
 from .data_source import UserDataSource
 
 
-class AuthIntent:
-    """Handles User C_R_U_D intents"""
+class AuthIntent(Intent):
+    """Handles User intents"""
 
     def __init__(self):
         self._data_source = UserDataSource()

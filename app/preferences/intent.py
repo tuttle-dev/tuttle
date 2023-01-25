@@ -2,14 +2,14 @@ from loguru import logger
 
 from flet import Page
 
-from core.abstractions import ClientStorage
+from core.abstractions import ClientStorage, Intent
 from core.intent_result import IntentResult
 
 from .model import Preferences, PreferencesStorageKeys
 from typing import Optional
 
 
-class PreferencesIntent:
+class PreferencesIntent(Intent):
     """Handles Preferences intents
 
     Intents handled (Methods)
@@ -31,7 +31,6 @@ class PreferencesIntent:
     def __init__(
         self,
         client_storage: ClientStorage,
-        page: Page,
     ):
         self._client_storage = client_storage
         self._page = page
