@@ -1,5 +1,9 @@
 from typing import Optional
 
+import sys
+
+from loguru import logger
+
 from flet import (
     Column,
     Container,
@@ -23,6 +27,7 @@ from core.views import (
     get_dropdown,
     get_std_txt_field,
     horizontal_progress,
+    lgSpace,
     mdSpace,
     smSpace,
     update_dropdown_items,
@@ -111,6 +116,11 @@ class PreferencesScreen(TuttleView, UserControl):
             return
         self.preferences.language = e.control.value
 
+    def on_reset_app(self, e):
+        logger.info("Resetting app")
+
+        logger.info("Quitting app after reset. Please restart.")
+
     def get_tab_item(self, label, icon, content_controls):
         return Tab(
             tab_content=Column(
@@ -179,6 +189,14 @@ class PreferencesScreen(TuttleView, UserControl):
                 "English",
             ],
         )
+
+        # a reset button for the app with a warning sign, warning color and a confirmation dialog
+        self.reset_button = views.get_danger_button(
+            label="Reset App",
+            icon=icons.RESTART_ALT_OUTLINED,
+            on_click=self.on_reset_app,
+        )
+
         self.tabs = Tabs(
             selected_index=0,
             animation_duration=300,
@@ -190,6 +208,8 @@ class PreferencesScreen(TuttleView, UserControl):
                     icons.SETTINGS_OUTLINED,
                     [
                         self.theme_control,
+                        lgSpace,
+                        self.reset_button,
                     ],
                 ),
                 self.get_tab_item(
