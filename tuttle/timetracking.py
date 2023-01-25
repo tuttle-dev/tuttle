@@ -186,6 +186,11 @@ class TogglPreset(TimetrackingSpreadsheetPreset):
     description_col = "Description"
 
 
+def infer_spreadsheet_preset(data: DataFrame) -> Type[TimetrackingSpreadsheetPreset]:
+    """Infer the spreadsheet preset from the columns of the dataframe."""
+    raise NotImplementedError("TODO")
+
+
 @check_io(
     out=schema.time_tracking,
 )
