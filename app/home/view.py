@@ -9,7 +9,6 @@ from flet import (
     ElevatedButton,
     Icon,
     IconButton,
-    NavigationRail,
     NavigationRailDestination,
     PopupMenuButton,
     PopupMenuItem,
@@ -19,7 +18,6 @@ from flet import (
     alignment,
     border,
     icons,
-    margin,
     padding,
 )
 
@@ -33,9 +31,9 @@ from projects.view import ProjectsListView
 from res import colors, dimens, fonts, res_utils, theme
 from timetracking.view import TimeTrackingView
 
-from .intent import HomeIntent
+from preferences.intent import PreferencesIntent
 
-MIN_SIDE_BAR_WIDTH = int(dimens.MIN_WINDOW_WIDTH * 0.3)
+
 MIN_FOOTER_WIDTH = int(dimens.MIN_WINDOW_WIDTH * 0.7)
 MIN_BODY_HEIGHT = int(dimens.MIN_WINDOW_HEIGHT * 0.8)
 NO_MENU_ITEM_INDEX = -1
@@ -135,59 +133,6 @@ def get_action_bar(
     )
 
 
-def create_and_get_navigation_menu(
-    title: str,
-    on_change,
-    selected_index: Optional[int] = None,
-    destinations=[],
-    menu_height: int = 300,
-):
-    """
-    Returns a navigation menu for the application.
-
-    :param title: Title of the navigation menu.
-    :param on_change: Callable function to be called when the selected item in the menu changes.
-    :param selected_index: The index of the selected item in the menu.
-    :param destinations: List of destinations in the menu.
-    :param menu_height: The height of the menu.
-    :return: A NavigationRail widget containing the navigation menu.
-    """
-    return NavigationRail(
-        leading=Container(
-            content=views.get_sub_heading_txt(
-                subtitle=title,
-                align=utils.START_ALIGNMENT,
-                expand=True,
-                color=colors.GRAY_DARK_COLOR,
-            ),
-            expand=True,
-            width=MIN_SIDE_BAR_WIDTH,
-            margin=margin.only(top=dimens.SPACE_STD),
-            padding=padding.only(left=dimens.SPACE_STD),
-        ),
-        selected_index=selected_index,
-        min_width=utils.COMPACT_RAIL_WIDTH,
-        extended=True,
-        height=menu_height,
-        min_extended_width=MIN_SIDE_BAR_WIDTH,
-        destinations=destinations,
-        on_change=on_change,
-    )
-
-
-@dataclass
-class MenuItem:
-    """defines a menu item"""
-
-    index: int
-    label: str
-    icon: str
-    selected_icon: str
-    destination: TuttleView
-    on_new_screen_route: Optional[str] = None
-    on_new_intent: Optional[str] = None
-
-
 class MainMenuItemsHandler:
     """Manages home's main-menu items"""
 
@@ -207,7 +152,7 @@ class MainMenuItemsHandler:
             #     destination=Container(),
             #     on_new_screen_route="/404",
             # ),
-            MenuItem(
+            views.NavigationMenuItem(
                 index=1,
                 label="Projects",
                 icon=utils.TuttleComponentIcons.project_icon,
@@ -216,7 +161,7 @@ class MainMenuItemsHandler:
                 on_new_screen_route=res_utils.PROJECT_EDITOR_SCREEN_ROUTE,
                 on_new_intent=None,
             ),
-            MenuItem(
+            views.NavigationMenuItem(
                 index=4,
                 label="Contracts",
                 icon=utils.TuttleComponentIcons.contract_icon,
@@ -225,7 +170,7 @@ class MainMenuItemsHandler:
                 on_new_screen_route=res_utils.CONTRACT_EDITOR_SCREEN_ROUTE,
                 on_new_intent=None,
             ),
-            MenuItem(
+            views.NavigationMenuItem(
                 index=3,
                 label="Clients",
                 icon=utils.TuttleComponentIcons.client_icon,
@@ -234,7 +179,7 @@ class MainMenuItemsHandler:
                 on_new_screen_route=None,
                 on_new_intent=res_utils.ADD_CLIENT_INTENT,
             ),
-            MenuItem(
+            views.NavigationMenuItem(
                 index=2,
                 label="Contacts",
                 icon=utils.TuttleComponentIcons.contact_icon,
@@ -257,7 +202,7 @@ class SecondaryMenuHandler:
         self.invoicing_view = InvoicingListView(params)
 
         self.items = [
-            MenuItem(
+            views.NavigationMenuItem(
                 index=0,
                 label="Time Tracking",
                 icon=utils.TuttleComponentIcons.timetracking_icon,
@@ -266,7 +211,7 @@ class SecondaryMenuHandler:
                 on_new_screen_route=None,
                 on_new_intent=res_utils.NEW_TIME_TRACK_INTENT,
             ),
-            MenuItem(
+            views.NavigationMenuItem(
                 index=1,
                 label="Invoicing",
                 icon=utils.TuttleComponentIcons.invoicing_icon,
@@ -290,21 +235,23 @@ class HomeScreen(TuttleView, UserControl):
         self.page_scroll_type = None
         self.main_menu_handler = MainMenuItemsHandler(params)
         self.secondary_menu_handler = SecondaryMenuHandler(params)
-        self.intent_handler = HomeIntent(client_storage=params.client_storage)
+        self.preferences_intent = PreferencesIntent(
+            client_storage=params.client_storage
+        )
         self.selected_tab = NO_MENU_ITEM_INDEX
 
-        self.main_menu = create_and_get_navigation_menu(
+        self.main_menu = views.get_std_navigation_menu(
             title=self.main_menu_handler.menu_title,
             destinations=self.get_menu_destinations(),
             on_change=lambda e: self.on_menu_destination_change(e),
         )
-        self.secondary_menu = create_and_get_navigation_menu(
+        self.secondary_menu = views.get_std_navigation_menu(
             title=self.secondary_menu_handler.menu_title,
             destinations=self.get_menu_destinations(menu_level=1),
             on_change=lambda e: self.on_menu_destination_change(e, menu_level=1),
         )
         # initialize destination view with a welcome text
-        self.destination_view = Container(
+        welcome_destination_view = Container(
             padding=padding.all(dimens.SPACE_MD),
             content=Row(
                 [
@@ -316,6 +263,7 @@ class HomeScreen(TuttleView, UserControl):
                 ]
             ),
         )
+        self.destination_view = welcome_destination_view
         self.dialog: Optional[DialogHandler] = None
         self.action_bar = get_action_bar(
             on_click_notifications_btn=self.on_view_notifications_clicked,
@@ -406,7 +354,6 @@ class HomeScreen(TuttleView, UserControl):
         self.destination_content_container = Container(
             padding=padding.all(dimens.SPACE_MD),
             content=self.destination_view,
-            margin=margin.only(bottom=dimens.SPACE_LG),
         )
         self.footer = Container(
             col={"xs": 12},
@@ -451,7 +398,7 @@ class HomeScreen(TuttleView, UserControl):
             ),
         )
 
-        self.view = Container(
+        self.home_screen_view = Container(
             Column(
                 [
                     ResponsiveRow(
@@ -472,7 +419,7 @@ class HomeScreen(TuttleView, UserControl):
                 run_spacing=0,
             ),
         )
-        return self.view
+        return self.home_screen_view
 
     def did_mount(self):
         self.mounted = True
@@ -484,7 +431,7 @@ class HomeScreen(TuttleView, UserControl):
 
     def load_preferred_theme(self):
         """Sets the UI theme from the user's preferences"""
-        result = self.intent_handler.get_preferred_theme()
+        result = self.preferences_intent.get_preferred_theme()
         if not result.was_intent_successful:
             self.show_snack(result.error_msg, is_error=True)
             return
@@ -502,21 +449,20 @@ class HomeScreen(TuttleView, UserControl):
         for component in side_bar_components:
             component.bgcolor = side_bar_bg_color
         self.footer.bgcolor = side_bar_bg_color  # footer and side bar have same bgcolor
+        self.update_self()
 
+    def on_window_resized_listener(self, width, height):
+        if not self.mounted:
+            return
+        super().on_window_resized_listener(width, height)
+        self.home_screen_view.height = self.page_height
+        DESTINATION_CONTENT_PERCENT_HEIGHT = self.page_height - (
+            self.action_bar.height + self.footer.height + 50
+        )
+        self.destination_content_container.height = DESTINATION_CONTENT_PERCENT_HEIGHT
         self.update_self()
 
     def will_unmount(self):
         self.mounted = False
         if self.dialog:
             self.dialog.dimiss_open_dialogs()
-
-    def on_window_resized_listener(self, width, height):
-        if not self.mounted:
-            return
-        super().on_window_resized_listener(width, height)
-        self.view.height = self.page_height
-        DESTINATION_CONTENT_PERCENT_HEIGHT = self.page_height - (
-            self.action_bar.height + self.footer.height + 50
-        )
-        self.destination_content_container.height = DESTINATION_CONTENT_PERCENT_HEIGHT
-        self.update_self()

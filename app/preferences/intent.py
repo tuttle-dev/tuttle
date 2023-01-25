@@ -2,6 +2,7 @@ from core.abstractions import ClientStorage
 from core.intent_result import IntentResult
 
 from .model import Preferences, PreferencesStorageKeys
+from typing import Optional
 
 
 class PreferencesIntent:
@@ -119,3 +120,13 @@ class PreferencesIntent:
             )
             result.log_message_if_any()
             return result
+
+    def get_preferred_theme(self) -> IntentResult[Optional[str]]:
+        """Returns the preferred theme mode as string"""
+        result: IntentResult = self.get_preference_by_key(
+            preference_key=PreferencesStorageKeys.theme_mode_key
+        )
+        if not result.was_intent_successful:
+            result.error_msg = "Failed to load your preferred theme"
+            result.log_message_if_any()
+        return result
