@@ -1,12 +1,12 @@
-from core.abstractions import ClientStorage
+from core.abstractions import ClientStorage, Intent
 from core.intent_result import IntentResult
 
 from .model import Preferences, PreferencesStorageKeys
 from typing import Optional
 
 
-class PreferencesIntent:
-    """Handles Preferences C_R_U_D intents
+class PreferencesIntent(Intent):
+    """Handles Preferences intents
 
     Intents handled (Methods)
     ---------------
