@@ -1,6 +1,9 @@
 from typing import Optional, Type, Union
 
+from pathlib import Path
+
 from loguru import logger
+
 
 from core.abstractions import ClientStorage, Intent
 from core.intent_result import IntentResult
@@ -12,8 +15,10 @@ from .data_source import (
     TimeTrackingCloudCalendarSource,
     TimeTrackingDataFrameSource,
     TimeTrackingFileCalendarSource,
+    TimeTrackingSpreadsheetSource,
 )
 from tuttle.cloud import CloudConnector, CloudProvider
+from tuttle.calendar import Calendar
 
 
 class TimeTrackingIntent(Intent):
@@ -22,7 +27,8 @@ class TimeTrackingIntent(Intent):
     def __init__(self, client_storage: ClientStorage):
 
         self._cloud_calendar_source = TimeTrackingCloudCalendarSource()
-        self._timetracking_file_data_source = TimeTrackingFileCalendarSource()
+        self._file_calendar_source = TimeTrackingFileCalendarSource()
+        self._spreadsheet_source = TimeTrackingSpreadsheetSource()
         self._timetracking_data_frame_source = TimeTrackingDataFrameSource()
         self._preferences_intent = PreferencesIntent(client_storage)
 
@@ -49,29 +55,33 @@ class TimeTrackingIntent(Intent):
             was_intent_successful=True, data=[provider_result.data, acc_result.data]
         )
 
-    def process_timetracking_file(self, file_path, file_name) -> IntentResult:
+    def process_timetracking_file(self, file_path: Path) -> IntentResult[DataFrame]:
         """processes a time tracking spreadsheet or ics file in the uploads folder
 
         Returns
         -------
             IntentResult
-                data : Calendar instance if was_intent_successful else None
+                data : time tracking data as a pandas DataFrame if intent successful else None
                 error_msg  : text to display to the user if an error occurs else is empty
         """
-        is_ics = ".ics" in file_name
-        if is_ics:
-            result = self._timetracking_file_data_source.load_timetracking_data_from_ics_file(
-                ics_file_name=file_name,
+        # check the file extension. file_path is a Path object
+        is_calendar = file_path.suffix == ".ics"
+        if is_calendar:
+            timetracking_data: DataFrame = self._file_calendar_source.load_data(
                 ics_file_path=file_path,
             )
-        else:
-            result = self._timetracking_file_data_source.load_timetracking_data_from_spreadsheet(
-                spreadsheet_file_name=file_name, spreadsheet_file_path=file_path
+            return IntentResult(
+                was_intent_successful=True,
+                data=timetracking_data,
             )
-        if not result.was_intent_successful:
-            result.error_msg = "Failed to process the spreadsheet."
-            result.log_message_if_any()
-        return result
+        else:
+            timetracking_data: DataFrame = self._spreadsheet_source.load_data(
+                file_path=file_path,
+            )
+            return IntentResult(
+                was_intent_successful=True,
+                data=timetracking_data,
+            )
 
     def connect_to_cloud(
         self,
