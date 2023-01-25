@@ -303,6 +303,10 @@ class TuttleApp:
             uploads_dir.mkdir(parents=True)
         return uploads_dir
 
+    def close(self):
+        """Closes the application."""
+        self.page.window_close()
+
     def build(self):
         self.page.go(self.page.route)
 
