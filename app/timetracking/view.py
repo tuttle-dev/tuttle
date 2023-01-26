@@ -171,7 +171,7 @@ class TimeTrackingView(TuttleView, UserControl):
         self.preferred_cloud_acc = ""
         self.preferred_cloud_provider = ""
         self.pop_up_handler = None
-        self.dataframe_to_display: DataFrame = None
+        self.dataframe_to_display: Optional[DataFrame] = None
 
     def close_pop_up_if_open(self):
         if self.pop_up_handler:
@@ -220,9 +220,9 @@ class TimeTrackingView(TuttleView, UserControl):
             file = e.files[0]
             self.set_progress_hint(f"Uploading file {file.name}")
             self.upload_file_callback(file)
-            upload_url = Path(file.path)
-            if upload_url:
-                self.uploaded_file_url = upload_url
+            upload_path = Path(file.path)
+            if upload_path:
+                self.uploaded_file_path = upload_path
         else:
             self.set_progress_hint(hide_progress=True)
 
@@ -232,7 +232,7 @@ class TimeTrackingView(TuttleView, UserControl):
             # upload complete
             self.set_progress_hint(f"Upload complete, processing file...")
             intent_result = self.intent.process_timetracking_file(
-                self.uploaded_file_url, e.file_name
+                self.uploaded_file_path,
             )
             msg = (
                 "New work progress recorded."
@@ -242,8 +242,7 @@ class TimeTrackingView(TuttleView, UserControl):
             is_error = not intent_result.was_intent_successful
             self.show_snack(msg, is_error)
             if intent_result.was_intent_successful:
-                data: Calendar = intent_result.data
-                self.dataframe_to_display = data.to_data()
+                self.dataframe_to_display = intent_result.data
                 self.update_timetracking_dataframe()
                 self.display_dataframe()
             self.set_progress_hint(hide_progress=True)
