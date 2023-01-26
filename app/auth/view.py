@@ -347,12 +347,10 @@ class SplashScreen(TuttleView, UserControl):
     def __init__(
         self,
         params: TuttleViewParams,
-        install_demo_data_callback,
     ):
         super().__init__(params=params)
         self.keep_back_stack = False  # User cannot go back from this screen
         self.intent = AuthIntent()
-        self.install_demo_data_callback = install_demo_data_callback
         self.client_storage = params.client_storage
 
     def show_login_if_signed_out_else_redirect(self):
@@ -391,7 +389,7 @@ class SplashScreen(TuttleView, UserControl):
         self.update_self()
 
     def on_proceed_with_demo_data_clicked(self, e):
-        self.install_demo_data_callback()
+        self.database_storage.install_demo_data()
         self.navigate_to_route(res_utils.HOME_SCREEN_ROUTE)
 
     def did_mount(self):

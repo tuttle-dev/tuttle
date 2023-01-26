@@ -8,10 +8,49 @@ import functools
 from flet import AlertDialog, file_picker
 
 import sqlmodel
-from core.intent_result import IntentResult
+
 from loguru import logger
 
 from .utils import AUTO_SCROLL, START_ALIGNMENT, AlertDialogControls
+
+
+class DatabaseStorage(ABC):
+    """Abstract class for database storage"""
+
+    def __init__(
+        self,
+    ):
+        super().__init__()
+
+    @abstractmethod
+    def create_model(self):
+        """Creates database model"""
+        pass
+
+    @abstractmethod
+    def ensure_database(self):
+        """
+        Ensure that the database exists and is up to date.
+        """
+        pass
+
+    @abstractmethod
+    def clear_database(self):
+        """
+        Delete the database and rebuild database model.
+        """
+        pass
+
+    @abstractmethod
+    def install_demo_data(
+        self,
+    ):
+        """Install demo data into the database."""
+
+    @abstractmethod
+    def ensure_app_dir(self) -> Path:
+        """Ensures that the user directory exists"""
+        pass
 
 
 class ClientStorage(ABC):
@@ -50,12 +89,15 @@ class ClientStorage(ABC):
 
 @dataclass
 class TuttleViewParams:
+    """Parameters for TuttleViews"""
+
     navigate_to_route: Callable
     show_snack: Callable
     dialog_controller: Callable
     upload_file_callback: Callable
     pick_file_callback: Callable[[file_picker.FilePickerFile], str]
-    client_storage: Optional[ClientStorage] = None
+    client_storage: ClientStorage
+    database_storage: DatabaseStorage
     vertical_alignment_in_parent: str = START_ALIGNMENT
     horizontal_alignment_in_parent: str = START_ALIGNMENT
     keep_back_stack: bool = True
@@ -79,6 +121,7 @@ class TuttleView(ABC):
         self.upload_file_callback = params.upload_file_callback
         self.pick_file_callback = params.pick_file_callback
         self.client_storage = params.client_storage
+        self.database_storage = params.database_storage
         self.mounted = False
 
     def parent_intent_listener(self, intent: str, data: any):

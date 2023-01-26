@@ -1,8 +1,5 @@
 from typing import Callable, Optional
 
-import re
-from pathlib import Path
-
 from flet import (
     AlertDialog,
     FilePicker,
@@ -10,17 +7,15 @@ from flet import (
     Page,
     SnackBar,
     TemplateRoute,
-    Text,
     View,
     app,
 )
 
-import demo
-import sqlmodel
 from auth.view import ProfileScreen, SplashScreen
 from contracts.view import ContractEditorScreen, ViewContractScreen
 from core.abstractions import TuttleView, TuttleViewParams
 from core.client_storage_impl import ClientStorageImpl
+from core.database_storage_impl import DatabaseStorageImpl
 from core.models import RouteView
 from core.utils import AlertDialogControls
 from core.views import get_heading
@@ -58,6 +53,9 @@ class TuttleApp:
         self.page.fonts = APP_FONTS
         self.page.theme = APP_THEME
         self.client_storage = ClientStorageImpl(page=self.page)
+        self.db = DatabaseStorageImpl(
+            store_demo_timetracking_dataframe=self.store_demo_timetracking_dataframe
+        )
         preferences = PreferencesIntent(self.client_storage)
         preferences_result = preferences.get_preference_by_key(
             PreferencesStorageKeys.theme_mode_key
@@ -83,10 +81,6 @@ class TuttleApp:
         self.route_parser = TuttleRoutes(self)
         self.current_route_view: Optional[RouteView] = None
         self.page.on_resize = self.page_resize
-
-        # database config
-        self.app_dir = self.ensure_app_dir()
-        self.db_path = self.app_dir / "tuttle.db"
 
     def page_resize(self, e):
         if self.current_route_view:
@@ -239,66 +233,12 @@ class TuttleApp:
             self.page.window_width, self.page.window_height
         )
 
-    def create_model(self):
-        logger.info("Creating database model")
-        sqlmodel.SQLModel.metadata.create_all(self.db_engine, checkfirst=True)
-
-    def ensure_database(self):
-        """
-        Ensure that the database exists and is up to date.
-        """
-        if not self.db_path.exists():
-            self.db_engine = sqlmodel.create_engine(
-                f"sqlite:///{self.db_path}", echo=True
-            )
-            self.create_model()
-        else:
-            logger.info("Database exists, skipping creation")
-
-    def clear_database(self):
-        """
-        Delete the database and rebuild database model.
-        """
-        logger.info("Clearing database")
-        try:
-            self.db_path.unlink()
-        except FileNotFoundError:
-            logger.info("Database file not found, skipping delete")
-        self.db_engine = sqlmodel.create_engine(f"sqlite:///{self.db_path}", echo=True)
-        self.create_model()
-
     def store_demo_timetracking_dataframe(self, time_tracking_data: DataFrame):
         """Caches the time tracking dataframe created from a demo installation"""
         self.timetracking_intent = TimeTrackingIntent(
             client_storage=self.client_storage
         )
         self.timetracking_intent.set_timetracking_data(data=time_tracking_data)
-
-    def install_demo_data(self):
-        """Install demo data into the database."""
-        self.clear_database()
-        try:
-            demo.install_demo_data(
-                n_projects=4,
-                db_path=self.db_path,
-                on_cache_timetracking_dataframe=self.store_demo_timetracking_dataframe,
-            )
-        except Exception as ex:
-            logger.exception(ex)
-            logger.error("Failed to install demo data")
-
-    def ensure_app_dir(self) -> Path:
-        """Ensures that the user directory exists"""
-        app_dir = Path.home() / ".tuttle"
-        if not app_dir.exists():
-            app_dir.mkdir(parents=True)
-        return app_dir
-
-    def ensure_uploads_dir(self) -> Path:
-        uploads_dir = self.app_dir / "uploads"
-        if not uploads_dir.exists():
-            uploads_dir.mkdir(parents=True)
-        return uploads_dir
 
     def build(self):
         self.page.go(self.page.route)
@@ -308,7 +248,6 @@ class TuttleRoutes:
     """Utility class for parsing of routes to destination views"""
 
     def __init__(self, app: TuttleApp):
-        self.app = app
         self.on_theme_changed = app.on_theme_mode_changed
         self.tuttle_view_params = TuttleViewParams(
             navigate_to_route=app.change_route,
@@ -316,6 +255,7 @@ class TuttleRoutes:
             dialog_controller=app.control_alert_dialog,
             on_navigate_back=app.on_view_pop,
             client_storage=app.client_storage,
+            database_storage=app.db,
             upload_file_callback=app.upload_file_callback,
             pick_file_callback=app.pick_file_callback,
         )
@@ -350,7 +290,6 @@ class TuttleRoutes:
         if routePath.match(SPLASH_SCREEN_ROUTE):
             screen = SplashScreen(
                 params=self.tuttle_view_params,
-                install_demo_data_callback=self.app.install_demo_data,
             )
         elif routePath.match(HOME_SCREEN_ROUTE):
             screen = HomeScreen(
@@ -409,7 +348,7 @@ def main(page: Page):
     app = TuttleApp(page)
 
     # if database does not exist, create it
-    app.ensure_database()
+    app.db.ensure_database()
 
     app.build()
 
