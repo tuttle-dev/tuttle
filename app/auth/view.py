@@ -32,22 +32,20 @@ class PaymentDataForm(UserControl):
     def __init__(
         self,
         on_form_submit: Callable[[User], None],
-        user: User,
     ):
         super().__init__()
         self.on_form_submit = on_form_submit
-        self.user = user
-        self.set_form_data()
+        self.user: User = None
 
     def set_form_data(self):
         """Sets the form data to the user's current data"""
         if not self.user.bank_account:
             # Create a new bank account if none exists
             self.user.bank_account = BankAccount(name="", BIC="", IBAN="")
-        self.bank_bic = self.user.bank_account.BIC
-        self.bank_name = self.user.bank_account.name
-        self.bank_iban = self.user.bank_account.IBAN
-        self.vat_number = self.user.VAT_number
+        self.bank_ibc_field.value = self.bank_bic = self.user.bank_account.BIC
+        self.bank_name_field.value = self.bank_name = self.user.bank_account.name
+        self.bank_iban_field.value = self.bank_iban = self.user.bank_account.IBAN
+        self.vat_number_field.value = self.vat_number = self.user.VAT_number
 
     def update_form_data(self, user: User):
         """Updates the user's data with the form data"""
@@ -77,32 +75,35 @@ class PaymentDataForm(UserControl):
 
     def build(self):
         """Called when form is built"""
+        self.vat_number_field = views.get_std_txt_field(
+            on_change=self.on_vat_number_changed,
+            label="VAT Number",
+            hint="Value Added Tax number of the user, legally required for invoices.",
+        )
+        self.bank_name_field = views.get_std_txt_field(
+            on_change=self.on_bank_name_changed,
+            label="Name",
+            hint="Name of account",
+        )
+        self.bank_iban_field = views.get_std_txt_field(
+            on_change=self.on_bank_iban_changed,
+            label="IBAN",
+            hint="International Bank Account Number",
+        )
+        self.bank_ibc_field = views.get_std_txt_field(
+            on_change=self.on_bank_bic_changed,
+            label="BIC",
+            hint="Bank Identifier Code",
+        )
         return Column(
             spacing=dimens.SPACE_MD,
             controls=[
-                views.get_std_txt_field(
-                    on_change=self.on_vat_number_changed,
-                    label="VAT Number",
-                    hint="Value Added Tax number of the user, legally required for invoices.",
-                    initial_value=self.vat_number,
-                ),
+                self.vat_number_field,
                 views.xsSpace,
                 views.get_sub_heading_txt("Bank Account"),
-                views.get_std_txt_field(
-                    on_change=self.on_bank_name_changed,
-                    label="Name",
-                    initial_value=self.bank_name,
-                ),
-                views.get_std_txt_field(
-                    on_change=self.on_bank_iban_changed,
-                    label="IBAN",
-                    initial_value=self.bank_iban,
-                ),
-                views.get_std_txt_field(
-                    on_change=self.on_bank_bic_changed,
-                    label="BIC",
-                    initial_value=self.bank_bic,
-                ),
+                self.bank_name_field,
+                self.bank_iban_field,
+                self.bank_ibc_field,
                 views.stdSpace,
                 views.get_primary_btn(
                     label="Save",
@@ -578,6 +579,7 @@ class ProfilePhotoContent(TuttleView, UserControl):
         )
 
     def did_mount(self):
+
         """Called when the view is mounted on page"""
         self.mounted = True
         result: IntentResult = self.intent.get_user_if_exists()
@@ -636,6 +638,7 @@ class UserInfoContent(TuttleView, UserControl):
         return profile_destination_content_wrapper(self.user_info_content)
 
     def did_mount(self):
+
         """Called when the view is mounted on page"""
         self.mounted = True
         result: IntentResult = self.intent.get_user_if_exists()
@@ -671,11 +674,15 @@ class PaymentInfoContent(TuttleView, UserControl):
             self.show_snack(result.error_msg, is_error=True)
 
     def build(self):
+        self.payment_data_form = PaymentDataForm(
+            on_form_submit=self.on_update_payment_info,
+        )
         self.payment_info_content = [
             views.get_heading(
                 "Payment Settings",
                 size=fonts.HEADLINE_4_SIZE,
             ),
+            self.payment_data_form,
         ]
         return profile_destination_content_wrapper(self.payment_info_content)
 
@@ -689,11 +696,7 @@ class PaymentInfoContent(TuttleView, UserControl):
         else:
             self.user_profile: User = result.data
             # setup payment info form
-            self.payment_data_form = PaymentDataForm(
-                on_form_submit=self.on_update_payment_info,
-                user=self.user_profile,
-            )
-            self.payment_info_content.append(self.payment_data_form)
+            self.payment_data_form.update_form_data(user=self.user_profile)
             self.update_self()
 
     def will_unmount(self):
