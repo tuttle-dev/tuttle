@@ -1,4 +1,8 @@
-from typing import Optional
+from typing import Optional, Callable
+
+import sys
+
+from loguru import logger
 
 from flet import (
     Column,
@@ -23,6 +27,7 @@ from core.views import (
     get_dropdown,
     get_std_txt_field,
     horizontal_progress,
+    lgSpace,
     mdSpace,
     smSpace,
     update_dropdown_items,
@@ -51,11 +56,13 @@ class PreferencesScreen(TuttleView, UserControl):
     def __init__(
         self,
         params: TuttleViewParams,
-        on_theme_changed,
+        on_theme_changed_callback: Callable,
+        on_reset_app_callback: Callable,
     ):
         super().__init__(params=params)
         self.intent = PreferencesIntent(client_storage=params.client_storage)
-        self.on_theme_changed_callback = on_theme_changed
+        self.on_theme_changed_callback = on_theme_changed_callback
+        self.on_reset_app_callback = on_reset_app_callback
         self.preferences: Optional[Preferences] = None
         self.currencies = []
 
@@ -110,6 +117,15 @@ class PreferencesScreen(TuttleView, UserControl):
         if not self.preferences:
             return
         self.preferences.language = e.control.value
+
+    def on_reset_app(self, e):
+        logger.warning("Resetting the app to default state")
+        logger.warning("Clearning preferences")
+        result: IntentResult[None] = self.intent.clear_preferences()
+        assert result.was_intent_successful
+        logger.warning("Clearning database")
+        logger.warning("Quitting app after reset. Please restart.")
+        self.on_reset_app_callback()
 
     def get_tab_item(self, label, icon, content_controls):
         return Tab(
@@ -179,6 +195,15 @@ class PreferencesScreen(TuttleView, UserControl):
                 "English",
             ],
         )
+
+        # a reset button for the app with a warning sign, warning color and a confirmation dialog
+        self.reset_button = views.get_danger_button(
+            label="Reset App and Quit",
+            icon=icons.RESTART_ALT_OUTLINED,
+            on_click=self.on_reset_app,
+            tooltip="Warning: This will reset the app to default state and delete all data. You will have to restart the app.",
+        )
+
         self.tabs = Tabs(
             selected_index=0,
             animation_duration=300,
@@ -190,6 +215,8 @@ class PreferencesScreen(TuttleView, UserControl):
                     icons.SETTINGS_OUTLINED,
                     [
                         self.theme_control,
+                        lgSpace,
+                        self.reset_button,
                     ],
                 ),
                 self.get_tab_item(
