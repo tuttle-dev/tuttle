@@ -5,13 +5,14 @@ import datetime
 from clients.intent import ClientsIntent
 from contracts.intent import ContractsIntent
 from core.intent_result import IntentResult
+from core.abstractions import Intent
 
 from tuttle.model import Client, Contract, Project
 
 from .data_source import ProjectDataSource
 
 
-class ProjectsIntent:
+class ProjectsIntent(Intent):
     """Handles intents related to the projects data Ui"""
 
     def __init__(

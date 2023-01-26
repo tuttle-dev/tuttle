@@ -6,7 +6,7 @@ from datetime import date
 from pathlib import Path
 
 from auth.data_source import UserDataSource
-from core.abstractions import ClientStorage
+from core.abstractions import ClientStorage, Intent
 from core.intent_result import IntentResult
 from loguru import logger
 from pandas import DataFrame
@@ -22,7 +22,7 @@ from .data_source import InvoicingDataSource
 from auth.intent import AuthIntent
 
 
-class InvoicingIntent:
+class InvoicingIntent(Intent):
     """Handles Invoicing C_R_U_D intents"""
 
     def __init__(self, client_storage: ClientStorage):
