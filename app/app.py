@@ -52,7 +52,13 @@ from timetracking.intent import TimeTrackingIntent
 class TuttleApp:
     """The main application class"""
 
-    def __init__(self, page: Page) -> None:
+    def __init__(
+        self,
+        page: Page,
+        debug_mode: bool = False,
+    ):
+        """ """
+        self.debug_mode = debug_mode
         self.page = page
         self.page.title = "Tuttle"
         self.page.fonts = APP_FONTS
@@ -60,7 +66,6 @@ class TuttleApp:
         self.client_storage = ClientStorageImpl(page=self.page)
         preferences = PreferencesIntent(
             client_storage=self.client_storage,
-            page=self.page,
         )
         preferences_result = preferences.get_preference_by_key(
             PreferencesStorageKeys.theme_mode_key
@@ -244,21 +249,21 @@ class TuttleApp:
 
     def create_model(self):
         logger.info("Creating database model")
-        sqlmodel.SQLModel.metadata.create_all(self.db_engine, checkfirst=True)
+        sqlmodel.SQLModel.metadata.create_all(
+            self.db_engine,
+            checkfirst=True,
+        )
 
     def ensure_database(self):
         """
         Ensure that the database exists and is up to date.
         """
         if not self.db_path.exists():
-            self.db_engine = sqlmodel.create_engine(
-                f"sqlite:///{self.db_path}", echo=True
-            )
-            self.create_model()
+            self.reset_database()
         else:
             logger.info("Database exists, skipping creation")
 
-    def clear_database(self):
+    def reset_database(self):
         """
         Delete the database and rebuild database model.
         """
@@ -267,7 +272,10 @@ class TuttleApp:
             self.db_path.unlink()
         except FileNotFoundError:
             logger.info("Database file not found, skipping delete")
-        self.db_engine = sqlmodel.create_engine(f"sqlite:///{self.db_path}", echo=True)
+        self.db_engine = sqlmodel.create_engine(
+            f"sqlite:///{self.db_path}",
+            echo=self.debug_mode,
+        )
         self.create_model()
 
     def store_demo_timetracking_dataframe(self, time_tracking_data: DataFrame):
@@ -279,7 +287,7 @@ class TuttleApp:
 
     def install_demo_data(self):
         """Install demo data into the database."""
-        self.clear_database()
+        self.reset_database()
         try:
             demo.install_demo_data(
                 n_projects=4,
@@ -309,6 +317,11 @@ class TuttleApp:
 
     def build(self):
         self.page.go(self.page.route)
+
+    def reset_and_quit(self):
+        """Resets the application and quits."""
+        self.reset_database()
+        self.close()
 
 
 class TuttleRoutes:
@@ -380,7 +393,9 @@ class TuttleRoutes:
             )
         elif routePath.match(PREFERENCES_SCREEN_ROUTE):
             screen = PreferencesScreen(
-                params=self.tuttle_view_params, on_theme_changed=self.on_theme_changed
+                params=self.tuttle_view_params,
+                on_theme_changed_callback=self.on_theme_changed,
+                on_reset_app_callback=self.app.reset_and_quit,
             )
         elif routePath.match(PROJECT_EDITOR_SCREEN_ROUTE):
             screen = ProjectEditorScreen(params=self.tuttle_view_params)

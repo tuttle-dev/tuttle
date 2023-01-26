@@ -33,7 +33,6 @@ class PreferencesIntent(Intent):
         client_storage: ClientStorage,
     ):
         self._client_storage = client_storage
-        self._page = page
 
     def get_preferences(self) -> IntentResult:
         preferences = Preferences()
@@ -137,6 +136,22 @@ class PreferencesIntent(Intent):
             result.error_msg = "Failed to load your preferred theme"
             result.log_message_if_any()
         return result
+
+    def clear_preferences(self) -> IntentResult[None]:
+        """Clears all preferences"""
+        try:
+            self._client_storage.clear_preferences()
+            return IntentResult(was_intent_successful=True)
+        except Exception as ex:
+            logger.error(f"Failed to clear preferences: {ex.__class__.__name__}")
+            logger.exception(ex)
+            result = IntentResult(
+                was_intent_successful=False,
+                exception=ex,
+                error_msg=f"Failed to clear preferences: {ex.__class__.__name__}",
+            )
+            result.log_message_if_any()
+            return result
 
     def reset_app(self) -> IntentResult:
         """Resets the app to it's default state"""

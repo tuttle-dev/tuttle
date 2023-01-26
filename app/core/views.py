@@ -234,6 +234,7 @@ def get_danger_button(
     label: str,
     width: int = 200,
     icon: Optional[str] = None,
+    tooltip: Optional[str] = None,
 ):
     """An elevated button with danger styling"""
     return ElevatedButton(
@@ -242,6 +243,7 @@ def get_danger_button(
         on_click=on_click,
         icon=icon,
         color=colors.DANGER_COLOR,
+        tooltip=tooltip,
     )
 
 
