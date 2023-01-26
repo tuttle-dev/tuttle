@@ -4,7 +4,7 @@ import datetime
 
 from clients.intent import ClientsIntent
 from contacts.intent import ContactsIntent
-from core.abstractions import ClientStorage
+from core.abstractions import ClientStorage, Intent
 from core.intent_result import IntentResult
 from preferences.intent import PreferencesIntent
 from preferences.model import PreferencesStorageKeys
