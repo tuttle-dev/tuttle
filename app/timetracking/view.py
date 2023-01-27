@@ -16,7 +16,8 @@ from flet import (
 )
 
 from core import tabular, utils, views
-from core.abstractions import DialogHandler, TuttleView, IntentResult
+from core.abstractions import DialogHandler, TuttleView
+from core.intent_result import IntentResult
 from pandas import DataFrame
 from res import colors, dimens, fonts, res_utils
 
