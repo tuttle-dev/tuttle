@@ -72,6 +72,12 @@ class InvoicingEditorPopUp(DialogHandler, UserControl):
         self.to_date_field = views.DateSelector(
             label="To", initial_date=today, label_color=colors.GRAY_COLOR
         )
+        self.projects_dropdown = views.StdDropDown(
+            on_change=self.on_project_selected,
+            label="Select project",
+            items=project_options,
+            show=not is_editing,
+        )
         dialog = AlertDialog(
             content=Container(
                 height=pop_up_height,
@@ -79,34 +85,29 @@ class InvoicingEditorPopUp(DialogHandler, UserControl):
                 content=Column(
                     scroll=utils.AUTO_SCROLL,
                     controls=[
-                        views.get_heading(title=title, size=fonts.HEADLINE_4_SIZE),
-                        views.xsSpace,
-                        views.get_std_txt_field(
+                        views.StdHeading(title=title, size=fonts.HEADLINE_4_SIZE),
+                        views.Spacer(xs_space=True),
+                        views.StdTextField(
                             label="Invoice Number",
                             hint=self.invoice.number,
                             initial_value=self.invoice.number,
                             keyboard_type=utils.KEYBOARD_NONE,
                             show=is_editing,
                         ),
-                        views.xsSpace,
+                        views.Spacer(xs_space=True),
                         self.date_field,
-                        views.xsSpace,
-                        views.get_dropdown(
-                            on_change=self.on_project_selected,
-                            label="Select project",
-                            items=project_options,
-                            show=not is_editing,
-                        ),
-                        views.stdSpace,
-                        views.get_body_txt(txt="Date range"),
+                        views.Spacer(xs_space=True),
+                        self.projects_dropdown,
+                        views.Spacer(),
+                        views.StdBodyText(txt="Date range"),
                         self.from_date_field,
                         self.to_date_field,
-                        views.xsSpace,
+                        views.Spacer(xs_space=True),
                     ],
                 ),
             ),
             actions=[
-                views.get_primary_btn(
+                views.StdPrimaryButton(
                     label="Done", on_click=self.on_submit_btn_clicked
                 ),
             ],
@@ -380,8 +381,8 @@ class InvoicingListView(TuttleView, UserControl):
 
     def build(self):
         """build the view"""
-        self.loading_indicator = views.horizontal_progress
-        self.no_invoices_control = views.get_body_txt(
+        self.loading_indicator = views.StdProgressBar()
+        self.no_invoices_control = views.StdBodyText(
             txt="You have not created any invoices yet",
             show=False,
         )
@@ -390,9 +391,7 @@ class InvoicingListView(TuttleView, UserControl):
                 Column(
                     col={"xs": 12},
                     controls=[
-                        views.get_heading(
-                            title="Invoicing", size=fonts.HEADLINE_4_SIZE
-                        ),
+                        views.StdHeading(title="Invoicing", size=fonts.HEADLINE_4_SIZE),
                         self.loading_indicator,
                         self.no_invoices_control,
                     ],
@@ -406,7 +405,7 @@ class InvoicingListView(TuttleView, UserControl):
         return Column(
             controls=[
                 self.title_control,
-                views.mdSpace,
+                views.Spacer(md_space=True),
                 Container(self.invoices_list_control, expand=True),
             ],
         )
@@ -455,31 +454,35 @@ class InvoiceTile(UserControl):
         if self.invoice.contract and self.invoice.contract.client:
             _client_name = self.invoice.contract.client.name
         return ListTile(
-            leading=views.get_body_txt(self.invoice.number),
-            title=views.get_body_txt(f"{_project_title} ➡ {_client_name}"),
+            leading=views.StdBodyText(self.invoice.number),
+            title=views.StdBodyText(f"{_project_title} ➡ {_client_name}"),
             subtitle=Column(
                 controls=[
-                    views.get_body_txt(
+                    views.StdBodyText(
                         f'Invoice Date: {self.invoice.date.strftime("%d-%m-%Y")}'
                     ),
                     Row(
                         controls=[
-                            views.get_body_txt(
+                            views.StdBodyText(
                                 f"Total: {self.invoice.total:.2f} {_currency}"
                             ),
-                            views.status_label(txt="Paid", is_done=self.invoice.paid),
-                            views.status_label(
+                            views.StdStatusDisplay(
+                                txt="Paid", is_done=self.invoice.paid
+                            ),
+                            views.StdStatusDisplay(
                                 txt="Cancelled", is_done=self.invoice.cancelled
                             ),
-                            views.status_label(txt="Sent", is_done=self.invoice.sent),
+                            views.StdStatusDisplay(
+                                txt="Sent", is_done=self.invoice.sent
+                            ),
                         ]
                     ),
                 ]
             ),
-            trailing=views.context_pop_up_menu(
+            trailing=views.StdContextMenu(
                 on_click_delete=lambda e: self.on_delete_clicked(self.invoice),
                 prefix_menu_items=[
-                    views.pop_up_menu_item(
+                    views.StdPopUpMenuItem(
                         icon=icons.HOURGLASS_BOTTOM_OUTLINED,
                         txt="Mark as sent"
                         if not self.invoice.sent
@@ -488,26 +491,26 @@ class InvoiceTile(UserControl):
                             self.invoice,
                         ),
                     ),
-                    views.pop_up_menu_item(
+                    views.StdPopUpMenuItem(
                         icon=icons.ATTACH_MONEY_OUTLINED,
                         txt="Mark as paid"
                         if not self.invoice.paid
                         else "Mark as not paid",
                         on_click=lambda e: self.toggle_paid_status(self.invoice),
                     ),
-                    views.pop_up_menu_item(
+                    views.StdPopUpMenuItem(
                         icon=icons.CANCEL_OUTLINED,
                         txt="Mark as cancelled"
                         if not self.invoice.cancelled
                         else "Mark as not cancelled",
                         on_click=lambda e: self.toggle_cancelled_status(self.invoice),
                     ),
-                    views.pop_up_menu_item(
+                    views.StdPopUpMenuItem(
                         icon=icons.VISIBILITY_OUTLINED,
                         txt="View",
                         on_click=lambda e: self.on_view_invoice(self.invoice),
                     ),
-                    views.pop_up_menu_item(
+                    views.StdPopUpMenuItem(
                         icon=icons.OUTGOING_MAIL,
                         txt="Send",
                         on_click=lambda e: self.on_mail_invoice(self.invoice),

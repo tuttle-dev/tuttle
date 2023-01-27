@@ -69,7 +69,7 @@ def get_action_bar(
             controls=[
                 Row(
                     controls=[
-                        views.get_heading(
+                        views.StdHeading(
                             "",
                             size=fonts.HEADLINE_4_SIZE,
                         )
@@ -239,12 +239,12 @@ class HomeScreen(TuttleView, UserControl):
         )
         self.selected_tab = 0
 
-        self.main_menu = views.get_std_navigation_menu(
+        self.main_menu = views.StdNavigationMenu(
             title=self.main_menu_handler.menu_title,
             destinations=self.get_menu_destinations(),
             on_change=lambda e: self.on_menu_destination_change(e),
         )
-        self.secondary_menu = views.get_std_navigation_menu(
+        self.secondary_menu = views.StdNavigationMenu(
             title=self.secondary_menu_handler.menu_title,
             destinations=self.get_menu_destinations(menu_level=1),
             on_change=lambda e: self.on_menu_destination_change(e, menu_level=1),
@@ -276,7 +276,7 @@ class HomeScreen(TuttleView, UserControl):
                     item.selected_icon,
                     size=dimens.ICON_SIZE,
                 ),
-                label_content=views.get_body_txt(item.label),
+                label_content=views.StdBodyText(item.label),
                 padding=padding.symmetric(horizontal=dimens.SPACE_SM),
             )
             items.append(itemDestination)
@@ -340,7 +340,7 @@ class HomeScreen(TuttleView, UserControl):
         )
         self.footer = Container(
             col={"xs": 12},
-            content=views.get_heading(),
+            content=views.StdHeading(),
             alignment=alignment.center,
             border=border.only(
                 top=border.BorderSide(width=0.2, color=colors.BORDER_DARK_COLOR)

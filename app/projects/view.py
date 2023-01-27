@@ -60,13 +60,13 @@ class ProjectCard(UserControl):
                     utils.TuttleComponentIcons.project_icon,
                     size=dimens.ICON_SIZE,
                 ),
-                title=views.get_body_txt(self.project.title),
-                subtitle=views.get_body_txt(
+                title=views.StdBodyText(self.project.title),
+                subtitle=views.StdBodyText(
                     f"#{self.project.tag}",
                     color=colors.GRAY_COLOR,
                     weight=FontWeight.BOLD,
                 ),
-                trailing=views.context_pop_up_menu(
+                trailing=views.StdContextMenu(
                     on_click_view=lambda e: self.on_view_details_clicked(
                         self.project.id
                     ),
@@ -75,16 +75,16 @@ class ProjectCard(UserControl):
                 ),
                 on_click=lambda e: self.on_view_details_clicked(self.project.id),
             ),
-            views.mdSpace,
+            views.Spacer(md_space=True),
             ResponsiveRow(
                 controls=[
-                    views.get_body_txt(
+                    views.StdBodyText(
                         txt="Brief Description",
                         color=colors.GRAY_COLOR,
                         size=fonts.BODY_2_SIZE,
                         col={"xs": "12"},
                     ),
-                    views.get_body_txt(
+                    views.StdBodyText(
                         txt=self.project.get_brief_description(),
                         col={"xs": "12"},
                     ),
@@ -93,17 +93,17 @@ class ProjectCard(UserControl):
                 run_spacing=0,
                 vertical_alignment=utils.CENTER_ALIGNMENT,
             ),
-            views.mdSpace,
+            views.Spacer(md_space=True),
             ResponsiveRow(
                 controls=[
-                    views.get_body_txt(
+                    views.StdBodyText(
                         txt="Client",
                         color=colors.GRAY_COLOR,
                         size=fonts.BODY_2_SIZE,
                         col={"xs": "12"},
                     ),
                     Container(
-                        views.get_body_txt(
+                        views.StdBodyText(
                             txt=_client_title,
                             col={"xs": "12"},
                         ),
@@ -114,17 +114,17 @@ class ProjectCard(UserControl):
                 spacing=dimens.SPACE_XS,
                 run_spacing=0,
             ),
-            views.mdSpace,
+            views.Spacer(md_space=True),
             ResponsiveRow(
                 controls=[
-                    views.get_body_txt(
+                    views.StdBodyText(
                         txt="Contract",
                         color=colors.GRAY_COLOR,
                         size=fonts.BODY_2_SIZE,
                         col={"xs": "12"},
                     ),
                     Container(
-                        views.get_body_txt(
+                        views.StdBodyText(
                             txt=_contract_title,
                             col={"xs": "12"},
                         ),
@@ -135,17 +135,17 @@ class ProjectCard(UserControl):
                 spacing=dimens.SPACE_XS,
                 run_spacing=0,
             ),
-            views.mdSpace,
+            views.Spacer(md_space=True),
             ResponsiveRow(
                 controls=[
-                    views.get_body_txt(
+                    views.StdBodyText(
                         txt="Start date",
                         color=colors.GRAY_COLOR,
                         size=fonts.BODY_2_SIZE,
                         col={"xs": "12"},
                     ),
                     Container(
-                        views.get_body_txt(
+                        views.StdBodyText(
                             txt=self.project.start_date.strftime("%d/%m/%Y")
                             if self.project.start_date
                             else "",
@@ -158,17 +158,17 @@ class ProjectCard(UserControl):
                 spacing=dimens.SPACE_XS,
                 run_spacing=0,
             ),
-            views.mdSpace,
+            views.Spacer(md_space=True),
             ResponsiveRow(
                 controls=[
-                    views.get_body_txt(
+                    views.StdBodyText(
                         txt="End date",
                         color=colors.GRAY_COLOR,
                         size=fonts.BODY_2_SIZE,
                         col={"xs": "12"},
                     ),
                     Container(
-                        views.get_body_txt(
+                        views.StdBodyText(
                             txt=self.project.end_date.strftime("%d/%m/%Y")
                             if self.project.end_date
                             else "-",
@@ -182,7 +182,7 @@ class ProjectCard(UserControl):
                 spacing=dimens.SPACE_XS,
                 run_spacing=0,
             ),
-            views.mdSpace,
+            views.Spacer(md_space=True),
         ]
         card = Card(
             elevation=2,
@@ -309,7 +309,7 @@ class ViewProjectScreen(TuttleView, UserControl):
         super().__init__(params)
         self.intent = ProjectsIntent()
         self.project_id = project_id
-        self.loading_indicator = views.horizontal_progress
+        self.loading_indicator = views.StdProgressBar()
         self.project: Optional[Project] = None
         self.pop_up_handler = None
 
@@ -436,31 +436,31 @@ class ViewProjectScreen(TuttleView, UserControl):
             on_click=self.on_delete_clicked,
         )
 
-        self.project_title_control = views.get_heading()
+        self.project_title_control = views.StdHeading()
 
-        self.client_control = views.get_sub_heading_txt(
+        self.client_control = views.StdSubHeading(
             color=colors.GRAY_COLOR,
         )
-        self.contract_control = views.get_sub_heading_txt(
+        self.contract_control = views.StdSubHeading(
             color=colors.GRAY_COLOR,
         )
-        self.project_description_control = views.get_body_txt(
+        self.project_description_control = views.StdBodyText(
             align=utils.TXT_ALIGN_JUSTIFY,
         )
 
-        self.project_start_date_control = views.get_sub_heading_txt(
+        self.project_start_date_control = views.StdSubHeading(
             size=fonts.BUTTON_SIZE,
             color=colors.GRAY_COLOR,
         )
-        self.project_end_date_control = views.get_sub_heading_txt(
+        self.project_end_date_control = views.StdSubHeading(
             size=fonts.BUTTON_SIZE,
             color=colors.GRAY_COLOR,
         )
 
-        self.project_status_control = views.get_sub_heading_txt(
+        self.project_status_control = views.StdSubHeading(
             size=fonts.BUTTON_SIZE, color=colors.PRIMARY_COLOR
         )
-        self.project_tagline_control = views.get_sub_heading_txt(
+        self.project_tagline_control = views.StdSubHeading(
             size=fonts.BUTTON_SIZE, color=colors.PRIMARY_COLOR
         )
 
@@ -510,7 +510,7 @@ class ViewProjectScreen(TuttleView, UserControl):
                                                 vertical_alignment=utils.CENTER_ALIGNMENT,
                                                 alignment=utils.SPACE_BETWEEN_ALIGNMENT,
                                                 controls=[
-                                                    views.get_heading(
+                                                    views.StdHeading(
                                                         "Project",
                                                         size=fonts.HEADLINE_4_SIZE,
                                                         color=colors.PRIMARY_COLOR,
@@ -535,14 +535,14 @@ class ViewProjectScreen(TuttleView, UserControl):
                                     ),
                                 ],
                             ),
-                            views.mdSpace,
-                            views.get_sub_heading_txt(
+                            views.Spacer(md_space=True),
+                            views.StdSubHeading(
                                 subtitle="Project Description",
                             ),
                             self.project_description_control,
                             self.project_start_date_control,
                             self.project_end_date_control,
-                            views.mdSpace,
+                            views.Spacer(md_space=True),
                             Row(
                                 spacing=dimens.SPACE_STD,
                                 run_spacing=dimens.SPACE_STD,
@@ -610,8 +610,8 @@ class ProjectsListView(TuttleView, UserControl):
     def __init__(self, params):
         super().__init__(params)
         self.intent = ProjectsIntent()
-        self.loading_indicator = views.horizontal_progress
-        self.no_projects_control = views.get_body_txt(
+        self.loading_indicator = views.StdProgressBar()
+        self.no_projects_control = views.StdBodyText(
             txt="You have not added any projects yet.",
             color=colors.ERROR_COLOR,
             show=False,
@@ -621,7 +621,7 @@ class ProjectsListView(TuttleView, UserControl):
                 Column(
                     col={"xs": 12},
                     controls=[
-                        views.get_heading(
+                        views.StdHeading(
                             title="My Projects", size=fonts.HEADLINE_4_SIZE
                         ),
                         self.loading_indicator,
@@ -632,7 +632,7 @@ class ProjectsListView(TuttleView, UserControl):
         )
         self.projects_container = GridView(
             expand=False,
-            max_extent=540,
+            max_extent=560,
             child_aspect_ratio=1.0,
             spacing=dimens.SPACE_STD,
             run_spacing=dimens.SPACE_MD,
@@ -738,9 +738,9 @@ class ProjectsListView(TuttleView, UserControl):
         return Column(
             controls=[
                 self.title_control,
-                views.mdSpace,
+                views.Spacer(md_space=True),
                 ProjectFiltersView(onStateChanged=self.on_filter_projects),
-                views.mdSpace,
+                views.Spacer(md_space=True),
                 Container(self.projects_container, expand=True),
             ]
         )
@@ -764,7 +764,7 @@ class ProjectEditorScreen(TuttleView, UserControl):
         self.project_id_if_editing = project_id_if_editing
         self.old_project_if_editing: Optional[Project] = None
         self.contracts_map = {}
-        self.loading_indicator = views.horizontal_progress
+        self.loading_indicator = views.StdProgressBar()
         self.title = ""
         self.description = ""
         self.tag = ""
@@ -786,7 +786,7 @@ class ProjectEditorScreen(TuttleView, UserControl):
 
     def add_tag_to_dropdown_item_id(self, id, value):
         """given id and value, prepends a # symbol and returns as str"""
-        return f"{value}"
+        return f"#{id} {value}"
 
     def get_id_from_dropdown_selection(self, selected: str):
         """given a dropdown selection, extracts the id from the selection"""
@@ -815,9 +815,8 @@ class ProjectEditorScreen(TuttleView, UserControl):
         contract_id = self.get_id_from_dropdown_selection(selected=e.control.value)
         if int(contract_id) in self.contracts_map:
             self.contract = self.contracts_map[int(contract_id)]
-        if self.contracts_field.error_text:
-            self.contracts_field.error_text = None
-            self.update_self()
+        self.contracts_field.update_error_txt()
+        self.update_self()
 
     def clear_title_error(self, e):
         """Called when the title input is focused"""
@@ -861,9 +860,10 @@ class ProjectEditorScreen(TuttleView, UserControl):
         self.tag_field.value = self.tag = self.old_project_if_editing.tag
         self.contract = self.old_project_if_editing.contract
         if self.contract:
-            self.contracts_field.value = self.add_tag_to_dropdown_item_id(
+            contract_as_list_item = self.add_tag_to_dropdown_item_id(
                 id=self.contract.id, value=self.contract.title
             )
+            self.contracts_field.update_value(contract_as_list_item)
         self.form_title.value = "Edit Project"
         self.submit_btn.text = "Update Project"
 
@@ -875,7 +875,7 @@ class ProjectEditorScreen(TuttleView, UserControl):
         self.contracts_field.error_text = (
             "Please create a new contract" if len(self.contracts_map) == 0 else None
         )
-        views.update_dropdown_items(self.contracts_field, self.get_contracts_as_list())
+        self.contracts_field.update_dropdown_items(self.get_contracts_as_list())
 
     def on_add_contract(self, e):
         """Called when the add contract button is clicked, redirects to the contract editor screen"""
@@ -944,25 +944,25 @@ class ProjectEditorScreen(TuttleView, UserControl):
 
     def build(self):
         """Builds the view"""
-        self.title_field = views.get_std_txt_field(
+        self.title_field = views.StdTextField(
             label="Title",
             hint="A short, unique title",
             on_change=self.on_title_changed,
             on_focus=self.clear_title_error,
         )
-        self.description_field = views.get_std_multiline_field(
+        self.description_field = views.StdMultilineField(
             label="Description",
             hint="A longer description of the project",
             on_change=self.on_description_changed,
             on_focus=self.clear_description_error,
         )
-        self.tag_field = views.get_std_txt_field(
+        self.tag_field = views.StdTextField(
             label="Tag",
             hint="A unique tag",
             on_change=self.on_tag_changed,
         )
 
-        self.contracts_field = views.get_dropdown(
+        self.contracts_field = views.StdDropDown(
             label="Contract",
             on_change=self.on_contract_selected,
             items=self.get_contracts_as_list(),
@@ -983,10 +983,10 @@ class ProjectEditorScreen(TuttleView, UserControl):
             ],
         )
 
-        self.form_title = views.get_heading(
+        self.form_title = views.StdHeading(
             title="New Project",
         )
-        self.submit_btn = views.get_primary_btn(
+        self.submit_btn = views.StdPrimaryButton(
             label="Create Project",
             on_click=self.on_save,
         )
@@ -1011,19 +1011,19 @@ class ProjectEditorScreen(TuttleView, UserControl):
                                 ]
                             ),
                             self.loading_indicator,
-                            views.mdSpace,
+                            views.Spacer(md_space=True),
                             self.title_field,
-                            views.stdSpace,
+                            views.Spacer(),
                             self.description_field,
-                            views.stdSpace,
+                            views.Spacer(),
                             self.contract_editor,
-                            views.stdSpace,
+                            views.Spacer(),
                             self.tag_field,
-                            views.lgSpace,
+                            views.Spacer(lg_space=True),
                             self.start_date_field,
-                            views.lgSpace,
+                            views.Spacer(lg_space=True),
                             self.end_date_field,
-                            views.lgSpace,
+                            views.Spacer(lg_space=True),
                             self.submit_btn,
                         ],
                     ),

@@ -44,19 +44,19 @@ class TwoFAPopUp(DialogHandler):
                 content=Column(
                     scroll=utils.AUTO_SCROLL,
                     controls=[
-                        views.get_heading(title=title, size=fonts.HEADLINE_4_SIZE),
-                        views.xsSpace,
-                        views.get_std_txt_field(
+                        views.StdHeading(title=title, size=fonts.HEADLINE_4_SIZE),
+                        views.Spacer(xs_space=True),
+                        views.StdTextField(
                             label="Code",
                             on_change=self.on_code_changed,
                         ),
-                        views.xsSpace,
+                        views.Spacer(xs_space=True),
                     ],
                 ),
                 width=dialog_width,
             ),
             actions=[
-                views.get_primary_btn(
+                views.StdPrimaryButton(
                     label="Verify",
                     on_click=lambda e: on_submit_callback(self.code),
                 ),
@@ -85,7 +85,7 @@ class NewTimeTrackPopUp(DialogHandler):
             True if preferred_cloud_acc and preferred_acc_provider else False
         )
 
-        space_between_cloud_controls = views.xsSpace
+        space_between_cloud_controls = views.Spacer(xs_space=True)
         space_between_cloud_controls.visible = display_cloud_option
         dialog_width = int(dimens.MIN_WINDOW_WIDTH * 0.8)
         title = "Track your progress"
@@ -94,20 +94,20 @@ class NewTimeTrackPopUp(DialogHandler):
                 content=Column(
                     scroll=utils.AUTO_SCROLL,
                     controls=[
-                        views.get_heading(title=title, size=fonts.HEADLINE_4_SIZE),
-                        views.xsSpace,
-                        views.get_body_txt(
+                        views.StdHeading(title=title, size=fonts.HEADLINE_4_SIZE),
+                        views.Spacer(xs_space=True),
+                        views.StdBodyText(
                             f"Use calendar from {preferred_acc_provider}",
                             show=display_cloud_option,
                         ),
                         space_between_cloud_controls,
-                        views.get_std_txt_field(
+                        views.StdTextField(
                             label="Calendar Name",
                             on_change=self.on_calendar_name_changed,
                             show=display_cloud_option,
                         ),
                         space_between_cloud_controls,
-                        views.get_std_txt_field(
+                        views.StdTextField(
                             label="Cloud Password",
                             hint="Your password will not be stored",
                             keyboard_type=utils.KEYBOARD_PASSWORD,
@@ -115,7 +115,7 @@ class NewTimeTrackPopUp(DialogHandler):
                             show=display_cloud_option,
                         ),
                         space_between_cloud_controls,
-                        views.get_primary_btn(
+                        views.StdPrimaryButton(
                             label="Load from cloud calendar",
                             icon="cloud",
                             on_click=lambda e: on_use_cloud_acc_callback(
@@ -128,17 +128,17 @@ class NewTimeTrackPopUp(DialogHandler):
                             show=display_cloud_option,
                         ),
                         space_between_cloud_controls,
-                        views.get_or_txt(show_lines=False, show=display_cloud_option),
+                        views.OrView(show_lines=False, show=display_cloud_option),
                         space_between_cloud_controls,
-                        views.get_secondary_btn(
+                        views.StdSecondaryButton(
                             label="Upload a calendar (.ics) file",
                             icon="calendar_month",
                             on_click=lambda _: on_use_file_callback(is_ics=True),
                             width=int(dialog_width * 0.9),
                         ),
-                        views.get_or_txt(show_lines=False),
-                        views.xsSpace,
-                        views.get_secondary_btn(
+                        views.OrView(show_lines=False),
+                        views.Spacer(xs_space=True),
+                        views.StdSecondaryButton(
                             label="Upload a spreadsheet",
                             icon="table_view",
                             on_click=lambda _: on_use_file_callback(
@@ -146,7 +146,7 @@ class NewTimeTrackPopUp(DialogHandler):
                             ),
                             width=int(dialog_width * 0.9),
                         ),
-                        views.xsSpace,
+                        views.Spacer(xs_space=True),
                     ],
                 ),
                 width=dialog_width,
@@ -438,19 +438,19 @@ class TimeTrackingView(TuttleView, UserControl):
         self.update_self()
 
     def build(self):
-        self.loading_indicator = views.horizontal_progress
-        self.no_timetrack_control = views.get_body_txt(
+        self.loading_indicator = views.StdProgressBar()
+        self.no_timetrack_control = views.StdBodyText(
             txt="You have not logged any work progress yet.",
             color=colors.ERROR_COLOR,
             show=False,
         )
-        self.ongoing_action_hint = views.get_body_txt(show=False)
+        self.ongoing_action_hint = views.StdBodyText(show=False)
         self.title_control = ResponsiveRow(
             controls=[
                 Column(
                     col={"xs": 12},
                     controls=[
-                        views.get_heading(
+                        views.StdHeading(
                             title="Time Tracking", size=fonts.HEADLINE_4_SIZE
                         ),
                         self.loading_indicator,
@@ -464,7 +464,7 @@ class TimeTrackingView(TuttleView, UserControl):
         return Column(
             controls=[
                 self.title_control,
-                views.mdSpace,
+                views.Spacer(md_space=True),
                 self.timetracked_container,
             ]
         )
