@@ -125,7 +125,7 @@ class ClientViewPopUp(DialogHandler, UserControl):
 
 
 class ClientEditorPopUp(DialogHandler, UserControl):
-    """Pop up used for editing a client"""
+    """Pop up used for creating or updating a client"""
 
     def __init__(
         self,
