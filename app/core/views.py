@@ -34,372 +34,415 @@ from res import colors, dimens, fonts, image_paths
 from .abstractions import DialogHandler
 from . import utils
 
-lgSpace = Container(height=dimens.SPACE_LG, width=dimens.SPACE_STD, padding=0, margin=0)
-mdSpace = Container(height=dimens.SPACE_MD, width=dimens.SPACE_MD, padding=0, margin=0)
-stdSpace = Container(
-    height=dimens.SPACE_STD, width=dimens.SPACE_STD, padding=0, margin=0
-)
-smSpace = Container(height=dimens.SPACE_SM, width=dimens.SPACE_SM, padding=0, margin=0)
-xsSpace = Container(height=dimens.SPACE_XS, width=dimens.SPACE_XS, padding=0, margin=0)
+
+class Spacer(Container):
+    """Creates a space between controls"""
+
+    def __init__(
+        self,
+        lg_space: bool = False,
+        md_space: bool = False,
+        sm_space: bool = False,
+        xs_space: bool = False,
+        default_space: int = dimens.SPACE_STD,
+    ):
+        self._space_size = (
+            dimens.SPACE_LG
+            if lg_space
+            else dimens.SPACE_MD
+            if md_space
+            else dimens.SPACE_SM
+            if sm_space
+            else dimens.SPACE_XS
+            if xs_space
+            else default_space
+        )
+        super().__init__(
+            height=self._space_size, width=self._space_size, padding=0, margin=0
+        )
 
 
-def get_heading(
-    title: str = "",
-    size: int = fonts.SUBTITLE_1_SIZE,
-    color: Optional[str] = None,
-    align: str = utils.TXT_ALIGN_LEFT,
-    show: bool = True,
-):
-    """Displays text formatted as a headline"""
-    return Text(
-        title,
-        font_family=fonts.HEADLINE_FONT,
-        weight=fonts.BOLD_FONT,
-        size=size,
-        color=color,
-        text_align=align,
-        visible=show,
-    )
+class StdHeading(Text):
+    """Creates a standard heading"""
+
+    def __init__(
+        self,
+        title: str = "",
+        size: int = fonts.SUBTITLE_1_SIZE,
+        color: Optional[str] = None,
+        align: str = utils.TXT_ALIGN_LEFT,
+        show: bool = True,
+        expand: bool | int | None = None,
+    ):
+        """Displays text formatted as a headline"""
+        super().__init__(
+            title,
+            font_family=fonts.HEADLINE_FONT,
+            weight=fonts.BOLD_FONT,
+            size=size,
+            color=color,
+            text_align=align,
+            visible=show,
+            expand=expand,
+        )
 
 
-def get_sub_heading_txt(
-    subtitle: str = "",
-    size: int = fonts.SUBTITLE_2_SIZE,
-    color: Optional[str] = None,
-    align: str = utils.TXT_ALIGN_LEFT,
-    show: bool = True,
-    expand: bool = False,
-):
-    """Displays text formatted as a headline"""
-    return Text(
-        subtitle,
-        font_family=fonts.HEADLINE_FONT,
-        size=size,
-        color=color,
-        text_align=align,
-        visible=show,
-        expand=expand,
-    )
+class StdSubHeading(Text):
+    """Creates a standard subheading"""
+
+    def __init__(
+        self,
+        subtitle: str = "",
+        size: int = fonts.SUBTITLE_2_SIZE,
+        color: Optional[str] = None,
+        align: str = utils.TXT_ALIGN_LEFT,
+        show: bool = True,
+        expand: bool | int | None = None,
+    ):
+        super().__init__(
+            subtitle,
+            font_family=fonts.HEADLINE_FONT,
+            size=size,
+            color=color,
+            text_align=align,
+            visible=show,
+            expand=expand,
+        )
 
 
-def get_heading_with_subheading(
-    title: str,
-    subtitle: str,
-    alignment_in_container: str = utils.START_ALIGNMENT,
-    txt_alignment: str = utils.TXT_ALIGN_LEFT,
-    title_size: int = fonts.SUBTITLE_1_SIZE,
-    subtitle_size: int = fonts.SUBTITLE_2_SIZE,
-    subtitle_color: Optional[str] = None,
-):
-    """Displays text formatted as a headline with a subtitle below it"""
-    return Column(
-        spacing=0,
-        horizontal_alignment=alignment_in_container,
-        controls=[
-            get_heading(
-                title=title,
-                size=title_size,
-                align=txt_alignment,
-            ),
-            get_sub_heading_txt(
-                subtitle=subtitle,
-                size=subtitle_size,
-                align=txt_alignment,
-                color=subtitle_color,
-            ),
-        ],
-    )
+class StdHeadingWithSubheading(Column):
+    """Creates a standard heading with a subheading"""
+
+    def __init__(
+        self,
+        title: str = "",
+        subtitle: str = "",
+        alignment_in_container: str = utils.START_ALIGNMENT,
+        txt_alignment: str = utils.TXT_ALIGN_LEFT,
+        title_size: int = fonts.SUBTITLE_1_SIZE,
+        subtitle_size: int = fonts.SUBTITLE_2_SIZE,
+        subtitle_color: Optional[str] = None,
+    ):
+
+        super().__init__(
+            spacing=0,
+            horizontal_alignment=alignment_in_container,
+            controls=[
+                StdHeading(
+                    title=title,
+                    size=title_size,
+                    align=txt_alignment,
+                ),
+                StdSubHeading(
+                    subtitle=subtitle,
+                    size=subtitle_size,
+                    align=txt_alignment,
+                    color=subtitle_color,
+                ),
+            ],
+        )
 
 
-def get_body_txt(
-    txt: str = "",
-    size: int = fonts.BODY_1_SIZE,
-    color: Optional[str] = None,
-    show: bool = True,
-    col: Optional[dict] = None,
-    align: str = utils.TXT_ALIGN_LEFT,
-    **kwargs,
-):
-    """Displays text standard-formatted for body"""
-    return Text(
-        col=col,
-        value=txt,
-        color=color,
-        size=size,
-        visible=show,
-        text_align=align,
+class StdBodyText(Text):
+    """Creates a standard body text"""
+
+    def __init__(
+        self,
+        txt: str = "",
+        size: int = fonts.BODY_1_SIZE,
+        color: Optional[str] = None,
+        show: bool = True,
+        col: Optional[dict] = None,
+        align: str = utils.TXT_ALIGN_LEFT,
         **kwargs,
-    )
+    ):
+        super().__init__(
+            col=col,
+            value=txt,
+            color=color,
+            size=size,
+            visible=show,
+            text_align=align,
+            **kwargs,
+        )
 
 
-def get_std_txt_field(
-    on_change: typing.Optional[Callable] = None,
-    label: str = "",
-    hint: str = "",
-    keyboard_type: str = utils.KEYBOARD_TEXT,
-    on_focus: typing.Optional[Callable] = None,
-    initial_value: typing.Optional[str] = None,
-    expand: typing.Optional[int] = None,
-    width: typing.Optional[int] = None,
-    show: bool = True,
-):
-    """Displays commonly used text field in app forms"""
-    txtFieldPad = padding.symmetric(horizontal=dimens.SPACE_XS)
+class StdTextField(TextField):
+    """Creates a standard text field"""
 
-    return TextField(
-        label=label,
-        keyboard_type=keyboard_type,
-        content_padding=txtFieldPad,
-        hint_text=hint,
-        hint_style=TextStyle(size=fonts.CAPTION_SIZE),
-        value=initial_value,
-        focused_border_width=1,
-        on_focus=on_focus,
-        on_change=on_change,
-        password=keyboard_type == utils.KEYBOARD_PASSWORD,
-        expand=expand,
-        width=width,
-        disabled=keyboard_type == utils.KEYBOARD_NONE,
-        text_size=fonts.BODY_1_SIZE,
-        label_style=TextStyle(size=fonts.BODY_2_SIZE),
-        error_style=TextStyle(size=fonts.BODY_2_SIZE, color=colors.ERROR_COLOR),
-        visible=show,
-    )
+    def __init__(
+        self,
+        on_change: typing.Optional[Callable] = None,
+        label: str = "",
+        hint: str = "",
+        keyboard_type: str = utils.KEYBOARD_TEXT,
+        on_focus: typing.Optional[Callable] = None,
+        initial_value: typing.Optional[str] = None,
+        expand: typing.Optional[int] = None,
+        width: typing.Optional[int] = None,
+        show: bool = True,
+    ):
+        """Displays commonly used text field in app forms"""
+        txtFieldPad = padding.symmetric(horizontal=dimens.SPACE_XS)
 
-
-def get_std_multiline_field(
-    on_change,
-    label: str,
-    hint: str,
-    on_focus: typing.Optional[Callable] = None,
-    keyboardType: str = utils.KEYBOARD_MULTILINE,
-    minLines: int = 3,
-    maxLines: int = 5,
-):
-    """Displays commonly used textarea field in app forms"""
-    txtFieldHintStyle = TextStyle(size=fonts.CAPTION_SIZE)
-
-    return TextField(
-        label=label,
-        keyboard_type=keyboardType,
-        hint_text=hint,
-        hint_style=txtFieldHintStyle,
-        focused_border_width=1,
-        min_lines=minLines,
-        max_lines=maxLines,
-        on_focus=on_focus,
-        on_change=on_change,
-        text_size=fonts.BODY_1_SIZE,
-        label_style=TextStyle(size=fonts.BODY_2_SIZE),
-        error_style=TextStyle(size=fonts.BODY_2_SIZE, color=colors.ERROR_COLOR),
-    )
+        super().__init__(
+            label=label,
+            keyboard_type=keyboard_type,
+            content_padding=txtFieldPad,
+            hint_text=hint,
+            hint_style=TextStyle(size=fonts.CAPTION_SIZE),
+            value=initial_value,
+            focused_border_width=1,
+            on_focus=on_focus,
+            on_change=on_change,
+            password=keyboard_type == utils.KEYBOARD_PASSWORD,
+            expand=expand,
+            width=width,
+            disabled=keyboard_type == utils.KEYBOARD_NONE,
+            text_size=fonts.BODY_1_SIZE,
+            label_style=TextStyle(size=fonts.BODY_2_SIZE),
+            error_style=TextStyle(size=fonts.BODY_2_SIZE, color=colors.ERROR_COLOR),
+            visible=show,
+        )
 
 
-def get_error_txt(
-    txt: str,
-    show: bool = True,
-):
+class StdMultilineField(TextField):
+    """Creates a standard multiline text field"""
+
+    def __init__(
+        self,
+        on_change,
+        label: str,
+        hint: str,
+        on_focus: typing.Optional[Callable] = None,
+        keyboardType: str = utils.KEYBOARD_MULTILINE,
+        minLines: int = 3,
+        maxLines: int = 5,
+    ):
+        txtFieldHintStyle = TextStyle(size=fonts.CAPTION_SIZE)
+
+        super().__init__(
+            label=label,
+            keyboard_type=keyboardType,
+            hint_text=hint,
+            hint_style=txtFieldHintStyle,
+            focused_border_width=1,
+            min_lines=minLines,
+            max_lines=maxLines,
+            on_focus=on_focus,
+            on_change=on_change,
+            text_size=fonts.BODY_1_SIZE,
+            label_style=TextStyle(size=fonts.BODY_2_SIZE),
+            error_style=TextStyle(size=fonts.BODY_2_SIZE, color=colors.ERROR_COLOR),
+        )
+
+
+class StdErrorText(StdBodyText):
     """Displays text formatted for errors / warnings"""
-    return get_body_txt(txt, color=colors.ERROR_COLOR, show=show)
+
+    def __init__(
+        self,
+        txt: str,
+        show: bool = True,
+    ):
+        super().__init__(txt, color=colors.ERROR_COLOR, show=show)
 
 
-def get_primary_btn(
-    on_click,
-    label: str,
-    width: int = 200,
-    icon: Optional[str] = None,
-    show: bool = True,
-):
-    """An elevated button with primary styling"""
-    return FilledButton(label, width=width, on_click=on_click, icon=icon, visible=show)
+class StdPrimaryButton(FilledButton):
+    """A button with primary styling"""
+
+    def __init__(
+        self,
+        on_click: Optional[Callable] = None,
+        label: str = "",
+        width: int = 200,
+        icon: Optional[str] = None,
+        show: bool = True,
+    ):
+        super().__init__(label, width=width, on_click=on_click, icon=icon, visible=show)
 
 
-def get_secondary_btn(
-    on_click,
-    label: str,
-    width: int = 200,
-    icon: Optional[str] = None,
-):
-    """An elevated button with secondary styling"""
-    return ElevatedButton(
-        label,
-        width=width,
-        on_click=on_click,
-        icon=icon,
-    )
+class StdSecondaryButton(ElevatedButton):
+    """A button with secondary styling"""
+
+    def __init__(
+        self,
+        on_click: Optional[Callable] = None,
+        label: str = "",
+        width: int = 200,
+        icon: Optional[str] = None,
+    ):
+
+        super().__init__(
+            label,
+            width=width,
+            on_click=on_click,
+            icon=icon,
+        )
 
 
-def get_danger_button(
-    on_click,
-    label: str,
-    width: int = 200,
-    icon: Optional[str] = None,
-    tooltip: Optional[str] = None,
-):
-    """An elevated button with danger styling"""
-    return ElevatedButton(
-        label,
-        width=width,
-        on_click=on_click,
-        icon=icon,
-        color=colors.DANGER_COLOR,
-        tooltip=tooltip,
-    )
+class StdDangerButton(FilledButton):
+    """A button styled for dangerous actions e.g. delete"""
+
+    def __init__(
+        self,
+        on_click: Optional[Callable] = None,
+        label: str = "",
+        width: int = 200,
+        icon: Optional[str] = None,
+        tooltip: Optional[str] = None,
+    ):
+
+        super().__init__(
+            label,
+            width=width,
+            on_click=on_click,
+            icon=icon,
+            icon_color=colors.DANGER_COLOR,
+            tooltip=tooltip,
+        )
 
 
-def get_profile_photo_img(pic_src: str = image_paths.default_avatar):
+class StdProfilePhotoImg(Image):
+    """Creates a profile photo image"""
 
-    return Image(
-        src=pic_src,
-        width=72,
-        height=72,
-        border_radius=border_radius.all(36),
-        fit=utils.CONTAIN,
-    )
-
-
-def get_image(path: str, semantic_label: str, width: int):
-    return Container(
-        width=width,
-        content=Image(src=path, fit=utils.CONTAIN, semantics_label=semantic_label),
-    )
+    def __init__(
+        self,
+        pic_src: str = image_paths.default_avatar,
+    ):
+        super().__init__(
+            src=pic_src,
+            width=72,
+            height=72,
+            border_radius=border_radius.all(36),
+            fit=utils.CONTAIN,
+        )
 
 
-def get_app_logo(width: int = 12):
-    """Returns app logo"""
-    return Container(
-        width=width,
-        content=Image(
-            src=image_paths.logoPath, fit=utils.CONTAIN, semantics_label="logo"
-        ),
-    )
+class StdImage(Container):
+    """Creates a standard image wrapped in a container"""
+
+    def __init__(
+        self,
+        path: str,
+        semantic_label: str,
+        width: int,
+    ):
+        super().__init__(
+            width=width,
+            content=Image(src=path, fit=utils.CONTAIN, semantics_label=semantic_label),
+        )
 
 
-def get_labelled_logo():
-    """Returns app logo with app name next to it"""
-    return Row(
-        vertical_alignment=utils.CENTER_ALIGNMENT,
-        controls=[
-            get_app_logo(),
-            get_heading(
-                "Tuttle",
-                size=fonts.HEADLINE_3_SIZE,
+class StdAppLogo(Container):
+    """Creates a standard app logo"""
+
+    def __init__(
+        self,
+        width: int = 12,
+    ):
+        super().__init__(
+            width=width,
+            content=Image(
+                src=image_paths.logoPath, fit=utils.CONTAIN, semantics_label="logo"
             ),
-        ],
-    )
-
-
-horizontal_progress = ProgressBar(
-    width=320,
-    height=4,
-)
-
-
-def update_dropdown_items(dropDown: Dropdown, items: List[str]):
-    options = []
-    for item in items:
-        options.append(
-            dropdown.Option(
-                text=item,
-            )
         )
-    dropDown.options = options
 
 
-def get_dropdown(
-    label: str,
-    on_change: Callable,
-    items: List[str],
-    hint: Optional[str] = "",
-    width: Optional[int] = None,
-    initial_value: Optional[str] = None,
-    show: bool = True,
-):
-    options = []
-    for item in items:
-        options.append(
-            dropdown.Option(
-                text=item,
-            )
+class StdAppLogoWithLabel(Row):
+    """Returns app logo with app name next to it"""
+
+    def __init__(self):
+        super().__init__(
+            vertical_alignment=utils.CENTER_ALIGNMENT,
+            controls=[
+                StdAppLogo(),
+                StdHeading(
+                    "Tuttle",
+                    size=fonts.HEADLINE_3_SIZE,
+                ),
+            ],
         )
-    return Dropdown(
-        label=label,
-        hint_text=hint,
-        options=options,
-        text_size=fonts.BODY_1_SIZE,
-        label_style=TextStyle(size=fonts.BODY_2_SIZE),
-        on_change=on_change,
-        width=width,
-        value=initial_value,
-        content_padding=padding.all(dimens.SPACE_XS),
-        error_style=TextStyle(size=fonts.BODY_2_SIZE, color=colors.ERROR_COLOR),
-        visible=show,
-    )
 
 
-class StandardDropdown(Dropdown):
-    """
-    A dropdown UI element that allows the user to select from a list of items.
-    It allows to pass list of items, hint, width and initial_value as optional parameters to configure the dropdown as per requirement.
-    """
+class StdProgressBar(ProgressBar):
+    """Creates a standard progress bar"""
+
+    def __init__(
+        self,
+        show: bool = True,
+    ):
+        super().__init__(width=320, height=4, visible=show)
+
+
+class StdDropDown(UserControl):
+    """Creates a standard dropdown button"""
 
     def __init__(
         self,
         label: str,
         on_change: Callable,
-        options: List[Union[str, dropdown.Option]],
+        items: List[str],
         hint: Optional[str] = "",
         width: Optional[int] = None,
         initial_value: Optional[str] = None,
+        show: bool = True,
     ):
-        """
-        Parameters
-        ----------
-        label : str
-            Label to be displayed above the dropdown
-        on_change : Callable
-            A callback function that will be called when the user interacts with the dropdown
-        items : List[Union[str, dropdown.Option]]
-            list of items that the dropdown should have. Each item can be either a string or a dropdown.Option object
-        hint : Optional[str]
-            a hint that will be displayed when the user interacts with the dropdown
-        width : Optional[int]
-            Width of the dropdown element
-        initial_value : Optional[str]
-            Initial value of the dropdown element
-        """
-        options = []
-        for item in options:
-            if isinstance(item, str):
-                options.append(dropdown.Option(text=item))
-            elif isinstance(item, dropdown.Option):
-                options.append(item)
-            else:
-                raise TypeError("item must be of type 'str' or 'dropdown.Option'")
+        super().__init__()
+        self.visible = show
+        self.label = label
+        self.on_change = on_change
+        self.initial_value = initial_value
+        self.width = width
+        self.hint = hint
+        self.options = []
+        for item in items:
+            self.options.append(
+                dropdown.Option(
+                    text=item,
+                )
+            )
 
-        super().__init__(
-            label=label,
-            hint_text=hint,
-            options=options,
+    def update_dropdown_items(self, items: List[str]):
+        """Updates the dropdown items"""
+        self.options.clear()
+        for item in items:
+            self.options.append(
+                dropdown.Option(
+                    text=item,
+                )
+            )
+        self.drop_down.options = self.options
+        self.update()
+
+    def update_value(
+        self,
+        new_value: str,
+    ):
+        """Updates the dropdown value"""
+        self.drop_down.value = new_value
+        self.update()
+
+    def update_error_txt(self, error_txt: str = ""):
+        """Updates Or clears the error text"""
+        self.drop_down.error_text = error_txt if error_txt else None
+        self.update()
+
+    def build(self):
+        self.drop_down = Dropdown(
+            label=self.label,
+            hint_text=self.hint,
+            options=self.options,
             text_size=fonts.BODY_1_SIZE,
             label_style=TextStyle(size=fonts.BODY_2_SIZE),
-            on_change=on_change,
-            width=width,
-            value=initial_value,
+            on_change=self.on_change,
+            width=self.width,
+            value=self.initial_value,
             content_padding=padding.all(dimens.SPACE_XS),
             error_style=TextStyle(size=fonts.BODY_2_SIZE, color=colors.ERROR_COLOR),
+            visible=self.visible,
         )
-
-    def update_items(self, items: List[str]):
-        """
-        Update the items of the dropdown
-        Parameters:
-        items: list of items to be set to the dropdown
-        """
-        options = []
-        for item in items:
-            options.append(dropdown.Option(text=item))
-        self.options = options
+        return self.drop_down
 
 
 class DateSelector(UserControl):
@@ -419,7 +462,7 @@ class DateSelector(UserControl):
         self.year = str(self.initial_date.year)
         self.label_color = label_color
 
-        self.day_dropdown = get_dropdown(
+        self.day_dropdown = StdDropDown(
             label="Day",
             hint="",
             on_change=self.on_date_set,
@@ -428,7 +471,7 @@ class DateSelector(UserControl):
             initial_value=self.date,
         )
 
-        self.month_dropdown = get_dropdown(
+        self.month_dropdown = StdDropDown(
             label="Month",
             on_change=self.on_month_set,
             items=[str(month) for month in range(1, 13)],
@@ -436,7 +479,7 @@ class DateSelector(UserControl):
             initial_value=self.month,
         )
 
-        self.year_dropdown = get_dropdown(
+        self.year_dropdown = StdDropDown(
             label="Year",
             on_change=self.on_year_set,
             # set items to a list of years -10 to + 10 years from now
@@ -463,7 +506,7 @@ class DateSelector(UserControl):
         self.view = Container(
             content=Column(
                 controls=[
-                    get_body_txt(txt=self.label, color=self.label_color),
+                    StdBodyText(txt=self.label, color=self.label_color),
                     Row(
                         [
                             self.day_dropdown,
@@ -482,9 +525,9 @@ class DateSelector(UserControl):
         self.date = str(date.day)
         self.month = str(date.month)
         self.year = str(date.year)
-        self.day_dropdown.value = self.date
-        self.month_dropdown.value = self.month
-        self.year_dropdown.value = self.year
+        self.day_dropdown.update_value(self.date)
+        self.month_dropdown.update_value(self.month)
+        self.year_dropdown.update_value(self.year)
 
         self.update()
 
@@ -514,19 +557,18 @@ class AlertDisplayPopUp(DialogHandler):
         is_error: bool = True,
     ):
         pop_up_height = 150
-        pop_up_width = int(dimens.MIN_WINDOW_WIDTH * 0.8)
         dialog = AlertDialog(
             content=Container(
                 height=pop_up_height,
                 content=Column(
                     scroll=utils.AUTO_SCROLL,
                     controls=[
-                        get_heading(
+                        StdHeading(
                             title=title,
                             size=fonts.HEADLINE_4_SIZE,
                         ),
-                        xsSpace,
-                        get_body_txt(
+                        Spacer(xs_space=True),
+                        StdBodyText(
                             txt=description,
                             size=fonts.SUBTITLE_1_SIZE,
                             color=colors.ERROR_COLOR if is_error else None,
@@ -535,7 +577,7 @@ class AlertDisplayPopUp(DialogHandler):
                 ),
             ),
             actions=[
-                get_primary_btn(
+                StdPrimaryButton(
                     label=button_label, on_click=self.on_complete_btn_clicked
                 ),
             ],
@@ -564,19 +606,18 @@ class ConfirmDisplayPopUp(DialogHandler):
         cancel_button_label: str = "Cancel",
     ):
         pop_up_height = 150
-        pop_up_width = int(dimens.MIN_WINDOW_WIDTH * 0.8)
         dialog = AlertDialog(
             content=Container(
                 height=pop_up_height,
                 content=Column(
                     scroll=utils.AUTO_SCROLL,
                     controls=[
-                        get_heading(
+                        StdHeading(
                             title=title,
                             size=fonts.HEADLINE_4_SIZE,
                         ),
-                        xsSpace,
-                        get_body_txt(
+                        Spacer(xs_space=True),
+                        StdBodyText(
                             txt=description,
                             size=fonts.SUBTITLE_1_SIZE,
                         ),
@@ -584,10 +625,10 @@ class ConfirmDisplayPopUp(DialogHandler):
                 ),
             ),
             actions=[
-                get_secondary_btn(
+                StdSecondaryButton(
                     label=cancel_button_label, on_click=self.on_cancel_btn_clicked
                 ),
-                get_primary_btn(
+                StdPrimaryButton(
                     label=proceed_button_label, on_click=self.on_proceed_btn_clicked
                 ),
             ],
@@ -607,108 +648,138 @@ class ConfirmDisplayPopUp(DialogHandler):
         self.on_proceed_callback(self.data_on_confirmed)
 
 
-def pop_up_menu_item(icon, txt, on_click, is_delete: bool = False):
-    return PopupMenuItem(
-        content=Row(
-            [
-                Icon(
-                    icon,
-                    size=dimens.ICON_SIZE,
-                    color=colors.ERROR_COLOR if is_delete else None,
-                ),
-                get_body_txt(
-                    txt,
-                    size=fonts.BUTTON_SIZE,
-                    color=colors.ERROR_COLOR if is_delete else None,
-                ),
-            ]
-        ),
-        on_click=on_click,
-    )
+class StdPopUpMenuItem(PopupMenuItem):
+    """Returns a customizable pop up menu item with standard styling"""
+
+    def __init__(
+        self,
+        icon,
+        txt,
+        on_click,
+        is_delete: bool = False,
+    ):
+        super().__init__(
+            content=Row(
+                [
+                    Icon(
+                        icon,
+                        size=dimens.ICON_SIZE,
+                        color=colors.ERROR_COLOR if is_delete else None,
+                    ),
+                    StdBodyText(
+                        txt,
+                        size=fonts.BUTTON_SIZE,
+                        color=colors.ERROR_COLOR if is_delete else None,
+                    ),
+                ]
+            ),
+            on_click=on_click,
+        )
 
 
-def context_pop_up_menu(
-    on_click_edit: Optional[Callable] = None,
-    on_click_delete: Optional[Callable] = None,
-    view_item_lbl="View Details",
-    delete_item_lbl="Delete",
-    edit_item_lbl="Edit",
-    on_click_view: Optional[Callable] = None,
-    prefix_menu_items: Optional[list[PopupMenuItem]] = None,
-    suffix_menu_items: Optional[list[PopupMenuItem]] = None,
-):
+class StdContextMenu(PopupMenuButton):
     """Returns a customizable pop up menu button with optional view, edit and delete menus"""
-    items = []
-    if prefix_menu_items:
-        items.extend(prefix_menu_items)
-    if on_click_view:
-        items.append(
-            pop_up_menu_item(
-                icons.VISIBILITY_OUTLINED, txt=view_item_lbl, on_click=on_click_view
-            ),
-        )
-    if on_click_edit:
-        items.append(
-            pop_up_menu_item(
-                icons.EDIT_OUTLINED,
-                txt=edit_item_lbl,
-                on_click=on_click_edit,
+
+    def __init__(
+        self,
+        on_click_edit: Optional[Callable] = None,
+        on_click_delete: Optional[Callable] = None,
+        view_item_lbl="View Details",
+        delete_item_lbl="Delete",
+        edit_item_lbl="Edit",
+        on_click_view: Optional[Callable] = None,
+        prefix_menu_items: Optional[list[PopupMenuItem]] = None,
+        suffix_menu_items: Optional[list[PopupMenuItem]] = None,
+    ):
+
+        items = []
+        if prefix_menu_items:
+            items.extend(prefix_menu_items)
+        if on_click_view:
+            items.append(
+                StdPopUpMenuItem(
+                    icons.VISIBILITY_OUTLINED, txt=view_item_lbl, on_click=on_click_view
+                ),
             )
-        )
-    if on_click_delete:
-        items.append(
-            pop_up_menu_item(
-                icons.DELETE_OUTLINE,
-                txt=delete_item_lbl,
-                on_click=on_click_delete,
-                is_delete=True,
+        if on_click_edit:
+            items.append(
+                StdPopUpMenuItem(
+                    icons.EDIT_OUTLINED,
+                    txt=edit_item_lbl,
+                    on_click=on_click_edit,
+                )
             )
-        )
-    if suffix_menu_items:
-        items.extend(suffix_menu_items)
-    return PopupMenuButton(items=items)
+        if on_click_delete:
+            items.append(
+                StdPopUpMenuItem(
+                    icons.DELETE_OUTLINE,
+                    txt=delete_item_lbl,
+                    on_click=on_click_delete,
+                    is_delete=True,
+                )
+            )
+        if suffix_menu_items:
+            items.extend(suffix_menu_items)
+        super().__init__(items=items)
 
 
-def status_label(txt: str, is_done: bool):
+class StdStatusDisplay(Row):
     """Returns a text with a checked prefix icon"""
-    return Row(
-        controls=[
-            Icon(
-                icons.CHECK_CIRCLE_OUTLINE if is_done else icons.RADIO_BUTTON_UNCHECKED,
-                size=dimens.SM_ICON_SIZE,
-                color=colors.PRIMARY_COLOR if is_done else colors.GRAY_COLOR,
-            ),
-            get_body_txt(txt),
-        ]
-    )
+
+    def __init__(
+        self,
+        txt: str,
+        is_done: bool,
+    ):
+        super().__init__(
+            controls=[
+                Icon(
+                    icons.CHECK_CIRCLE_OUTLINE
+                    if is_done
+                    else icons.RADIO_BUTTON_UNCHECKED,
+                    size=dimens.SM_ICON_SIZE,
+                    color=colors.PRIMARY_COLOR if is_done else colors.GRAY_COLOR,
+                ),
+                StdBodyText(txt),
+            ]
+        )
 
 
-def get_or_txt(show_lines: Optional[bool] = True, show: bool = True):
+class OrView(Row):
     """Returns a view representing ---- OR ----"""
-    return Row(
-        visible=show,
-        alignment=utils.SPACE_BETWEEN_ALIGNMENT
-        if show_lines
-        else utils.CENTER_ALIGNMENT,
-        vertical_alignment=utils.CENTER_ALIGNMENT,
-        controls=[
-            Container(
-                height=2,
-                bgcolor=colors.GRAY_COLOR,
-                width=100,
-                alignment=alignment.center,
-                visible=show_lines,
-            ),
-            get_body_txt("OR", align=utils.TXT_ALIGN_CENTER, color=colors.GRAY_COLOR),
-            Container(
-                height=2,
-                bgcolor=colors.GRAY_COLOR,
-                width=100,
-                alignment=alignment.center,
-                visible=show_lines,
-            ),
-        ],
-    )
+
+    def __init__(
+        self,
+        show_lines: Optional[bool] = True,
+        show: bool = True,
+    ):
+
+        super().__init__(
+            visible=show,
+            alignment=utils.SPACE_BETWEEN_ALIGNMENT
+            if show_lines
+            else utils.CENTER_ALIGNMENT,
+            vertical_alignment=utils.CENTER_ALIGNMENT,
+            controls=[
+                Container(
+                    height=2,
+                    bgcolor=colors.GRAY_COLOR,
+                    width=100,
+                    alignment=alignment.center,
+                    visible=show_lines,
+                ),
+                StdBodyText(
+                    "OR", align=utils.TXT_ALIGN_CENTER, color=colors.GRAY_COLOR
+                ),
+                Container(
+                    height=2,
+                    bgcolor=colors.GRAY_COLOR,
+                    width=100,
+                    alignment=alignment.center,
+                    visible=show_lines,
+                ),
+            ],
+        )
 
 
 @dataclass
@@ -724,16 +795,7 @@ class NavigationMenuItem:
     on_new_intent: Optional[str] = None
 
 
-def get_std_navigation_menu(
-    title: str,
-    on_change,
-    selected_index: Optional[int] = 0,
-    destinations=[],
-    menu_height: int = 300,
-    width: int = int(dimens.MIN_WINDOW_WIDTH * 0.3),
-    left_padding: int = dimens.SPACE_STD,
-    top_margin: int = dimens.SPACE_STD,
-):
+class StdNavigationMenu(NavigationRail):
     """
     Returns a navigation menu for the application.
 
@@ -744,24 +806,37 @@ def get_std_navigation_menu(
     :param menu_height: The height of the menu.
     :return: A NavigationRail widget containing the navigation menu.
     """
-    return NavigationRail(
-        leading=Container(
-            content=get_sub_heading_txt(
-                subtitle=title,
-                align=utils.START_ALIGNMENT,
+
+    def __init__(
+        self,
+        title: str,
+        on_change,
+        selected_index: Optional[int] = 0,
+        destinations=[],
+        menu_height: int = 300,
+        width: int = int(dimens.MIN_WINDOW_WIDTH * 0.3),
+        left_padding: int = dimens.SPACE_STD,
+        top_margin: int = dimens.SPACE_STD,
+    ):
+
+        super().__init__(
+            leading=Container(
+                content=StdSubHeading(
+                    subtitle=title,
+                    align=utils.START_ALIGNMENT,
+                    expand=True,
+                    color=colors.GRAY_DARK_COLOR,
+                ),
                 expand=True,
-                color=colors.GRAY_DARK_COLOR,
+                width=width,
+                margin=margin.only(top=top_margin),
+                padding=padding.only(left=left_padding),
             ),
-            expand=True,
-            width=width,
-            margin=margin.only(top=top_margin),
-            padding=padding.only(left=left_padding),
-        ),
-        selected_index=selected_index,
-        min_width=utils.COMPACT_RAIL_WIDTH,
-        extended=True,
-        height=menu_height,
-        min_extended_width=width,
-        destinations=destinations,
-        on_change=on_change,
-    )
+            selected_index=selected_index,
+            min_width=utils.COMPACT_RAIL_WIDTH,
+            extended=True,
+            height=menu_height,
+            min_extended_width=width,
+            destinations=destinations,
+            on_change=on_change,
+        )

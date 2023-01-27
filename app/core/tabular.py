@@ -20,7 +20,7 @@ def data_frame_to_data_table(
 
     # Create a list of DataColumn objects using the column names
     columns = [
-        DataColumn(label=views.get_body_txt(_format_column_name(column_name)))
+        DataColumn(label=views.StdBodyText(_format_column_name(column_name)))
         for column_name in column_names
     ]
 
@@ -29,7 +29,7 @@ def data_frame_to_data_table(
     for i, row in data_frame.iterrows():
         # Create a list of DataCell objects for the row
         cells = [
-            DataCell(views.get_body_txt(_format_data_frame_cell_value(value)))
+            DataCell(views.StdBodyText(_format_data_frame_cell_value(value)))
             for value in row
         ]
 

@@ -4,7 +4,7 @@ from flet import Column, Container, UserControl, padding
 
 from core.abstractions import TuttleView, TuttleViewParams
 from core.utils import CENTER_ALIGNMENT
-from core.views import get_error_txt, get_primary_btn
+from core.views import StdErrorText, StdPrimaryButton
 from res.dimens import SPACE_MD, SPACE_STD
 
 
@@ -21,8 +21,8 @@ class Error404Screen(TuttleView, UserControl):
                 spacing=SPACE_STD,
                 run_spacing=SPACE_STD,
                 controls=[
-                    get_error_txt("OOps! Looks like you took a wrong turn"),
-                    get_primary_btn(
+                    StdErrorText("OOps! Looks like you took a wrong turn"),
+                    StdPrimaryButton(
                         label="Go Back".upper(), on_click=self.navigate_back
                     ),
                 ],

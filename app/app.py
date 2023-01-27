@@ -18,7 +18,7 @@ from core.client_storage_impl import ClientStorageImpl
 from core.database_storage_impl import DatabaseStorageImpl
 from core.models import RouteView
 from core.utils import AlertDialogControls
-from core.views import get_heading
+from core.views import StdHeading
 from error_views.page_not_found_screen import Error404Screen
 from home.view import HomeScreen
 from loguru import logger
@@ -149,7 +149,7 @@ class TuttleApp:
             self.page.snack_bar.open = False
             self.page.update()
         self.page.snack_bar = SnackBar(
-            get_heading(
+            StdHeading(
                 title=message,
                 size=HEADLINE_4_SIZE,
                 color=ERROR_COLOR if is_error else WHITE_COLOR,

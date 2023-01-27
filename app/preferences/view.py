@@ -1,6 +1,5 @@
 from typing import Optional, Callable
 
-import sys
 
 from loguru import logger
 
@@ -12,9 +11,7 @@ from flet import (
     Row,
     Tab,
     Tabs,
-    Text,
     UserControl,
-    dropdown,
     icons,
     margin,
     padding,
@@ -23,15 +20,7 @@ from flet import (
 from core import utils, views
 from core.abstractions import TuttleView, TuttleViewParams
 from core.intent_result import IntentResult
-from core.views import (
-    get_dropdown,
-    get_std_txt_field,
-    horizontal_progress,
-    lgSpace,
-    mdSpace,
-    smSpace,
-    update_dropdown_items,
-)
+
 from core.utils import (
     CENTER_ALIGNMENT,
     START_ALIGNMENT,
@@ -70,7 +59,7 @@ class PreferencesScreen(TuttleView, UserControl):
         self.currencies = [
             abbreviation for (name, abbreviation, symbol) in utils.get_currencies()
         ]
-        update_dropdown_items(self.currencies_control, self.currencies)
+        self.currencies_control.update_dropdown_items(self.currencies)
 
     def on_currency_selected(self, e):
         if not self.preferences:
@@ -90,11 +79,11 @@ class PreferencesScreen(TuttleView, UserControl):
     def refresh_preferences_items(self):
         if self.preferences is None:
             return
-        self.theme_control.value = self.preferences.theme_mode
-        self.cloud_provider_control.value = self.preferences.cloud_acc_provider
+        self.theme_control.update_value(self.preferences.theme_mode)
+        self.cloud_provider_control.update_value(self.preferences.cloud_acc_provider)
         self.cloud_account_id_control.value = self.preferences.cloud_acc_id
-        self.currencies_control.value = self.preferences.default_currency
-        self.languages_control.value = self.preferences.language
+        self.currencies_control.update_value(self.preferences.default_currency)
+        self.languages_control.update_value(self.preferences.language)
 
     def on_theme_changed(self, e):
         if not self.preferences:
@@ -137,9 +126,9 @@ class PreferencesScreen(TuttleView, UserControl):
                         icon,
                         size=dimens.ICON_SIZE,
                     ),
-                    smSpace,
-                    views.get_body_txt(txt=label),
-                    mdSpace,
+                    views.Spacer(sm_space=True),
+                    views.StdBodyText(txt=label),
+                    views.Spacer(md_space=True),
                 ],
             ),
             content=Container(
@@ -152,7 +141,7 @@ class PreferencesScreen(TuttleView, UserControl):
     def build(self):
         side_bar_width = int(MIN_WINDOW_WIDTH * 0.3)
         self.body_width = int(MIN_WINDOW_WIDTH * 0.7)
-        self.loading_indicator = horizontal_progress
+        self.loading_indicator = views.StdProgressBar()
         self.sideBar = Container(
             padding=padding.all(SPACE_STD),
             width=side_bar_width,
@@ -167,28 +156,28 @@ class PreferencesScreen(TuttleView, UserControl):
             ),
         )
 
-        self.theme_control = get_dropdown(
+        self.theme_control = views.StdDropDown(
             items=[mode.value for mode in THEME_MODES],
             on_change=self.on_theme_changed,
             label="Appearance",
             hint="",
         )
-        self.cloud_provider_control = get_dropdown(
+        self.cloud_provider_control = views.StdDropDown(
             label="Cloud Provider",
             on_change=self.on_cloud_provider_selected,
             items=[item.value for item in CloudProvider],
         )
-        self.cloud_account_id_control = get_std_txt_field(
+        self.cloud_account_id_control = views.StdTextField(
             label="Cloud Account Name",
             hint="Your cloud account name",
             on_change=self.on_cloud_account_id_changed,
         )
-        self.currencies_control = get_dropdown(
+        self.currencies_control = views.StdDropDown(
             label="Default Currency",
             on_change=self.on_currency_selected,
             items=self.currencies,
         )
-        self.languages_control = get_dropdown(
+        self.languages_control = views.StdDropDown(
             label="Language",
             on_change=self.on_language_selected,
             items=[
@@ -197,7 +186,7 @@ class PreferencesScreen(TuttleView, UserControl):
         )
 
         # a reset button for the app with a warning sign, warning color and a confirmation dialog
-        self.reset_button = views.get_danger_button(
+        self.reset_button = views.StdDangerButton(
             label="Reset App and Quit",
             icon=icons.RESTART_ALT_OUTLINED,
             on_click=self.on_reset_app,
@@ -215,7 +204,7 @@ class PreferencesScreen(TuttleView, UserControl):
                     icons.SETTINGS_OUTLINED,
                     [
                         self.theme_control,
-                        lgSpace,
+                        views.Spacer(lg_space=True),
                         self.reset_button,
                     ],
                 ),
@@ -223,10 +212,10 @@ class PreferencesScreen(TuttleView, UserControl):
                     "Cloud",
                     icons.CLOUD_OUTLINED,
                     [
-                        views.get_body_txt(
+                        views.StdBodyText(
                             txt="Setting up your cloud account will enable you to import time tracking data from your cloud calendar.",
                         ),
-                        smSpace,
+                        views.Spacer(sm_space=True),
                         self.cloud_provider_control,
                         self.cloud_account_id_control,
                     ],
@@ -252,13 +241,13 @@ class PreferencesScreen(TuttleView, UserControl):
                                 icons.SETTINGS_SUGGEST_OUTLINED,
                                 size=dimens.ICON_SIZE,
                             ),
-                            views.get_heading(
+                            views.StdHeading(
                                 title="Preferences",
                             ),
                         ],
                     ),
                     self.loading_indicator,
-                    mdSpace,
+                    views.Spacer(md_space=True),
                     self.tabs,
                 ],
             ),

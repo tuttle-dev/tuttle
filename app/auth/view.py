@@ -75,22 +75,22 @@ class PaymentDataForm(UserControl):
 
     def build(self):
         """Called when form is built"""
-        self.vat_number_field = views.get_std_txt_field(
+        self.vat_number_field = views.StdTextField(
             on_change=self.on_vat_number_changed,
             label="VAT Number",
             hint="Value Added Tax number of the user, legally required for invoices.",
         )
-        self.bank_name_field = views.get_std_txt_field(
+        self.bank_name_field = views.StdTextField(
             on_change=self.on_bank_name_changed,
             label="Name",
             hint="Name of account",
         )
-        self.bank_iban_field = views.get_std_txt_field(
+        self.bank_iban_field = views.StdTextField(
             on_change=self.on_bank_iban_changed,
             label="IBAN",
             hint="International Bank Account Number",
         )
-        self.bank_ibc_field = views.get_std_txt_field(
+        self.bank_ibc_field = views.StdTextField(
             on_change=self.on_bank_bic_changed,
             label="BIC",
             hint="Bank Identifier Code",
@@ -99,13 +99,13 @@ class PaymentDataForm(UserControl):
             spacing=dimens.SPACE_MD,
             controls=[
                 self.vat_number_field,
-                views.xsSpace,
-                views.get_sub_heading_txt("Bank Account"),
+                views.Spacer(xs_space=True),
+                views.StdSubHeading("Bank Account"),
                 self.bank_name_field,
                 self.bank_iban_field,
                 self.bank_ibc_field,
-                views.stdSpace,
-                views.get_primary_btn(
+                views.Spacer(),
+                views.StdPrimaryButton(
                     label="Save",
                     on_click=lambda e: self.on_form_submit(self.user),
                 ),
@@ -225,71 +225,71 @@ class UserDataForm(UserControl):
 
     def build(self):
         """Called when form is built"""
-        self.name_field = views.get_std_txt_field(
+        self.name_field = views.StdTextField(
             lambda e: self.on_field_value_changed("name", e),
             "Name",
             "your name",
             on_focus=self.on_field_focus,
             keyboard_type=utils.KEYBOARD_NAME,
         )
-        self.email_field = views.get_std_txt_field(
+        self.email_field = views.StdTextField(
             lambda e: self.on_field_value_changed("email", e),
             "Email",
             "your email address",
             on_focus=self.on_field_focus,
             keyboard_type=utils.KEYBOARD_EMAIL,
         )
-        self.phone_field = views.get_std_txt_field(
+        self.phone_field = views.StdTextField(
             lambda e: self.on_field_value_changed("phone", e),
             "Phone (optional)",
             "your phone number",
             on_focus=self.on_field_focus,
             keyboard_type=utils.KEYBOARD_PHONE,
         )
-        self.title_field = views.get_std_txt_field(
+        self.title_field = views.StdTextField(
             lambda e: self.on_field_value_changed("title", e),
             "Job Title",
             "What is your role as a freelancer?",
             on_focus=self.on_field_focus,
             keyboard_type=utils.KEYBOARD_TEXT,
         )
-        self.website_field = views.get_std_txt_field(
+        self.website_field = views.StdTextField(
             lambda e: self.on_field_value_changed("website", e),
             "Website (optional)",
             "URL of your website.",
         )
-        self.street_field = views.get_std_txt_field(
+        self.street_field = views.StdTextField(
             lambda e: self.on_field_value_changed("street", e),
             label="Street Name",
             keyboard_type=utils.KEYBOARD_TEXT,
             expand=1,
         )
-        self.street_number_field = views.get_std_txt_field(
+        self.street_number_field = views.StdTextField(
             lambda e: self.on_field_value_changed("street_number", e),
             label="Street Number",
             keyboard_type=utils.KEYBOARD_NUMBER,
             expand=1,
         )
-        self.postal_code_field = views.get_std_txt_field(
+        self.postal_code_field = views.StdTextField(
             lambda e: self.on_field_value_changed("postal_code", e),
             label="Postal Code",
             keyboard_type=utils.KEYBOARD_NUMBER,
             expand=1,
         )
 
-        self.city_field = views.get_std_txt_field(
+        self.city_field = views.StdTextField(
             lambda e: self.on_field_value_changed("city", e),
             label="City",
             keyboard_type=utils.KEYBOARD_TEXT,
             expand=1,
         )
-        self.country_field = views.get_std_txt_field(
+        self.country_field = views.StdTextField(
             lambda e: self.on_field_value_changed("country", e),
             label="Country",
             keyboard_type=utils.KEYBOARD_TEXT,
         )
-        self.form_err_control = views.get_error_txt("")
-        self.submit_btn = views.get_primary_btn(
+        self.form_err_control = views.StdErrorText("")
+        self.submit_btn = views.StdPrimaryButton(
             on_click=self.on_submit_btn_clicked,
             label=self.submit_btn_label,
         )
@@ -401,16 +401,16 @@ class SplashScreen(TuttleView, UserControl):
         self.show_login_if_signed_out_else_redirect()
 
     def build(self):
-        self.loading_indicator = views.horizontal_progress
+        self.loading_indicator = views.StdProgressBar()
         self.form_container = Column(
             controls=[
-                # views.get_labelled_logo(),
-                views.get_heading_with_subheading(
+                # views.StdAppLogoWithLabel(),
+                views.StdHeadingWithSubheading(
                     "Welcome to Tuttle",
                     "Let's get you started: Please enter your details below. Your data will be stored locally and will not be sent to a server.",
                 ),
                 self.loading_indicator,
-                views.stdSpace,
+                views.Spacer(),
             ]
         )
         page_view = ResponsiveRow(
@@ -427,13 +427,13 @@ class SplashScreen(TuttleView, UserControl):
                         horizontal_alignment=utils.CENTER_ALIGNMENT,
                         expand=True,
                         controls=[
-                            views.mdSpace,
-                            views.get_image(
+                            views.Spacer(md_space=True),
+                            views.StdImage(
                                 image_paths.splashImgPath,
                                 "welcome screen image",
                                 width=300,
                             ),
-                            views.get_heading_with_subheading(
+                            views.StdHeadingWithSubheading(
                                 "Tuttle",
                                 "Time and money management for freelancers",
                                 alignment_in_container=utils.CENTER_ALIGNMENT,
@@ -450,7 +450,7 @@ class SplashScreen(TuttleView, UserControl):
                     content=Column(
                         [
                             self.form_container,
-                            views.get_secondary_btn(
+                            views.StdSecondaryButton(
                                 on_click=self.on_proceed_with_demo_data_clicked,
                                 label="Proceed with demo",
                                 icon="TOYS",
@@ -507,7 +507,7 @@ def profile_destination_content_wrapper(
 ):
     """returns a container that wraps the destination content"""
     # ADD SPACING TO THE TOP OF THE CONTENT
-    controls.insert(0, views.mdSpace)
+    controls.insert(0, views.Spacer(md_space=True))
     return Column(
         spacing=dimens.SPACE_STD,
         run_spacing=0,
@@ -564,13 +564,13 @@ class ProfilePhotoContent(TuttleView, UserControl):
             self.update_self()
 
     def build(self):
-        self.profile_photo_img = views.get_profile_photo_img()
-        self.update_photo_btn = views.get_secondary_btn(
+        self.profile_photo_img = views.StdProfilePhotoImg()
+        self.update_photo_btn = views.StdSecondaryButton(
             label="Update Photo",
             on_click=self.on_update_photo_clicked,
         )
         self.profile_photo_content = [
-            views.get_heading(
+            views.StdHeading(
                 "Profile Photo",
                 size=fonts.HEADLINE_4_SIZE,
             ),
@@ -632,7 +632,7 @@ class UserInfoContent(TuttleView, UserControl):
             submit_btn_label="Save",
         )
         self.user_info_content = [
-            views.get_heading(
+            views.StdHeading(
                 "Personal Info",
                 size=fonts.HEADLINE_4_SIZE,
             ),
@@ -681,7 +681,7 @@ class PaymentInfoContent(TuttleView, UserControl):
             on_form_submit=self.on_update_payment_info,
         )
         self.payment_info_content = [
-            views.get_heading(
+            views.StdHeading(
                 "Payment Settings",
                 size=fonts.HEADLINE_4_SIZE,
             ),
@@ -720,7 +720,7 @@ class ProfileScreen(TuttleView, UserControl):
         )
         self.current_menu_index = 0
         # initialize the side bar menu
-        self.side_bar_menu = views.get_std_navigation_menu(
+        self.side_bar_menu = views.StdNavigationMenu(
             title=self.menu_handler.menu_title,
             destinations=self.get_menu_destinations(),
             on_change=lambda e: self.on_menu_destination_change(e),
@@ -744,7 +744,7 @@ class ProfileScreen(TuttleView, UserControl):
                     item.selected_icon,
                     size=dimens.ICON_SIZE,
                 ),
-                label_content=views.get_body_txt(item.label),
+                label_content=views.StdBodyText(item.label),
                 padding=padding.symmetric(horizontal=dimens.SPACE_SM),
             )
             items.append(itemDestination)
