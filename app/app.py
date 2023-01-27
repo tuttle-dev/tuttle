@@ -60,7 +60,8 @@ class TuttleApp:
         self.page.theme = APP_THEME
         self.client_storage = ClientStorageImpl(page=self.page)
         self.db = DatabaseStorageImpl(
-            store_demo_timetracking_dataframe=self.store_demo_timetracking_dataframe
+            store_demo_timetracking_dataframe=self.store_demo_timetracking_dataframe,
+            debug_mode=self.debug_mode,
         )
         preferences = PreferencesIntent(self.client_storage)
         preferences_result = preferences.get_preference_by_key(
@@ -185,7 +186,6 @@ class TuttleApp:
     def change_route(self, to_route: str, data: Optional[any] = None):
         """navigates to a new route"""
         newRoute = to_route if data is None else f"{to_route}/{data}"
-
         self.page.go(newRoute)
 
     def on_view_pop(self, view: Optional[View] = None):
@@ -249,9 +249,13 @@ class TuttleApp:
     def build(self):
         self.page.go(self.page.route)
 
+    def close(self):
+        """Closes the application."""
+        self.page.window_close()
+
     def reset_and_quit(self):
         """Resets the application and quits."""
-        self.reset_database()
+        self.db.reset_database()
         self.close()
 
 
@@ -259,14 +263,17 @@ class TuttleRoutes:
     """Utility class for parsing of routes to destination views"""
 
     def __init__(self, app: TuttleApp):
+        # init callbacks for some views
         self.on_theme_changed = app.on_theme_mode_changed
+        self.on_reset_and_quit = app.reset_and_quit
+        self.on_install_demo_data = app.db.install_demo_data
+        # init common params for views
         self.tuttle_view_params = TuttleViewParams(
             navigate_to_route=app.change_route,
             show_snack=app.show_snack,
             dialog_controller=app.control_alert_dialog,
             on_navigate_back=app.on_view_pop,
             client_storage=app.client_storage,
-            database_storage=app.db,
             upload_file_callback=app.upload_file_callback,
             pick_file_callback=app.pick_file_callback,
         )
@@ -301,13 +308,16 @@ class TuttleRoutes:
         if routePath.match(SPLASH_SCREEN_ROUTE):
             screen = SplashScreen(
                 params=self.tuttle_view_params,
+                on_install_demo_data=self.on_install_demo_data,
             )
         elif routePath.match(HOME_SCREEN_ROUTE):
             screen = HomeScreen(
                 params=self.tuttle_view_params,
             )
         elif routePath.match(PROFILE_SCREEN_ROUTE):
-            screen = ProfileScreen(params=self.tuttle_view_params)
+            screen = ProfileScreen(
+                params=self.tuttle_view_params,
+            )
         elif routePath.match(CONTRACT_EDITOR_SCREEN_ROUTE):
             screen = ContractEditorScreen(params=self.tuttle_view_params)
         elif routePath.match(f"{CONTRACT_DETAILS_SCREEN_ROUTE}/:contractId"):
@@ -325,7 +335,7 @@ class TuttleRoutes:
             screen = PreferencesScreen(
                 params=self.tuttle_view_params,
                 on_theme_changed_callback=self.on_theme_changed,
-                on_reset_app_callback=self.app.reset_and_quit,
+                on_reset_app_callback=self.on_reset_and_quit,
             )
         elif routePath.match(PROJECT_EDITOR_SCREEN_ROUTE):
             screen = ProjectEditorScreen(params=self.tuttle_view_params)

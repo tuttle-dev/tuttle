@@ -35,7 +35,7 @@ class DatabaseStorage(ABC):
         pass
 
     @abstractmethod
-    def clear_database(self):
+    def reset_database(self):
         """
         Delete the database and rebuild database model.
         """
@@ -97,7 +97,6 @@ class TuttleViewParams:
     upload_file_callback: Callable
     pick_file_callback: Callable[[file_picker.FilePickerFile], str]
     client_storage: ClientStorage
-    database_storage: DatabaseStorage
     vertical_alignment_in_parent: str = START_ALIGNMENT
     horizontal_alignment_in_parent: str = START_ALIGNMENT
     keep_back_stack: bool = True
@@ -121,7 +120,6 @@ class TuttleView(ABC):
         self.upload_file_callback = params.upload_file_callback
         self.pick_file_callback = params.pick_file_callback
         self.client_storage = params.client_storage
-        self.database_storage = params.database_storage
         self.mounted = False
 
     def parent_intent_listener(self, intent: str, data: any):

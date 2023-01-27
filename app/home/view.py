@@ -36,7 +36,6 @@ from preferences.intent import PreferencesIntent
 
 MIN_FOOTER_WIDTH = int(dimens.MIN_WINDOW_WIDTH * 0.7)
 MIN_BODY_HEIGHT = int(dimens.MIN_WINDOW_HEIGHT * 0.8)
-NO_MENU_ITEM_INDEX = -1
 
 
 def get_action_bar(
@@ -238,7 +237,7 @@ class HomeScreen(TuttleView, UserControl):
         self.preferences_intent = PreferencesIntent(
             client_storage=params.client_storage
         )
-        self.selected_tab = NO_MENU_ITEM_INDEX
+        self.selected_tab = 0
 
         self.main_menu = views.get_std_navigation_menu(
             title=self.main_menu_handler.menu_title,
@@ -250,20 +249,8 @@ class HomeScreen(TuttleView, UserControl):
             destinations=self.get_menu_destinations(menu_level=1),
             on_change=lambda e: self.on_menu_destination_change(e, menu_level=1),
         )
-        # initialize destination view with a welcome text
-        welcome_destination_view = Container(
-            padding=padding.all(dimens.SPACE_MD),
-            content=Row(
-                [
-                    views.get_heading_with_subheading(
-                        title="Welcome back!",
-                        subtitle="Select an item on the menu to get started",
-                        subtitle_color=colors.GRAY_COLOR,
-                    )
-                ]
-            ),
-        )
-        self.destination_view = welcome_destination_view
+        self.current_menu_handler = self.main_menu_handler
+        self.destination_view = self.current_menu_handler.items[0].destination
         self.dialog: Optional[DialogHandler] = None
         self.action_bar = get_action_bar(
             on_click_notifications_btn=self.on_view_notifications_clicked,
@@ -271,7 +258,6 @@ class HomeScreen(TuttleView, UserControl):
             on_click_profile_btn=self.on_click_profile,
             on_view_settings_clicked=self.on_view_settings_clicked,
         )
-        self.current_menu_handler = self.main_menu_handler
 
     # MENU DESTINATIONS SETUP
     def get_menu_destinations(self, menu_level=0) -> list:
@@ -306,11 +292,11 @@ class HomeScreen(TuttleView, UserControl):
                 else self.secondary_menu_handler
             )
             self.selected_tab = e.control.selected_index
-            if self.selected_tab != NO_MENU_ITEM_INDEX:
-                # update the destination view
-                menu_item = self.current_menu_handler.items[self.selected_tab]
-                self.destination_view = menu_item.destination
-                self.destination_content_container.content = self.destination_view
+
+            # update the destination view
+            menu_item = self.current_menu_handler.items[self.selected_tab]
+            self.destination_view = menu_item.destination
+            self.destination_content_container.content = self.destination_view
 
             # clear selected items on the other menu
             if menu_level == 0:
