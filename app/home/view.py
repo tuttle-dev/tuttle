@@ -308,9 +308,6 @@ class HomeScreen(TuttleView, UserControl):
     # ACTION BUTTONS
     def on_click_add_new(self, e):
         """handles the add new button click event"""
-        if self.selected_tab == NO_MENU_ITEM_INDEX:
-            return
-        """determine the item user wishes to create"""
         item = self.current_menu_handler.items[self.selected_tab]
         if item.on_new_intent:
             self.pass_intent_to_destination(item.on_new_intent)
