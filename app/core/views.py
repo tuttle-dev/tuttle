@@ -229,6 +229,24 @@ def get_secondary_btn(
     )
 
 
+def get_danger_button(
+    on_click,
+    label: str,
+    width: int = 200,
+    icon: Optional[str] = None,
+    tooltip: Optional[str] = None,
+):
+    """An elevated button with danger styling"""
+    return ElevatedButton(
+        label,
+        width=width,
+        on_click=on_click,
+        icon=icon,
+        color=colors.DANGER_COLOR,
+        tooltip=tooltip,
+    )
+
+
 def get_profile_photo_img(pic_src: str = image_paths.default_avatar):
 
     return Image(

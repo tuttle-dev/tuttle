@@ -47,7 +47,13 @@ from timetracking.intent import TimeTrackingIntent
 class TuttleApp:
     """The main application class"""
 
-    def __init__(self, page: Page) -> None:
+    def __init__(
+        self,
+        page: Page,
+        debug_mode: bool = False,
+    ):
+        """ """
+        self.debug_mode = debug_mode
         self.page = page
         self.page.title = "Tuttle"
         self.page.fonts = APP_FONTS
@@ -243,6 +249,11 @@ class TuttleApp:
     def build(self):
         self.page.go(self.page.route)
 
+    def reset_and_quit(self):
+        """Resets the application and quits."""
+        self.reset_database()
+        self.close()
+
 
 class TuttleRoutes:
     """Utility class for parsing of routes to destination views"""
@@ -312,7 +323,9 @@ class TuttleRoutes:
             )
         elif routePath.match(PREFERENCES_SCREEN_ROUTE):
             screen = PreferencesScreen(
-                params=self.tuttle_view_params, on_theme_changed=self.on_theme_changed
+                params=self.tuttle_view_params,
+                on_theme_changed_callback=self.on_theme_changed,
+                on_reset_app_callback=self.app.reset_and_quit,
             )
         elif routePath.match(PROJECT_EDITOR_SCREEN_ROUTE):
             screen = ProjectEditorScreen(params=self.tuttle_view_params)

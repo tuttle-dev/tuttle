@@ -1,27 +1,18 @@
-from dataclasses import dataclass
+from typing import Tuple, Union, Optional, List, Type
+
 import datetime
-from multiprocessing.sharedctypes import Value
-from tabnanny import check
-from time import time
-from typing import Tuple, Union
-import enum
+from dataclasses import dataclass
 
 import pandas
-
+from pandas import DataFrame
 from pandera import check_io
 from pandera.typing import DataFrame
-from pandas import DataFrame
 
+from tuttle.dev import deprecated
 
 from . import schema
 from .calendar import Calendar, ICloudCalendar, ICSCalendar
-from .model import (
-    TimeTrackingItem,
-    User,
-    Project,
-    Timesheet,
-)
-from tuttle.dev import deprecated
+from .model import Project, Timesheet, TimeTrackingItem, User
 
 
 def create_timesheet(
@@ -177,13 +168,27 @@ def import_from_calendar(cal: Calendar) -> DataFrame:
 
 
 class TimetrackingSpreadsheetPreset:
-    class Toggl:
-        tag_col = "Project"
-        begin_col = ["Start date", "Start time"]
-        end_col = ["End date", "End time"]
-        duration_col = "Duration"
-        title_col = "Task"
-        description_col = "Description"
+    tag_col: str
+    begin_col: Union[str, List[str]]
+    end_col: Union[str, List[str]]
+    duration_col: str
+    title_col: str
+    description_col: str
+
+
+@dataclass
+class TogglPreset(TimetrackingSpreadsheetPreset):
+    tag_col = "Project"
+    begin_col = ["Start date", "Start time"]
+    end_col = ["End date", "End time"]
+    duration_col = "Duration"
+    title_col = "Task"
+    description_col = "Description"
+
+
+def infer_spreadsheet_preset(data: DataFrame) -> Type[TimetrackingSpreadsheetPreset]:
+    """Infer the spreadsheet preset from the columns of the dataframe."""
+    raise NotImplementedError("TODO")
 
 
 @check_io(
@@ -191,13 +196,13 @@ class TimetrackingSpreadsheetPreset:
 )
 def import_from_spreadsheet(
     path,
-    preset: str = None,
-    tag_col: str = None,
-    begin_col: str = None,
-    end_col: str = None,
-    duration_col: str = None,
-    title_col: str = None,
-    description_col: str = None,
+    preset: Optional[Type[TimetrackingSpreadsheetPreset]] = None,
+    tag_col: Optional[str] = None,
+    begin_col: Optional[Union[str, List[str]]] = None,
+    end_col: Optional[Union[str, List[str]]] = None,
+    duration_col: Optional[str] = None,
+    title_col: Optional[str] = None,
+    description_col: Optional[str] = None,
 ) -> DataFrame:
     """Import time tracking data from a .csv file."""
     if preset:

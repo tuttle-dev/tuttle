@@ -1,3 +1,7 @@
+from loguru import logger
+
+from flet import Page
+
 from core.abstractions import ClientStorage, Intent
 from core.intent_result import IntentResult
 
@@ -24,8 +28,10 @@ class PreferencesIntent(Intent):
         storing a preference item given it's key and value
     """
 
-    def __init__(self, client_storage: ClientStorage):
-
+    def __init__(
+        self,
+        client_storage: ClientStorage,
+    ):
         self._client_storage = client_storage
 
     def get_preferences(self) -> IntentResult:
@@ -130,3 +136,40 @@ class PreferencesIntent(Intent):
             result.error_msg = "Failed to load your preferred theme"
             result.log_message_if_any()
         return result
+
+    def clear_preferences(self) -> IntentResult[None]:
+        """Clears all preferences"""
+        try:
+            self._client_storage.clear_preferences()
+            return IntentResult(was_intent_successful=True)
+        except Exception as ex:
+            logger.error(f"Failed to clear preferences: {ex.__class__.__name__}")
+            logger.exception(ex)
+            result = IntentResult(
+                was_intent_successful=False,
+                exception=ex,
+                error_msg=f"Failed to clear preferences: {ex.__class__.__name__}",
+            )
+            result.log_message_if_any()
+            return result
+
+    def reset_app(self) -> IntentResult:
+        """Resets the app to it's default state"""
+        try:
+            logger.info("Resetting the app to default state")
+            logger.info("Clearing all preferences")
+            self._client_storage.clear_preferences()
+            logger.info("Clearing all data")
+            self._page.window_close()
+
+            return IntentResult(
+                was_intent_successful=True,
+            )
+        except Exception as ex:
+            result = IntentResult(
+                was_intent_successful=False,
+                exception=ex,
+                error_msg="Failed to reset app",
+            )
+            result.log_message_if_any()
+            return result
