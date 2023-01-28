@@ -10,6 +10,7 @@ from flet import (
     Dropdown,
     ElevatedButton,
     FilledButton,
+    OutlinedButton,
     Icon,
     Image,
     PopupMenuButton,
@@ -27,6 +28,7 @@ from flet import (
     dropdown,
     icons,
     padding,
+    Text,
 )
 
 from res import colors, dimens, fonts, image_paths
@@ -281,7 +283,7 @@ class StdSecondaryButton(ElevatedButton):
         )
 
 
-class StdDangerButton(FilledButton):
+class StdDangerButton(ElevatedButton):
     """A button styled for dangerous actions e.g. delete"""
 
     def __init__(
@@ -294,7 +296,8 @@ class StdDangerButton(FilledButton):
     ):
 
         super().__init__(
-            label,
+            text=label,
+            color=colors.DANGER_COLOR,
             width=width,
             on_click=on_click,
             icon=icon,
