@@ -62,7 +62,7 @@ class ProjectCard(UserControl):
                 ),
                 title=views.StdBodyText(self.project.title),
                 subtitle=views.StdBodyText(
-                    f"#{self.project.tag}",
+                    f"{self.project.tag}",
                     color=colors.GRAY_COLOR,
                     weight=FontWeight.BOLD,
                 ),

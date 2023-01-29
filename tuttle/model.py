@@ -18,13 +18,14 @@ import sqlalchemy
 
 # from pydantic import str
 from pydantic import BaseModel, condecimal, constr, validator
-from sqlmodel import Field, Relationship, SQLModel, Constraint
+from sqlmodel import SQLModel, Field, Relationship, Constraint
+
 
 from .dev import deprecated
 from .time import Cycle, TimeUnit
 
 
-def help(model_class):
+def help(model_class: Type[BaseModel]):
     return pandas.DataFrame(
         (
             (field_name, field.field_info.description)
@@ -125,7 +126,7 @@ class User(SQLModel, table=True):
         back_populates="users",
         sa_relationship_kwargs={"lazy": "subquery"},
     )
-    VAT_number: str = Field(
+    VAT_number: Optional[str] = Field(
         description="Value Added Tax number of the user, legally required for invoices.",
     )
     # User 1:1* ICloudAccount
@@ -146,7 +147,7 @@ class User(SQLModel, table=True):
         sa_relationship_kwargs={"lazy": "subquery"},
     )
     # TODO: path to logo image
-    logo: Optional[str]
+    # logo: Optional[str] = Field(default=None)
 
     @property
     def bank_account_not_set(self) -> bool:
@@ -207,6 +208,14 @@ class Contact(SQLModel, table=True):
     )
     # post address
 
+    # VALIDATORS
+    @validator("email")
+    def email_validator(cls, v):
+        """Validate email address format."""
+        if not re.match(r"[^@]+@[^@]+\.[^@]+", v):
+            raise ValueError("Not a valid email address")
+        return v
+
     @property
     def name(self):
         if self.first_name and self.last_name:
@@ -248,7 +257,9 @@ class Client(SQLModel, table=True):
     """A client the freelancer has contracted with."""
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    name: str = Field(default="")
+    name: str = Field(
+        description="Name of the client.",
+    )
     # Client 1:1 invoicing Contact
     invoicing_contact_id: int = Field(default=None, foreign_key="contact.id")
     invoicing_contact: Contact = Relationship(
@@ -361,10 +372,11 @@ class Project(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     title: str = Field(
-        description="A short, unique title", sa_column_kwargs={"unique": True}
+        description="A short, unique title",
+        sa_column_kwargs={"unique": True},
     )
     description: str = Field(
-        description="A longer description of the project", default=""
+        description="A longer description of the project",
     )
     tag: str = Field(
         description="A unique tag, starting with a # symbol",

@@ -1,62 +1,59 @@
-from typing import List, Optional, Callable
+from typing import Callable, List, Optional
 
-import random
-from pathlib import Path
-from tuttle.calendar import Calendar, ICSCalendar
-import faker
-import random
 import datetime
-from datetime import timedelta, date
+import random
+from datetime import date, timedelta
+from pathlib import Path
+from decimal import Decimal
+
+import faker
 import ics
-from sqlmodel import Field, SQLModel, create_engine, Session, select
+import numpy
 import sqlalchemy
 from loguru import logger
-import numpy
+from sqlmodel import Field, Session, SQLModel, create_engine, select
 
+from tuttle import rendering
+from tuttle.calendar import Calendar, ICSCalendar
 from tuttle.model import (
     Address,
-    Contact,
-    Client,
-    Project,
-    Contract,
-    TimeUnit,
-    Cycle,
-    User,
     BankAccount,
+    Client,
+    Contact,
+    Contract,
+    Cycle,
     Invoice,
     InvoiceItem,
+    Project,
+    TimeUnit,
+    User,
 )
-from tuttle import rendering
 
 
 def create_fake_contact(
     fake: faker.Faker,
 ):
-    try:
-        street_line, city_line = fake.address().splitlines()
-        a = Address(
-            id=id,
-            street=street_line.split(" ")[0],
-            number=street_line.split(" ")[1],
-            city=city_line.split(" ")[1],
-            postal_code=city_line.split(" ")[0],
-            country=fake.country(),
-        )
-        first_name, last_name = fake.name().split(" ", 1)
-        contact = Contact(
-            id=id,
-            first_name=first_name,
-            last_name=last_name,
-            email=fake.email(),
-            company=fake.company(),
-            address_id=a.id,
-            address=a,
-        )
-        return contact
-    except Exception as ex:
-        logger.error(ex)
-        logger.error(f"Failed to create fake contact, trying again")
-        return create_fake_contact(fake)
+
+    split_address_lines = fake.address().splitlines()
+    street_line = split_address_lines[0]
+    city_line = split_address_lines[1]
+    a = Address(
+        street=street_line,
+        number=city_line,
+        city=city_line.split(" ")[1],
+        postal_code=city_line.split(" ")[0],
+        country=fake.country(),
+    )
+    first_name, last_name = fake.name().split(" ", 1)
+    contact = Contact(
+        first_name=first_name,
+        last_name=last_name,
+        email=fake.email(),
+        company=fake.company(),
+        address_id=a.id,
+        address=a,
+    )
+    return contact
 
 
 def create_fake_client(
@@ -64,10 +61,10 @@ def create_fake_client(
     fake: faker.Faker,
 ):
     client = Client(
-        id=id,
         name=fake.company(),
         invoicing_contact=invoicing_contact,
     )
+    assert client.invoicing_contact is not None
     return client
 
 
@@ -92,7 +89,7 @@ def create_fake_contract(
         start_date=fake.date_this_year(after_today=True),
         rate=rate,
         currency="EUR",  # TODO: Use actual currency
-        VAT_rate=round(random.uniform(0.05, 0.2), 2),
+        VAT_rate=Decimal(round(random.uniform(0.05, 0.2), 2)),
         unit=unit,
         units_per_workday=random.randint(1, 12),
         volume=fake.random_int(1, 1000),
@@ -147,7 +144,7 @@ def create_fake_invoice(
     """
     invoice_number = next(invoice_number_counter)
     invoice = Invoice(
-        number=invoice_number,
+        number=str(invoice_number),
         date=datetime.date.today(),
         sent=fake.pybool(),
         paid=fake.pybool(),
@@ -159,6 +156,7 @@ def create_fake_invoice(
     number_of_items = fake.random_int(min=1, max=5)
     for _ in range(number_of_items):
         unit = fake.random_element(elements=("hours", "days"))
+        unit_price = 0
         if unit == "hours":
             unit_price = abs(round(numpy.random.normal(50, 20), 2))
         elif unit == "days":
@@ -169,12 +167,11 @@ def create_fake_invoice(
             end_date=fake.date_this_decade(),
             quantity=fake.random_int(min=1, max=10),
             unit=unit,
-            unit_price=unit_price,
+            unit_price=Decimal(unit_price),
             description=fake.sentence(),
-            VAT_rate=vat_rate,
+            VAT_rate=Decimal(vat_rate),
             invoice=invoice,
         )
-        assert invoice_item.invoice == invoice
 
         try:
             rendering.render_invoice(
@@ -231,7 +228,6 @@ def create_demo_user() -> User:
         phone_number="+55555555555",
         VAT_number="27B-6",
         address=Address(
-            name="Harry Tuttle",
             street="Main Street",
             number="450",
             city="Somewhere",
@@ -248,6 +244,14 @@ def create_demo_user() -> User:
 
 
 def create_fake_calendar(project_list: List[Project]) -> ics.Calendar:
+    def random_datetime(start, end):
+        return start + timedelta(
+            seconds=random.randint(0, int((end - start).total_seconds()))
+        )
+
+    def random_duration():
+        return timedelta(hours=random.randint(1, 8))
+
     # create a new calendar
     calendar = ics.Calendar()
 
@@ -262,7 +266,7 @@ def create_fake_calendar(project_list: List[Project]) -> ics.Calendar:
         for _ in range(random.randint(1, 5)):
             # create a new event
             event = ics.Event()
-            event.name = f"Meeting for #{project.tag}"
+            event.name = f"Meeting for {project.tag}"
 
             # set the event's begin and end datetime
             event.begin = random_datetime(month_ago, now)
@@ -271,16 +275,6 @@ def create_fake_calendar(project_list: List[Project]) -> ics.Calendar:
             # add to calendar.events
             calendar.events.add(event)
     return calendar
-
-
-def random_datetime(start, end):
-    return start + timedelta(
-        seconds=random.randint(0, int((end - start).total_seconds()))
-    )
-
-
-def random_duration():
-    return timedelta(hours=random.randint(1, 8))
 
 
 def install_demo_data(
@@ -336,7 +330,3 @@ def install_demo_data(
         for project in projects:
             session.add(project)
             session.commit()
-
-
-if __name__ == "__main__":
-    install_demo_data(n_projects=10)
