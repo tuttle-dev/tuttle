@@ -1,30 +1,27 @@
 """Object model."""
 
-import email
-from typing import Optional, List, Dict, Type
-from pydantic import constr, BaseModel, condecimal
-from enum import Enum
-import datetime
-import hashlib
-import uuid
-import textwrap
+from typing import Dict, List, Optional, Type
 
+import re
+import datetime
+import decimal
+import email
+import hashlib
+import string
+import textwrap
+import uuid
+from decimal import Decimal
+from enum import Enum
+
+import pandas
 import sqlalchemy
-from sqlmodel import (
-    SQLModel,
-    Field,
-    Relationship,
-)
 
 # from pydantic import str
-import decimal
-from decimal import Decimal
-import pandas
-
-
-from .time import Cycle, TimeUnit
+from pydantic import BaseModel, condecimal, constr, validator
+from sqlmodel import Field, Relationship, SQLModel, Constraint
 
 from .dev import deprecated
+from .time import Cycle, TimeUnit
 
 
 def help(model_class):
@@ -369,8 +366,10 @@ class Project(SQLModel, table=True):
     description: str = Field(
         description="A longer description of the project", default=""
     )
-    # TODO: tag: constr(regex=r"#\S+")
-    tag: str = Field(description="A unique tag", sa_column_kwargs={"unique": True})
+    tag: str = Field(
+        description="A unique tag, starting with a # symbol",
+        sa_column_kwargs={"unique": True},
+    )
     start_date: datetime.date
     end_date: datetime.date
     is_completed: bool = Field(
@@ -393,6 +392,7 @@ class Project(SQLModel, table=True):
         sa_relationship_kwargs={"lazy": "subquery"},
     )
 
+    # PROPERTIES
     @property
     def client(self) -> Optional[Client]:
         if self.contract:
@@ -400,6 +400,16 @@ class Project(SQLModel, table=True):
         else:
             return None
 
+    # VALIDATORS
+    @validator("tag")
+    def validate_tag(cls, v):
+        if not re.match(r"^#\S+$", v):
+            raise ValueError(
+                "Tag must start with a # symbol and not contain any punctuation or whitespace."
+            )
+        return v
+
+    @deprecated
     def get_brief_description(self):
         if len(self.description) <= 108:
             return self.description
@@ -420,6 +430,7 @@ class Project(SQLModel, table=True):
         today = datetime.date.today()
         return self.start_date > today
 
+    # FIXME: replace string literals with enum
     def get_status(self, default: str = "") -> str:
         if self.is_active():
             return "Active"

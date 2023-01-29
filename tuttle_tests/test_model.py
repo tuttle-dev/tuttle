@@ -72,7 +72,7 @@ def test_user():
 def test_project():
     project = model.Project(
         title="Heating Repair",
-        tag="#heating",
+        tag="#heating-repair",
         start_date=datetime.date.today(),
         end_date=datetime.date.today() + datetime.timedelta(days=80),
     )
@@ -86,6 +86,7 @@ def test_contract():
         invoicing_contact=model.Contact(
             first_name="Central",
             last_name="Services",
+            company="Central Services",
             address=model.Address(
                 street="Down the Road",
                 number="55",

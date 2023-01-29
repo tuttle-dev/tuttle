@@ -106,11 +106,12 @@ def create_fake_project(
     fake: faker.Faker,
 ):
     project_title = fake.bs()
+    project_tag = f"#{'-'.join(project_title.split(' ')[:2]).lower()}"
+
     project = Project(
         title=project_title,
-        tag="-".join(project_title.split(" ")[:2]).lower(),
+        tag=project_tag,
         description=fake.paragraph(nb_sentences=2),
-        unique_tag=project_title.split(" ")[0].lower(),
         is_completed=fake.pybool(),
         start_date=datetime.date.today(),
         end_date=datetime.date.today() + datetime.timedelta(days=80),
