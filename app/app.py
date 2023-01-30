@@ -13,12 +13,12 @@ from flet import (
 
 from auth.view import ProfileScreen, SplashScreen
 from contracts.view import ContractEditorScreen, ViewContractScreen
-from core.abstractions import TuttleView, TuttleViewParams
+from core.abstractions import TView, TViewParams
 from core.client_storage_impl import ClientStorageImpl
 from core.database_storage_impl import DatabaseStorageImpl
 from core.models import RouteView
 from core.utils import AlertDialogControls
-from core.views import StdHeading
+from core.views import THeading
 from error_views.page_not_found_screen import Error404Screen
 from home.view import HomeScreen
 from loguru import logger
@@ -149,7 +149,7 @@ class TuttleApp:
             self.page.snack_bar.open = False
             self.page.update()
         self.page.snack_bar = SnackBar(
-            StdHeading(
+            THeading(
                 title=message,
                 size=HEADLINE_4_SIZE,
                 color=ERROR_COLOR if is_error else WHITE_COLOR,
@@ -197,8 +197,8 @@ class TuttleApp:
         self.page.go(current_page_view.route)
         if current_page_view.controls:
             try:
-                # the controls should contain a TuttleView as first control
-                tuttle_view: TuttleView = current_page_view.controls[0]
+                # the controls should contain a TView as first control
+                tuttle_view: TView = current_page_view.controls[0]
                 # notify view that it has been resumed
                 tuttle_view.on_resume_after_back_pressed()
             except Exception as e:
@@ -268,7 +268,7 @@ class TuttleRoutes:
         self.on_reset_and_quit = app.reset_and_quit
         self.on_install_demo_data = app.db.install_demo_data
         # init common params for views
-        self.tuttle_view_params = TuttleViewParams(
+        self.tuttle_view_params = TViewParams(
             navigate_to_route=app.change_route,
             show_snack=app.show_snack,
             dialog_controller=app.control_alert_dialog,
@@ -281,7 +281,7 @@ class TuttleRoutes:
     def get_page_route_view(
         self,
         routeName: str,
-        view: TuttleView,
+        view: TView,
     ) -> RouteView:
         """Constructs the view with a given route"""
         view_container = View(

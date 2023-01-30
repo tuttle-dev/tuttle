@@ -55,7 +55,7 @@ Desktop apps are great - let's have more of them. We are consciously developing 
 
 Manage your business contacts and contract terms for your project - all in one place.
 
-<img src="assets/images/screenshot-contracts.png" width=768 />
+<img src="assets/images/screenshot-contract.png" width=768 />
 
 ### Time Tracking
 

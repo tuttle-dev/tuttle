@@ -88,8 +88,8 @@ class ClientStorage(ABC):
 
 
 @dataclass
-class TuttleViewParams:
-    """Parameters for TuttleViews"""
+class TViewParams:
+    """Parameters for TViews"""
 
     navigate_to_route: Callable
     show_snack: Callable
@@ -104,10 +104,10 @@ class TuttleViewParams:
     page_scroll_type: Optional[str] = AUTO_SCROLL
 
 
-class TuttleView(ABC):
+class TView(ABC):
     """Abstract class for all UI screens"""
 
-    def __init__(self, params: TuttleViewParams):
+    def __init__(self, params: TViewParams):
         super().__init__()
         self.navigate_to_route = params.navigate_to_route
         self.show_snack: Callable[[str, bool], None] = params.show_snack

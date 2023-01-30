@@ -17,7 +17,7 @@ from flet import (
 
 from auth.intent import AuthIntent
 from core import utils, views
-from core.abstractions import TuttleView, TuttleViewParams
+from core.abstractions import TView, TViewParams
 from core.intent_result import IntentResult
 from res import dimens, fonts, image_paths, res_utils, colors, theme
 from preferences.intent import PreferencesIntent
@@ -75,22 +75,22 @@ class PaymentDataForm(UserControl):
 
     def build(self):
         """Called when form is built"""
-        self.vat_number_field = views.StdTextField(
+        self.vat_number_field = views.TTextField(
             on_change=self.on_vat_number_changed,
             label="VAT Number",
             hint="Value Added Tax number of the user, legally required for invoices.",
         )
-        self.bank_name_field = views.StdTextField(
+        self.bank_name_field = views.TTextField(
             on_change=self.on_bank_name_changed,
             label="Name",
             hint="Name of account",
         )
-        self.bank_iban_field = views.StdTextField(
+        self.bank_iban_field = views.TTextField(
             on_change=self.on_bank_iban_changed,
             label="IBAN",
             hint="International Bank Account Number",
         )
-        self.bank_ibc_field = views.StdTextField(
+        self.bank_ibc_field = views.TTextField(
             on_change=self.on_bank_bic_changed,
             label="BIC",
             hint="Bank Identifier Code",
@@ -100,12 +100,12 @@ class PaymentDataForm(UserControl):
             controls=[
                 self.vat_number_field,
                 views.Spacer(xs_space=True),
-                views.StdSubHeading("Bank Account"),
+                views.TSubHeading("Bank Account"),
                 self.bank_name_field,
                 self.bank_iban_field,
                 self.bank_ibc_field,
                 views.Spacer(),
-                views.StdPrimaryButton(
+                views.TPrimaryButton(
                     label="Save",
                     on_click=lambda e: self.on_form_submit(self.user),
                 ),
@@ -225,71 +225,71 @@ class UserDataForm(UserControl):
 
     def build(self):
         """Called when form is built"""
-        self.name_field = views.StdTextField(
+        self.name_field = views.TTextField(
             lambda e: self.on_field_value_changed("name", e),
             "Name",
             "your name",
             on_focus=self.on_field_focus,
             keyboard_type=utils.KEYBOARD_NAME,
         )
-        self.email_field = views.StdTextField(
+        self.email_field = views.TTextField(
             lambda e: self.on_field_value_changed("email", e),
             "Email",
             "your email address",
             on_focus=self.on_field_focus,
             keyboard_type=utils.KEYBOARD_EMAIL,
         )
-        self.phone_field = views.StdTextField(
+        self.phone_field = views.TTextField(
             lambda e: self.on_field_value_changed("phone", e),
             "Phone (optional)",
             "your phone number",
             on_focus=self.on_field_focus,
             keyboard_type=utils.KEYBOARD_PHONE,
         )
-        self.title_field = views.StdTextField(
+        self.title_field = views.TTextField(
             lambda e: self.on_field_value_changed("title", e),
             "Job Title",
             "What is your role as a freelancer?",
             on_focus=self.on_field_focus,
             keyboard_type=utils.KEYBOARD_TEXT,
         )
-        self.website_field = views.StdTextField(
+        self.website_field = views.TTextField(
             lambda e: self.on_field_value_changed("website", e),
             "Website (optional)",
             "URL of your website.",
         )
-        self.street_field = views.StdTextField(
+        self.street_field = views.TTextField(
             lambda e: self.on_field_value_changed("street", e),
             label="Street Name",
             keyboard_type=utils.KEYBOARD_TEXT,
             expand=1,
         )
-        self.street_number_field = views.StdTextField(
+        self.street_number_field = views.TTextField(
             lambda e: self.on_field_value_changed("street_number", e),
             label="Street Number",
             keyboard_type=utils.KEYBOARD_NUMBER,
             expand=1,
         )
-        self.postal_code_field = views.StdTextField(
+        self.postal_code_field = views.TTextField(
             lambda e: self.on_field_value_changed("postal_code", e),
             label="Postal Code",
             keyboard_type=utils.KEYBOARD_NUMBER,
             expand=1,
         )
 
-        self.city_field = views.StdTextField(
+        self.city_field = views.TTextField(
             lambda e: self.on_field_value_changed("city", e),
             label="City",
             keyboard_type=utils.KEYBOARD_TEXT,
             expand=1,
         )
-        self.country_field = views.StdTextField(
+        self.country_field = views.TTextField(
             lambda e: self.on_field_value_changed("country", e),
             label="Country",
             keyboard_type=utils.KEYBOARD_TEXT,
         )
-        self.form_err_control = views.StdErrorText("")
-        self.submit_btn = views.StdPrimaryButton(
+        self.form_err_control = views.TErrorText("")
+        self.submit_btn = views.TPrimaryButton(
             on_click=self.on_submit_btn_clicked,
             label=self.submit_btn_label,
         )
@@ -337,7 +337,7 @@ class UserDataForm(UserControl):
         self.update()
 
 
-class SplashScreen(TuttleView, UserControl):
+class SplashScreen(TView, UserControl):
     """Displayed the first time the app loads
 
     Checks if user has been created
@@ -347,7 +347,7 @@ class SplashScreen(TuttleView, UserControl):
 
     def __init__(
         self,
-        params: TuttleViewParams,
+        params: TViewParams,
         on_install_demo_data: Callable,
     ):
         super().__init__(params=params)
@@ -401,11 +401,11 @@ class SplashScreen(TuttleView, UserControl):
         self.show_login_if_signed_out_else_redirect()
 
     def build(self):
-        self.loading_indicator = views.StdProgressBar()
+        self.loading_indicator = views.TProgressBar()
         self.form_container = Column(
             controls=[
-                # views.StdAppLogoWithLabel(),
-                views.StdHeadingWithSubheading(
+                # views.TAppLogoWithLabel(),
+                views.THeadingWithSubheading(
                     "Welcome to Tuttle",
                     "Let's get you started: Please enter your details below. Your data will be stored locally and will not be sent to a server.",
                 ),
@@ -428,12 +428,12 @@ class SplashScreen(TuttleView, UserControl):
                         expand=True,
                         controls=[
                             views.Spacer(md_space=True),
-                            views.StdImage(
+                            views.TImage(
                                 image_paths.splashImgPath,
                                 "welcome screen image",
                                 width=300,
                             ),
-                            views.StdHeadingWithSubheading(
+                            views.THeadingWithSubheading(
                                 "Tuttle",
                                 "Time and money management for freelancers",
                                 alignment_in_container=utils.CENTER_ALIGNMENT,
@@ -450,7 +450,7 @@ class SplashScreen(TuttleView, UserControl):
                     content=Column(
                         [
                             self.form_container,
-                            views.StdSecondaryButton(
+                            views.TSecondaryButton(
                                 on_click=self.on_proceed_with_demo_data_clicked,
                                 label="Proceed with demo",
                                 icon="TOYS",
@@ -471,7 +471,7 @@ class ProfileMenuItemsHandler:
 
     def __init__(
         self,
-        params: TuttleViewParams,
+        params: TViewParams,
     ):
         super().__init__()
         self.menu_title = "My Profile"
@@ -515,10 +515,10 @@ def profile_destination_content_wrapper(
     )
 
 
-class ProfilePhotoContent(TuttleView, UserControl):
+class ProfilePhotoContent(TView, UserControl):
     """Content for profile photo"""
 
-    def __init__(self, params: TuttleViewParams):
+    def __init__(self, params: TViewParams):
         super().__init__(params)
         self.intent = AuthIntent()
         self.uploaded_photo_path = ""
@@ -564,13 +564,13 @@ class ProfilePhotoContent(TuttleView, UserControl):
             self.update_self()
 
     def build(self):
-        self.profile_photo_img = views.StdProfilePhotoImg()
-        self.update_photo_btn = views.StdSecondaryButton(
+        self.profile_photo_img = views.TProfilePhotoImg()
+        self.update_photo_btn = views.TSecondaryButton(
             label="Update Photo",
             on_click=self.on_update_photo_clicked,
         )
         self.profile_photo_content = [
-            views.StdHeading(
+            views.THeading(
                 "Profile Photo",
                 size=fonts.HEADLINE_4_SIZE,
             ),
@@ -599,10 +599,10 @@ class ProfilePhotoContent(TuttleView, UserControl):
         self.mounted = False
 
 
-class UserInfoContent(TuttleView, UserControl):
+class UserInfoContent(TView, UserControl):
     """Content for user info"""
 
-    def __init__(self, params: TuttleViewParams):
+    def __init__(self, params: TViewParams):
         super().__init__(params)
         self.intent = AuthIntent()
         self.user_profile: User = None
@@ -632,7 +632,7 @@ class UserInfoContent(TuttleView, UserControl):
             submit_btn_label="Save",
         )
         self.user_info_content = [
-            views.StdHeading(
+            views.THeading(
                 "Personal Info",
                 size=fonts.HEADLINE_4_SIZE,
             ),
@@ -658,10 +658,10 @@ class UserInfoContent(TuttleView, UserControl):
         self.mounted = False
 
 
-class PaymentInfoContent(TuttleView, UserControl):
+class PaymentInfoContent(TView, UserControl):
     """Content for payment info"""
 
-    def __init__(self, params: TuttleViewParams):
+    def __init__(self, params: TViewParams):
         super().__init__(params)
         self.intent = AuthIntent()
         self.user_profile: User = None
@@ -681,7 +681,7 @@ class PaymentInfoContent(TuttleView, UserControl):
             on_form_submit=self.on_update_payment_info,
         )
         self.payment_info_content = [
-            views.StdHeading(
+            views.THeading(
                 "Payment Settings",
                 size=fonts.HEADLINE_4_SIZE,
             ),
@@ -707,10 +707,10 @@ class PaymentInfoContent(TuttleView, UserControl):
         self.mounted = False
 
 
-class ProfileScreen(TuttleView, UserControl):
+class ProfileScreen(TView, UserControl):
     """User profile screen"""
 
-    def __init__(self, params: TuttleViewParams):
+    def __init__(self, params: TViewParams):
         super().__init__(params=params)
         self.preferences_intent = PreferencesIntent(
             client_storage=params.client_storage,
@@ -720,7 +720,7 @@ class ProfileScreen(TuttleView, UserControl):
         )
         self.current_menu_index = 0
         # initialize the side bar menu
-        self.side_bar_menu = views.StdNavigationMenu(
+        self.side_bar_menu = views.TNavigationMenu(
             title=self.menu_handler.menu_title,
             destinations=self.get_menu_destinations(),
             on_change=lambda e: self.on_menu_destination_change(e),
@@ -744,7 +744,7 @@ class ProfileScreen(TuttleView, UserControl):
                     item.selected_icon,
                     size=dimens.ICON_SIZE,
                 ),
-                label_content=views.StdBodyText(item.label),
+                label_content=views.TBodyText(item.label),
                 padding=padding.symmetric(horizontal=dimens.SPACE_SM),
             )
             items.append(itemDestination)

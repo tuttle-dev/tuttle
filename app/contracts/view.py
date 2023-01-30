@@ -25,7 +25,7 @@ from flet import (
 from clients.view import ClientEditorPopUp, ClientViewPopUp
 from contracts.intent import ContractsIntent
 from core import utils, views
-from core.abstractions import DialogHandler, TuttleView, TuttleViewParams
+from core.abstractions import DialogHandler, TView, TViewParams
 from core.intent_result import IntentResult
 from core.models import (
     get_cycle_from_value,
@@ -62,12 +62,12 @@ class ContractCard(UserControl):
                     utils.TuttleComponentIcons.contract_icon,
                     size=dimens.ICON_SIZE,
                 ),
-                title=views.StdBodyText(self.contract.title),
-                subtitle=views.StdBodyText(
+                title=views.TBodyText(self.contract.title),
+                subtitle=views.TBodyText(
                     self.contract.client.name if self.contract.client else "Unknown",
                     color=colors.GRAY_COLOR,
                 ),
-                trailing=views.StdContextMenu(
+                trailing=views.TContextMenu(
                     on_click_view=lambda e: self.on_click_view(self.contract.id),
                     on_click_edit=lambda e: self.on_click_edit(self.contract.id),
                     on_click_delete=lambda e: self.on_click_delete(self.contract.id),
@@ -77,13 +77,13 @@ class ContractCard(UserControl):
             views.Spacer(md_space=True),
             ResponsiveRow(
                 controls=[
-                    views.StdBodyText(
+                    views.TBodyText(
                         txt="Rate",
                         color=colors.GRAY_COLOR,
                         size=fonts.BODY_2_SIZE,
                         col={"xs": "12"},
                     ),
-                    views.StdBodyText(
+                    views.TBodyText(
                         txt=f"{self.contract.rate} {self.contract.currency} / {self.contract.unit}",
                         size=fonts.BODY_2_SIZE,
                         col={"xs": "12"},
@@ -95,13 +95,13 @@ class ContractCard(UserControl):
             ),
             ResponsiveRow(
                 controls=[
-                    views.StdBodyText(
+                    views.TBodyText(
                         txt="Billing Cycle",
                         color=colors.GRAY_COLOR,
                         size=fonts.BODY_2_SIZE,
                         col={"xs": "12"},
                     ),
-                    views.StdBodyText(
+                    views.TBodyText(
                         txt=f"{self.contract.billing_cycle}",
                         size=fonts.BODY_2_SIZE,
                         col={"xs": "12"},
@@ -114,13 +114,13 @@ class ContractCard(UserControl):
             # add responsive row for contract volume
             ResponsiveRow(
                 controls=[
-                    views.StdBodyText(
+                    views.TBodyText(
                         txt="Volume",
                         color=colors.GRAY_COLOR,
                         size=fonts.BODY_2_SIZE,
                         col={"xs": "12"},
                     ),
-                    views.StdBodyText(
+                    views.TBodyText(
                         txt=f"{self.contract.volume} {self.contract.unit}s",
                         size=fonts.BODY_2_SIZE,
                         col={"xs": "12"},
@@ -244,18 +244,18 @@ class ContractFiltersView(UserControl):
         return self.filters
 
 
-class ContractEditorScreen(TuttleView, UserControl):
+class ContractEditorScreen(TView, UserControl):
     """Used to edit or create a contract"""
 
     def __init__(
-        self, params: TuttleViewParams, contract_id_if_editing: Optional[str] = False
+        self, params: TViewParams, contract_id_if_editing: Optional[str] = False
     ):
         super().__init__(params=params)
         self.horizontal_alignment_in_parent = utils.CENTER_ALIGNMENT
         self.intent = ContractsIntent()
         self.contract_id_if_editing: Optional[str] = contract_id_if_editing
         self.old_contract_if_editing: Optional[Contract] = None
-        self.loading_indicator = views.StdProgressBar()
+        self.loading_indicator = views.TProgressBar()
         self.new_client_pop_up: Optional[DialogHandler] = None
 
         # info of contract being edited / created
@@ -547,64 +547,64 @@ class ContractEditorScreen(TuttleView, UserControl):
 
     def build(self):
         """Build the UI"""
-        self.title_ui_field = views.StdTextField(
+        self.title_ui_field = views.TTextField(
             label="Title",
             hint="Short description of the contract.",
             on_change=self.on_title_changed,
             on_focus=self.clear_ui_field_errors,
         )
-        self.rate_ui_field = views.StdTextField(
+        self.rate_ui_field = views.TTextField(
             label="Rate",
             hint="Rate of remuneration",
             on_change=self.on_rate_changed,
             on_focus=self.clear_ui_field_errors,
             keyboard_type=utils.KEYBOARD_NUMBER,
         )
-        self.currency_ui_field = views.StdDropDown(
+        self.currency_ui_field = views.TDropDown(
             label="Currency",
             hint="Payment currency",
             on_change=self.on_currency_changed,
             items=self.available_currencies,
         )
-        self.vat_rate_ui_field = views.StdTextField(
+        self.vat_rate_ui_field = views.TTextField(
             label="VAT rate",
             hint=f"VAT rate applied to the contractual rate. default is {CONTRACT_DEFAULT_VAT_RATE}",
             on_change=self.on_vat_rate_changed,
             on_focus=self.clear_ui_field_errors,
             keyboard_type=utils.KEYBOARD_NUMBER,
         )
-        self.unit_PW_ui_field = views.StdTextField(
+        self.unit_PW_ui_field = views.TTextField(
             label="Units per workday",
             hint="How many units (e.g. hours) constitute a whole work day?",
             on_change=self.on_upw_changed,
             on_focus=self.clear_ui_field_errors,
             keyboard_type=utils.KEYBOARD_NUMBER,
         )
-        self.volume_ui_field = views.StdTextField(
+        self.volume_ui_field = views.TTextField(
             label="Volume (optional)",
             hint="Number of time units agreed on",
             on_change=self.on_volume_changed,
             on_focus=self.clear_ui_field_errors,
             keyboard_type=utils.KEYBOARD_NUMBER,
         )
-        self.term_of_payment_ui_field = views.StdTextField(
+        self.term_of_payment_ui_field = views.TTextField(
             label="Term of payment (optional)",
             hint="How many days after receipt of invoice this invoice is due.",
             on_change=self.on_term_of_payment_changed,
             on_focus=self.clear_ui_field_errors,
             keyboard_type=utils.KEYBOARD_NUMBER,
         )
-        self.clients_ui_field = views.StdDropDown(
+        self.clients_ui_field = views.TDropDown(
             label="Client",
             on_change=self.on_client_selected,
             items=self.get_clients_names_as_list(),
         )
-        self.units_ui_field = views.StdDropDown(
+        self.units_ui_field = views.TDropDown(
             label="Unit of time tracked.",
             on_change=self.on_unit_selected,
             items=get_time_unit_values_as_list(),
         )
-        self.billing_cycle_ui_field = views.StdDropDown(
+        self.billing_cycle_ui_field = views.TDropDown(
             label="Billing Cycle",
             on_change=self.on_billing_cycle_selected,
             items=get_cycle_values_as_list(),
@@ -612,10 +612,10 @@ class ContractEditorScreen(TuttleView, UserControl):
         self.signature_date_ui_field = views.DateSelector(label="Signed on")
         self.start_date_ui_field = views.DateSelector(label="Valid from")
         self.end_date_ui_field = views.DateSelector(label="Valid until")
-        self.submit_btn = views.StdPrimaryButton(
+        self.submit_btn = views.TPrimaryButton(
             label="Create Contract", on_click=self.on_save
         )
-        self.form_title_ui_field = views.StdHeading(
+        self.form_title_ui_field = views.THeading(
             title="New Contract",
         )
         view = Container(
@@ -689,14 +689,14 @@ class ContractEditorScreen(TuttleView, UserControl):
             self.new_client_pop_up.dimiss_open_dialogs()
 
 
-class ContractsListView(TuttleView, UserControl):
+class ContractsListView(TView, UserControl):
     """View for displaying a list of contracts."""
 
-    def __init__(self, params: TuttleViewParams):
+    def __init__(self, params: TViewParams):
         super().__init__(params)
         self.intent = ContractsIntent()
-        self.loading_indicator = views.StdProgressBar()
-        self.no_contracts_control = views.StdBodyText(
+        self.loading_indicator = views.TProgressBar()
+        self.no_contracts_control = views.TBodyText(
             txt="You have not added any contracts yet",
             color=colors.ERROR_COLOR,
             show=False,
@@ -706,7 +706,7 @@ class ContractsListView(TuttleView, UserControl):
                 Column(
                     col={"xs": 12},
                     controls=[
-                        views.StdHeading(
+                        views.THeading(
                             title="My Contracts", size=fonts.HEADLINE_4_SIZE
                         ),
                         self.loading_indicator,
@@ -842,18 +842,18 @@ class ContractsListView(TuttleView, UserControl):
             self.pop_up_handler.dimiss_open_dialogs()
 
 
-class ViewContractScreen(TuttleView, UserControl):
+class ViewContractScreen(TView, UserControl):
     """Screen to view the details of a contract."""
 
     def __init__(
         self,
-        params: TuttleViewParams,
+        params: TViewParams,
         contract_id: str,
     ):
         super().__init__(params)
         self.intent = ContractsIntent()
         self.contract_id = contract_id
-        self.loading_indicator = views.StdProgressBar()
+        self.loading_indicator = views.TProgressBar()
         self.contract: Optional[Contract] = None
         self.pop_up_handler = None
 
@@ -973,7 +973,7 @@ class ViewContractScreen(TuttleView, UserControl):
         """Returns a row with a label and a control."""
         return ResponsiveRow(
             controls=[
-                views.StdBodyText(
+                views.TBodyText(
                     txt=label,
                     color=colors.GRAY_COLOR,
                     size=fonts.BODY_2_SIZE,
@@ -1011,44 +1011,44 @@ class ViewContractScreen(TuttleView, UserControl):
             icon_size=dimens.ICON_SIZE,
         )
 
-        self.client_control = views.StdHeading()
-        self.contract_title_control = views.StdHeading()
-        self.billing_cycle_control = views.StdBodyText(
+        self.client_control = views.THeading()
+        self.contract_title_control = views.THeading()
+        self.billing_cycle_control = views.TBodyText(
             align=utils.TXT_ALIGN_JUSTIFY,
         )
-        self.rate_control = views.StdBodyText(
+        self.rate_control = views.TBodyText(
             align=utils.TXT_ALIGN_JUSTIFY,
         )
-        self.currency_control = views.StdBodyText(
+        self.currency_control = views.TBodyText(
             align=utils.TXT_ALIGN_JUSTIFY,
         )
-        self.vat_rate_control = views.StdBodyText(
+        self.vat_rate_control = views.TBodyText(
             align=utils.TXT_ALIGN_JUSTIFY,
         )
-        self.unit_control = views.StdBodyText(
+        self.unit_control = views.TBodyText(
             align=utils.TXT_ALIGN_JUSTIFY,
         )
-        self.units_per_workday_control = views.StdBodyText(
+        self.units_per_workday_control = views.TBodyText(
             align=utils.TXT_ALIGN_JUSTIFY,
         )
-        self.volume_control = views.StdBodyText(
+        self.volume_control = views.TBodyText(
             align=utils.TXT_ALIGN_JUSTIFY,
         )
-        self.term_of_payment_control = views.StdBodyText(
-            align=utils.TXT_ALIGN_JUSTIFY,
-        )
-
-        self.signature_date_control = views.StdBodyText(
-            align=utils.TXT_ALIGN_JUSTIFY,
-        )
-        self.start_date_control = views.StdBodyText(
-            align=utils.TXT_ALIGN_JUSTIFY,
-        )
-        self.end_date_control = views.StdBodyText(
+        self.term_of_payment_control = views.TBodyText(
             align=utils.TXT_ALIGN_JUSTIFY,
         )
 
-        self.status_control = views.StdBodyText(
+        self.signature_date_control = views.TBodyText(
+            align=utils.TXT_ALIGN_JUSTIFY,
+        )
+        self.start_date_control = views.TBodyText(
+            align=utils.TXT_ALIGN_JUSTIFY,
+        )
+        self.end_date_control = views.TBodyText(
+            align=utils.TXT_ALIGN_JUSTIFY,
+        )
+
+        self.status_control = views.TBodyText(
             size=fonts.BUTTON_SIZE,
             color=colors.PRIMARY_COLOR,
         )
@@ -1094,7 +1094,7 @@ class ViewContractScreen(TuttleView, UserControl):
                                                 vertical_alignment=utils.CENTER_ALIGNMENT,
                                                 alignment=utils.SPACE_BETWEEN_ALIGNMENT,
                                                 controls=[
-                                                    views.StdHeading(
+                                                    views.THeading(
                                                         title="Contract",
                                                         size=fonts.HEADLINE_4_SIZE,
                                                         color=colors.PRIMARY_COLOR,
