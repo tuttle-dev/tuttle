@@ -118,6 +118,7 @@ class TimeTrackingCloudCalendarSource:
     ) -> CloudConnector:
         """Attempts to authenticate user with their icloud account"""
         # TODO: error handling - login may fail
+        logger.info(f"Logging in to iCloud with {apple_id}...")
         icloud_connector = icloudpy.ICloudPyService(
             apple_id=apple_id,
             password=password,
