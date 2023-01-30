@@ -54,6 +54,7 @@ class PreferencesScreen(TView, UserControl):
         self.on_reset_app_callback = on_reset_app_callback
         self.preferences: Optional[Preferences] = None
         self.currencies = []
+        self.pop_up_handler = None
 
     def set_available_currencies(self):
         self.currencies = [
@@ -107,7 +108,25 @@ class PreferencesScreen(TView, UserControl):
             return
         self.preferences.language = e.control.value
 
-    def on_reset_app(self, e):
+    def on_reset_app_clicked(self, e):
+        """Ask user to confirm this action"""
+        if self.pop_up_handler:
+            # Close any existing dialog
+            self.pop_up_handler.close_dialog()
+        # Add a confirmation dialog
+        self.pop_up_handler = views.ConfirmDisplayPopUp(
+            dialog_controller=self.dialog_controller,
+            title="Are You Sure?",
+            description=f"Are you sure you wish to reset the app?\nThis will clear all your data.",
+            on_proceed=self.on_reset_app_confirmed,
+            proceed_button_label="Yes! Reset",
+        )
+        self.pop_up_handler.open_dialog()
+
+    def on_reset_app_confirmed(
+        self,
+    ):
+        """Reset the app to default state"""
         logger.warning("Resetting the app to default state")
         logger.warning("Clearning preferences")
         result: IntentResult[None] = self.intent.clear_preferences()
@@ -189,7 +208,7 @@ class PreferencesScreen(TView, UserControl):
         self.reset_button = views.TDangerButton(
             label="Reset App and Quit",
             icon=icons.RESTART_ALT_OUTLINED,
-            on_click=self.on_reset_app,
+            on_click=self.on_reset_app_clicked,
             tooltip="Warning: This will reset the app to default state and delete all data. You will have to restart the app.",
         )
 
