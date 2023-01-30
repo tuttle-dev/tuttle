@@ -602,8 +602,8 @@ class ConfirmDisplayPopUp(DialogHandler):
         dialog_controller: Callable[[any, utils.AlertDialogControls], None],
         title: str,
         description: str,
-        data_on_confirmed: any,
         on_proceed: Callable,
+        data_on_confirmed: Optional[any] = None,
         on_cancel: Optional[Callable] = None,
         proceed_button_label: str = "Proceed",
         cancel_button_label: str = "Cancel",
@@ -648,7 +648,10 @@ class ConfirmDisplayPopUp(DialogHandler):
 
     def on_proceed_btn_clicked(self, e):
         self.close_dialog()
-        self.on_proceed_callback(self.data_on_confirmed)
+        if self.data_on_confirmed is not None:
+            self.on_proceed_callback(self.data_on_confirmed)
+        else:
+            self.on_proceed_callback()
 
 
 class TPopUpMenuItem(PopupMenuItem):
