@@ -16,7 +16,7 @@ from flet import (
 )
 
 from core import tabular, utils, views
-from core.abstractions import DialogHandler, TuttleView
+from core.abstractions import DialogHandler, TView
 from core.intent_result import IntentResult
 from pandas import DataFrame
 from res import colors, dimens, fonts, res_utils
@@ -44,9 +44,9 @@ class TwoFAPopUp(DialogHandler):
                 content=Column(
                     scroll=utils.AUTO_SCROLL,
                     controls=[
-                        views.StdHeading(title=title, size=fonts.HEADLINE_4_SIZE),
+                        views.THeading(title=title, size=fonts.HEADLINE_4_SIZE),
                         views.Spacer(xs_space=True),
-                        views.StdTextField(
+                        views.TTextField(
                             label="Code",
                             on_change=self.on_code_changed,
                         ),
@@ -56,7 +56,7 @@ class TwoFAPopUp(DialogHandler):
                 width=dialog_width,
             ),
             actions=[
-                views.StdPrimaryButton(
+                views.TPrimaryButton(
                     label="Verify",
                     on_click=lambda e: on_submit_callback(self.code),
                 ),
@@ -94,20 +94,20 @@ class NewTimeTrackPopUp(DialogHandler):
                 content=Column(
                     scroll=utils.AUTO_SCROLL,
                     controls=[
-                        views.StdHeading(title=title, size=fonts.HEADLINE_4_SIZE),
+                        views.THeading(title=title, size=fonts.HEADLINE_4_SIZE),
                         views.Spacer(xs_space=True),
-                        views.StdBodyText(
+                        views.TBodyText(
                             f"Use calendar from {preferred_acc_provider}",
                             show=display_cloud_option,
                         ),
                         space_between_cloud_controls,
-                        views.StdTextField(
+                        views.TTextField(
                             label="Calendar Name",
                             on_change=self.on_calendar_name_changed,
                             show=display_cloud_option,
                         ),
                         space_between_cloud_controls,
-                        views.StdTextField(
+                        views.TTextField(
                             label="Cloud Password",
                             hint="Your password will not be stored",
                             keyboard_type=utils.KEYBOARD_PASSWORD,
@@ -115,7 +115,7 @@ class NewTimeTrackPopUp(DialogHandler):
                             show=display_cloud_option,
                         ),
                         space_between_cloud_controls,
-                        views.StdPrimaryButton(
+                        views.TPrimaryButton(
                             label="Load from cloud calendar",
                             icon="cloud",
                             on_click=lambda e: on_use_cloud_acc_callback(
@@ -130,7 +130,7 @@ class NewTimeTrackPopUp(DialogHandler):
                         space_between_cloud_controls,
                         views.OrView(show_lines=False, show=display_cloud_option),
                         space_between_cloud_controls,
-                        views.StdSecondaryButton(
+                        views.TSecondaryButton(
                             label="Upload a calendar (.ics) file",
                             icon="calendar_month",
                             on_click=lambda _: on_use_file_callback(is_ics=True),
@@ -138,7 +138,7 @@ class NewTimeTrackPopUp(DialogHandler):
                         ),
                         views.OrView(show_lines=False),
                         views.Spacer(xs_space=True),
-                        views.StdSecondaryButton(
+                        views.TSecondaryButton(
                             label="Upload a spreadsheet",
                             icon="table_view",
                             on_click=lambda _: on_use_file_callback(
@@ -163,7 +163,7 @@ class NewTimeTrackPopUp(DialogHandler):
         self.password = e.control.value
 
 
-class TimeTrackingView(TuttleView, UserControl):
+class TimeTrackingView(TView, UserControl):
     """Time tracking view on home page"""
 
     def __init__(self, params):
@@ -438,19 +438,19 @@ class TimeTrackingView(TuttleView, UserControl):
         self.update_self()
 
     def build(self):
-        self.loading_indicator = views.StdProgressBar()
-        self.no_timetrack_control = views.StdBodyText(
+        self.loading_indicator = views.TProgressBar()
+        self.no_timetrack_control = views.TBodyText(
             txt="You have not logged any work progress yet.",
             color=colors.ERROR_COLOR,
             show=False,
         )
-        self.ongoing_action_hint = views.StdBodyText(show=False)
+        self.ongoing_action_hint = views.TBodyText(show=False)
         self.title_control = ResponsiveRow(
             controls=[
                 Column(
                     col={"xs": 12},
                     controls=[
-                        views.StdHeading(
+                        views.THeading(
                             title="Time Tracking", size=fonts.HEADLINE_4_SIZE
                         ),
                         self.loading_indicator,

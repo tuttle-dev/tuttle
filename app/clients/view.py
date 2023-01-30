@@ -17,7 +17,7 @@ from flet import (
 
 from clients.intent import ClientsIntent
 from core import utils, views
-from core.abstractions import DialogHandler, TuttleView, TuttleViewParams
+from core.abstractions import DialogHandler, TView, TViewParams
 from core.intent_result import IntentResult
 from res import colors, dimens, fonts, res_utils
 
@@ -48,7 +48,7 @@ class ClientCard(UserControl):
         editable = True if self.on_edit_clicked or self.on_delete_clicked else None
 
         editor_controls = (
-            views.StdContextMenu(
+            views.TContextMenu(
                 on_click_delete=lambda e: self.on_delete_clicked(self.client),
                 on_click_edit=lambda e: self.on_edit_clicked(self.client),
             )
@@ -62,19 +62,19 @@ class ClientCard(UserControl):
                     utils.TuttleComponentIcons.client_icon,
                     size=dimens.ICON_SIZE,
                 ),
-                title=views.StdBodyText(self.client.name),
+                title=views.TBodyText(self.client.name),
                 trailing=editor_controls,
             ),
             views.Spacer(md_space=True),
             ResponsiveRow(
                 controls=[
-                    views.StdBodyText(
+                    views.TBodyText(
                         txt="Invoicing Contact",
                         color=colors.GRAY_COLOR,
                         size=fonts.BODY_2_SIZE,
                         col={"xs": "12"},
                     ),
-                    views.StdBodyText(
+                    views.TBodyText(
                         txt=invoicing_contact_info,
                         size=fonts.BODY_2_SIZE,
                         col={"xs": "12"},
@@ -163,73 +163,73 @@ class ClientEditorPopUp(DialogHandler, UserControl):
             self.invoicing_contact.id
         )
 
-        self.first_name_field = views.StdTextField(
+        self.first_name_field = views.TTextField(
             on_change=self.on_fname_changed,
             label="First Name",
             hint=self.invoicing_contact.first_name,
             initial_value=self.invoicing_contact.first_name,
         )
 
-        self.last_name_field = views.StdTextField(
+        self.last_name_field = views.TTextField(
             on_change=self.on_lname_changed,
             label="Last Name",
             hint=self.invoicing_contact.last_name,
             initial_value=self.invoicing_contact.last_name,
         )
-        self.company_field = views.StdTextField(
+        self.company_field = views.TTextField(
             on_change=self.on_company_changed,
             label="Company",
             hint=self.invoicing_contact.company,
             initial_value=self.invoicing_contact.company,
         )
-        self.email_field = views.StdTextField(
+        self.email_field = views.TTextField(
             on_change=self.on_email_changed,
             label="Email",
             hint=self.invoicing_contact.email,
             initial_value=self.invoicing_contact.email,
         )
 
-        self.street_field = views.StdTextField(
+        self.street_field = views.TTextField(
             on_change=self.on_street_changed,
             label="Street",
             hint=self.invoicing_contact.address.street,
             initial_value=self.invoicing_contact.address.street,
             width=half_of_pop_up_width,
         )
-        self.street_num_field = views.StdTextField(
+        self.street_num_field = views.TTextField(
             on_change=self.on_street_num_changed,
             label="Street No.",
             hint=self.invoicing_contact.address.number,
             initial_value=self.invoicing_contact.address.number,
             width=half_of_pop_up_width,
         )
-        self.postal_code_field = views.StdTextField(
+        self.postal_code_field = views.TTextField(
             on_change=self.on_postal_code_changed,
             label="Postal code",
             hint=self.invoicing_contact.address.postal_code,
             initial_value=self.invoicing_contact.address.postal_code,
             width=half_of_pop_up_width,
         )
-        self.city_field = views.StdTextField(
+        self.city_field = views.TTextField(
             on_change=self.on_city_changed,
             label="City",
             hint=self.invoicing_contact.address.city,
             initial_value=self.invoicing_contact.address.city,
             width=half_of_pop_up_width,
         )
-        self.country_field = views.StdTextField(
+        self.country_field = views.TTextField(
             on_change=self.on_country_changed,
             label="Country",
             hint=self.invoicing_contact.address.country,
             initial_value=self.invoicing_contact.address.country,
         )
-        self.contacts_dropdown = views.StdDropDown(
+        self.contacts_dropdown = views.TDropDown(
             on_change=self.on_contact_selected,
             label="Select contact",
             items=self.contact_options,
             initial_value=initial_selected_contact,
         )
-        self.form_error_field = views.StdErrorText(txt="", show=False)
+        self.form_error_field = views.TErrorText(txt="", show=False)
 
         dialog = AlertDialog(
             content=Container(
@@ -237,18 +237,18 @@ class ClientEditorPopUp(DialogHandler, UserControl):
                 content=Column(
                     scroll=utils.AUTO_SCROLL,
                     controls=[
-                        views.StdHeading(title=title, size=fonts.HEADLINE_4_SIZE),
+                        views.THeading(title=title, size=fonts.HEADLINE_4_SIZE),
                         views.Spacer(xs_space=True),
                         self.form_error_field,
                         views.Spacer(xs_space=True),
-                        views.StdTextField(
+                        views.TTextField(
                             on_change=self.on_client_name_changed,
                             label="Client's name",
                             hint=self.client.name,
                             initial_value=self.client.name,
                         ),
                         views.Spacer(xs_space=True),
-                        views.StdHeading(
+                        views.THeading(
                             title="Invoicing Contact",
                             size=fonts.SUBTITLE_2_SIZE,
                             color=colors.GRAY_COLOR,
@@ -278,9 +278,7 @@ class ClientEditorPopUp(DialogHandler, UserControl):
                 width=pop_up_width,
             ),
             actions=[
-                views.StdPrimaryButton(
-                    label="Done", on_click=self.on_submit_btn_clicked
-                ),
+                views.TPrimaryButton(label="Done", on_click=self.on_submit_btn_clicked),
             ],
         )
         super().__init__(dialog=dialog, dialog_controller=dialog_controller)
@@ -463,14 +461,14 @@ class ClientEditorPopUp(DialogHandler, UserControl):
         return self.dialog
 
 
-class ClientsListView(TuttleView, UserControl):
+class ClientsListView(TView, UserControl):
     """View for displaying a list of clients"""
 
-    def __init__(self, params: TuttleViewParams):
+    def __init__(self, params: TViewParams):
         super().__init__(params=params)
         self.intent = ClientsIntent()
-        self.loading_indicator = views.StdProgressBar()
-        self.no_clients_control = views.StdBodyText(
+        self.loading_indicator = views.TProgressBar()
+        self.no_clients_control = views.TBodyText(
             txt="You have not added any clients yet.",
             color=colors.ERROR_COLOR,
             show=False,
@@ -480,9 +478,7 @@ class ClientsListView(TuttleView, UserControl):
                 Column(
                     col={"xs": 12},
                     controls=[
-                        views.StdHeading(
-                            title="My Clients", size=fonts.HEADLINE_4_SIZE
-                        ),
+                        views.THeading(title="My Clients", size=fonts.HEADLINE_4_SIZE),
                         self.loading_indicator,
                         self.no_clients_control,
                     ],
