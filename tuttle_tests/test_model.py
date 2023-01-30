@@ -80,6 +80,19 @@ def test_user():
     assert icloud_account.user.name == "Archibald Tuttle"
 
 
+class TestUser:
+    """Tests for the User model."""
+
+    def test_valid_instantiation(self):
+        user = User.validate(
+            dict(
+                name="Harry Tuttle",
+                subtitle="Heating Engineer",
+                email="harry@tuttle.com",
+            )
+        )
+
+
 class TestContact:
     def test_valid_instantiation(self):
         contact = Contact.validate(
