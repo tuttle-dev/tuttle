@@ -17,7 +17,7 @@ from flet import (
 
 from contacts.intent import ContactsIntent
 from core import utils, views
-from core.abstractions import DialogHandler, TuttleView, TuttleViewParams
+from core.abstractions import DialogHandler, TView, TViewParams
 from core.intent_result import IntentResult
 from res import colors, dimens, fonts, res_utils
 
@@ -50,25 +50,25 @@ class ContactCard(UserControl):
                     utils.TuttleComponentIcons.contact_icon,
                     size=dimens.ICON_SIZE,
                 ),
-                title=views.get_body_txt(utils.truncate_str(self.contact.name)),
-                subtitle=views.get_body_txt(
+                title=views.TBodyText(utils.truncate_str(self.contact.name)),
+                subtitle=views.TBodyText(
                     utils.truncate_str(self.contact.company), color=colors.GRAY_COLOR
                 ),
-                trailing=views.context_pop_up_menu(
+                trailing=views.TContextMenu(
                     on_click_edit=lambda e: self.on_edit_clicked(self.contact),
                     on_click_delete=lambda e: self.on_deleted_clicked(self.contact),
                 ),
             ),
-            views.mdSpace,
+            views.Spacer(md_space=True),
             ResponsiveRow(
                 controls=[
-                    views.get_body_txt(
+                    views.TBodyText(
                         txt="email",
                         color=colors.GRAY_COLOR,
                         size=fonts.BODY_2_SIZE,
                         col={"xs": "12"},
                     ),
-                    views.get_body_txt(
+                    views.TBodyText(
                         txt=self.contact.email,
                         size=fonts.BODY_2_SIZE,
                         col={"xs": "12"},
@@ -78,17 +78,17 @@ class ContactCard(UserControl):
                 run_spacing=0,
                 vertical_alignment=utils.CENTER_ALIGNMENT,
             ),
-            views.mdSpace,
+            views.Spacer(md_space=True),
             ResponsiveRow(
                 controls=[
-                    views.get_body_txt(
+                    views.TBodyText(
                         txt="address",
                         color=colors.GRAY_COLOR,
                         size=fonts.BODY_2_SIZE,
                         col={"xs": "12"},
                     ),
                     Container(
-                        views.get_body_txt(
+                        views.TBodyText(
                             txt=self.contact.print_address(address_only=True).strip(),
                             size=fonts.BODY_2_SIZE,
                             col={"xs": "12"},
@@ -142,27 +142,27 @@ class ContactEditorPopUp(DialogHandler):
                 content=Column(
                     scroll=utils.AUTO_SCROLL,
                     controls=[
-                        views.get_heading(title=title, size=fonts.HEADLINE_4_SIZE),
-                        views.xsSpace,
-                        views.get_std_txt_field(
+                        views.THeading(title=title, size=fonts.HEADLINE_4_SIZE),
+                        views.Spacer(xs_space=True),
+                        views.TTextField(
                             on_change=self.on_fname_changed,
                             label="First Name",
                             hint=self.contact.first_name,
                             initial_value=self.contact.first_name,
                         ),
-                        views.get_std_txt_field(
+                        views.TTextField(
                             on_change=self.on_lname_changed,
                             label="Last Name",
                             hint=self.contact.last_name,
                             initial_value=self.contact.last_name,
                         ),
-                        views.get_std_txt_field(
+                        views.TTextField(
                             on_change=self.on_company_changed,
                             label="Company",
                             hint=self.contact.company,
                             initial_value=self.contact.company,
                         ),
-                        views.get_std_txt_field(
+                        views.TTextField(
                             on_change=self.on_email_changed,
                             label="Email",
                             hint=self.contact.email,
@@ -171,14 +171,14 @@ class ContactEditorPopUp(DialogHandler):
                         Row(
                             vertical_alignment=utils.CENTER_ALIGNMENT,
                             controls=[
-                                views.get_std_txt_field(
+                                views.TTextField(
                                     on_change=self.on_street_changed,
                                     label="Street",
                                     hint=self.contact.address.street,
                                     initial_value=self.contact.address.street,
                                     width=width_spanning_half_of_container,
                                 ),
-                                views.get_std_txt_field(
+                                views.TTextField(
                                     on_change=self.on_street_num_changed,
                                     label="Street No.",
                                     hint=self.contact.address.number,
@@ -190,14 +190,14 @@ class ContactEditorPopUp(DialogHandler):
                         Row(
                             vertical_alignment=utils.CENTER_ALIGNMENT,
                             controls=[
-                                views.get_std_txt_field(
+                                views.TTextField(
                                     on_change=self.on_postal_code_changed,
                                     label="Postal code",
                                     hint=self.contact.address.postal_code,
                                     initial_value=self.contact.address.postal_code,
                                     width=width_spanning_half_of_container,
                                 ),
-                                views.get_std_txt_field(
+                                views.TTextField(
                                     on_change=self.on_city_changed,
                                     label="City",
                                     hint=self.contact.address.city,
@@ -206,21 +206,19 @@ class ContactEditorPopUp(DialogHandler):
                                 ),
                             ],
                         ),
-                        views.get_std_txt_field(
+                        views.TTextField(
                             on_change=self.on_country_changed,
                             label="Country",
                             hint=self.contact.address.country,
                             initial_value=self.contact.address.country,
                         ),
-                        views.xsSpace,
+                        views.Spacer(xs_space=True),
                     ],
                 ),
                 width=pop_up_width,
             ),
             actions=[
-                views.get_primary_btn(
-                    label="Done", on_click=self.on_submit_btn_clicked
-                ),
+                views.TPrimaryButton(label="Done", on_click=self.on_submit_btn_clicked),
             ],
         )
         super().__init__(dialog=dialog, dialog_controller=dialog_controller)
@@ -320,14 +318,14 @@ class ContactEditorPopUp(DialogHandler):
         self.on_submit_callback(self.contact)
 
 
-class ContactsListView(TuttleView, UserControl):
+class ContactsListView(TView, UserControl):
     """The view for the contacts list page"""
 
-    def __init__(self, params: TuttleViewParams):
+    def __init__(self, params: TViewParams):
         super().__init__(params)
         self.intent = ContactsIntent()
-        self.loading_indicator = views.horizontal_progress
-        self.no_contacts_control = views.get_body_txt(
+        self.loading_indicator = views.TProgressBar()
+        self.no_contacts_control = views.TBodyText(
             txt="You have not added any contacts yet",
             color=colors.ERROR_COLOR,
             show=False,
@@ -337,9 +335,7 @@ class ContactsListView(TuttleView, UserControl):
                 Column(
                     col={"xs": 12},
                     controls=[
-                        views.get_heading(
-                            title="My Contacts", size=fonts.HEADLINE_4_SIZE
-                        ),
+                        views.THeading(title="My Contacts", size=fonts.HEADLINE_4_SIZE),
                         self.loading_indicator,
                         self.no_contacts_control,
                     ],
@@ -488,7 +484,7 @@ class ContactsListView(TuttleView, UserControl):
         return Column(
             controls=[
                 self.title_control,
-                views.mdSpace,
+                views.Spacer(md_space=True),
                 Container(self.contacts_container, expand=True),
             ]
         )

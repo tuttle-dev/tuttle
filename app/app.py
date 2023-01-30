@@ -1,8 +1,5 @@
 from typing import Callable, Optional
 
-import re
-from pathlib import Path
-
 from flet import (
     AlertDialog,
     FilePicker,
@@ -10,20 +7,18 @@ from flet import (
     Page,
     SnackBar,
     TemplateRoute,
-    Text,
     View,
     app,
 )
 
-import demo
-import sqlmodel
 from auth.view import ProfileScreen, SplashScreen
 from contracts.view import ContractEditorScreen, ViewContractScreen
-from core.abstractions import TuttleView, TuttleViewParams
+from core.abstractions import TView, TViewParams
 from core.client_storage_impl import ClientStorageImpl
+from core.database_storage_impl import DatabaseStorageImpl
 from core.models import RouteView
 from core.utils import AlertDialogControls
-from core.views import get_heading
+from core.views import THeading
 from error_views.page_not_found_screen import Error404Screen
 from home.view import HomeScreen
 from loguru import logger
@@ -64,9 +59,11 @@ class TuttleApp:
         self.page.fonts = APP_FONTS
         self.page.theme = APP_THEME
         self.client_storage = ClientStorageImpl(page=self.page)
-        preferences = PreferencesIntent(
-            client_storage=self.client_storage,
+        self.db = DatabaseStorageImpl(
+            store_demo_timetracking_dataframe=self.store_demo_timetracking_dataframe,
+            debug_mode=self.debug_mode,
         )
+        preferences = PreferencesIntent(self.client_storage)
         preferences_result = preferences.get_preference_by_key(
             PreferencesStorageKeys.theme_mode_key
         )
@@ -91,10 +88,6 @@ class TuttleApp:
         self.route_parser = TuttleRoutes(self)
         self.current_route_view: Optional[RouteView] = None
         self.page.on_resize = self.page_resize
-
-        # database config
-        self.app_dir = self.ensure_app_dir()
-        self.db_path = self.app_dir / "tuttle.db"
 
     def page_resize(self, e):
         if self.current_route_view:
@@ -156,7 +149,7 @@ class TuttleApp:
             self.page.snack_bar.open = False
             self.page.update()
         self.page.snack_bar = SnackBar(
-            get_heading(
+            THeading(
                 title=message,
                 size=HEADLINE_4_SIZE,
                 color=ERROR_COLOR if is_error else WHITE_COLOR,
@@ -193,7 +186,6 @@ class TuttleApp:
     def change_route(self, to_route: str, data: Optional[any] = None):
         """navigates to a new route"""
         newRoute = to_route if data is None else f"{to_route}/{data}"
-
         self.page.go(newRoute)
 
     def on_view_pop(self, view: Optional[View] = None):
@@ -205,8 +197,8 @@ class TuttleApp:
         self.page.go(current_page_view.route)
         if current_page_view.controls:
             try:
-                # the controls should contain a TuttleView as first control
-                tuttle_view: TuttleView = current_page_view.controls[0]
+                # the controls should contain a TView as first control
+                tuttle_view: TView = current_page_view.controls[0]
                 # notify view that it has been resumed
                 tuttle_view.on_resume_after_back_pressed()
             except Exception as e:
@@ -247,37 +239,6 @@ class TuttleApp:
             self.page.window_width, self.page.window_height
         )
 
-    def create_model(self):
-        logger.info("Creating database model")
-        sqlmodel.SQLModel.metadata.create_all(
-            self.db_engine,
-            checkfirst=True,
-        )
-
-    def ensure_database(self):
-        """
-        Ensure that the database exists and is up to date.
-        """
-        if not self.db_path.exists():
-            self.reset_database()
-        else:
-            logger.info("Database exists, skipping creation")
-
-    def reset_database(self):
-        """
-        Delete the database and rebuild database model.
-        """
-        logger.info("Clearing database")
-        try:
-            self.db_path.unlink()
-        except FileNotFoundError:
-            logger.info("Database file not found, skipping delete")
-        self.db_engine = sqlmodel.create_engine(
-            f"sqlite:///{self.db_path}",
-            echo=self.debug_mode,
-        )
-        self.create_model()
-
     def store_demo_timetracking_dataframe(self, time_tracking_data: DataFrame):
         """Caches the time tracking dataframe created from a demo installation"""
         self.timetracking_intent = TimeTrackingIntent(
@@ -285,42 +246,16 @@ class TuttleApp:
         )
         self.timetracking_intent.set_timetracking_data(data=time_tracking_data)
 
-    def install_demo_data(self):
-        """Install demo data into the database."""
-        self.reset_database()
-        try:
-            demo.install_demo_data(
-                n_projects=4,
-                db_path=self.db_path,
-                on_cache_timetracking_dataframe=self.store_demo_timetracking_dataframe,
-            )
-        except Exception as ex:
-            logger.exception(ex)
-            logger.error("Failed to install demo data")
-
-    def ensure_app_dir(self) -> Path:
-        """Ensures that the user directory exists"""
-        app_dir = Path.home() / ".tuttle"
-        if not app_dir.exists():
-            app_dir.mkdir(parents=True)
-        return app_dir
-
-    def ensure_uploads_dir(self) -> Path:
-        uploads_dir = self.app_dir / "uploads"
-        if not uploads_dir.exists():
-            uploads_dir.mkdir(parents=True)
-        return uploads_dir
+    def build(self):
+        self.page.go(self.page.route)
 
     def close(self):
         """Closes the application."""
         self.page.window_close()
 
-    def build(self):
-        self.page.go(self.page.route)
-
     def reset_and_quit(self):
         """Resets the application and quits."""
-        self.reset_database()
+        self.db.reset_database()
         self.close()
 
 
@@ -328,9 +263,12 @@ class TuttleRoutes:
     """Utility class for parsing of routes to destination views"""
 
     def __init__(self, app: TuttleApp):
-        self.app = app
+        # init callbacks for some views
         self.on_theme_changed = app.on_theme_mode_changed
-        self.tuttle_view_params = TuttleViewParams(
+        self.on_reset_and_quit = app.reset_and_quit
+        self.on_install_demo_data = app.db.install_demo_data
+        # init common params for views
+        self.tuttle_view_params = TViewParams(
             navigate_to_route=app.change_route,
             show_snack=app.show_snack,
             dialog_controller=app.control_alert_dialog,
@@ -343,7 +281,7 @@ class TuttleRoutes:
     def get_page_route_view(
         self,
         routeName: str,
-        view: TuttleView,
+        view: TView,
     ) -> RouteView:
         """Constructs the view with a given route"""
         view_container = View(
@@ -370,14 +308,16 @@ class TuttleRoutes:
         if routePath.match(SPLASH_SCREEN_ROUTE):
             screen = SplashScreen(
                 params=self.tuttle_view_params,
-                install_demo_data_callback=self.app.install_demo_data,
+                on_install_demo_data=self.on_install_demo_data,
             )
         elif routePath.match(HOME_SCREEN_ROUTE):
             screen = HomeScreen(
                 params=self.tuttle_view_params,
             )
         elif routePath.match(PROFILE_SCREEN_ROUTE):
-            screen = ProfileScreen(params=self.tuttle_view_params)
+            screen = ProfileScreen(
+                params=self.tuttle_view_params,
+            )
         elif routePath.match(CONTRACT_EDITOR_SCREEN_ROUTE):
             screen = ContractEditorScreen(params=self.tuttle_view_params)
         elif routePath.match(f"{CONTRACT_DETAILS_SCREEN_ROUTE}/:contractId"):
@@ -395,7 +335,7 @@ class TuttleRoutes:
             screen = PreferencesScreen(
                 params=self.tuttle_view_params,
                 on_theme_changed_callback=self.on_theme_changed,
-                on_reset_app_callback=self.app.reset_and_quit,
+                on_reset_app_callback=self.on_reset_and_quit,
             )
         elif routePath.match(PROJECT_EDITOR_SCREEN_ROUTE):
             screen = ProjectEditorScreen(params=self.tuttle_view_params)
@@ -431,7 +371,7 @@ def main(page: Page):
     app = TuttleApp(page)
 
     # if database does not exist, create it
-    app.ensure_database()
+    app.db.ensure_database()
 
     app.build()
 

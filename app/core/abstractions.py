@@ -8,10 +8,49 @@ import functools
 from flet import AlertDialog, file_picker
 
 import sqlmodel
-from core.intent_result import IntentResult
+
 from loguru import logger
 
 from .utils import AUTO_SCROLL, START_ALIGNMENT, AlertDialogControls
+
+
+class DatabaseStorage(ABC):
+    """Abstract class for database storage"""
+
+    def __init__(
+        self,
+    ):
+        super().__init__()
+
+    @abstractmethod
+    def create_model(self):
+        """Creates database model"""
+        pass
+
+    @abstractmethod
+    def ensure_database(self):
+        """
+        Ensure that the database exists and is up to date.
+        """
+        pass
+
+    @abstractmethod
+    def reset_database(self):
+        """
+        Delete the database and rebuild database model.
+        """
+        pass
+
+    @abstractmethod
+    def install_demo_data(
+        self,
+    ):
+        """Install demo data into the database."""
+
+    @abstractmethod
+    def ensure_app_dir(self) -> Path:
+        """Ensures that the user directory exists"""
+        pass
 
 
 class ClientStorage(ABC):
@@ -49,13 +88,15 @@ class ClientStorage(ABC):
 
 
 @dataclass
-class TuttleViewParams:
+class TViewParams:
+    """Parameters for TViews"""
+
     navigate_to_route: Callable
     show_snack: Callable
     dialog_controller: Callable
     upload_file_callback: Callable
     pick_file_callback: Callable[[file_picker.FilePickerFile], str]
-    client_storage: Optional[ClientStorage] = None
+    client_storage: ClientStorage
     vertical_alignment_in_parent: str = START_ALIGNMENT
     horizontal_alignment_in_parent: str = START_ALIGNMENT
     keep_back_stack: bool = True
@@ -63,10 +104,10 @@ class TuttleViewParams:
     page_scroll_type: Optional[str] = AUTO_SCROLL
 
 
-class TuttleView(ABC):
+class TView(ABC):
     """Abstract class for all UI screens"""
 
-    def __init__(self, params: TuttleViewParams):
+    def __init__(self, params: TViewParams):
         super().__init__()
         self.navigate_to_route = params.navigate_to_route
         self.show_snack: Callable[[str, bool], None] = params.show_snack

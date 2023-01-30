@@ -25,7 +25,7 @@ from clients.view import ClientsListView
 from contacts.view import ContactsListView
 from contracts.view import ContractsListView
 from core import utils, views
-from core.abstractions import DialogHandler, TuttleView, TuttleViewParams
+from core.abstractions import DialogHandler, TView, TViewParams
 from invoicing.view import InvoicingListView
 from projects.view import ProjectsListView
 from res import colors, dimens, fonts, res_utils, theme
@@ -36,7 +36,6 @@ from preferences.intent import PreferencesIntent
 
 MIN_FOOTER_WIDTH = int(dimens.MIN_WINDOW_WIDTH * 0.7)
 MIN_BODY_HEIGHT = int(dimens.MIN_WINDOW_HEIGHT * 0.8)
-NO_MENU_ITEM_INDEX = -1
 
 
 def get_action_bar(
@@ -70,7 +69,7 @@ def get_action_bar(
             controls=[
                 Row(
                     controls=[
-                        views.get_heading(
+                        views.THeading(
                             "",
                             size=fonts.HEADLINE_4_SIZE,
                         )
@@ -136,7 +135,7 @@ def get_action_bar(
 class MainMenuItemsHandler:
     """Manages home's main-menu items"""
 
-    def __init__(self, params: TuttleViewParams):
+    def __init__(self, params: TViewParams):
         super().__init__()
         self.menu_title = "My Business"
         self.projects_view = ProjectsListView(params)
@@ -194,7 +193,7 @@ class MainMenuItemsHandler:
 class SecondaryMenuHandler:
     """Manages home's secondary side-menu items"""
 
-    def __init__(self, params: TuttleViewParams):
+    def __init__(self, params: TViewParams):
         super().__init__()
         self.menu_title = "Workflows"
 
@@ -223,12 +222,12 @@ class SecondaryMenuHandler:
         ]
 
 
-class HomeScreen(TuttleView, UserControl):
+class HomeScreen(TView, UserControl):
     """The home screen"""
 
     def __init__(
         self,
-        params: TuttleViewParams,
+        params: TViewParams,
     ):
         super().__init__(params)
         self.keep_back_stack = False
@@ -238,32 +237,20 @@ class HomeScreen(TuttleView, UserControl):
         self.preferences_intent = PreferencesIntent(
             client_storage=params.client_storage
         )
-        self.selected_tab = NO_MENU_ITEM_INDEX
+        self.selected_tab = 0
 
-        self.main_menu = views.get_std_navigation_menu(
+        self.main_menu = views.TNavigationMenu(
             title=self.main_menu_handler.menu_title,
             destinations=self.get_menu_destinations(),
             on_change=lambda e: self.on_menu_destination_change(e),
         )
-        self.secondary_menu = views.get_std_navigation_menu(
+        self.secondary_menu = views.TNavigationMenu(
             title=self.secondary_menu_handler.menu_title,
             destinations=self.get_menu_destinations(menu_level=1),
             on_change=lambda e: self.on_menu_destination_change(e, menu_level=1),
         )
-        # initialize destination view with a welcome text
-        welcome_destination_view = Container(
-            padding=padding.all(dimens.SPACE_MD),
-            content=Row(
-                [
-                    views.get_heading_with_subheading(
-                        title="Welcome back!",
-                        subtitle="Select an item on the menu to get started",
-                        subtitle_color=colors.GRAY_COLOR,
-                    )
-                ]
-            ),
-        )
-        self.destination_view = welcome_destination_view
+        self.current_menu_handler = self.main_menu_handler
+        self.destination_view = self.current_menu_handler.items[0].destination
         self.dialog: Optional[DialogHandler] = None
         self.action_bar = get_action_bar(
             on_click_notifications_btn=self.on_view_notifications_clicked,
@@ -271,7 +258,6 @@ class HomeScreen(TuttleView, UserControl):
             on_click_profile_btn=self.on_click_profile,
             on_view_settings_clicked=self.on_view_settings_clicked,
         )
-        self.current_menu_handler = self.main_menu_handler
 
     # MENU DESTINATIONS SETUP
     def get_menu_destinations(self, menu_level=0) -> list:
@@ -290,7 +276,7 @@ class HomeScreen(TuttleView, UserControl):
                     item.selected_icon,
                     size=dimens.ICON_SIZE,
                 ),
-                label_content=views.get_body_txt(item.label),
+                label_content=views.TBodyText(item.label),
                 padding=padding.symmetric(horizontal=dimens.SPACE_SM),
             )
             items.append(itemDestination)
@@ -306,11 +292,11 @@ class HomeScreen(TuttleView, UserControl):
                 else self.secondary_menu_handler
             )
             self.selected_tab = e.control.selected_index
-            if self.selected_tab != NO_MENU_ITEM_INDEX:
-                # update the destination view
-                menu_item = self.current_menu_handler.items[self.selected_tab]
-                self.destination_view = menu_item.destination
-                self.destination_content_container.content = self.destination_view
+
+            # update the destination view
+            menu_item = self.current_menu_handler.items[self.selected_tab]
+            self.destination_view = menu_item.destination
+            self.destination_content_container.content = self.destination_view
 
             # clear selected items on the other menu
             if menu_level == 0:
@@ -322,9 +308,6 @@ class HomeScreen(TuttleView, UserControl):
     # ACTION BUTTONS
     def on_click_add_new(self, e):
         """handles the add new button click event"""
-        if self.selected_tab == NO_MENU_ITEM_INDEX:
-            return
-        """determine the item user wishes to create"""
         item = self.current_menu_handler.items[self.selected_tab]
         if item.on_new_intent:
             self.pass_intent_to_destination(item.on_new_intent)
@@ -333,12 +316,12 @@ class HomeScreen(TuttleView, UserControl):
 
     def on_resume_after_back_pressed(self):
         """called when the user presses the back button"""
-        if self.destination_view and isinstance(self.destination_view, TuttleView):
+        if self.destination_view and isinstance(self.destination_view, TView):
             self.destination_view.on_resume_after_back_pressed()
 
     def pass_intent_to_destination(self, intent: str, data: Optional[any] = None):
         """pass an intent to the destination view"""
-        if self.destination_view and isinstance(self.destination_view, TuttleView):
+        if self.destination_view and isinstance(self.destination_view, TView):
             self.destination_view.parent_intent_listener(intent, data)
 
     def on_view_notifications_clicked(self, e):
@@ -357,7 +340,7 @@ class HomeScreen(TuttleView, UserControl):
         )
         self.footer = Container(
             col={"xs": 12},
-            content=views.get_heading(),
+            content=views.THeading(),
             alignment=alignment.center,
             border=border.only(
                 top=border.BorderSide(width=0.2, color=colors.BORDER_DARK_COLOR)
