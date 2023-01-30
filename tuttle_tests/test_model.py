@@ -81,16 +81,18 @@ def test_user():
 
 
 class TestContact:
-    def test_valid_contact_instantiation(self):
-        contact = Contact(
-            first_name="Sam",
-            last_name="Lowry",
-            email="sam.lowry@miniinf.gov",
-            company="Ministry of Information",
+    def test_valid_instantiation(self):
+        contact = Contact.validate(
+            dict(
+                first_name="Sam",
+                last_name="Lowry",
+                email="sam.lowry@miniinf.gov",
+                company="Ministry of Information",
+            )
         )
         assert store_and_retrieve(contact)
 
-    def test_invalid_email_instantiation(self):
+    def test_invalid_email(self):
         with pytest.raises(ValidationError):
             Contact.validate(
                 dict(
