@@ -117,8 +117,8 @@ def _convert_html_to_pdf_with_QT(
 def render_invoice(
     user: User,
     invoice: Invoice,
+    out_dir,
     document_format: str = "pdf",
-    out_dir: str = None,
     style: str = "anvil",
     only_final: bool = False,
 ) -> str:
@@ -212,10 +212,11 @@ def render_invoice(
 def render_timesheet(
     user: User,
     timesheet: Timesheet,
+    out_dir,
     document_format: str = "html",
-    out_dir: str = None,
     style: str = "anvil",
-) -> str:
+    only_final: bool = False,
+):
     """Render a Timeseheet using an HTML template.
 
     Args:

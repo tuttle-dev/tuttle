@@ -1,12 +1,9 @@
 """Object model."""
 
-import email
 from typing import Optional, List, Dict, Type
 from pydantic import constr, BaseModel, condecimal
 from enum import Enum
 import datetime
-import hashlib
-import uuid
 import textwrap
 
 import sqlalchemy
@@ -50,9 +47,10 @@ def to_dataframe(items: List[Type[BaseModel]]) -> pandas.DataFrame:
 
 
 def OneToOneRelationship(back_populates):
+    """Define a relationship as one-to-one."""
     return Relationship(
         back_populates=back_populates,
-        sa_relationship_kwargs={"uselist": False},
+        sa_relationship_kwargs={"uselist": False, "lazy": "subquery"},
     )
 
 
@@ -150,6 +148,11 @@ class User(SQLModel, table=True):
     )
     # TODO: path to logo image
     logo: Optional[str]
+    # User 1:n Invoices
+    # invoices: List["Invoice"] = Relationship(
+    #     back_populates="user",
+    #     sa_relationship_kwargs={"lazy": "subquery"},
+    # )
 
     @property
     def bank_account_not_set(self) -> bool:
@@ -454,10 +457,7 @@ class Timesheet(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     title: str
     date: datetime.date = Field(description="The date of creation of the timesheet")
-    # period: str
-    # table: pandas.DataFrame
-    # TODO: store dataframe as dict
-    # table: Dict = Field(default={}, sa_column=sqlalchemy.Column(sqlalchemy.JSON))
+
     # Timesheet n:1 Project
     project_id: Optional[int] = Field(default=None, foreign_key="project.id")
     project: Project = Relationship(
@@ -468,6 +468,18 @@ class Timesheet(SQLModel, table=True):
     # period: str
     comment: Optional[str] = Field(description="A comment on the timesheet.")
     items: List[TimeTrackingItem] = Relationship(back_populates="timesheet")
+
+    rendered: bool = Field(
+        default=False,
+        description="Whether the Timesheet has been rendered as a PDF.",
+    )
+
+    # Timesheet 1:1 Invoice
+    # FIXME: Could not determine join condition between parent/child tables
+    # invoice_id: Optional[int] = Field(default=None, foreign_key="invoice.id")
+    # invoice: Optional["Invoice"] = OneToOneRelationship(
+    #     back_populates="timesheet",
+    # )
 
     # class Config:
     #     arbitrary_types_allowed = True
@@ -492,16 +504,18 @@ class Invoice(SQLModel, table=True):
     """An invoice is a bill for a client."""
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    number: str
+    number: Optional[str] = Field(description="The invoice number. Auto-generated.")
     # date and time
     date: datetime.date = Field(
         description="The date of the invoice",
     )
-    # due_date: datetime.date
-    # sent_date: datetime.date
-    # Invoice 1:n Timesheet ?
+
+    # TODO: sent_date: datetime.datetime = Field(description="The date the invoice was sent.")
+    # Invoice 1:1 Timesheet
     # timesheet_id: Optional[int] = Field(default=None, foreign_key="timesheet.id")
-    # timesheet: Timesheet = Relationship(back_populates="invoice")
+    # timesheet: Timesheet = OneToOneRelationship(
+    #     back_populates="invoice",
+    # )
     # Invoice n:1 Contract ?
     contract_id: Optional[int] = Field(default=None, foreign_key="contract.id")
     contract: Contract = Relationship(
@@ -529,7 +543,7 @@ class Invoice(SQLModel, table=True):
     )
     rendered: bool = Field(
         default=False,
-        description="If the invoice has been rendered as a PDF.",
+        description="Whether the invoice has been rendered as a PDF.",
     )
 
     #
@@ -548,7 +562,7 @@ class Invoice(SQLModel, table=True):
         """Total invoiced amount."""
         return self.sum + self.VAT_total
 
-    def generate_number(self, pattern=None, counter=None):
+    def generate_number(self, pattern=None, counter=None) -> str:
         """Generate an invoice number"""
         date_prefix = self.date.strftime("%Y-%m-%d")
         # suffix = hashlib.shake_256(str(uuid.uuid4()).encode("utf-8")).hexdigest(2)
@@ -559,9 +573,12 @@ class Invoice(SQLModel, table=True):
         self.number = f"{date_prefix}-{suffix}"
 
     @property
-    def due_date(self):
+    def due_date(self) -> Optional[datetime.date]:
         """Date until which payment is due."""
-        return self.date + datetime.timedelta(days=self.contract.term_of_payment)
+        if self.contract.term_of_payment:
+            return self.date + datetime.timedelta(days=self.contract.term_of_payment)
+        else:
+            return None
 
     @property
     def client(self):
