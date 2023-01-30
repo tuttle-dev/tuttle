@@ -122,6 +122,19 @@ class TestClient:
         )
         assert store_and_retrieve(client)
 
+    def test_missing_name(self):
+        """Test that a ValidationError is raised when the name is missing."""
+        with pytest.raises(ValidationError):
+            Client.validate(dict())
+
+        try:
+            client = Client.validate(dict())
+        except ValidationError as ve:
+            for error in ve.errors():
+                field_name = error.get("loc")[0]
+                error_message = error.get("msg")
+                assert field_name == "name"
+
     def test_missing_fields_instantiation(self):
         with pytest.raises(ValidationError):
             Client.validate(dict())
