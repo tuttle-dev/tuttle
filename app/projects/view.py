@@ -58,7 +58,7 @@ class ProjectCard(UserControl):
             ListTile(
                 leading=Icon(
                     utils.TuttleComponentIcons.project_icon,
-                    size=dimens.ICON_SIZE,
+                    size=dimens.MD_ICON_SIZE,
                 ),
                 title=views.TBodyText(self.project.title),
                 subtitle=views.TBodyText(
@@ -75,6 +75,7 @@ class ProjectCard(UserControl):
                 ),
                 on_click=lambda e: self.on_view_details_clicked(self.project.id),
             ),
+            views.Spacer(md_space=True),
             views.Spacer(md_space=True),
             ResponsiveRow(
                 controls=[

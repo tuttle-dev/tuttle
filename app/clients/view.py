@@ -60,7 +60,7 @@ class ClientCard(UserControl):
             ListTile(
                 leading=Icon(
                     utils.TuttleComponentIcons.client_icon,
-                    size=dimens.ICON_SIZE,
+                    size=dimens.MD_ICON_SIZE,
                 ),
                 title=views.TBodyText(self.client.name),
                 trailing=editor_controls,

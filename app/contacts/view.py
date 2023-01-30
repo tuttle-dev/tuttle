@@ -48,7 +48,7 @@ class ContactCard(UserControl):
             ListTile(
                 leading=Icon(
                     utils.TuttleComponentIcons.contact_icon,
-                    size=dimens.ICON_SIZE,
+                    size=dimens.MD_ICON_SIZE,
                 ),
                 title=views.TBodyText(utils.truncate_str(self.contact.name)),
                 subtitle=views.TBodyText(

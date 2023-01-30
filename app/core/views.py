@@ -40,6 +40,20 @@ from . import utils
 class Spacer(Container):
     """Creates a space between controls"""
 
+    # FIXME: Unpythonic code, replace with
+    # class Spacer(Container):
+    #     SPACE_SIZES = {
+    #         'lg': 40,
+    #         'md': 20,
+    #         'sm': 10,
+    #         'xs': 5,
+    #         None: 15,
+    #     }
+
+    #     def __init__(self, size=None, **kwargs):
+    #         self._space_size = self.SPACE_SIZES[size]
+    #         super().__init__(height=self._space_size, width=self._space_size, **kwargs)
+
     def __init__(
         self,
         lg_space: bool = False,
@@ -827,7 +841,7 @@ class TNavigationMenu(NavigationRail):
             leading=Container(
                 content=TSubHeading(
                     subtitle=title,
-                    align=utils.START_ALIGNMENT,
+                    align=utils.TXT_ALIGN_LEFT,
                     expand=True,
                     color=colors.GRAY_DARK_COLOR,
                 ),
