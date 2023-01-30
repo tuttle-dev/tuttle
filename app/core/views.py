@@ -64,7 +64,7 @@ class Spacer(Container):
         )
 
 
-class StdHeading(Text):
+class THeading(Text):
     """Creates a standard heading"""
 
     def __init__(
@@ -89,7 +89,7 @@ class StdHeading(Text):
         )
 
 
-class StdSubHeading(Text):
+class TSubHeading(Text):
     """Creates a standard subheading"""
 
     def __init__(
@@ -112,7 +112,7 @@ class StdSubHeading(Text):
         )
 
 
-class StdHeadingWithSubheading(Column):
+class THeadingWithSubheading(Column):
     """Creates a standard heading with a subheading"""
 
     def __init__(
@@ -130,12 +130,12 @@ class StdHeadingWithSubheading(Column):
             spacing=0,
             horizontal_alignment=alignment_in_container,
             controls=[
-                StdHeading(
+                THeading(
                     title=title,
                     size=title_size,
                     align=txt_alignment,
                 ),
-                StdSubHeading(
+                TSubHeading(
                     subtitle=subtitle,
                     size=subtitle_size,
                     align=txt_alignment,
@@ -145,7 +145,7 @@ class StdHeadingWithSubheading(Column):
         )
 
 
-class StdBodyText(Text):
+class TBodyText(Text):
     """Creates a standard body text"""
 
     def __init__(
@@ -169,7 +169,7 @@ class StdBodyText(Text):
         )
 
 
-class StdTextField(TextField):
+class TTextField(TextField):
     """Creates a standard text field"""
 
     def __init__(
@@ -208,7 +208,7 @@ class StdTextField(TextField):
         )
 
 
-class StdMultilineField(TextField):
+class TMultilineField(TextField):
     """Creates a standard multiline text field"""
 
     def __init__(
@@ -239,7 +239,7 @@ class StdMultilineField(TextField):
         )
 
 
-class StdErrorText(StdBodyText):
+class TErrorText(TBodyText):
     """Displays text formatted for errors / warnings"""
 
     def __init__(
@@ -250,7 +250,7 @@ class StdErrorText(StdBodyText):
         super().__init__(txt, color=colors.ERROR_COLOR, show=show)
 
 
-class StdPrimaryButton(FilledButton):
+class TPrimaryButton(FilledButton):
     """A button with primary styling"""
 
     def __init__(
@@ -264,7 +264,7 @@ class StdPrimaryButton(FilledButton):
         super().__init__(label, width=width, on_click=on_click, icon=icon, visible=show)
 
 
-class StdSecondaryButton(ElevatedButton):
+class TSecondaryButton(ElevatedButton):
     """A button with secondary styling"""
 
     def __init__(
@@ -283,7 +283,7 @@ class StdSecondaryButton(ElevatedButton):
         )
 
 
-class StdDangerButton(ElevatedButton):
+class TDangerButton(ElevatedButton):
     """A button styled for dangerous actions e.g. delete"""
 
     def __init__(
@@ -306,7 +306,7 @@ class StdDangerButton(ElevatedButton):
         )
 
 
-class StdProfilePhotoImg(Image):
+class TProfilePhotoImg(Image):
     """Creates a profile photo image"""
 
     def __init__(
@@ -322,7 +322,7 @@ class StdProfilePhotoImg(Image):
         )
 
 
-class StdImage(Container):
+class TImage(Container):
     """Creates a standard image wrapped in a container"""
 
     def __init__(
@@ -337,7 +337,7 @@ class StdImage(Container):
         )
 
 
-class StdAppLogo(Container):
+class TAppLogo(Container):
     """Creates a standard app logo"""
 
     def __init__(
@@ -352,15 +352,15 @@ class StdAppLogo(Container):
         )
 
 
-class StdAppLogoWithLabel(Row):
+class TAppLogoWithLabel(Row):
     """Returns app logo with app name next to it"""
 
     def __init__(self):
         super().__init__(
             vertical_alignment=utils.CENTER_ALIGNMENT,
             controls=[
-                StdAppLogo(),
-                StdHeading(
+                TAppLogo(),
+                THeading(
                     "Tuttle",
                     size=fonts.HEADLINE_3_SIZE,
                 ),
@@ -368,7 +368,7 @@ class StdAppLogoWithLabel(Row):
         )
 
 
-class StdProgressBar(ProgressBar):
+class TProgressBar(ProgressBar):
     """Creates a standard progress bar"""
 
     def __init__(
@@ -378,7 +378,7 @@ class StdProgressBar(ProgressBar):
         super().__init__(width=320, height=4, visible=show)
 
 
-class StdDropDown(UserControl):
+class TDropDown(UserControl):
     """Creates a standard dropdown button"""
 
     def __init__(
@@ -465,7 +465,7 @@ class DateSelector(UserControl):
         self.year = str(self.initial_date.year)
         self.label_color = label_color
 
-        self.day_dropdown = StdDropDown(
+        self.day_dropdown = TDropDown(
             label="Day",
             hint="",
             on_change=self.on_date_set,
@@ -474,7 +474,7 @@ class DateSelector(UserControl):
             initial_value=self.date,
         )
 
-        self.month_dropdown = StdDropDown(
+        self.month_dropdown = TDropDown(
             label="Month",
             on_change=self.on_month_set,
             items=[str(month) for month in range(1, 13)],
@@ -482,7 +482,7 @@ class DateSelector(UserControl):
             initial_value=self.month,
         )
 
-        self.year_dropdown = StdDropDown(
+        self.year_dropdown = TDropDown(
             label="Year",
             on_change=self.on_year_set,
             # set items to a list of years -10 to + 10 years from now
@@ -509,7 +509,7 @@ class DateSelector(UserControl):
         self.view = Container(
             content=Column(
                 controls=[
-                    StdBodyText(txt=self.label, color=self.label_color),
+                    TBodyText(txt=self.label, color=self.label_color),
                     Row(
                         [
                             self.day_dropdown,
@@ -566,12 +566,12 @@ class AlertDisplayPopUp(DialogHandler):
                 content=Column(
                     scroll=utils.AUTO_SCROLL,
                     controls=[
-                        StdHeading(
+                        THeading(
                             title=title,
                             size=fonts.HEADLINE_4_SIZE,
                         ),
                         Spacer(xs_space=True),
-                        StdBodyText(
+                        TBodyText(
                             txt=description,
                             size=fonts.SUBTITLE_1_SIZE,
                             color=colors.ERROR_COLOR if is_error else None,
@@ -580,7 +580,7 @@ class AlertDisplayPopUp(DialogHandler):
                 ),
             ),
             actions=[
-                StdPrimaryButton(
+                TPrimaryButton(
                     label=button_label, on_click=self.on_complete_btn_clicked
                 ),
             ],
@@ -602,8 +602,8 @@ class ConfirmDisplayPopUp(DialogHandler):
         dialog_controller: Callable[[any, utils.AlertDialogControls], None],
         title: str,
         description: str,
-        data_on_confirmed: any,
         on_proceed: Callable,
+        data_on_confirmed: Optional[any] = None,
         on_cancel: Optional[Callable] = None,
         proceed_button_label: str = "Proceed",
         cancel_button_label: str = "Cancel",
@@ -615,12 +615,12 @@ class ConfirmDisplayPopUp(DialogHandler):
                 content=Column(
                     scroll=utils.AUTO_SCROLL,
                     controls=[
-                        StdHeading(
+                        THeading(
                             title=title,
                             size=fonts.HEADLINE_4_SIZE,
                         ),
                         Spacer(xs_space=True),
-                        StdBodyText(
+                        TBodyText(
                             txt=description,
                             size=fonts.SUBTITLE_1_SIZE,
                         ),
@@ -628,10 +628,10 @@ class ConfirmDisplayPopUp(DialogHandler):
                 ),
             ),
             actions=[
-                StdSecondaryButton(
+                TSecondaryButton(
                     label=cancel_button_label, on_click=self.on_cancel_btn_clicked
                 ),
-                StdPrimaryButton(
+                TPrimaryButton(
                     label=proceed_button_label, on_click=self.on_proceed_btn_clicked
                 ),
             ],
@@ -648,10 +648,13 @@ class ConfirmDisplayPopUp(DialogHandler):
 
     def on_proceed_btn_clicked(self, e):
         self.close_dialog()
-        self.on_proceed_callback(self.data_on_confirmed)
+        if self.data_on_confirmed is not None:
+            self.on_proceed_callback(self.data_on_confirmed)
+        else:
+            self.on_proceed_callback()
 
 
-class StdPopUpMenuItem(PopupMenuItem):
+class TPopUpMenuItem(PopupMenuItem):
     """Returns a customizable pop up menu item with standard styling"""
 
     def __init__(
@@ -669,7 +672,7 @@ class StdPopUpMenuItem(PopupMenuItem):
                         size=dimens.ICON_SIZE,
                         color=colors.ERROR_COLOR if is_delete else None,
                     ),
-                    StdBodyText(
+                    TBodyText(
                         txt,
                         size=fonts.BUTTON_SIZE,
                         color=colors.ERROR_COLOR if is_delete else None,
@@ -680,7 +683,7 @@ class StdPopUpMenuItem(PopupMenuItem):
         )
 
 
-class StdContextMenu(PopupMenuButton):
+class TContextMenu(PopupMenuButton):
     """Returns a customizable pop up menu button with optional view, edit and delete menus"""
 
     def __init__(
@@ -700,13 +703,13 @@ class StdContextMenu(PopupMenuButton):
             items.extend(prefix_menu_items)
         if on_click_view:
             items.append(
-                StdPopUpMenuItem(
+                TPopUpMenuItem(
                     icons.VISIBILITY_OUTLINED, txt=view_item_lbl, on_click=on_click_view
                 ),
             )
         if on_click_edit:
             items.append(
-                StdPopUpMenuItem(
+                TPopUpMenuItem(
                     icons.EDIT_OUTLINED,
                     txt=edit_item_lbl,
                     on_click=on_click_edit,
@@ -714,7 +717,7 @@ class StdContextMenu(PopupMenuButton):
             )
         if on_click_delete:
             items.append(
-                StdPopUpMenuItem(
+                TPopUpMenuItem(
                     icons.DELETE_OUTLINE,
                     txt=delete_item_lbl,
                     on_click=on_click_delete,
@@ -726,7 +729,7 @@ class StdContextMenu(PopupMenuButton):
         super().__init__(items=items)
 
 
-class StdStatusDisplay(Row):
+class TStatusDisplay(Row):
     """Returns a text with a checked prefix icon"""
 
     def __init__(
@@ -743,7 +746,7 @@ class StdStatusDisplay(Row):
                     size=dimens.SM_ICON_SIZE,
                     color=colors.PRIMARY_COLOR if is_done else colors.GRAY_COLOR,
                 ),
-                StdBodyText(txt),
+                TBodyText(txt),
             ]
         )
 
@@ -771,9 +774,7 @@ class OrView(Row):
                     alignment=alignment.center,
                     visible=show_lines,
                 ),
-                StdBodyText(
-                    "OR", align=utils.TXT_ALIGN_CENTER, color=colors.GRAY_COLOR
-                ),
+                TBodyText("OR", align=utils.TXT_ALIGN_CENTER, color=colors.GRAY_COLOR),
                 Container(
                     height=2,
                     bgcolor=colors.GRAY_COLOR,
@@ -798,7 +799,7 @@ class NavigationMenuItem:
     on_new_intent: Optional[str] = None
 
 
-class StdNavigationMenu(NavigationRail):
+class TNavigationMenu(NavigationRail):
     """
     Returns a navigation menu for the application.
 
@@ -824,7 +825,7 @@ class StdNavigationMenu(NavigationRail):
 
         super().__init__(
             leading=Container(
-                content=StdSubHeading(
+                content=TSubHeading(
                     subtitle=title,
                     align=utils.START_ALIGNMENT,
                     expand=True,

@@ -25,7 +25,7 @@ from flet import (
 
 from clients.view import ClientViewPopUp
 from core import utils, views
-from core.abstractions import TuttleView, TuttleViewParams
+from core.abstractions import TView, TViewParams
 from core.intent_result import IntentResult
 from projects.intent import ProjectsIntent
 from res import colors, dimens, fonts, res_utils
@@ -60,13 +60,13 @@ class ProjectCard(UserControl):
                     utils.TuttleComponentIcons.project_icon,
                     size=dimens.ICON_SIZE,
                 ),
-                title=views.StdBodyText(self.project.title),
-                subtitle=views.StdBodyText(
+                title=views.TBodyText(self.project.title),
+                subtitle=views.TBodyText(
                     f"{self.project.tag}",
                     color=colors.GRAY_COLOR,
                     weight=FontWeight.BOLD,
                 ),
-                trailing=views.StdContextMenu(
+                trailing=views.TContextMenu(
                     on_click_view=lambda e: self.on_view_details_clicked(
                         self.project.id
                     ),
@@ -78,13 +78,13 @@ class ProjectCard(UserControl):
             views.Spacer(md_space=True),
             ResponsiveRow(
                 controls=[
-                    views.StdBodyText(
+                    views.TBodyText(
                         txt="Brief Description",
                         color=colors.GRAY_COLOR,
                         size=fonts.BODY_2_SIZE,
                         col={"xs": "12"},
                     ),
-                    views.StdBodyText(
+                    views.TBodyText(
                         txt=self.project.get_brief_description(),
                         col={"xs": "12"},
                     ),
@@ -96,14 +96,14 @@ class ProjectCard(UserControl):
             views.Spacer(md_space=True),
             ResponsiveRow(
                 controls=[
-                    views.StdBodyText(
+                    views.TBodyText(
                         txt="Client",
                         color=colors.GRAY_COLOR,
                         size=fonts.BODY_2_SIZE,
                         col={"xs": "12"},
                     ),
                     Container(
-                        views.StdBodyText(
+                        views.TBodyText(
                             txt=_client_title,
                             col={"xs": "12"},
                         ),
@@ -117,14 +117,14 @@ class ProjectCard(UserControl):
             views.Spacer(md_space=True),
             ResponsiveRow(
                 controls=[
-                    views.StdBodyText(
+                    views.TBodyText(
                         txt="Contract",
                         color=colors.GRAY_COLOR,
                         size=fonts.BODY_2_SIZE,
                         col={"xs": "12"},
                     ),
                     Container(
-                        views.StdBodyText(
+                        views.TBodyText(
                             txt=_contract_title,
                             col={"xs": "12"},
                         ),
@@ -138,14 +138,14 @@ class ProjectCard(UserControl):
             views.Spacer(md_space=True),
             ResponsiveRow(
                 controls=[
-                    views.StdBodyText(
+                    views.TBodyText(
                         txt="Start date",
                         color=colors.GRAY_COLOR,
                         size=fonts.BODY_2_SIZE,
                         col={"xs": "12"},
                     ),
                     Container(
-                        views.StdBodyText(
+                        views.TBodyText(
                             txt=self.project.start_date.strftime("%d/%m/%Y")
                             if self.project.start_date
                             else "",
@@ -161,14 +161,14 @@ class ProjectCard(UserControl):
             views.Spacer(md_space=True),
             ResponsiveRow(
                 controls=[
-                    views.StdBodyText(
+                    views.TBodyText(
                         txt="End date",
                         color=colors.GRAY_COLOR,
                         size=fonts.BODY_2_SIZE,
                         col={"xs": "12"},
                     ),
                     Container(
-                        views.StdBodyText(
+                        views.TBodyText(
                             txt=self.project.end_date.strftime("%d/%m/%Y")
                             if self.project.end_date
                             else "-",
@@ -298,18 +298,18 @@ class ProjectFiltersView(UserControl):
         return self.filters
 
 
-class ViewProjectScreen(TuttleView, UserControl):
+class ViewProjectScreen(TView, UserControl):
     """View project screen"""
 
     def __init__(
         self,
-        params: TuttleViewParams,
+        params: TViewParams,
         project_id: str,
     ):
         super().__init__(params)
         self.intent = ProjectsIntent()
         self.project_id = project_id
-        self.loading_indicator = views.StdProgressBar()
+        self.loading_indicator = views.TProgressBar()
         self.project: Optional[Project] = None
         self.pop_up_handler = None
 
@@ -436,31 +436,31 @@ class ViewProjectScreen(TuttleView, UserControl):
             on_click=self.on_delete_clicked,
         )
 
-        self.project_title_control = views.StdHeading()
+        self.project_title_control = views.THeading()
 
-        self.client_control = views.StdSubHeading(
+        self.client_control = views.TSubHeading(
             color=colors.GRAY_COLOR,
         )
-        self.contract_control = views.StdSubHeading(
+        self.contract_control = views.TSubHeading(
             color=colors.GRAY_COLOR,
         )
-        self.project_description_control = views.StdBodyText(
+        self.project_description_control = views.TBodyText(
             align=utils.TXT_ALIGN_JUSTIFY,
         )
 
-        self.project_start_date_control = views.StdSubHeading(
+        self.project_start_date_control = views.TSubHeading(
             size=fonts.BUTTON_SIZE,
             color=colors.GRAY_COLOR,
         )
-        self.project_end_date_control = views.StdSubHeading(
+        self.project_end_date_control = views.TSubHeading(
             size=fonts.BUTTON_SIZE,
             color=colors.GRAY_COLOR,
         )
 
-        self.project_status_control = views.StdSubHeading(
+        self.project_status_control = views.TSubHeading(
             size=fonts.BUTTON_SIZE, color=colors.PRIMARY_COLOR
         )
-        self.project_tagline_control = views.StdSubHeading(
+        self.project_tagline_control = views.TSubHeading(
             size=fonts.BUTTON_SIZE, color=colors.PRIMARY_COLOR
         )
 
@@ -510,7 +510,7 @@ class ViewProjectScreen(TuttleView, UserControl):
                                                 vertical_alignment=utils.CENTER_ALIGNMENT,
                                                 alignment=utils.SPACE_BETWEEN_ALIGNMENT,
                                                 controls=[
-                                                    views.StdHeading(
+                                                    views.THeading(
                                                         "Project",
                                                         size=fonts.HEADLINE_4_SIZE,
                                                         color=colors.PRIMARY_COLOR,
@@ -536,7 +536,7 @@ class ViewProjectScreen(TuttleView, UserControl):
                                 ],
                             ),
                             views.Spacer(md_space=True),
-                            views.StdSubHeading(
+                            views.TSubHeading(
                                 subtitle="Project Description",
                             ),
                             self.project_description_control,
@@ -604,14 +604,14 @@ class ViewProjectScreen(TuttleView, UserControl):
             self.pop_up_handler.dimiss_open_dialogs()
 
 
-class ProjectsListView(TuttleView, UserControl):
+class ProjectsListView(TView, UserControl):
     """View for displaying a list of projects"""
 
     def __init__(self, params):
         super().__init__(params)
         self.intent = ProjectsIntent()
-        self.loading_indicator = views.StdProgressBar()
-        self.no_projects_control = views.StdBodyText(
+        self.loading_indicator = views.TProgressBar()
+        self.no_projects_control = views.TBodyText(
             txt="You have not added any projects yet.",
             color=colors.ERROR_COLOR,
             show=False,
@@ -621,9 +621,7 @@ class ProjectsListView(TuttleView, UserControl):
                 Column(
                     col={"xs": 12},
                     controls=[
-                        views.StdHeading(
-                            title="My Projects", size=fonts.HEADLINE_4_SIZE
-                        ),
+                        views.THeading(title="My Projects", size=fonts.HEADLINE_4_SIZE),
                         self.loading_indicator,
                         self.no_projects_control,
                     ],
@@ -750,12 +748,12 @@ class ProjectsListView(TuttleView, UserControl):
         self.mounted = False
 
 
-class ProjectEditorScreen(TuttleView, UserControl):
+class ProjectEditorScreen(TView, UserControl):
     """Displays a form for creating or updating a project"""
 
     def __init__(
         self,
-        params: TuttleViewParams,
+        params: TViewParams,
         project_id_if_editing: Optional[str] = None,
     ):
         super().__init__(params)
@@ -764,7 +762,7 @@ class ProjectEditorScreen(TuttleView, UserControl):
         self.project_id_if_editing = project_id_if_editing
         self.old_project_if_editing: Optional[Project] = None
         self.contracts_map = {}
-        self.loading_indicator = views.StdProgressBar()
+        self.loading_indicator = views.TProgressBar()
         self.title = ""
         self.description = ""
         self.tag = ""
@@ -944,25 +942,25 @@ class ProjectEditorScreen(TuttleView, UserControl):
 
     def build(self):
         """Builds the view"""
-        self.title_field = views.StdTextField(
+        self.title_field = views.TTextField(
             label="Title",
             hint="A short, unique title",
             on_change=self.on_title_changed,
             on_focus=self.clear_title_error,
         )
-        self.description_field = views.StdMultilineField(
+        self.description_field = views.TMultilineField(
             label="Description",
             hint="A longer description of the project",
             on_change=self.on_description_changed,
             on_focus=self.clear_description_error,
         )
-        self.tag_field = views.StdTextField(
+        self.tag_field = views.TTextField(
             label="Tag",
             hint="A unique tag",
             on_change=self.on_tag_changed,
         )
 
-        self.contracts_field = views.StdDropDown(
+        self.contracts_field = views.TDropDown(
             label="Contract",
             on_change=self.on_contract_selected,
             items=self.get_contracts_as_list(),
@@ -983,10 +981,10 @@ class ProjectEditorScreen(TuttleView, UserControl):
             ],
         )
 
-        self.form_title = views.StdHeading(
+        self.form_title = views.THeading(
             title="New Project",
         )
-        self.submit_btn = views.StdPrimaryButton(
+        self.submit_btn = views.TPrimaryButton(
             label="Create Project",
             on_click=self.on_save,
         )

@@ -2,14 +2,14 @@ from typing import Callable
 
 from flet import Column, Container, UserControl, padding
 
-from core.abstractions import TuttleView, TuttleViewParams
+from core.abstractions import TView, TViewParams
 from core.utils import CENTER_ALIGNMENT
-from core.views import StdErrorText, StdPrimaryButton
+from core.views import TErrorText, TPrimaryButton
 from res.dimens import SPACE_MD, SPACE_STD
 
 
-class Error404Screen(TuttleView, UserControl):
-    def __init__(self, params: TuttleViewParams):
+class Error404Screen(TView, UserControl):
+    def __init__(self, params: TViewParams):
         super().__init__(params)
         self.vertical_alignment_in_parent = CENTER_ALIGNMENT
         self.horizontal_alignment_in_parent = CENTER_ALIGNMENT
@@ -21,8 +21,8 @@ class Error404Screen(TuttleView, UserControl):
                 spacing=SPACE_STD,
                 run_spacing=SPACE_STD,
                 controls=[
-                    StdErrorText("OOps! Looks like you took a wrong turn"),
-                    StdPrimaryButton(
+                    TErrorText("OOps! Looks like you took a wrong turn"),
+                    TPrimaryButton(
                         label="Go Back".upper(), on_click=self.navigate_back
                     ),
                 ],

@@ -18,7 +18,7 @@ from flet import (
 )
 
 from core import utils, views
-from core.abstractions import TuttleView, TuttleViewParams
+from core.abstractions import TView, TViewParams
 from core.intent_result import IntentResult
 
 from core.utils import (
@@ -41,10 +41,10 @@ from res.theme import THEME_MODES
 from tuttle.cloud import CloudProvider
 
 
-class PreferencesScreen(TuttleView, UserControl):
+class PreferencesScreen(TView, UserControl):
     def __init__(
         self,
-        params: TuttleViewParams,
+        params: TViewParams,
         on_theme_changed_callback: Callable,
         on_reset_app_callback: Callable,
     ):
@@ -54,6 +54,7 @@ class PreferencesScreen(TuttleView, UserControl):
         self.on_reset_app_callback = on_reset_app_callback
         self.preferences: Optional[Preferences] = None
         self.currencies = []
+        self.pop_up_handler = None
 
     def set_available_currencies(self):
         self.currencies = [
@@ -107,7 +108,25 @@ class PreferencesScreen(TuttleView, UserControl):
             return
         self.preferences.language = e.control.value
 
-    def on_reset_app(self, e):
+    def on_reset_app_clicked(self, e):
+        """Ask user to confirm this action"""
+        if self.pop_up_handler:
+            # Close any existing dialog
+            self.pop_up_handler.close_dialog()
+        # Add a confirmation dialog
+        self.pop_up_handler = views.ConfirmDisplayPopUp(
+            dialog_controller=self.dialog_controller,
+            title="Are You Sure?",
+            description=f"Are you sure you wish to reset the app?\nThis will clear all your data.",
+            on_proceed=self.on_reset_app_confirmed,
+            proceed_button_label="Yes! Reset",
+        )
+        self.pop_up_handler.open_dialog()
+
+    def on_reset_app_confirmed(
+        self,
+    ):
+        """Reset the app to default state"""
         logger.warning("Resetting the app to default state")
         logger.warning("Clearning preferences")
         result: IntentResult[None] = self.intent.clear_preferences()
@@ -127,7 +146,7 @@ class PreferencesScreen(TuttleView, UserControl):
                         size=dimens.ICON_SIZE,
                     ),
                     views.Spacer(sm_space=True),
-                    views.StdBodyText(txt=label),
+                    views.TBodyText(txt=label),
                     views.Spacer(md_space=True),
                 ],
             ),
@@ -141,7 +160,7 @@ class PreferencesScreen(TuttleView, UserControl):
     def build(self):
         side_bar_width = int(MIN_WINDOW_WIDTH * 0.3)
         self.body_width = int(MIN_WINDOW_WIDTH * 0.7)
-        self.loading_indicator = views.StdProgressBar()
+        self.loading_indicator = views.TProgressBar()
         self.sideBar = Container(
             padding=padding.all(SPACE_STD),
             width=side_bar_width,
@@ -156,28 +175,28 @@ class PreferencesScreen(TuttleView, UserControl):
             ),
         )
 
-        self.theme_control = views.StdDropDown(
+        self.theme_control = views.TDropDown(
             items=[mode.value for mode in THEME_MODES],
             on_change=self.on_theme_changed,
             label="Appearance",
             hint="",
         )
-        self.cloud_provider_control = views.StdDropDown(
+        self.cloud_provider_control = views.TDropDown(
             label="Cloud Provider",
             on_change=self.on_cloud_provider_selected,
             items=[item.value for item in CloudProvider],
         )
-        self.cloud_account_id_control = views.StdTextField(
+        self.cloud_account_id_control = views.TTextField(
             label="Cloud Account Name",
             hint="Your cloud account name",
             on_change=self.on_cloud_account_id_changed,
         )
-        self.currencies_control = views.StdDropDown(
+        self.currencies_control = views.TDropDown(
             label="Default Currency",
             on_change=self.on_currency_selected,
             items=self.currencies,
         )
-        self.languages_control = views.StdDropDown(
+        self.languages_control = views.TDropDown(
             label="Language",
             on_change=self.on_language_selected,
             items=[
@@ -186,10 +205,10 @@ class PreferencesScreen(TuttleView, UserControl):
         )
 
         # a reset button for the app with a warning sign, warning color and a confirmation dialog
-        self.reset_button = views.StdDangerButton(
+        self.reset_button = views.TDangerButton(
             label="Reset App and Quit",
             icon=icons.RESTART_ALT_OUTLINED,
-            on_click=self.on_reset_app,
+            on_click=self.on_reset_app_clicked,
             tooltip="Warning: This will reset the app to default state and delete all data. You will have to restart the app.",
         )
 
@@ -212,7 +231,7 @@ class PreferencesScreen(TuttleView, UserControl):
                     "Cloud",
                     icons.CLOUD_OUTLINED,
                     [
-                        views.StdBodyText(
+                        views.TBodyText(
                             txt="Setting up your cloud account will enable you to import time tracking data from your cloud calendar.",
                         ),
                         views.Spacer(sm_space=True),
@@ -241,7 +260,7 @@ class PreferencesScreen(TuttleView, UserControl):
                                 icons.SETTINGS_SUGGEST_OUTLINED,
                                 size=dimens.ICON_SIZE,
                             ),
-                            views.StdHeading(
+                            views.THeading(
                                 title="Preferences",
                             ),
                         ],
