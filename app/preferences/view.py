@@ -119,7 +119,7 @@ class PreferencesScreen(TView, UserControl):
             title="Are You Sure?",
             description=f"Are you sure you wish to reset the app?\nThis will clear all your data.",
             on_proceed=self.on_reset_app_confirmed,
-            proceed_button_label="Yes! Reset",
+            proceed_button_label="Reset and Clear Data",
         )
         self.pop_up_handler.open_dialog()
 

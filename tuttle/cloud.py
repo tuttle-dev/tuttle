@@ -13,7 +13,8 @@ from dataclasses import dataclass
 
 
 class CloudProvider(Enum):
-    Google = "Google"
+    # TODO: add more cloud providers
+    # Google = "Google"
     ICloud = "iCloud"
 
     def __str__(self) -> str:
