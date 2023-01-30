@@ -314,7 +314,6 @@ class ContractEditorScreen(TView, UserControl):
         fields = [
             self.title_ui_field,
             self.rate_ui_field,
-            self.currency_ui_field,
             self.volume_ui_field,
             self.term_of_payment_ui_field,
             self.unit_PW_ui_field,
@@ -323,6 +322,7 @@ class ContractEditorScreen(TView, UserControl):
         for field in fields:
             if field.error_text:
                 field.error_text = None
+        self.currency_ui_field.update_error_txt()
         self.update_self()
 
     def toggle_progress(self, is_on_going_action: bool):
