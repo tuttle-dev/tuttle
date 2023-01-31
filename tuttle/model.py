@@ -1,33 +1,31 @@
 """Object model."""
 
-import email
-from typing import Optional, List, Dict, Type
-from pydantic import constr, BaseModel, condecimal
-from enum import Enum
-import datetime
-import hashlib
-import uuid
-import textwrap
+from typing import Dict, List, Optional, Type
 
+import re
+import datetime
+import decimal
+import email
+import hashlib
+import string
+import textwrap
+import uuid
+from decimal import Decimal
+from enum import Enum
+
+import pandas
 import sqlalchemy
-from sqlmodel import (
-    SQLModel,
-    Field,
-    Relationship,
-)
 
 # from pydantic import str
-import decimal
-from decimal import Decimal
-import pandas
+from pydantic import BaseModel, condecimal, constr, validator
+from sqlmodel import SQLModel, Field, Relationship, Constraint
 
-
-from .time import Cycle, TimeUnit
 
 from .dev import deprecated
+from .time import Cycle, TimeUnit
 
 
-def help(model_class):
+def help(model_class: Type[BaseModel]):
     return pandas.DataFrame(
         (
             (field_name, field.field_info.description)
@@ -128,7 +126,7 @@ class User(SQLModel, table=True):
         back_populates="users",
         sa_relationship_kwargs={"lazy": "subquery"},
     )
-    VAT_number: str = Field(
+    VAT_number: Optional[str] = Field(
         description="Value Added Tax number of the user, legally required for invoices.",
     )
     # User 1:1* ICloudAccount
@@ -149,7 +147,7 @@ class User(SQLModel, table=True):
         sa_relationship_kwargs={"lazy": "subquery"},
     )
     # TODO: path to logo image
-    logo: Optional[str]
+    # logo: Optional[str] = Field(default=None)
 
     @property
     def bank_account_not_set(self) -> bool:
@@ -210,6 +208,14 @@ class Contact(SQLModel, table=True):
     )
     # post address
 
+    # VALIDATORS
+    @validator("email")
+    def email_validator(cls, v):
+        """Validate email address format."""
+        if not re.match(r"[^@]+@[^@]+\.[^@]+", v):
+            raise ValueError("Not a valid email address")
+        return v
+
     @property
     def name(self):
         if self.first_name and self.last_name:
@@ -251,7 +257,9 @@ class Client(SQLModel, table=True):
     """A client the freelancer has contracted with."""
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    name: str = Field(default="")
+    name: str = Field(
+        description="Name of the client.",
+    )
     # Client 1:1 invoicing Contact
     invoicing_contact_id: int = Field(default=None, foreign_key="contact.id")
     invoicing_contact: Contact = Relationship(
@@ -364,13 +372,16 @@ class Project(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     title: str = Field(
-        description="A short, unique title", sa_column_kwargs={"unique": True}
+        description="A short, unique title",
+        sa_column_kwargs={"unique": True},
     )
     description: str = Field(
-        description="A longer description of the project", default=""
+        description="A longer description of the project",
     )
-    # TODO: tag: constr(regex=r"#\S+")
-    tag: str = Field(description="A unique tag", sa_column_kwargs={"unique": True})
+    tag: str = Field(
+        description="A unique tag, starting with a # symbol",
+        sa_column_kwargs={"unique": True},
+    )
     start_date: datetime.date
     end_date: datetime.date
     is_completed: bool = Field(
@@ -393,6 +404,7 @@ class Project(SQLModel, table=True):
         sa_relationship_kwargs={"lazy": "subquery"},
     )
 
+    # PROPERTIES
     @property
     def client(self) -> Optional[Client]:
         if self.contract:
@@ -400,6 +412,16 @@ class Project(SQLModel, table=True):
         else:
             return None
 
+    # VALIDATORS
+    @validator("tag")
+    def validate_tag(cls, v):
+        if not re.match(r"^#\S+$", v):
+            raise ValueError(
+                "Tag must start with a # symbol and not contain any punctuation or whitespace."
+            )
+        return v
+
+    @deprecated
     def get_brief_description(self):
         if len(self.description) <= 108:
             return self.description
@@ -420,6 +442,7 @@ class Project(SQLModel, table=True):
         today = datetime.date.today()
         return self.start_date > today
 
+    # FIXME: replace string literals with enum
     def get_status(self, default: str = "") -> str:
         if self.is_active():
             return "Active"
