@@ -50,7 +50,7 @@ class TestRenderTimesheet:
                 only_final=only_final,
             )
 
-            prefix = f"Timesheet-{timesheet.title}"
+            prefix = timesheet.prefix
             pdf_file = Path(out_dir) / Path(f"{prefix}.pdf")
             assert pdf_file.is_file()
 

@@ -211,7 +211,7 @@ def render_timesheet(
     user: User,
     timesheet: Timesheet,
     out_dir,
-    document_format: str = "html",
+    document_format: str = "pdf",
     style: str = "anvil",
     only_final: bool = False,
 ):
@@ -238,7 +238,7 @@ def render_timesheet(
         return html
     else:
         # write invoice html
-        prefix = f"Timesheet-{timesheet.title}"
+        prefix = timesheet.prefix
         timesheet_dir = Path(out_dir) / Path(prefix)
         timesheet_dir.mkdir(parents=True, exist_ok=True)
         timesheet_path = timesheet_dir / Path(f"{prefix}.html")

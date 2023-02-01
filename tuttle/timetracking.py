@@ -52,7 +52,8 @@ def generate_timesheet(
     period_str = f"{period_start} - {period_end}"
     ts = Timesheet(
         title=f"{project.title} - {period_str}",
-        # period=period,
+        period_start=period_start,
+        period_end=period_end,
         project=project,
         comment=comment,
         date=date,

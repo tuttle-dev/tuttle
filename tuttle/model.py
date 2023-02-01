@@ -409,6 +409,9 @@ class Project(SQLModel, table=True):
         sa_relationship_kwargs={"lazy": "subquery"},
     )
 
+    def __repr__(self):
+        return f"Project(id={self.id}, title={self.title}, tag={self.tag})"
+
     # PROPERTIES
     @property
     def client(self) -> Optional[Client]:
@@ -482,6 +485,12 @@ class Timesheet(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     title: str
     date: datetime.date = Field(description="The date of creation of the timesheet")
+    period_start: datetime.date = Field(
+        description="The start date of the period covered by the timesheet."
+    )
+    period_end: datetime.date = Field(
+        description="The end date of the period covered by the timesheet."
+    )
 
     # Timesheet n:1 Project
     project_id: Optional[int] = Field(default=None, foreign_key="project.id")
@@ -508,6 +517,13 @@ class Timesheet(SQLModel, table=True):
 
     # class Config:
     #     arbitrary_types_allowed = True
+
+    def __repr__(self):
+        return f"Timesheet(id={self.id}, tag={self.project.tag}, period_start={self.period_start}, period_end={self.period_end})"
+
+    @property
+    def prefix(self) -> str:
+        return f"{self.project.tag[1:]}-{self.period_start.strftime('%Y-%m-%d')}-{self.period_end.strftime('%Y-%m-%d')}"
 
     @property
     def total(self) -> datetime.timedelta:

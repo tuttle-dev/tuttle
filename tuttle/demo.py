@@ -137,7 +137,7 @@ def create_fake_project(
     if contract is None:
         contract = create_fake_contract(fake)
 
-    project_title = fake.bs()
+    project_title = fake.bs().replace("/", "-")
     project_tag = f"#{'-'.join(project_title.split(' ')[:2]).lower()}"
 
     project = Project(
@@ -179,9 +179,11 @@ def create_fake_timesheet(
     if project is None:
         project = create_fake_project(fake)
     timesheet = Timesheet(
-        title=fake.bs(),
+        title=fake.bs().replace("/", "-"),
         comment=fake.paragraph(nb_sentences=2),
         date=datetime.date.today(),
+        period_start=datetime.date.today() - datetime.timedelta(days=30),
+        period_end=datetime.date.today(),
         project=project,
     )
     number_of_items = fake.random_int(min=1, max=5)
@@ -257,34 +259,37 @@ def create_fake_invoice(
             invoice=invoice,
         )
 
-        # an invoice is created together with a timesheet. For the sake of simplicity, timesheet and invoice items are not linked.
-        timesheeet = create_fake_timesheet(fake, project)
+    # an invoice is created together with a timesheet. For the sake of simplicity, timesheet and invoice items are not linked.
+    timesheet = create_fake_timesheet(fake, project)
+    # attach timesheet to invoice
+    timesheet.invoice = invoice
+    assert len(invoice.timesheets) == 1
 
-        if render:
-            # render invoice
-            try:
-                rendering.render_invoice(
-                    user=user,
-                    invoice=invoice,
-                    out_dir=Path.home() / ".tuttle" / "Invoices",
-                    only_final=True,
-                )
-                logger.info(f"✅ rendered invoice for {project.title}")
-            except Exception as ex:
-                logger.error(f"❌ Error rendering invoice for {project.title}: {ex}")
-                logger.exception(ex)
-            # render timesheet
-            try:
-                rendering.render_timesheet(
-                    user=user,
-                    timesheet=timesheeet,
-                    out_dir=Path.home() / ".tuttle" / "Timesheets",
-                    only_final=True,
-                )
-                logger.info(f"✅ rendered timesheet for {project.title}")
-            except Exception as ex:
-                logger.error(f"❌ Error rendering timesheet for {project.title}: {ex}")
-                logger.exception(ex)
+    if render:
+        # render invoice
+        try:
+            rendering.render_invoice(
+                user=user,
+                invoice=invoice,
+                out_dir=Path.home() / ".tuttle" / "Invoices",
+                only_final=True,
+            )
+            logger.info(f"✅ rendered invoice for {project.title}")
+        except Exception as ex:
+            logger.error(f"❌ Error rendering invoice for {project.title}: {ex}")
+            logger.exception(ex)
+        # render timesheet
+        try:
+            rendering.render_timesheet(
+                user=user,
+                timesheet=timesheet,
+                out_dir=Path.home() / ".tuttle" / "Timesheets",
+                only_final=True,
+            )
+            logger.info(f"✅ rendered timesheet for {project.title}")
+        except Exception as ex:
+            logger.error(f"❌ Error rendering timesheet for {project.title}: {ex}")
+            logger.exception(ex)
 
     return invoice
 
