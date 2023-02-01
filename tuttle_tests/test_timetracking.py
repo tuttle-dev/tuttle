@@ -4,6 +4,7 @@ import pandas
 import datetime
 
 from tuttle import timetracking
+from tuttle.calendar import get_month_start_end
 
 
 def test_timetracking_import_toggl():
@@ -27,11 +28,13 @@ def test_generate_timesheet_from_demo_calendar(
     demo_calendar_timetracking,
 ):
     for period in ["January 2022", "February 2022"]:
+        (period_start, period_end) = get_month_start_end(period)
         for project in demo_projects:
             timesheet = timetracking.generate_timesheet(
-                source=demo_calendar_timetracking,
+                timetracking_data=demo_calendar_timetracking.to_data(),
                 project=project,
-                period_start=period,
+                period_start=period_start,
+                period_end=period_end,
                 item_description=project.title,
             )
             assert (timesheet.empty) or (timesheet.total >= pandas.Timedelta("0 hours"))

@@ -16,7 +16,6 @@ class TestRenderTimesheet:
     """Tests for render_timesheet"""
 
     def test_returns_html_when_out_dir_is_none(self, fake):
-
         user = demo.create_fake_user(fake)
         timesheet = demo.create_fake_timesheet(fake)
         document_format = "html"
