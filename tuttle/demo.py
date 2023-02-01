@@ -54,11 +54,22 @@ def create_fake_contact(
     split_address_lines = fake.address().splitlines()
     street_line = split_address_lines[0]
     city_line = split_address_lines[1]
+    try:
+        # TODO: This has a German bias
+        street = street_line.split(" ", 1)[0]
+        number = street_line.split(" ", 1)[1]
+        city = city_line.split(" ")[1]
+        postal_code = city_line.split(" ")[0]
+    except IndexError:
+        street = street_line
+        number = ""
+        city = city_line
+        postal_code = ""
     a = Address(
-        street=street_line,
-        number=city_line,
-        city=city_line.split(" ")[1],
-        postal_code=city_line.split(" ")[0],
+        street=street,
+        number=number,
+        city=city,
+        postal_code=postal_code,
         country=fake.country(),
     )
     first_name, last_name = fake.name().split(" ", 1)
@@ -212,6 +223,9 @@ def create_fake_invoice(
     if project is None:
         project = create_fake_project(fake)
 
+    if user is None:
+        user = create_fake_user(fake)
+
     invoice_number = next(invoice_number_counter)
     invoice = Invoice(
         number=str(invoice_number),
@@ -243,7 +257,11 @@ def create_fake_invoice(
             invoice=invoice,
         )
 
+        # an invoice is created together with a timesheet. For the sake of simplicity, timesheet and invoice items are not linked.
+        timesheeet = create_fake_timesheet(fake, project)
+
         if render:
+            # render invoice
             try:
                 rendering.render_invoice(
                     user=user,
@@ -254,6 +272,18 @@ def create_fake_invoice(
                 logger.info(f"✅ rendered invoice for {project.title}")
             except Exception as ex:
                 logger.error(f"❌ Error rendering invoice for {project.title}: {ex}")
+                logger.exception(ex)
+            # render timesheet
+            try:
+                rendering.render_timesheet(
+                    user=user,
+                    timesheet=timesheeet,
+                    out_dir=Path.home() / ".tuttle" / "Timesheets",
+                    only_final=True,
+                )
+                logger.info(f"✅ rendered timesheet for {project.title}")
+            except Exception as ex:
+                logger.error(f"❌ Error rendering timesheet for {project.title}: {ex}")
                 logger.exception(ex)
 
     return invoice
@@ -281,11 +311,15 @@ def create_fake_data(
     fake = faker.Faker(locale=locales)
 
     contacts = [create_fake_contact(fake) for _ in range(n)]
-    clients = [create_fake_client(contact, fake) for contact in contacts]
-    contracts = [create_fake_contract(client, fake) for client in clients]
-    projects = [create_fake_project(contract, fake) for contract in contracts]
+    clients = [
+        create_fake_client(fake, invoicing_contact=contact) for contact in contacts
+    ]
+    contracts = [create_fake_contract(fake, client=client) for client in clients]
+    projects = [create_fake_project(fake, contract=contract) for contract in contracts]
 
-    invoices = [create_fake_invoice(project, user, fake) for project in projects]
+    invoices = [
+        create_fake_invoice(fake, project=project, user=user) for project in projects
+    ]
 
     return projects, invoices
 

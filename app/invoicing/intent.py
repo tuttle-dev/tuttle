@@ -45,6 +45,10 @@ class InvoicingIntent(Intent):
         self._user_data_source = UserDataSource()
         self._auth_intent = AuthIntent()
 
+    def get_user(self) -> IntentResult[User]:
+        user = self._user_data_source.get_user()
+        return IntentResult(was_intent_successful=True, data=user)
+
     def get_active_projects_as_map(self) -> Mapping[int, Project]:
         return self._projects_intent.get_active_projects_as_map()
 
@@ -115,6 +119,7 @@ class InvoicingIntent(Intent):
             if render:
                 # render timesheet
                 try:
+                    logger.info(f"⚙️ Rendering timesheet for {project.title}...")
                     rendering.render_timesheet(
                         user=user,
                         timesheet=timesheet,
@@ -129,6 +134,7 @@ class InvoicingIntent(Intent):
                     logger.exception(ex)
                 # render invoice
                 try:
+                    logger.info(f"⚙️ Rendering invoice for {project.title}...")
                     rendering.render_invoice(
                         user=user,
                         invoice=invoice,

@@ -499,12 +499,12 @@ class Timesheet(SQLModel, table=True):
         description="Whether the Timesheet has been rendered as a PDF.",
     )
 
-    # Timesheet 1:1 Invoice
-    # FIXME: Could not determine join condition between parent/child tables
-    # invoice_id: Optional[int] = Field(default=None, foreign_key="invoice.id")
-    # invoice: Optional["Invoice"] = OneToOneRelationship(
-    #     back_populates="timesheet",
-    # )
+    # Timesheet n:1 Invoice
+    invoice_id: Optional[int] = Field(default=None, foreign_key="invoice.id")
+    invoice: Optional["Invoice"] = Relationship(
+        back_populates="timesheets",
+        sa_relationship_kwargs={"lazy": "subquery"},
+    )
 
     # class Config:
     #     arbitrary_types_allowed = True
@@ -535,12 +535,8 @@ class Invoice(SQLModel, table=True):
         description="The date of the invoice",
     )
 
-    # TODO: sent_date: datetime.datetime = Field(description="The date the invoice was sent.")
-    # Invoice 1:1 Timesheet
-    # timesheet_id: Optional[int] = Field(default=None, foreign_key="timesheet.id")
-    # timesheet: Timesheet = OneToOneRelationship(
-    #     back_populates="invoice",
-    # )
+    # RELATIONSHIPTS
+
     # Invoice n:1 Contract ?
     contract_id: Optional[int] = Field(default=None, foreign_key="contract.id")
     contract: Contract = Relationship(
@@ -553,6 +549,12 @@ class Invoice(SQLModel, table=True):
         back_populates="invoices",
         sa_relationship_kwargs={"lazy": "subquery"},
     )
+    # Invoice 1:n Timesheet
+    timesheets: List[Timesheet] = Relationship(
+        back_populates="invoice",
+        sa_relationship_kwargs={"lazy": "subquery"},
+    )
+
     # status -- corresponds to InvoiceStatus enum above
     sent: Optional[bool] = Field(default=False)
     paid: Optional[bool] = Field(default=False)

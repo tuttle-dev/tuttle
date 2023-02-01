@@ -1,9 +1,13 @@
+from typing import Callable
+
 import re
 from pathlib import Path
-from loguru import logger
-from typing import Callable
-import demo
+
 import sqlmodel
+from loguru import logger
+
+from tuttle import demo
+
 from .abstractions import DatabaseStorage
 
 
