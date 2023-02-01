@@ -108,6 +108,7 @@ class TogglPreset(TimetrackingSpreadsheetPreset):
     duration_col = "Duration"
     title_col = "Task"
     description_col = "Description"
+    all_day_col = None
 
 
 def infer_spreadsheet_preset(data: DataFrame) -> Type[TimetrackingSpreadsheetPreset]:
@@ -127,6 +128,7 @@ def import_from_spreadsheet(
     duration_col: Optional[str] = None,
     title_col: Optional[str] = None,
     description_col: Optional[str] = None,
+    all_day_col: Optional[str] = None,
 ) -> DataFrame:
     """Import time tracking data from a .csv file."""
     if preset:
@@ -185,6 +187,8 @@ def import_from_spreadsheet(
         timetracking_data["end"] = pandas.NaT
     if description_col is None:
         timetracking_data["description"] = ""
+    if all_day_col is None:
+        timetracking_data["all_day"] = False
 
     timetracking_data = timetracking_data.set_index("begin")
     return timetracking_data
