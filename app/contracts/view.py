@@ -60,7 +60,7 @@ class ContractCard(UserControl):
             ListTile(
                 leading=Icon(
                     utils.TuttleComponentIcons.contract_icon,
-                    size=dimens.ICON_SIZE,
+                    size=dimens.MD_ICON_SIZE,
                 ),
                 title=views.TBodyText(self.contract.title),
                 subtitle=views.TBodyText(

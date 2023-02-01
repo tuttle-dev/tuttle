@@ -121,7 +121,7 @@ def render_invoice(
     document_format: str = "pdf",
     style: str = "anvil",
     only_final: bool = False,
-) -> str:
+):
     """Render an Invoice using an HTML template.
 
     Args:
