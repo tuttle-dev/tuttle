@@ -45,9 +45,9 @@ class InvoicingIntent(Intent):
         self._user_data_source = UserDataSource()
         self._auth_intent = AuthIntent()
 
-    def get_user(self) -> Optional[User]:
-        """Get the current user."""
-        return self._auth_intent.get_user_if_exists()
+    def get_user(self) -> IntentResult[User]:
+        user = self._user_data_source.get_user()
+        return IntentResult(was_intent_successful=True, data=user)
 
     def get_active_projects_as_map(self) -> Mapping[int, Project]:
         return self._projects_intent.get_active_projects_as_map()
@@ -95,11 +95,13 @@ class InvoicingIntent(Intent):
         render: bool = True,
     ) -> IntentResult[Invoice]:
         """Create a new invoice from time tracking data."""
-
+        logger.info(f"⚙️ Creating invoice for {project.title}...")
+        user = self._user_data_source.get_user()
         try:
             # get the time tracking data
             timetracking_data = self._timetracking_data_source.get_data_frame()
-            timesheet: Timesheet = timetracking.create_timesheet(
+            # generate timesheet
+            timesheet: Timesheet = timetracking.generate_timesheet(
                 timetracking_data,
                 project,
                 from_date,
@@ -116,10 +118,24 @@ class InvoicingIntent(Intent):
             )
 
             if render:
-                # TODO: render timesheet
+                # render timesheet
+                try:
+                    logger.info(f"⚙️ Rendering timesheet for {project.title}...")
+                    rendering.render_timesheet(
+                        user=user,
+                        timesheet=timesheet,
+                        out_dir=Path.home() / ".tuttle" / "Timesheets",
+                        only_final=True,
+                    )
+                    logger.info(f"✅ rendered timesheet for {project.title}")
+                except Exception as ex:
+                    logger.error(
+                        f"❌ Error rendering timesheet for {project.title}: {ex}"
+                    )
+                    logger.exception(ex)
                 # render invoice
                 try:
-                    user = self._user_data_source.get_user()
+                    logger.info(f"⚙️ Rendering invoice for {project.title}...")
                     rendering.render_invoice(
                         user=user,
                         invoice=invoice,
@@ -130,7 +146,12 @@ class InvoicingIntent(Intent):
                 except Exception as ex:
                     logger.error(f"❌ Error rendering invoice for {project.title}: {ex}")
                     logger.exception(ex)
-            # save invoice
+
+            # save invoice and timesheet
+            timesheet.invoice = invoice
+            assert timesheet.invoice is not None
+            assert len(invoice.timesheets) == 1
+            # self._invoicing_data_source.save_timesheet(timesheet)
             self._invoicing_data_source.save_invoice(invoice)
             return IntentResult(
                 was_intent_successful=True,
@@ -312,6 +333,29 @@ class InvoicingIntent(Intent):
             # display the execption name in the error message
             error_message = f"Failed to open the invoice: {ex.__class__.__name__}"
 
+            logger.error(error_message)
+            logger.exception(ex)
+            return IntentResult(
+                was_intent_successful=False,
+                error_msg=error_message,
+            )
+
+    def view_timesheet_for_invoice(self, invoice: Invoice) -> IntentResult[None]:
+        """Attempts to open the timesheet for the invoice in the default pdf viewer"""
+        try:
+            timesheet = self._invoicing_data_source.get_timesheet_for_invoice(invoice)
+            timesheet_path = (
+                Path().home() / ".tuttle" / "Timesheets" / f"{timesheet.prefix}.pdf"
+            )
+            preview_pdf(timesheet_path)
+            return IntentResult(was_intent_successful=True)
+        except ValueError as ve:
+            logger.error(f"❌ Error getting timesheet for invoice: {ve}")
+            logger.exception(ve)
+            return IntentResult(was_intent_successful=False, error_msg=str(ve))
+        except Exception as ex:
+            # display the execption name in the error message
+            error_message = f"❌ Failed to open the timesheet: {ex.__class__.__name__}"
             logger.error(error_message)
             logger.exception(ex)
             return IntentResult(

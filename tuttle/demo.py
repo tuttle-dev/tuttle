@@ -24,24 +24,52 @@ from tuttle.model import (
     Cycle,
     Invoice,
     InvoiceItem,
+    Timesheet,
+    TimeTrackingItem,
     Project,
     TimeUnit,
     User,
 )
 
 
+def create_fake_user(
+    fake: faker.Faker,
+) -> User:
+    """
+    Create a fake user.
+    """
+    user = User(
+        name=fake.name(),
+        email=fake.email(),
+        subtitle=fake.job(),
+        VAT_number=fake.ean8(),
+    )
+    return user
+
+
 def create_fake_contact(
     fake: faker.Faker,
-):
+) -> Contact:
 
     split_address_lines = fake.address().splitlines()
     street_line = split_address_lines[0]
     city_line = split_address_lines[1]
+    try:
+        # TODO: This has a German bias
+        street = street_line.split(" ", 1)[0]
+        number = street_line.split(" ", 1)[1]
+        city = city_line.split(" ")[1]
+        postal_code = city_line.split(" ")[0]
+    except IndexError:
+        street = street_line
+        number = ""
+        city = city_line
+        postal_code = ""
     a = Address(
-        street=street_line,
-        number=city_line,
-        city=city_line.split(" ")[1],
-        postal_code=city_line.split(" ")[0],
+        street=street,
+        number=number,
+        city=city,
+        postal_code=postal_code,
         country=fake.country(),
     )
     first_name, last_name = fake.name().split(" ", 1)
@@ -57,9 +85,11 @@ def create_fake_contact(
 
 
 def create_fake_client(
-    invoicing_contact: Contact,
     fake: faker.Faker,
-):
+    invoicing_contact: Optional[Contact] = None,
+) -> Client:
+    if invoicing_contact is None:
+        invoicing_contact = create_fake_contact(fake)
     client = Client(
         name=fake.company(),
         invoicing_contact=invoicing_contact,
@@ -69,12 +99,14 @@ def create_fake_client(
 
 
 def create_fake_contract(
-    client: Client,
     fake: faker.Faker,
+    client: Optional[Client] = None,
 ) -> Contract:
     """
     Create a fake contract for the given client.
     """
+    if client is None:
+        client = create_fake_client(fake)
     unit = random.choice(list(TimeUnit))
     if unit == TimeUnit.day:
         rate = fake.random_int(200, 1000)  # realistic distribution for day rates
@@ -99,10 +131,13 @@ def create_fake_contract(
 
 
 def create_fake_project(
-    contract: Contract,
     fake: faker.Faker,
-):
-    project_title = fake.bs()
+    contract: Optional[Contract] = None,
+) -> Project:
+    if contract is None:
+        contract = create_fake_contract(fake)
+
+    project_title = fake.bs().replace("/", "-")
     project_tag = f"#{'-'.join(project_title.split(' ')[:2]).lower()}"
 
     project = Project(
@@ -127,10 +162,55 @@ def invoice_number_counting():
 invoice_number_counter = invoice_number_counting()
 
 
-def create_fake_invoice(
-    project: Project,
-    user: User,
+def create_fake_timesheet(
     fake: faker.Faker,
+    project: Optional[Project] = None,
+) -> Timesheet:
+    """
+    Create a fake timesheet object with random values.
+
+    Args:
+    project (Project): The project associated with the timesheet.
+    fake (faker.Faker): An instance of the Faker class to generate random values.
+
+    Returns:
+    Timesheet: A fake timesheet object.
+    """
+    if project is None:
+        project = create_fake_project(fake)
+    timesheet = Timesheet(
+        title=fake.bs().replace("/", "-"),
+        comment=fake.paragraph(nb_sentences=2),
+        date=datetime.date.today(),
+        period_start=datetime.date.today() - datetime.timedelta(days=30),
+        period_end=datetime.date.today(),
+        project=project,
+    )
+    number_of_items = fake.random_int(min=1, max=5)
+    for _ in range(number_of_items):
+        unit = fake.random_element(elements=("hours", "days"))
+        if unit == "hours":
+            unit_price = abs(round(numpy.random.normal(50, 20), 2))
+        elif unit == "days":
+            unit_price = abs(round(numpy.random.normal(400, 200), 2))
+        time_tracking_item = TimeTrackingItem(
+            timesheet=timesheet,
+            begin=fake.date_time_this_year(before_now=True, after_now=False),
+            end=fake.date_time_this_year(before_now=True, after_now=False),
+            duration=datetime.timedelta(hours=fake.random_int(min=1, max=8)),
+            title=f"{fake.bs()} for #{project.tag}",
+            tag=project.tag,
+            description=fake.paragraph(nb_sentences=2),
+        )
+        timesheet.items.append(time_tracking_item)
+    return timesheet
+
+
+def create_fake_invoice(
+    fake: faker.Faker,
+    project: Optional[Project] = None,
+    user: Optional[User] = None,
+    render: bool = True,
 ) -> Invoice:
     """
     Create a fake invoice object with random values.
@@ -142,6 +222,12 @@ def create_fake_invoice(
     Returns:
     Invoice: A fake invoice object.
     """
+    if project is None:
+        project = create_fake_project(fake)
+
+    if user is None:
+        user = create_fake_user(fake)
+
     invoice_number = next(invoice_number_counter)
     invoice = Invoice(
         number=str(invoice_number),
@@ -173,6 +259,14 @@ def create_fake_invoice(
             invoice=invoice,
         )
 
+    # an invoice is created together with a timesheet. For the sake of simplicity, timesheet and invoice items are not linked.
+    timesheet = create_fake_timesheet(fake, project)
+    # attach timesheet to invoice
+    timesheet.invoice = invoice
+    assert len(invoice.timesheets) == 1
+
+    if render:
+        # render invoice
         try:
             rendering.render_invoice(
                 user=user,
@@ -183,6 +277,18 @@ def create_fake_invoice(
             logger.info(f"✅ rendered invoice for {project.title}")
         except Exception as ex:
             logger.error(f"❌ Error rendering invoice for {project.title}: {ex}")
+            logger.exception(ex)
+        # render timesheet
+        try:
+            rendering.render_timesheet(
+                user=user,
+                timesheet=timesheet,
+                out_dir=Path.home() / ".tuttle" / "Timesheets",
+                only_final=True,
+            )
+            logger.info(f"✅ rendered timesheet for {project.title}")
+        except Exception as ex:
+            logger.error(f"❌ Error rendering timesheet for {project.title}: {ex}")
             logger.exception(ex)
 
     return invoice
@@ -210,11 +316,15 @@ def create_fake_data(
     fake = faker.Faker(locale=locales)
 
     contacts = [create_fake_contact(fake) for _ in range(n)]
-    clients = [create_fake_client(contact, fake) for contact in contacts]
-    contracts = [create_fake_contract(client, fake) for client in clients]
-    projects = [create_fake_project(contract, fake) for contract in contracts]
+    clients = [
+        create_fake_client(fake, invoicing_contact=contact) for contact in contacts
+    ]
+    contracts = [create_fake_contract(fake, client=client) for client in clients]
+    projects = [create_fake_project(fake, contract=contract) for contract in contracts]
 
-    invoices = [create_fake_invoice(project, user, fake) for project in projects]
+    invoices = [
+        create_fake_invoice(fake, project=project, user=user) for project in projects
+    ]
 
     return projects, invoices
 

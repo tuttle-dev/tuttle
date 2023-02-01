@@ -94,7 +94,7 @@ class AuthIntent(Intent):
         """
         result = self._data_source.get_user_()
         if not result.was_intent_successful:
-            result.error_msg = "Checking auth status failed! Please restart the app"
+            result.error_msg = "No user data found."
             result.log_message_if_any()
         return result
 

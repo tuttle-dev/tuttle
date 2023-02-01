@@ -5,7 +5,7 @@ import datetime
 from core.abstractions import SQLModelDataSourceMixin
 from core.intent_result import IntentResult
 
-from tuttle.model import Invoice, Project
+from tuttle.model import Invoice, Project, Timesheet
 
 
 class InvoicingDataSource(SQLModelDataSourceMixin):
@@ -74,6 +74,10 @@ class InvoicingDataSource(SQLModelDataSourceMixin):
         """Creates or updates an invoice with given invoice and project info"""
         self.store(invoice)
 
+    def save_timesheet(self, timesheet: Timesheet):
+        """Creates or updates a timesheet"""
+        self.store(timesheet)
+
     def get_last_invoice(self) -> IntentResult[Invoice]:
         """Get the last invoice.
 
@@ -100,3 +104,23 @@ class InvoicingDataSource(SQLModelDataSourceMixin):
                 log_message=f"Exception raised @InvoicingDataSource.get_last_invoice_number {e.__class__.__name__}",
                 exception=e,
             )
+
+    def get_timesheet_for_invoice(self, invoice: Invoice) -> Timesheet:
+        """Get the timesheet associated with an invoice
+
+        Args:
+            invoice (Invoice): the invoice to get the timesheet for
+
+        Returns:
+            Optional[Timesheet]: the timesheet associated with the invoice
+        """
+        if not len(invoice.timesheets) > 0:
+            raise ValueError(
+                f"invoice {invoice.id} has no timesheets associated with it"
+            )
+        if len(invoice.timesheets) > 1:
+            raise ValueError(
+                f"invoice {invoice.id} has more than one timesheet associated with it: {invoice.timesheets}"
+            )
+        timesheet = invoice.timesheets[0]
+        return timesheet

@@ -1,6 +1,10 @@
 """Object model."""
 
-from typing import Dict, List, Optional, Type
+from typing import Optional, List, Dict, Type
+from pydantic import constr, BaseModel, condecimal
+from enum import Enum
+import datetime
+import textwrap
 
 import re
 import datetime
@@ -48,9 +52,10 @@ def to_dataframe(items: List[Type[BaseModel]]) -> pandas.DataFrame:
 
 
 def OneToOneRelationship(back_populates):
+    """Define a relationship as one-to-one."""
     return Relationship(
         back_populates=back_populates,
-        sa_relationship_kwargs={"uselist": False},
+        sa_relationship_kwargs={"uselist": False, "lazy": "subquery"},
     )
 
 
@@ -404,6 +409,9 @@ class Project(SQLModel, table=True):
         sa_relationship_kwargs={"lazy": "subquery"},
     )
 
+    def __repr__(self):
+        return f"Project(id={self.id}, title={self.title}, tag={self.tag})"
+
     # PROPERTIES
     @property
     def client(self) -> Optional[Client]:
@@ -462,9 +470,7 @@ class TimeTrackingItem(SQLModel, table=True):
     timesheet: Optional["Timesheet"] = Relationship(back_populates="items")
     #
     begin: datetime.datetime = Field(description="Start time of the time interval.")
-    end: Optional[datetime.datetime] = Field(
-        description="End time of the time interval."
-    )
+    end: datetime.datetime = Field(description="End time of the time interval.")
     duration: datetime.timedelta = Field(description="Duration of the time interval.")
     title: str = Field(description="A short description of the time interval.")
     tag: str = Field(
@@ -479,10 +485,13 @@ class Timesheet(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     title: str
     date: datetime.date = Field(description="The date of creation of the timesheet")
-    # period: str
-    # table: pandas.DataFrame
-    # TODO: store dataframe as dict
-    # table: Dict = Field(default={}, sa_column=sqlalchemy.Column(sqlalchemy.JSON))
+    period_start: datetime.date = Field(
+        description="The start date of the period covered by the timesheet."
+    )
+    period_end: datetime.date = Field(
+        description="The end date of the period covered by the timesheet."
+    )
+
     # Timesheet n:1 Project
     project_id: Optional[int] = Field(default=None, foreign_key="project.id")
     project: Project = Relationship(
@@ -494,8 +503,27 @@ class Timesheet(SQLModel, table=True):
     comment: Optional[str] = Field(description="A comment on the timesheet.")
     items: List[TimeTrackingItem] = Relationship(back_populates="timesheet")
 
+    rendered: bool = Field(
+        default=False,
+        description="Whether the Timesheet has been rendered as a PDF.",
+    )
+
+    # Timesheet n:1 Invoice
+    invoice_id: Optional[int] = Field(default=None, foreign_key="invoice.id")
+    invoice: Optional["Invoice"] = Relationship(
+        back_populates="timesheets",
+        sa_relationship_kwargs={"lazy": "subquery"},
+    )
+
     # class Config:
     #     arbitrary_types_allowed = True
+
+    def __repr__(self):
+        return f"Timesheet(id={self.id}, tag={self.project.tag}, period_start={self.period_start}, period_end={self.period_end})"
+
+    @property
+    def prefix(self) -> str:
+        return f"{self.project.tag[1:]}-{self.period_start.strftime('%Y-%m-%d')}-{self.period_end.strftime('%Y-%m-%d')}"
 
     @property
     def total(self) -> datetime.timedelta:
@@ -517,16 +545,14 @@ class Invoice(SQLModel, table=True):
     """An invoice is a bill for a client."""
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    number: str
+    number: Optional[str] = Field(description="The invoice number. Auto-generated.")
     # date and time
     date: datetime.date = Field(
         description="The date of the invoice",
     )
-    # due_date: datetime.date
-    # sent_date: datetime.date
-    # Invoice 1:n Timesheet ?
-    # timesheet_id: Optional[int] = Field(default=None, foreign_key="timesheet.id")
-    # timesheet: Timesheet = Relationship(back_populates="invoice")
+
+    # RELATIONSHIPTS
+
     # Invoice n:1 Contract ?
     contract_id: Optional[int] = Field(default=None, foreign_key="contract.id")
     contract: Contract = Relationship(
@@ -539,6 +565,12 @@ class Invoice(SQLModel, table=True):
         back_populates="invoices",
         sa_relationship_kwargs={"lazy": "subquery"},
     )
+    # Invoice 1:n Timesheet
+    timesheets: List[Timesheet] = Relationship(
+        back_populates="invoice",
+        sa_relationship_kwargs={"lazy": "subquery"},
+    )
+
     # status -- corresponds to InvoiceStatus enum above
     sent: Optional[bool] = Field(default=False)
     paid: Optional[bool] = Field(default=False)
@@ -554,7 +586,7 @@ class Invoice(SQLModel, table=True):
     )
     rendered: bool = Field(
         default=False,
-        description="If the invoice has been rendered as a PDF.",
+        description="Whether the invoice has been rendered as a PDF.",
     )
 
     #
@@ -573,7 +605,7 @@ class Invoice(SQLModel, table=True):
         """Total invoiced amount."""
         return self.sum + self.VAT_total
 
-    def generate_number(self, pattern=None, counter=None):
+    def generate_number(self, pattern=None, counter=None) -> str:
         """Generate an invoice number"""
         date_prefix = self.date.strftime("%Y-%m-%d")
         # suffix = hashlib.shake_256(str(uuid.uuid4()).encode("utf-8")).hexdigest(2)
@@ -584,9 +616,12 @@ class Invoice(SQLModel, table=True):
         self.number = f"{date_prefix}-{suffix}"
 
     @property
-    def due_date(self):
+    def due_date(self) -> Optional[datetime.date]:
         """Date until which payment is due."""
-        return self.date + datetime.timedelta(days=self.contract.term_of_payment)
+        if self.contract.term_of_payment:
+            return self.date + datetime.timedelta(days=self.contract.term_of_payment)
+        else:
+            return None
 
     @property
     def client(self):
@@ -597,7 +632,7 @@ class Invoice(SQLModel, table=True):
         """A string that can be used as the prefix of a file name, or a folder name."""
         client_suffix = ""
         if self.client:
-            client_suffix = self.client.name.lower().split()[0]
+            client_suffix = "-".join(self.client.name.lower().split())
         prefix = f"{self.number}-{client_suffix}"
         return prefix
 

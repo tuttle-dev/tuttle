@@ -37,6 +37,7 @@ def generate_invoice(
             VAT_rate=contract.VAT_rate,
             description=timesheet.title,
         )
+
     # TODO: replace with auto-incrementing numbers
     invoice.generate_number(counter=counter)
     return invoice

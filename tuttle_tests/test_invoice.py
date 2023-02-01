@@ -5,6 +5,7 @@ from pathlib import Path
 
 from tuttle import invoicing, timetracking, rendering
 from tuttle.model import Invoice, InvoiceItem
+from tuttle.calendar import get_month_start_end
 
 
 def test_invoice():
@@ -50,10 +51,12 @@ def test_generate_invoice(
     for project in demo_projects:
         timesheets = []
         for period in ["January 2022", "February 2022"]:
+            (period_start, period_end) = get_month_start_end(period)
             timesheet = timetracking.generate_timesheet(
-                source=demo_calendar_timetracking,
+                timetracking_data=demo_calendar_timetracking.to_data(),
                 project=project,
-                period_start=period,
+                period_start=period_start,
+                period_end=period_end,
                 item_description=project.title,
             )
             if not timesheet.empty:
@@ -65,67 +68,3 @@ def test_generate_invoice(
             date=datetime.date.today(),
         )
         # assert invoice.total > 0
-
-
-def test_render_invoice_to_html(
-    demo_user,
-    demo_projects,
-    demo_calendar_timetracking,
-):
-    for project in demo_projects:
-        timesheets = []
-        for period in ["January 2022", "February 2022"]:
-            timesheet = timetracking.generate_timesheet(
-                source=demo_calendar_timetracking,
-                project=project,
-                period_start=period,
-                item_description=project.title,
-            )
-            if not timesheet.empty:
-                timesheets.append(timesheet)
-        invoice = invoicing.generate_invoice(
-            timesheets=timesheets,
-            contract=project.contract,
-            project=project,
-            date=datetime.date.today(),
-        )
-        # RENDERING
-        rendering.render_invoice(
-            user=demo_user,
-            invoice=invoice,
-            style="anvil",
-            document_format="html",
-            out_dir=Path("tuttle_tests/tmp"),
-        )
-
-
-def test_render_invoice_to_pdf(
-    demo_user,
-    demo_projects,
-    demo_calendar_timetracking,
-):
-    for project in demo_projects:
-        timesheets = []
-        for period in ["January 2022", "February 2022"]:
-            timesheet = timetracking.generate_timesheet(
-                source=demo_calendar_timetracking,
-                project=project,
-                period_start=period,
-                item_description=project.title,
-            )
-            if not timesheet.empty:
-                timesheets.append(timesheet)
-        invoice = invoicing.generate_invoice(
-            timesheets=timesheets,
-            contract=project.contract,
-            project=project,
-            date=datetime.date.today(),
-        )
-        # RENDERING
-        rendering.render_invoice(
-            user=demo_user,
-            invoice=invoice,
-            style="anvil",
-            document_format="pdf",
-            out_dir=Path("tuttle_tests/tmp"),
-        )

@@ -15,7 +15,7 @@ from .calendar import Calendar, ICloudCalendar, ICSCalendar
 from .model import Project, Timesheet, TimeTrackingItem, User
 
 
-def create_timesheet(
+def generate_timesheet(
     timetracking_data: DataFrame,
     project: Project,
     period_start: datetime.date,
@@ -52,84 +52,8 @@ def create_timesheet(
     period_str = f"{period_start} - {period_end}"
     ts = Timesheet(
         title=f"{project.title} - {period_str}",
-        # period=period,
-        project=project,
-        comment=comment,
-        date=date,
-    )
-    for record in ts_table.reset_index().to_dict("records"):
-        ts.items.append(TimeTrackingItem(**record))
-
-    return ts
-
-
-@deprecated
-def generate_timesheet(
-    source,
-    project: Project,
-    period_start: str,
-    period_end: str = None,
-    date: datetime.date = datetime.date.today(),
-    comment: str = "",
-    group_by: str = None,
-    item_description: str = None,
-    as_dataframe: bool = False,
-) -> Timesheet:
-    if period_end:
-        period = (period_start, period_end)
-        period_str = f"{period_start} - {period_end}"
-    else:
-        period = period_start
-        period_str = f"{period_start}"
-    # convert cal to data
-    timetracking_data = None
-    if issubclass(type(source), Calendar):
-        cal = source
-        timetracking_data = cal.to_data()
-    elif isinstance(source, pandas.DataFrame):
-        timetracking_data = source
-        schema.time_tracking.validate(timetracking_data)
-    else:
-        raise ValueError(f"unknown source: {source}")
-    tag_query = f"tag == '{project.tag}'"
-    if period_end:
-        ts_table = (
-            timetracking_data.loc[period_start:period_end].query(tag_query).sort_index()
-        )
-    else:
-        ts_table = timetracking_data.loc[period_start].query(tag_query).sort_index()
-    # convert all-day entries
-    ts_table.loc[ts_table["all_day"], "duration"] = (
-        project.contract.unit.to_timedelta() * project.contract.units_per_workday
-    )
-    if item_description:
-        # TODO: extract item description from calendar
-        ts_table["description"] = item_description
-    # assert not ts_table.empty
-    if as_dataframe:
-        return ts_table
-
-    # TODO: grouping
-    if group_by is None:
-        pass
-    elif group_by == "day":
-        ts_table = ts_table.reset_index()
-        ts_table = ts_table.groupby(by=ts_table["begin"].dt.date).agg(
-            {
-                "title": "first",
-                "tag": "first",
-                "description": "first",
-                "duration": "sum",
-            }
-        )
-    elif group_by == "week":
-        raise NotImplementedError("TODO")
-    else:
-        raise ValueError(f"unknown group_by argument: {group_by}")
-
-    ts = Timesheet(
-        title=f"{project.title} - {period_str}",
-        period=period,
+        period_start=period_start,
+        period_end=period_end,
         project=project,
         comment=comment,
         date=date,
