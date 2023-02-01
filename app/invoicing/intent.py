@@ -45,10 +45,6 @@ class InvoicingIntent(Intent):
         self._user_data_source = UserDataSource()
         self._auth_intent = AuthIntent()
 
-    def get_user(self) -> Optional[User]:
-        """Get the current user."""
-        return self._auth_intent.get_user_if_exists()
-
     def get_active_projects_as_map(self) -> Mapping[int, Project]:
         return self._projects_intent.get_active_projects_as_map()
 
@@ -95,11 +91,12 @@ class InvoicingIntent(Intent):
         render: bool = True,
     ) -> IntentResult[Invoice]:
         """Create a new invoice from time tracking data."""
-
+        user = self._user_data_source.get_user()
         try:
             # get the time tracking data
             timetracking_data = self._timetracking_data_source.get_data_frame()
-            timesheet: Timesheet = timetracking.create_timesheet(
+            # generate timesheet
+            timesheet: Timesheet = timetracking.generate_timesheet(
                 timetracking_data,
                 project,
                 from_date,
@@ -116,7 +113,20 @@ class InvoicingIntent(Intent):
             )
 
             if render:
-                # TODO: render timesheet
+                # render timesheet
+                try:
+                    rendering.render_timesheet(
+                        user=user,
+                        timesheet=timesheet,
+                        out_dir=Path.home() / ".tuttle" / "Timesheets",
+                        only_final=True,
+                    )
+                    logger.info(f"✅ rendered timesheet for {project.title}")
+                except Exception as ex:
+                    logger.error(
+                        f"❌ Error rendering timesheet for {project.title}: {ex}"
+                    )
+                    logger.exception(ex)
                 # render invoice
                 try:
                     rendering.render_invoice(

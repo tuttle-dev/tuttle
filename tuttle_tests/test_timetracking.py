@@ -68,7 +68,7 @@ def test_create_timesheet(
     # create a timesheet
     period_start = datetime.date(2022, 1, 1)
     period_end = datetime.date(2022, 12, 31)
-    timesheet = timetracking.create_timesheet(
+    timesheet = timetracking.generate_timesheet(
         timetracking_data, project, period_start, period_end
     )
 
