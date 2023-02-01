@@ -8,6 +8,7 @@ import functools
 from flet import AlertDialog, file_picker
 
 import sqlmodel
+from sqlmodel import pool
 
 from loguru import logger
 
@@ -189,7 +190,7 @@ class SQLModelDataSourceMixin:
             db_path,
             echo=False,
             connect_args={"check_same_thread": False},
-            poolclass=sqlmodel.pool.StaticPool,
+            poolclass=pool.StaticPool,
         )
 
     def create_session(self):
