@@ -42,10 +42,10 @@ class PaymentDataForm(UserControl):
         if not self.user.bank_account:
             # Create a new bank account if none exists
             self.user.bank_account = BankAccount(name="", BIC="", IBAN="")
-        self.bank_ibc_field.value = self.bank_bic = self.user.bank_account.BIC
-        self.bank_name_field.value = self.bank_name = self.user.bank_account.name
-        self.bank_iban_field.value = self.bank_iban = self.user.bank_account.IBAN
-        self.vat_number_field.value = self.vat_number = self.user.VAT_number
+        self.bank_bic_field.value = self.user.bank_account.BIC
+        self.bank_name_field.value = self.user.bank_account.name
+        self.bank_iban_field.value = self.user.bank_account.IBAN
+        self.vat_number_field.value = self.user.VAT_number
 
     def update_form_data(self, user: User):
         """Updates the user's data with the form data"""
@@ -53,45 +53,29 @@ class PaymentDataForm(UserControl):
         self.set_form_data()
         self.update()
 
-    def on_vat_number_changed(self, e):
-        """Called when the VAT number field is changed"""
-        self.vat_number = e.control.value
-        self.user.VAT_number = self.vat_number
-
-    def on_bank_bic_changed(self, e):
-        """Called when the bank BIC field is changed"""
-        self.bank_bic = e.control.value
-        self.user.bank_account.BIC = self.bank_bic
-
-    def on_bank_iban_changed(self, e):
-        """Called when the bank IBAN field is changed"""
-        self.bank_iban = e.control.value
-        self.user.bank_account.IBAN = self.bank_iban
-
-    def on_bank_name_changed(self, e):
-        """Called when the bank name field is changed"""
-        self.bank_name = e.control.value
-        self.user.bank_account.name = self.bank_name
+    def on_click_save(self, e):
+        """Called when the save button is clicked"""
+        self.user.VAT_number = self.vat_number_field.value
+        self.user.bank_account.BIC = self.bank_bic_field.value
+        self.user.bank_account.IBAN = self.bank_iban_field.value
+        self.user.bank_account.name = self.bank_name_field.value
+        self.on_form_submit(self.user)
 
     def build(self):
         """Called when form is built"""
         self.vat_number_field = views.TTextField(
-            on_change=self.on_vat_number_changed,
             label="VAT Number",
             hint="Value Added Tax number of the user, legally required for invoices.",
         )
         self.bank_name_field = views.TTextField(
-            on_change=self.on_bank_name_changed,
             label="Name",
             hint="Name of account",
         )
         self.bank_iban_field = views.TTextField(
-            on_change=self.on_bank_iban_changed,
             label="IBAN",
             hint="International Bank Account Number",
         )
-        self.bank_ibc_field = views.TTextField(
-            on_change=self.on_bank_bic_changed,
+        self.bank_bic_field = views.TTextField(
             label="BIC",
             hint="Bank Identifier Code",
         )
@@ -103,11 +87,11 @@ class PaymentDataForm(UserControl):
                 views.TSubHeading("Bank Account"),
                 self.bank_name_field,
                 self.bank_iban_field,
-                self.bank_ibc_field,
+                self.bank_bic_field,
                 views.Spacer(),
                 views.TPrimaryButton(
                     label="Save",
-                    on_click=lambda e: self.on_form_submit(self.user),
+                    on_click=self.on_click_save,
                 ),
             ],
         )
@@ -133,16 +117,6 @@ class UserDataForm(UserControl):
         submit_btn_label : str
             The label to display on the submit button
         """
-        self.name = ""
-        self.email = ""
-        self.phone = ""
-        self.title = ""
-        self.street = ""
-        self.street_number = ""
-        self.postal_code = ""
-        self.city = ""
-        self.country = ""
-        self.website = ""
         self.on_form_submit = on_form_submit
         self.on_submit_success = on_submit_success
         self.submit_btn_label = submit_btn_label
@@ -161,15 +135,11 @@ class UserDataForm(UserControl):
             self.name_field,
             self.email_field,
             self.phone_field,
-            self.title_field,
+            self.subtitle_field,
         ]:
             field.error_text = ""
         self.toggle_form_err()
         self.update()
-
-    def on_field_value_changed(self, form_property, e):
-        """updates the property corresponding to this form field"""
-        setattr(self, form_property, e.control.value)
 
     def on_submit_btn_clicked(self, e):
         # prevent multiple clicking
@@ -179,22 +149,38 @@ class UserDataForm(UserControl):
         self.toggle_form_err()
 
         missing_required_data_err = ""
-        if utils.is_empty_str(self.name):
+
+        # get the form data
+        subtitle = self.subtitle_field.value
+        name = self.name_field.value
+        email = self.email_field.value
+        phone_number = self.phone_field.value
+        address_street = self.street_field.value
+        address_postal_code = self.postal_code_field.value
+        address_number = self.street_number_field.value
+        address_city = self.city_field.value
+        address_country = self.country_field.value
+        website = self.website_field.value
+
+        # validate the form data
+        if utils.is_empty_str(subtitle):
+            missing_required_data_err = "Please specify your job title. e.g. freelancer"
+            self.subtitle_field.error_text = missing_required_data_err
+
+        elif utils.is_empty_str(name):
             missing_required_data_err = "Your name is required."
             self.name_field.error_text = missing_required_data_err
-        elif utils.is_empty_str(self.email):
+
+        elif utils.is_empty_str(email):
             missing_required_data_err = "Your email is required."
             self.email_field.error_text = missing_required_data_err
-        elif utils.is_empty_str(self.title):
-            missing_required_data_err = "Please specify your job title. e.g. freelancer"
-            self.title_field.error_text = missing_required_data_err
 
         elif (
-            utils.is_empty_str(self.street)
-            or utils.is_empty_str(self.street_number)
-            or utils.is_empty_str(self.postal_code)
-            or utils.is_empty_str(self.country)
-            or utils.is_empty_str(self.city)
+            utils.is_empty_str(address_street)
+            or utils.is_empty_str(address_number)
+            or utils.is_empty_str(address_postal_code)
+            or utils.is_empty_str(address_country)
+            or utils.is_empty_str(address_city)
         ):
 
             missing_required_data_err = "Please provide your full address"
@@ -203,16 +189,16 @@ class UserDataForm(UserControl):
         if not missing_required_data_err:
             # save user
             result: IntentResult = self.on_form_submit(
-                title=self.title,
-                name=self.name,
-                email=self.email,
-                phone=self.phone,
-                street=self.street,
-                street_num=self.street_number,
-                postal_code=self.postal_code,
-                city=self.city,
-                country=self.country,
-                website=self.website,
+                title=subtitle,
+                name=name,
+                email=email,
+                phone=phone_number,
+                street=address_street,
+                street_num=address_number,
+                postal_code=address_postal_code,
+                city=address_city,
+                country=address_country,
+                website=website,
             )
             if not result.was_intent_successful:
                 self.toggle_form_err(result.error_msg)
@@ -226,67 +212,54 @@ class UserDataForm(UserControl):
     def build(self):
         """Called when form is built"""
         self.name_field = views.TTextField(
-            lambda e: self.on_field_value_changed("name", e),
-            "Name",
-            "your name",
+            label="Name",
+            hint="your name",
             on_focus=self.on_field_focus,
             keyboard_type=utils.KEYBOARD_NAME,
         )
         self.email_field = views.TTextField(
-            lambda e: self.on_field_value_changed("email", e),
-            "Email",
-            "your email address",
+            label="Email",
+            hint="your email address",
             on_focus=self.on_field_focus,
             keyboard_type=utils.KEYBOARD_EMAIL,
         )
         self.phone_field = views.TTextField(
-            lambda e: self.on_field_value_changed("phone", e),
-            "Phone (optional)",
-            "your phone number",
+            label="Phone (optional)",
+            hint="your phone number",
             on_focus=self.on_field_focus,
             keyboard_type=utils.KEYBOARD_PHONE,
         )
-        self.title_field = views.TTextField(
-            lambda e: self.on_field_value_changed("title", e),
-            "Job Title",
-            "What is your role as a freelancer?",
+        self.subtitle_field = views.TTextField(
+            label="Job Title",
+            hint="What is your role as a freelancer?",
             on_focus=self.on_field_focus,
             keyboard_type=utils.KEYBOARD_TEXT,
         )
         self.website_field = views.TTextField(
-            lambda e: self.on_field_value_changed("website", e),
-            "Website (optional)",
-            "URL of your website.",
+            label="Website (optional)",
+            hint="URL of your website.",
         )
         self.street_field = views.TTextField(
-            lambda e: self.on_field_value_changed("street", e),
             label="Street Name",
-            keyboard_type=utils.KEYBOARD_TEXT,
             expand=1,
         )
         self.street_number_field = views.TTextField(
-            lambda e: self.on_field_value_changed("street_number", e),
             label="Street Number",
             keyboard_type=utils.KEYBOARD_NUMBER,
             expand=1,
         )
         self.postal_code_field = views.TTextField(
-            lambda e: self.on_field_value_changed("postal_code", e),
             label="Postal Code",
             keyboard_type=utils.KEYBOARD_NUMBER,
             expand=1,
         )
 
         self.city_field = views.TTextField(
-            lambda e: self.on_field_value_changed("city", e),
             label="City",
-            keyboard_type=utils.KEYBOARD_TEXT,
             expand=1,
         )
         self.country_field = views.TTextField(
-            lambda e: self.on_field_value_changed("country", e),
             label="Country",
-            keyboard_type=utils.KEYBOARD_TEXT,
         )
         self.form_err_control = views.TErrorText("")
         self.submit_btn = views.TPrimaryButton(
@@ -296,7 +269,7 @@ class UserDataForm(UserControl):
         return Column(
             spacing=dimens.SPACE_MD,
             controls=[
-                self.title_field,
+                self.subtitle_field,
                 self.name_field,
                 self.email_field,
                 self.phone_field,
@@ -324,16 +297,16 @@ class UserDataForm(UserControl):
     def refresh_user_info(self, user: User):
         if user is None:
             return
-        self.name_field.value = self.name = user.name
-        self.email_field.value = self.email = user.email
-        self.phone_field.value = self.phone = user.phone_number
-        self.title_field.value = self.title = user.subtitle
-        self.street_field.value = self.street = user.address.street
-        self.postal_code_field.value = self.postal_code = user.address.postal_code
-        self.street_number_field.value = self.street_number = user.address.number
-        self.city_field.value = self.city = user.address.city
-        self.country_field.value = self.country = user.address.country
-        self.website_field.value = self.website = user.website
+        self.name_field.value = user.name
+        self.email_field.value = user.email
+        self.phone_field.value = user.phone_number
+        self.subtitle_field.value = user.subtitle
+        self.street_field.value = user.address.street
+        self.postal_code_field.value = user.address.postal_code
+        self.street_number_field.value = user.address.number
+        self.city_field.value = user.address.city
+        self.country_field.value = user.address.country
+        self.website_field.value = user.website
         self.update()
 
 

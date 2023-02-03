@@ -5,7 +5,6 @@ from flet import (
     Card,
     Column,
     Container,
-    GridView,
     Icon,
     ListTile,
     ResponsiveRow,
@@ -125,7 +124,7 @@ class ClientViewPopUp(DialogHandler, UserControl):
 
 
 class ClientEditorPopUp(DialogHandler, UserControl):
-    """Pop up used for editing a client"""
+    """Pop up used for creating or updating a client"""
 
     def __init__(
         self,
@@ -164,65 +163,62 @@ class ClientEditorPopUp(DialogHandler, UserControl):
         )
 
         self.first_name_field = views.TTextField(
-            on_change=self.on_fname_changed,
             label="First Name",
             hint=self.invoicing_contact.first_name,
             initial_value=self.invoicing_contact.first_name,
         )
 
         self.last_name_field = views.TTextField(
-            on_change=self.on_lname_changed,
             label="Last Name",
             hint=self.invoicing_contact.last_name,
             initial_value=self.invoicing_contact.last_name,
         )
         self.company_field = views.TTextField(
-            on_change=self.on_company_changed,
             label="Company",
             hint=self.invoicing_contact.company,
             initial_value=self.invoicing_contact.company,
         )
         self.email_field = views.TTextField(
-            on_change=self.on_email_changed,
             label="Email",
             hint=self.invoicing_contact.email,
             initial_value=self.invoicing_contact.email,
         )
 
         self.street_field = views.TTextField(
-            on_change=self.on_street_changed,
             label="Street",
             hint=self.invoicing_contact.address.street,
             initial_value=self.invoicing_contact.address.street,
             width=half_of_pop_up_width,
         )
         self.street_num_field = views.TTextField(
-            on_change=self.on_street_num_changed,
             label="Street No.",
             hint=self.invoicing_contact.address.number,
             initial_value=self.invoicing_contact.address.number,
             width=half_of_pop_up_width,
         )
         self.postal_code_field = views.TTextField(
-            on_change=self.on_postal_code_changed,
             label="Postal code",
             hint=self.invoicing_contact.address.postal_code,
             initial_value=self.invoicing_contact.address.postal_code,
             width=half_of_pop_up_width,
         )
         self.city_field = views.TTextField(
-            on_change=self.on_city_changed,
             label="City",
             hint=self.invoicing_contact.address.city,
             initial_value=self.invoicing_contact.address.city,
             width=half_of_pop_up_width,
         )
         self.country_field = views.TTextField(
-            on_change=self.on_country_changed,
             label="Country",
             hint=self.invoicing_contact.address.country,
             initial_value=self.invoicing_contact.address.country,
         )
+        self.client_name_field = views.TTextField(
+            label="Client's name",
+            hint=self.client.name,
+            initial_value=self.client.name,
+        )
+
         self.contacts_dropdown = views.TDropDown(
             on_change=self.on_contact_selected,
             label="Select contact",
@@ -241,12 +237,7 @@ class ClientEditorPopUp(DialogHandler, UserControl):
                         views.Spacer(xs_space=True),
                         self.form_error_field,
                         views.Spacer(xs_space=True),
-                        views.TTextField(
-                            on_change=self.on_client_name_changed,
-                            label="Client's name",
-                            hint=self.client.name,
-                            initial_value=self.client.name,
-                        ),
+                        self.client_name_field,
                         views.Spacer(xs_space=True),
                         views.THeading(
                             title="Invoicing Contact",
@@ -282,16 +273,6 @@ class ClientEditorPopUp(DialogHandler, UserControl):
             ],
         )
         super().__init__(dialog=dialog, dialog_controller=dialog_controller)
-        self.title = ""
-        self.fname = ""
-        self.lname = ""
-        self.company = ""
-        self.email = ""
-        self.street = ""
-        self.street_num = ""
-        self.postal_code = ""
-        self.city = ""
-        self.country = ""
         self.on_submit_callback = on_submit
         self.on_error_callback = on_error
         self.form_error = ""
@@ -305,10 +286,10 @@ class ClientEditorPopUp(DialogHandler, UserControl):
                 contacts_list.append(item)
         return contacts_list
 
-    def get_contact_dropdown_item(self, key):
+    def get_contact_dropdown_item(self, contact_id):
         """appends an id to the contact name for dropdown options"""
-        if key is not None and key in self.contacts_as_map:
-            return f"#{key} {self.contacts_as_map[key].name}"
+        if contact_id is not None and contact_id in self.contacts_as_map:
+            return f"{contact_id}. {self.contacts_as_map[contact_id].name}"
         return ""
 
     def on_contact_selected(self, e):
@@ -316,9 +297,7 @@ class ClientEditorPopUp(DialogHandler, UserControl):
         selected = e.control.value
         id = ""
         for c in selected:
-            if c == "#":
-                continue
-            if c == " ":
+            if c == ".":
                 break
             id = id + c
         if int(id) in self.contacts_as_map:
@@ -343,86 +322,60 @@ class ClientEditorPopUp(DialogHandler, UserControl):
         self.form_error_field.visible = True if self.form_error else False
         self.dialog.update()
 
-    def on_client_name_changed(self, e):
-        self.title = e.control.value
-
-    def on_fname_changed(self, e):
-        self.fname = e.control.value
-
-    def on_lname_changed(self, e):
-        self.lname = e.control.value
-
-    def on_company_changed(self, e):
-        self.company = e.control.value
-
-    def on_email_changed(self, e):
-        self.email = e.control.value
-
-    def on_street_changed(self, e):
-        self.street = e.control.value
-
-    def on_street_num_changed(self, e):
-        self.street_num = e.control.value
-
-    def on_postal_code_changed(self, e):
-        self.postal_code = e.control.value
-
-    def on_city_changed(self, e):
-        self.city = e.control.value
-
-    def on_country_changed(self, e):
-        self.country = e.control.value
-
     def on_submit_btn_clicked(self, e):
         """validates the form and calls the on_submit callback"""
         self.form_error = ""
         self.toggle_form_error()
 
+        # get values from fields
+        client_name =  self.client_name_field.value.strip()
+        first_name =  self.first_name_field.value.strip()
+        last_name =  self.last_name_field.value.strip()
+        company =  self.company_field.value.strip()
+        email =  self.email_field.value.strip()
+        street =  self.street_field.value.strip()
+        street_num =  self.street_num_field.value.strip()
+        postal_code =  self.postal_code_field.value.strip()
+        city =  self.city_field.value.strip()
+        country =  self.country_field.value.strip()
+
+        # update where updated else keep old value
         self.client.name = (
-            self.title.strip() if self.title.strip() else self.client.name
+            client_name if client_name else self.client.name
         )
         self.invoicing_contact.first_name = (
-            self.fname.strip()
-            if self.fname.strip()
-            else self.invoicing_contact.first_name
+            first_name if first_name else self.invoicing_contact.first_name
         )
         self.invoicing_contact.last_name = (
-            self.lname.strip()
-            if self.lname.strip()
+            last_name if last_name
             else self.invoicing_contact.last_name
         )
         self.invoicing_contact.company = (
-            self.company.strip()
-            if self.company.strip()
+            company if company
             else self.invoicing_contact.company
         )
         self.invoicing_contact.email = (
-            self.email.strip() if self.email.strip() else self.invoicing_contact.email
+            email if email else self.invoicing_contact.email
         )
         self.address.street = (
-            self.street.strip()
-            if self.street.strip()
+            street if street
             else self.invoicing_contact.address.street
         )
 
         self.address.number = (
-            self.street_num.strip()
-            if self.street_num.strip()
+            street_num if street_num
             else self.invoicing_contact.address.number
         )
         self.address.postal_code = (
-            self.postal_code.strip()
-            if self.postal_code.strip()
+            postal_code if postal_code
             else self.invoicing_contact.address.postal_code
         )
         self.address.city = (
-            self.city.strip()
-            if self.city.strip()
+            city if city
             else self.invoicing_contact.address.city
         )
         self.address.country = (
-            self.country.strip()
-            if self.country.strip()
+            country if country
             else self.invoicing_contact.address.country
         )
         self.invoicing_contact.address = self.address
@@ -485,13 +438,7 @@ class ClientsListView(TView, UserControl):
                 )
             ]
         )
-        self.clients_container = GridView(
-            expand=False,
-            max_extent=540,
-            child_aspect_ratio=1.0,
-            spacing=dimens.SPACE_STD,
-            run_spacing=dimens.SPACE_MD,
-        )
+        self.clients_container = views.THomeGrid()
         self.clients_to_display = {}
         self.contacts = {}
         self.editor = None
