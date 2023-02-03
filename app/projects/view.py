@@ -960,50 +960,33 @@ class ProjectEditorScreen(TView, UserControl):
             label="Create Project",
             on_click=self.on_save,
         )
-        view = Container(
-            expand=True,
-            padding=padding.all(dimens.SPACE_MD),
-            margin=margin.symmetric(vertical=dimens.SPACE_MD),
-            content=Card(
-                expand=True,
-                content=Container(
-                    Column(
-                        expand=True,
-                        controls=[
-                            Row(
-                                controls=[
-                                    IconButton(
-                                        icon=icons.CHEVRON_LEFT_ROUNDED,
-                                        on_click=self.navigate_back,
-                                        icon_size=dimens.ICON_SIZE,
-                                    ),
-                                    self.form_title,
-                                ]
-                            ),
-                            self.loading_indicator,
-                            views.Spacer(md_space=True),
-                            self.title_field,
-                            views.Spacer(),
-                            self.description_field,
-                            views.Spacer(),
-                            self.contract_editor,
-                            views.Spacer(),
-                            self.tag_field,
-                            views.Spacer(lg_space=True),
-                            self.start_date_field,
-                            views.Spacer(lg_space=True),
-                            self.end_date_field,
-                            views.Spacer(lg_space=True),
-                            self.submit_btn,
-                        ],
-                    ),
-                    padding=padding.all(dimens.SPACE_MD),
-                    width=dimens.MIN_WINDOW_WIDTH,
+        return views.TFullScreenFormContainer(
+            form_controls=[
+                Row(
+                    controls=[
+                        views.TBackButton(
+                            on_click=self.navigate_back,
+                        ),
+                        self.form_title,
+                    ]
                 ),
-            ),
+                self.loading_indicator,
+                views.Spacer(md_space=True),
+                self.title_field,
+                views.Spacer(),
+                self.description_field,
+                views.Spacer(),
+                self.contract_editor,
+                views.Spacer(),
+                self.tag_field,
+                views.Spacer(lg_space=True),
+                self.start_date_field,
+                views.Spacer(lg_space=True),
+                self.end_date_field,
+                views.Spacer(lg_space=True),
+                self.submit_btn,
+            ],
         )
-
-        return view
 
     def did_mount(self):
         """Called when the view is mounted"""

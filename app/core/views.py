@@ -6,6 +6,8 @@ import datetime
 from flet import (
     AlertDialog,
     Column,
+    Card,
+    IconButton,
     Container,
     Dropdown,
     ElevatedButton,
@@ -875,4 +877,34 @@ class THomeGrid(GridView):
             max_extent=max_extent,
             spacing=spacing,
             run_spacing=run_spacing,
+        )
+
+
+class TBackButton(IconButton):
+    """Returns a back button"""
+
+    def __init__(self, on_click: Optional[Callable] = None):
+        return super().__init__(
+            icon=icons.CHEVRON_LEFT_ROUNDED,
+            on_click=on_click,
+            icon_size=dimens.ICON_SIZE,
+        )
+
+
+class TFullScreenFormContainer(Container):
+    """Returns a container for a full screen form"""
+
+    def __init__(self, form_controls: list[UserControl]):
+        return super().__init__(
+            expand=True,
+            padding=padding.all(dimens.SPACE_MD),
+            margin=margin.symmetric(vertical=dimens.SPACE_MD),
+            content=Card(
+                expand=True,
+                content=Container(
+                    Column(expand=True, controls=form_controls),
+                    padding=padding.all(dimens.SPACE_MD),
+                    width=dimens.MIN_WINDOW_WIDTH,
+                ),
+            ),
         )
