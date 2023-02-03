@@ -5,7 +5,6 @@ from flet import (
     Card,
     Column,
     Container,
-    GridView,
     Icon,
     ListTile,
     ResponsiveRow,
@@ -288,13 +287,7 @@ class ContactsListView(TView, UserControl):
                 )
             ]
         )
-        self.contacts_container = GridView(
-            expand=False,
-            max_extent=540,
-            child_aspect_ratio=1.0,
-            spacing=dimens.SPACE_STD,
-            run_spacing=dimens.SPACE_MD,
-        )
+        self.contacts_container = views.THomeGrid()
         self.contacts_to_display = {}
         self.editor = None
 

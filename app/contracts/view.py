@@ -8,7 +8,6 @@ from flet import (
     Column,
     Container,
     ElevatedButton,
-    GridView,
     Icon,
     IconButton,
     ListTile,
@@ -715,13 +714,7 @@ class ContractsListView(TView, UserControl):
                 )
             ]
         )
-        self.contracts_container = GridView(
-            expand=False,
-            max_extent=540,
-            child_aspect_ratio=1.0,
-            spacing=dimens.SPACE_STD,
-            run_spacing=dimens.SPACE_MD,
-        )
+        self.contracts_container = views.THomeGrid()
         self.contracts_to_display = {}
         self.pop_up_handler = None
 

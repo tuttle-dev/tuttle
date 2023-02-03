@@ -9,7 +9,6 @@ from flet import (
     Container,
     ElevatedButton,
     FontWeight,
-    GridView,
     Icon,
     IconButton,
     ListTile,
@@ -629,13 +628,7 @@ class ProjectsListView(TView, UserControl):
                 )
             ]
         )
-        self.projects_container = GridView(
-            expand=False,
-            max_extent=560,
-            child_aspect_ratio=1.0,
-            spacing=dimens.SPACE_STD,
-            run_spacing=dimens.SPACE_MD,
-        )
+        self.projects_container = views.THomeGrid(max_extent=600)
         self.projects_to_display = {}
         self.dialog = None
 

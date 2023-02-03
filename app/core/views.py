@@ -10,7 +10,7 @@ from flet import (
     Dropdown,
     ElevatedButton,
     FilledButton,
-    OutlinedButton,
+    GridView,
     Icon,
     Image,
     PopupMenuButton,
@@ -857,4 +857,22 @@ class TNavigationMenu(NavigationRail):
             min_extended_width=width,
             destinations=destinations,
             on_change=on_change,
+        )
+
+
+class THomeGrid(GridView):
+    """Returns a grid view used in the home screen"""
+
+    def __init__(
+        self,
+        expand: bool = False,
+        max_extent: int = 540,
+        spacing: int = dimens.SPACE_STD,
+        run_spacing: int = dimens.SPACE_STD,
+    ):
+        return super().__init__(
+            expand=expand,
+            max_extent=max_extent,
+            spacing=spacing,
+            run_spacing=run_spacing,
         )
