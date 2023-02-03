@@ -340,6 +340,7 @@ class ClientEditorPopUp(DialogHandler, UserControl):
         city =  self.city_field.value.strip()
         country =  self.country_field.value.strip()
 
+        # update where updated else keep old value
         self.client.name = (
             client_name if client_name else self.client.name
         )
