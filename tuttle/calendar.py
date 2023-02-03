@@ -4,6 +4,7 @@ from typing import Optional
 from pathlib import Path
 import io
 import re
+import calendar
 
 from loguru import logger
 import ics
@@ -21,7 +22,7 @@ from . import schema
 
 def extract_hashtag(string) -> str:
     """Extract the first hashtag from a string."""
-    match = re.search(r"#(\S+)", string)
+    match = re.search(r"(#\S+)", string)
     if match:
         return match.group(1)
     else:
@@ -180,3 +181,17 @@ class GoogleCalendar(CloudCalendar):
 
     def to_data(self) -> DataFrame:
         raise NotImplementedError("TODO")
+
+
+def get_month_start_end(month_str):
+    # Parse the string into a datetime object
+    dt = datetime.datetime.strptime(month_str, "%B %Y")
+
+    # Get the date information from the datetime object
+    year, month = dt.date().year, dt.date().month
+
+    # Get the start and end dates of the month
+    start_date = datetime.date(year, month, 1)
+    end_date = datetime.date(year, month, calendar.monthrange(year, month)[1])
+
+    return start_date, end_date

@@ -117,11 +117,11 @@ def _convert_html_to_pdf_with_QT(
 def render_invoice(
     user: User,
     invoice: Invoice,
+    out_dir,
     document_format: str = "pdf",
-    out_dir: str = None,
     style: str = "anvil",
     only_final: bool = False,
-) -> str:
+):
     """Render an Invoice using an HTML template.
 
     Args:
@@ -203,8 +203,6 @@ def render_invoice(
                     invoice_dir / Path(f"{invoice.prefix}.html"), final_output_path
                 )
             shutil.rmtree(invoice_dir)
-        # finally set the rendered flag
-        invoice.rendered = True
     # finally set the rendered flag
     invoice.rendered = True
 
@@ -212,10 +210,11 @@ def render_invoice(
 def render_timesheet(
     user: User,
     timesheet: Timesheet,
-    document_format: str = "html",
-    out_dir: str = None,
+    out_dir,
+    document_format: str = "pdf",
     style: str = "anvil",
-) -> str:
+    only_final: bool = False,
+):
     """Render a Timeseheet using an HTML template.
 
     Args:
@@ -239,7 +238,7 @@ def render_timesheet(
         return html
     else:
         # write invoice html
-        prefix = f"Timesheet-{timesheet.title}"
+        prefix = timesheet.prefix
         timesheet_dir = Path(out_dir) / Path(prefix)
         timesheet_dir.mkdir(parents=True, exist_ok=True)
         timesheet_path = timesheet_dir / Path(f"{prefix}.html")
@@ -273,6 +272,15 @@ def render_timesheet(
                 css_paths=css_paths,
                 out_path=timesheet_dir / Path(f"{prefix}.pdf"),
             )
+        if only_final:
+            final_output_path = out_dir / Path(f"{prefix}.{document_format}")
+            if document_format == "pdf":
+                shutil.move(timesheet_dir / Path(f"{prefix}.pdf"), final_output_path)
+            else:
+                shutil.move(timesheet_dir / Path(f"{prefix}.html"), final_output_path)
+            shutil.rmtree(timesheet_dir)
+    # finally set the rendered flag
+    timesheet.rendered = True
 
 
 def generate_document_thumbnail(pdf_path: str, thumbnail_width: int) -> str:

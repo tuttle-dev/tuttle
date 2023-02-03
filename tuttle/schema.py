@@ -8,6 +8,7 @@ from pandera import (
     Timedelta,
     String,
     Decimal,
+    Bool,
 )
 
 
@@ -21,6 +22,7 @@ time_tracking = DataFrameSchema(
         "tag": Column(String),
         "description": Column(String, nullable=True),
         "duration": Column(Timedelta),
+        "all_day": Column(Bool, nullable=True),
     },
 )
 

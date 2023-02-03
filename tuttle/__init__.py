@@ -10,7 +10,6 @@ from . import (
     banking,
     calendar,
     cloud,
-    controller,
     invoicing,
     model,
     tax,

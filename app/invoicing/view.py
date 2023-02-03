@@ -216,6 +216,7 @@ class InvoicingListView(TView, UserControl):
                     on_delete_clicked=self.on_delete_invoice_clicked,
                     on_mail_invoice=self.on_mail_invoice,
                     on_view_invoice=self.on_view_invoice,
+                    on_view_timesheet=self.on_view_timesheet,
                     toggle_paid_status=self.toggle_paid_status,
                     toggle_cancelled_status=self.toggle_cancelled_status,
                     toggle_sent_status=self.toggle_sent_status,
@@ -238,6 +239,12 @@ class InvoicingListView(TView, UserControl):
     def on_view_invoice(self, invoice: Invoice):
         """Called when the user clicks view in the context menu of an invoice"""
         result = self.intent.view_invoice(invoice)
+        if not result.was_intent_successful:
+            self.show_snack(result.error_msg, is_error=True)
+
+    def on_view_timesheet(self, invoice: Invoice):
+        """Called when the user clicks view in the context menu of an invoice"""
+        result = self.intent.view_timesheet_for_invoice(invoice)
         if not result.was_intent_successful:
             self.show_snack(result.error_msg, is_error=True)
 
@@ -425,6 +432,7 @@ class InvoiceTile(UserControl):
         on_delete_clicked,
         on_mail_invoice,
         on_view_invoice,
+        on_view_timesheet,
         toggle_paid_status,
         toggle_sent_status,
         toggle_cancelled_status,
@@ -433,6 +441,7 @@ class InvoiceTile(UserControl):
         self.invoice = invoice
         self.on_delete_clicked = on_delete_clicked
         self.on_view_invoice = on_view_invoice
+        self.on_view_timesheet = on_view_timesheet
         self.on_mail_invoice = on_mail_invoice
         self.toggle_paid_status = toggle_paid_status
         self.toggle_sent_status = toggle_sent_status
@@ -503,6 +512,11 @@ class InvoiceTile(UserControl):
                         icon=icons.VISIBILITY_OUTLINED,
                         txt="View",
                         on_click=lambda e: self.on_view_invoice(self.invoice),
+                    ),
+                    views.TPopUpMenuItem(
+                        icon=icons.VISIBILITY_OUTLINED,
+                        txt="View Timesheet ",
+                        on_click=lambda e: self.on_view_timesheet(self.invoice),
                     ),
                     views.TPopUpMenuItem(
                         icon=icons.OUTGOING_MAIL,
