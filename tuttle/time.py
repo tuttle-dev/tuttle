@@ -1,5 +1,6 @@
 import enum
 import datetime
+from typing import Optional
 
 
 class Cycle(enum.Enum):
@@ -12,6 +13,8 @@ class Cycle(enum.Enum):
 
     def __str__(self):
         return str(self.value)
+
+  
 
 
 class TimeUnit(enum.Enum):
@@ -27,3 +30,5 @@ class TimeUnit(enum.Enum):
 
     def __str__(self):
         return str(self.value)
+
+ 

@@ -3,11 +3,9 @@ from typing import Callable, Optional
 from enum import Enum
 
 from flet import (
-    ButtonStyle,
     Card,
     Column,
     Container,
-    ElevatedButton,
     Icon,
     IconButton,
     ListTile,
@@ -26,12 +24,6 @@ from contracts.intent import ContractsIntent
 from core import utils, views
 from core.abstractions import DialogHandler, TView, TViewParams
 from core.intent_result import IntentResult
-from core.models import (
-    get_cycle_from_value,
-    get_cycle_values_as_list,
-    get_time_unit_from_value,
-    get_time_unit_values_as_list,
-)
 from res import colors, dimens, fonts, res_utils
 
 from tuttle.model import Client, Contract, CONTRACT_DEFAULT_VAT_RATE
@@ -223,52 +215,7 @@ class ContractEditorScreen(TView, UserControl):
         self.clients_map = {}
         self.contacts_map = {}
         self.available_currencies = []
-        self.title = ""
         self.client = None
-        self.rate = ""
-        self.currency = ""
-        self.vat_rate = ""
-        self.time_unit: TimeUnit = None
-        self.unit_pw = ""
-        self.volume = ""
-        self.term_of_payment = ""
-        self.billing_cycle: Cycle = None
-
-    def on_title_changed(self, e):
-        """Called when the title of the contract is changed"""
-        self.title = e.control.value
-
-    def on_rate_changed(self, e):
-        """Called when the rate of the contract is changed"""
-        self.rate = e.control.value
-
-    def on_currency_changed(self, e):
-        """Called when the currency of the contract is changed"""
-        self.currency = e.control.value
-
-    def on_volume_changed(self, e):
-        """Called when the volume of the contract is changed"""
-        self.volume = e.control.value
-
-    def on_term_of_payment_changed(self, e):
-        """Called when the term of payment of the contract is changed"""
-        self.term_of_payment = e.control.value
-
-    def on_upw_changed(self, e):
-        """Called when the unit pw of the contract is changed"""
-        self.unit_pw = e.control.value
-
-    def on_vat_rate_changed(self, e):
-        """Called when the vat rate of the contract is changed"""
-        self.vat_rate = e.control.value
-
-    def on_unit_selected(self, e):
-        """Called when the unit of the contract is changed""" ""
-        self.time_unit = get_time_unit_from_value(e.control.value)
-
-    def on_billing_cycle_selected(self, e):
-        """Called when the billing cycle of the contract is changed"""
-        self.billing_cycle = get_cycle_from_value(e.control.value)
 
     def clear_ui_field_errors(self, e):
         """Clears all the errors in the ui form fields"""
@@ -311,7 +258,7 @@ class ContractEditorScreen(TView, UserControl):
         if not result.was_intent_successful or not result.data:
             self.show_snack(result.error_msg, is_error=True)
         self.old_contract_if_editing = result.data
-        self.display_with_contract_info()
+        self.display_contract_info()
 
     def load_currencies(self):
         """Loads the available currencies into a dropdown"""
@@ -348,16 +295,14 @@ class ContractEditorScreen(TView, UserControl):
         if client_id not in self.clients_map:
             return ""
         # prefix client name with a key {client_id}
-        return f"#{client_id} {self.clients_map[client_id].name}"
+        return f"{client_id}. {self.clients_map[client_id].name}"
 
     def on_client_selected(self, e):
         # parse selected value to extract id
         selected = e.control.value
         _id = ""
         for c in selected:
-            if c == "#":
-                continue
-            if c == " ":
+            if c == ".":
                 break
             _id = _id + c
 
@@ -403,9 +348,9 @@ class ContractEditorScreen(TView, UserControl):
                 self.show_snack(result.error_msg, True)
             self.update_self()
 
-    def display_with_contract_info(self):
+    def display_contract_info(self):
         """initialize form fields with data from old contract"""
-        self.title_ui_field.value = self.title = self.old_contract_if_editing.title
+        self.title_ui_field.value = self.old_contract_if_editing.title
         signature_date = self.old_contract_if_editing.signature_date
         self.signature_date_ui_field.set_date(signature_date)
         start_date = self.old_contract_if_editing.start_date
@@ -417,40 +362,80 @@ class ContractEditorScreen(TView, UserControl):
             self.clients_ui_field.update_value(
                 self.get_client_dropdown_item(self.client.id)
             )
-        self.rate_ui_field.value = self.rate = self.old_contract_if_editing.rate
-        self.currency = self.old_contract_if_editing.currency
-        self.currency_ui_field.update_value(self.currency)
-        self.vat_rate_ui_field.value = (
-            self.vat_rate
-        ) = self.old_contract_if_editing.VAT_rate
-
-        self.time_unit = self.old_contract_if_editing.unit
-        if self.time_unit:
-            self.units_ui_field.update_value(self.time_unit.value)
-        self.unit_PW_ui_field.value = (
-            self.unit_pw
-        ) = self.old_contract_if_editing.units_per_workday
-        self.volume_ui_field.value = self.volume = self.old_contract_if_editing.volume
+        self.rate_ui_field.value = self.old_contract_if_editing.rate
+        self.currency_ui_field.update_value(self.old_contract_if_editing.currency)
+        self.vat_rate_ui_field.value = self.old_contract_if_editing.VAT_rate
+        if self.old_contract_if_editing.unit:
+            self.time_unit_field.update_value(self.old_contract_if_editing.unit.name)
+        self.unit_PW_ui_field.value = self.old_contract_if_editing.units_per_workday
+        self.volume_ui_field.value = self.old_contract_if_editing.volume
         self.term_of_payment_ui_field.value = (
-            self.term_of_payment
-        ) = self.old_contract_if_editing.term_of_payment
-        self.billing_cycle = self.old_contract_if_editing.billing_cycle
-        if self.billing_cycle:
-            self.billing_cycle_ui_field.update_value(self.billing_cycle.value)
+            self.old_contract_if_editing.term_of_payment
+        )
+        if self.old_contract_if_editing.billing_cycle:
+            self.billing_cycle_ui_field.update_value(
+                self.old_contract_if_editing.billing_cycle.name
+            )
         self.form_title_ui_field.value = "Edit Contract"
         self.submit_btn.text = "Save changes"
 
     def on_save(self, e):
         """Called when the edit / save button is clicked"""
-        if not self.title:
+        # get data from form fields
+        title = self.title_ui_field.value
+        rate = self.rate_ui_field.value
+        vat_rate = self.vat_rate_ui_field.value
+        unit_pw = self.unit_PW_ui_field.value
+        volume = self.volume_ui_field.value
+        term_of_payment = self.term_of_payment_ui_field.value
+        currency = self.currency_ui_field.value
+        time_unit_str = self.time_unit_field.value
+        try:
+            time_unit = TimeUnit[time_unit_str]
+        except KeyError:
+            time_unit = None
+
+        billing_cycle_str = self.billing_cycle_ui_field.value
+        try:
+            billing_cycle = Cycle[billing_cycle_str]
+        except KeyError:
+            billing_cycle = None
+
+        # check for missing fields
+        if not title:
             self.title_ui_field.error_text = "Contract title is required"
             self.update_self()
             return  # error occurred, stop here
+
+        if not currency:
+            self.currency_ui_field.update_error_txt("Please specify the currency")
+            self.update_self()
+            return
+
+        if not rate:
+            self.rate_ui_field.error_text = "Rate of enumeration is required"
+            self.update_self()
+            return
+
+        if not time_unit:
+            self.time_unit_field.update_error_txt("Unit of time tracked is required")
+            self.update_self()
+            return
+
+        if not unit_pw:
+            self.unit_PW_ui_field.error_text = "Units per workday is required"
+            self.update_self()
+            return
 
         if self.client is None:
             self.clients_ui_field.update_error_txt("Please select a client")
             self.update_self()
             return  # error occurred, stop here
+
+        if not billing_cycle:
+            self.billing_cycle_ui_field.update_error_txt("Billing cycle is required")
+            self.update_self()
+            return
 
         signatureDate = self.signature_date_ui_field.get_date()
         if signatureDate is None:
@@ -473,24 +458,26 @@ class ContractEditorScreen(TView, UserControl):
             )
             return  # error occurred, stop here
 
-        if not self.vat_rate:
-            self.vat_rate = CONTRACT_DEFAULT_VAT_RATE
+        vat_rate = self.vat_rate_ui_field.value
+        if not vat_rate:
+            vat_rate = CONTRACT_DEFAULT_VAT_RATE
 
         self.toggle_progress(is_on_going_action=True)
+
         result: IntentResult = self.intent.save_contract(
-            title=self.title,
+            title=title,
             signature_date=signatureDate,
             start_date=startDate,
             end_date=endDate,
             client=self.client,
-            rate=self.rate,
-            currency=self.currency,
-            VAT_rate=self.vat_rate,
-            unit=self.time_unit,
-            units_per_workday=self.unit_pw,
-            volume=self.volume,
-            term_of_payment=self.term_of_payment,
-            billing_cycle=self.billing_cycle,
+            rate=rate,
+            currency=currency,
+            VAT_rate=vat_rate,
+            unit=time_unit,
+            units_per_workday=unit_pw,
+            volume=volume,
+            term_of_payment=term_of_payment,
+            billing_cycle=billing_cycle,
             contract=self.old_contract_if_editing,
         )
         success_msg = (
@@ -511,47 +498,40 @@ class ContractEditorScreen(TView, UserControl):
         self.title_ui_field = views.TTextField(
             label="Title",
             hint="Short description of the contract.",
-            on_change=self.on_title_changed,
             on_focus=self.clear_ui_field_errors,
         )
         self.rate_ui_field = views.TTextField(
             label="Rate",
             hint="Rate of remuneration",
-            on_change=self.on_rate_changed,
             on_focus=self.clear_ui_field_errors,
             keyboard_type=utils.KEYBOARD_NUMBER,
         )
         self.currency_ui_field = views.TDropDown(
             label="Currency",
             hint="Payment currency",
-            on_change=self.on_currency_changed,
             items=self.available_currencies,
         )
         self.vat_rate_ui_field = views.TTextField(
             label="VAT rate",
             hint=f"VAT rate applied to the contractual rate. default is {CONTRACT_DEFAULT_VAT_RATE}",
-            on_change=self.on_vat_rate_changed,
             on_focus=self.clear_ui_field_errors,
             keyboard_type=utils.KEYBOARD_NUMBER,
         )
         self.unit_PW_ui_field = views.TTextField(
             label="Units per workday",
             hint="How many units (e.g. hours) constitute a whole work day?",
-            on_change=self.on_upw_changed,
             on_focus=self.clear_ui_field_errors,
             keyboard_type=utils.KEYBOARD_NUMBER,
         )
         self.volume_ui_field = views.TTextField(
             label="Volume (optional)",
             hint="Number of time units agreed on",
-            on_change=self.on_volume_changed,
             on_focus=self.clear_ui_field_errors,
             keyboard_type=utils.KEYBOARD_NUMBER,
         )
         self.term_of_payment_ui_field = views.TTextField(
             label="Term of payment (optional)",
             hint="How many days after receipt of invoice this invoice is due.",
-            on_change=self.on_term_of_payment_changed,
             on_focus=self.clear_ui_field_errors,
             keyboard_type=utils.KEYBOARD_NUMBER,
         )
@@ -560,15 +540,13 @@ class ContractEditorScreen(TView, UserControl):
             on_change=self.on_client_selected,
             items=self.get_clients_names_as_list(),
         )
-        self.units_ui_field = views.TDropDown(
+        self.time_unit_field = views.TDropDown(
             label="Unit of time tracked.",
-            on_change=self.on_unit_selected,
-            items=get_time_unit_values_as_list(),
+            items=[str(t) for t in TimeUnit],
         )
         self.billing_cycle_ui_field = views.TDropDown(
             label="Billing Cycle",
-            on_change=self.on_billing_cycle_selected,
-            items=get_cycle_values_as_list(),
+            items=[str(c) for c in Cycle],
         )
         self.signature_date_ui_field = views.DateSelector(label="Signed on")
         self.start_date_ui_field = views.DateSelector(label="Valid from")
@@ -594,7 +572,7 @@ class ContractEditorScreen(TView, UserControl):
                 self.currency_ui_field,
                 self.rate_ui_field,
                 self.term_of_payment_ui_field,
-                self.units_ui_field,
+                self.time_unit_field,
                 self.unit_PW_ui_field,
                 self.vat_rate_ui_field,
                 self.volume_ui_field,
@@ -806,6 +784,9 @@ class ViewContractScreen(TView, UserControl):
         _status = self.contract.get_status(default="")
         if _status:
             self.status_control.value = f"Status {_status}"
+            self.status_control.visible = True
+        else:
+            self.status_control.visible = False
         self.billing_cycle_control.value = (
             self.contract.billing_cycle.value if self.contract.billing_cycle else ""
         )

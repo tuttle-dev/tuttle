@@ -297,6 +297,9 @@ class ViewProjectScreen(TView, UserControl):
         _status = self.project.get_status(default="")
         if _status:
             self.project_status_control.value = f"Status {_status}"
+            self.project_status_control.visible = True
+        else:
+            self.project_status_control.visible = False
         self.project_tagline_control.value = f"{self.project.tag}"
         is_project_completed = self.project.is_completed
         self.toggle_complete_status_btn.icon = (

@@ -401,8 +401,8 @@ class TDropDown(UserControl):
     def __init__(
         self,
         label: str,
-        on_change: Callable,
-        items: List[str],
+        on_change: Optional[Callable] = None,
+        items: List[str] = [],
         hint: Optional[str] = "",
         width: Optional[int] = None,
         initial_value: Optional[str] = None,
@@ -441,7 +441,13 @@ class TDropDown(UserControl):
     ):
         """Updates the dropdown value"""
         self.drop_down.value = new_value
+        self.drop_down.error_text = None  # clear error text
         self.update()
+
+    @property
+    def value(self):
+        """Returns the dropdown value"""
+        return self.drop_down.value
 
     def update_error_txt(self, error_txt: str = ""):
         """Updates Or clears the error text"""
