@@ -42,10 +42,10 @@ class PaymentDataForm(UserControl):
         if not self.user.bank_account:
             # Create a new bank account if none exists
             self.user.bank_account = BankAccount(name="", BIC="", IBAN="")
-        self.bank_ibc_field.value = self.bank_bic = self.user.bank_account.BIC
-        self.bank_name_field.value = self.bank_name = self.user.bank_account.name
-        self.bank_iban_field.value = self.bank_iban = self.user.bank_account.IBAN
-        self.vat_number_field.value = self.vat_number = self.user.VAT_number
+        self.bank_bic_field.value = self.user.bank_account.BIC
+        self.bank_name_field.value = self.user.bank_account.name
+        self.bank_iban_field.value = self.user.bank_account.IBAN
+        self.vat_number_field.value = self.user.VAT_number
 
     def update_form_data(self, user: User):
         """Updates the user's data with the form data"""
@@ -53,45 +53,29 @@ class PaymentDataForm(UserControl):
         self.set_form_data()
         self.update()
 
-    def on_vat_number_changed(self, e):
-        """Called when the VAT number field is changed"""
-        self.vat_number = e.control.value
-        self.user.VAT_number = self.vat_number
-
-    def on_bank_bic_changed(self, e):
-        """Called when the bank BIC field is changed"""
-        self.bank_bic = e.control.value
-        self.user.bank_account.BIC = self.bank_bic
-
-    def on_bank_iban_changed(self, e):
-        """Called when the bank IBAN field is changed"""
-        self.bank_iban = e.control.value
-        self.user.bank_account.IBAN = self.bank_iban
-
-    def on_bank_name_changed(self, e):
-        """Called when the bank name field is changed"""
-        self.bank_name = e.control.value
-        self.user.bank_account.name = self.bank_name
+    def on_click_save(self, e):
+        """Called when the save button is clicked"""
+        self.user.VAT_number = self.vat_number_field.value
+        self.user.bank_account.BIC = self.bank_bic_field.value
+        self.user.bank_account.IBAN = self.bank_iban_field.value
+        self.user.bank_account.name = self.bank_name_field.value
+        self.on_form_submit(self.user)
 
     def build(self):
         """Called when form is built"""
         self.vat_number_field = views.TTextField(
-            on_change=self.on_vat_number_changed,
             label="VAT Number",
             hint="Value Added Tax number of the user, legally required for invoices.",
         )
         self.bank_name_field = views.TTextField(
-            on_change=self.on_bank_name_changed,
             label="Name",
             hint="Name of account",
         )
         self.bank_iban_field = views.TTextField(
-            on_change=self.on_bank_iban_changed,
             label="IBAN",
             hint="International Bank Account Number",
         )
-        self.bank_ibc_field = views.TTextField(
-            on_change=self.on_bank_bic_changed,
+        self.bank_bic_field = views.TTextField(
             label="BIC",
             hint="Bank Identifier Code",
         )
@@ -103,11 +87,11 @@ class PaymentDataForm(UserControl):
                 views.TSubHeading("Bank Account"),
                 self.bank_name_field,
                 self.bank_iban_field,
-                self.bank_ibc_field,
+                self.bank_bic_field,
                 views.Spacer(),
                 views.TPrimaryButton(
                     label="Save",
-                    on_click=lambda e: self.on_form_submit(self.user),
+                    on_click=self.on_click_save,
                 ),
             ],
         )
