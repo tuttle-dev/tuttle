@@ -153,17 +153,16 @@ class ContractStates(Enum):
     def __str__(self):
         return self.name.capitalize()
 
-
-def get_filter_button_tooltip(state: ContractStates):
-    """Returns the tooltip for the given state"""
-    if state.value == ContractStates.ACTIVE.value:
-        return "Not completed and not due"
-    elif state.value == ContractStates.UPCOMING.value:
-        return "Scheduled for the future"
-    elif state.value == ContractStates.COMPLETED.value:
-        return "Marked as completed"
-    else:
-        return "All Contracts"
+    def tooltip(self):
+        """Returns the tooltip for the given state"""
+        if self is ContractStates.ACTIVE:
+            return "Not completed and not due"
+        elif self is ContractStates.UPCOMING:
+            return "Scheduled for the future"
+        elif self is ContractStates.COMPLETED:
+            return "Marked as completed"
+        else:
+            return "All Contracts"
 
 
 class ContractFiltersView(UserControl):
@@ -218,7 +217,7 @@ class ContractFiltersView(UserControl):
                 label=state.__str__(),
                 state=state,
                 onClick=self.on_filter_button_clicked,
-                tooltip=get_filter_button_tooltip(state),
+                tooltip=state.tooltip(),
             )
             self.state_to_filter_btns_map[state] = button
 
