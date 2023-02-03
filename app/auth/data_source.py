@@ -4,7 +4,7 @@ from core.abstractions import SQLModelDataSourceMixin
 from core.intent_result import IntentResult
 
 from tuttle.dev import deprecated
-from tuttle.model import Address, User
+from tuttle.model import  User
 
 
 class UserDataSource(SQLModelDataSourceMixin):
