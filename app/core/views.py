@@ -227,9 +227,9 @@ class TMultilineField(TextField):
 
     def __init__(
         self,
-        on_change,
-        label: str,
-        hint: str,
+        on_change: typing.Optional[Callable] = None,
+        label: str = "",
+        hint: str = "",
         on_focus: typing.Optional[Callable] = None,
         keyboardType: str = utils.KEYBOARD_MULTILINE,
         minLines: int = 3,

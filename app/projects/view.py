@@ -764,36 +764,19 @@ class ProjectEditorScreen(TView, UserControl):
         self.old_project_if_editing: Optional[Project] = None
         self.contracts_map = {}
         self.loading_indicator = views.TProgressBar()
-        self.title = ""
-        self.description = ""
-        self.tag = ""
         self.contract: Optional[Contract] = None
         self.start_date = None
         self.end_date = None
 
-    def on_title_changed(self, e):
-        """Called when the title input changes"""
-        self.title = e.control.value
-
-    def on_description_changed(self, e):
-        """Called when the description input changes"""
-        self.description = e.control.value
-
-    def on_tag_changed(self, e):
-        """Called when the tag input changes"""
-        self.tag = e.control.value
-
-    def add_tag_to_dropdown_item_id(self, id, value):
-        """given id and value, prepends a # symbol and returns as str"""
-        return f"#{id} {value}"
+    def make_dropdown_item_unique(self, id, value):
+        """Prefixes the dropdown item with an id to make it unique"""
+        return f"{id}. {value}"
 
     def get_id_from_dropdown_selection(self, selected: str):
         """given a dropdown selection, extracts the id from the selection"""
         _id = ""
         for c in selected:
-            if c == "#":
-                continue
-            if c == " ":
+            if c == ".":
                 break
             _id = _id + c
         return _id
@@ -801,10 +784,10 @@ class ProjectEditorScreen(TView, UserControl):
     def get_contracts_as_list(self):
         """transforms a map of id - to  - contract to a list for dropdown options"""
         contracts = []
-        for key in self.contracts_map:
+        for contract_id in self.contracts_map:
             contracts.append(
-                self.add_tag_to_dropdown_item_id(
-                    id=key, value=self.contracts_map[key].title
+                self.make_dropdown_item_unique(
+                    id=contract_id, value=self.contracts_map[contract_id].title
                 )
             )
         return contracts
@@ -848,18 +831,16 @@ class ProjectEditorScreen(TView, UserControl):
 
     def set_form_values(self):
         """Sets form data with info of project being edited"""
-        self.title_field.value = self.title = self.old_project_if_editing.title
-        self.description_field.value = (
-            self.description
-        ) = self.old_project_if_editing.description
+        self.title_field.value = self.old_project_if_editing.title
+        self.description_field.value = self.old_project_if_editing.description
         self.start_date = self.old_project_if_editing.start_date
         self.start_date_field.set_date(self.start_date)
         self.end_date = self.old_project_if_editing.end_date
         self.end_date_field.set_date(self.end_date)
-        self.tag_field.value = self.tag = self.old_project_if_editing.tag
+        self.tag_field.value = self.old_project_if_editing.tag
         self.contract = self.old_project_if_editing.contract
         if self.contract:
-            contract_as_list_item = self.add_tag_to_dropdown_item_id(
+            contract_as_list_item = self.make_dropdown_item_unique(
                 id=self.contract.id, value=self.contract.title
             )
             self.contracts_field.update_value(contract_as_list_item)
@@ -882,12 +863,12 @@ class ProjectEditorScreen(TView, UserControl):
 
     def on_save(self, e):
         """Called when the save button is clicked, validates the form and saves the project"""
-        if not self.title:
+        if not self.title_field.value:
             self.title_field.error_text = "Project title is required"
             self.update_self()
             return
 
-        if not self.description:
+        if not self.description_field.value:
             self.description_field.error_text = "Project description is required"
             self.update_self()
             return
@@ -909,22 +890,22 @@ class ProjectEditorScreen(TView, UserControl):
             return
 
         if self.contract is None:
-            self.contracts_field.error_text = "Please specify the contract"
+            self.contracts_field.update_error_txt("Please specify the contract")
             self.update_self()
             return
 
-        if self.tag is None:
+        if not self.tag_field.value:
             self.tag_field.error_text = "The project must have a tag."
             self.update_self()
             return
 
         self.toggle_progress_indicator(is_action_ongoing=True)
         result: IntentResult = self.intent.save_project(
-            title=self.title,
-            description=self.description,
+            title=self.title_field.value,
+            description=self.description_field.value,
             start_date=self.start_date,
             end_date=self.end_date,
-            unique_tag=self.tag,
+            unique_tag=self.tag_field.value,
             contract=self.contract,
             project=self.old_project_if_editing,
         )
@@ -946,19 +927,16 @@ class ProjectEditorScreen(TView, UserControl):
         self.title_field = views.TTextField(
             label="Title",
             hint="A short, unique title",
-            on_change=self.on_title_changed,
             on_focus=self.clear_title_error,
         )
         self.description_field = views.TMultilineField(
             label="Description",
             hint="A longer description of the project",
-            on_change=self.on_description_changed,
             on_focus=self.clear_description_error,
         )
         self.tag_field = views.TTextField(
             label="Tag",
             hint="A unique tag",
-            on_change=self.on_tag_changed,
         )
 
         self.contracts_field = views.TDropDown(
