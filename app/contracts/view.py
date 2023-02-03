@@ -174,34 +174,6 @@ class ContractFiltersView(UserControl):
         self.state_to_filter_btns_map = {}
         self.on_state_changed_callback = onStateChanged
 
-    def filter_button(
-        self,
-        state: ContractStates,
-        label: str,
-        onClick: Callable[[ContractStates], None],
-        tooltip: str,
-    ):
-        """Creates a filter button for the given state"""
-        button = ElevatedButton(
-            text=label,
-            col={"xs": 6, "sm": 3, "lg": 2},
-            on_click=lambda e: onClick(state),
-            height=dimens.CLICKABLE_PILL_HEIGHT,
-            color=colors.PRIMARY_COLOR
-            if state == self.current_state
-            else colors.GRAY_COLOR,
-            tooltip=tooltip,
-            style=ButtonStyle(
-                elevation={
-                    utils.PRESSED: 3,
-                    utils.SELECTED: 3,
-                    utils.HOVERED: 4,
-                    utils.OTHER_CONTROL_STATES: 2,
-                },
-            ),
-        )
-        return button
-
     def on_filter_button_clicked(self, state: ContractStates):
         """sets the new state and updates selected button"""
         self.state_to_filter_btns_map[self.current_state].color = colors.GRAY_COLOR
@@ -213,13 +185,13 @@ class ContractFiltersView(UserControl):
     def set_filter_buttons(self):
         """Sets all the filter buttons"""
         for state in ContractStates:
-            button = self.filter_button(
+            self.state_to_filter_btns_map[state] = views.TStatusFilterBtn(
                 label=state.__str__(),
-                state=state,
-                onClick=self.on_filter_button_clicked,
+                is_current_state=self.current_state.value == state.value,
+                on_click_params=state,
+                on_click=self.on_filter_button_clicked,
                 tooltip=state.tooltip(),
             )
-            self.state_to_filter_btns_map[state] = button
 
     def build(self):
         """Builds the filter buttons"""

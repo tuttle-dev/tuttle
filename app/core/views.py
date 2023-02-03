@@ -18,6 +18,7 @@ from flet import (
     PopupMenuButton,
     PopupMenuItem,
     ProgressBar,
+    ButtonStyle,
     margin,
     NavigationRail,
     Row,
@@ -906,5 +907,32 @@ class TFullScreenFormContainer(Container):
                     padding=padding.all(dimens.SPACE_MD),
                     width=dimens.MIN_WINDOW_WIDTH,
                 ),
+            ),
+        )
+
+
+class TStatusFilterBtn(ElevatedButton):
+    def __init__(
+        self,
+        label: str,
+        is_current_state: bool,
+        on_click: Callable,
+        tooltip: str,
+        on_click_params: any,
+    ):
+        return super().__init__(
+            text=label,
+            col={"xs": 6, "sm": 3, "lg": 2},
+            on_click=lambda e: on_click(on_click_params),
+            height=dimens.CLICKABLE_PILL_HEIGHT,
+            color=colors.PRIMARY_COLOR if is_current_state else colors.GRAY_COLOR,
+            tooltip=tooltip,
+            style=ButtonStyle(
+                elevation={
+                    utils.PRESSED: 3,
+                    utils.SELECTED: 3,
+                    utils.HOVERED: 4,
+                    utils.OTHER_CONTROL_STATES: 2,
+                },
             ),
         )

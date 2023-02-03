@@ -210,11 +210,11 @@ class ProjectStates(Enum):
 
     def tooltip(self):
         """returns the tooltip for the filter button"""
-        if self is ProjectStates.ACTIVE.value:
+        if self is ProjectStates.ACTIVE:
             return "Not completed and not due."
-        elif self is ProjectStates.UPCOMING.value:
+        elif self is ProjectStates.UPCOMING:
             return "Scheduled for the future."
-        elif self is ProjectStates.COMPLETED.value:
+        elif self is ProjectStates.COMPLETED:
             return "Marked as completed."
         else:
             return "All projects."
@@ -225,56 +225,28 @@ class ProjectFiltersView(UserControl):
 
     def __init__(self, onStateChanged: Callable[[ProjectStates], None]):
         super().__init__()
-        self.currentState = ProjectStates.ALL
+        self.current_state = ProjectStates.ALL
         self.stateTofilterButtonsMap = {}
         self.onStateChangedCallback = onStateChanged
 
-    def filter_button(
-        self,
-        state: ProjectStates,
-        label: str,
-        onClick: Callable[[ProjectStates], None],
-        tooltip: str,
-    ):
-        """creates a filter button for project status"""
-        button = ElevatedButton(
-            text=label,
-            col={"xs": 6, "sm": 3, "lg": 2},
-            on_click=lambda e: onClick(state),
-            height=dimens.CLICKABLE_PILL_HEIGHT,
-            color=colors.PRIMARY_COLOR
-            if state == self.currentState
-            else colors.GRAY_COLOR,
-            tooltip=tooltip,
-            style=ButtonStyle(
-                elevation={
-                    utils.PRESSED: 3,
-                    utils.SELECTED: 3,
-                    utils.HOVERED: 4,
-                    utils.OTHER_CONTROL_STATES: 2,
-                },
-            ),
-        )
-        return button
-
     def on_filter_button_clicked(self, state: ProjectStates):
         """sets the new state and updates selected button"""
-        self.stateTofilterButtonsMap[self.currentState].color = colors.GRAY_COLOR
-        self.currentState = state
-        self.stateTofilterButtonsMap[self.currentState].color = colors.PRIMARY_COLOR
+        self.stateTofilterButtonsMap[self.current_state].color = colors.GRAY_COLOR
+        self.current_state = state
+        self.stateTofilterButtonsMap[self.current_state].color = colors.PRIMARY_COLOR
         self.update()
         self.onStateChangedCallback(state)
 
     def set_filter_buttons(self):
         """sets the filter buttons for each project state"""
         for state in ProjectStates:
-            button = self.filter_button(
+            self.stateTofilterButtonsMap[state] = views.TStatusFilterBtn(
                 label=state.__str__(),
-                state=state,
-                onClick=self.on_filter_button_clicked,
+                is_current_state=state.value == self.current_state.value,
+                on_click=self.on_filter_button_clicked,
+                on_click_params=state,
                 tooltip=state.tooltip(),
             )
-            self.stateTofilterButtonsMap[state] = button
 
     def build(self):
         """builds the filter buttons"""
