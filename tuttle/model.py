@@ -350,6 +350,8 @@ class Contract(SQLModel, table=True):
         """Check if contract is active.A contract is active if it is not completed and the end date is in the future."""
         if self.is_completed:
             return False
+        if self.is_upcoming():
+            return False
         if self.end_date:
             today = datetime.date.today()
             return self.end_date > today
@@ -439,6 +441,8 @@ class Project(SQLModel, table=True):
     def is_active(self) -> bool:
         """Is the project active? A project is active if it is not completed and if the end date is in the future."""
         if self.is_completed:
+            return False
+        if self.is_upcoming():
             return False
         if self.end_date:
             today = datetime.date.today()

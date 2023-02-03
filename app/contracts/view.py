@@ -150,17 +150,8 @@ class ContractStates(Enum):
     COMPLETED = 3
     UPCOMING = 4
 
-
-def get_filter_button_label(state: ContractStates):
-    """Returns the label for the given state"""
-    if state.value == ContractStates.ACTIVE.value:
-        return "Active"
-    elif state.value == ContractStates.UPCOMING.value:
-        return "Upcoming"
-    elif state.value == ContractStates.COMPLETED.value:
-        return "Completed"
-    else:
-        return "All"
+    def __str__(self):
+        return self.name.capitalize()
 
 
 def get_filter_button_tooltip(state: ContractStates):
@@ -224,7 +215,7 @@ class ContractFiltersView(UserControl):
         """Sets all the filter buttons"""
         for state in ContractStates:
             button = self.filter_button(
-                label=get_filter_button_label(state),
+                label=state.__str__(),
                 state=state,
                 onClick=self.on_filter_button_clicked,
                 tooltip=get_filter_button_tooltip(state),

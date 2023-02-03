@@ -205,17 +205,8 @@ class ProjectStates(Enum):
     COMPLETED = 3
     UPCOMING = 4
 
-
-def get_filter_button_label(state: ProjectStates):
-    """returns the label for the filter button"""
-    if state.value == ProjectStates.ACTIVE.value:
-        return "Active"
-    elif state.value == ProjectStates.UPCOMING.value:
-        return "Upcoming"
-    elif state.value == ProjectStates.COMPLETED.value:
-        return "Completed"
-    else:
-        return "All"
+    def __str__(self):
+        return self.name.capitalize()
 
 
 def get_filter_button_tooltip(state: ProjectStates):
@@ -279,7 +270,7 @@ class ProjectFiltersView(UserControl):
         """sets the filter buttons for each project state"""
         for state in ProjectStates:
             button = self.filter_button(
-                label=get_filter_button_label(state),
+                label=state.__str__(),
                 state=state,
                 onClick=self.on_filter_button_clicked,
                 tooltip=get_filter_button_tooltip(state),
