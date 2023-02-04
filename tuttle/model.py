@@ -593,17 +593,20 @@ class Invoice(SQLModel, table=True):
     @property
     def sum(self) -> Decimal:
         """Sum over all invoice items."""
-        return sum([item.subtotal for item in self.items])
+        s = sum([item.subtotal for item in self.items])
+        return Decimal(s)
 
     @property
     def VAT_total(self) -> Decimal:
         """Sum of VAT over all invoice items."""
-        return sum(item.VAT for item in self.items)
+        s = sum(item.VAT for item in self.items)
+        return Decimal(s)
 
     @property
     def total(self) -> Decimal:
         """Total invoiced amount."""
-        return self.sum + self.VAT_total
+        t = self.sum + self.VAT_total
+        return Decimal(t)
 
     def generate_number(self, pattern=None, counter=None) -> str:
         """Generate an invoice number"""
