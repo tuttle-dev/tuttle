@@ -9,7 +9,6 @@ from flet import (
     Container,
     ElevatedButton,
     FontWeight,
-    GridView,
     Icon,
     IconButton,
     ListTile,
@@ -206,29 +205,19 @@ class ProjectStates(Enum):
     COMPLETED = 3
     UPCOMING = 4
 
+    def __str__(self):
+        return self.name.capitalize()
 
-def get_filter_button_label(state: ProjectStates):
-    """returns the label for the filter button"""
-    if state.value == ProjectStates.ACTIVE.value:
-        return "Active"
-    elif state.value == ProjectStates.UPCOMING.value:
-        return "Upcoming"
-    elif state.value == ProjectStates.COMPLETED.value:
-        return "Completed"
-    else:
-        return "All"
-
-
-def get_filter_button_tooltip(state: ProjectStates):
-    """returns the tooltip for the filter button"""
-    if state.value == ProjectStates.ACTIVE.value:
-        return "Not completed and not due."
-    elif state.value == ProjectStates.UPCOMING.value:
-        return "Scheduled for the future."
-    elif state.value == ProjectStates.COMPLETED.value:
-        return "Marked as completed."
-    else:
-        return "All projects."
+    def tooltip(self):
+        """returns the tooltip for the filter button"""
+        if self is ProjectStates.ACTIVE:
+            return "Not completed and not due."
+        elif self is ProjectStates.UPCOMING:
+            return "Scheduled for the future."
+        elif self is ProjectStates.COMPLETED:
+            return "Marked as completed."
+        else:
+            return "All projects."
 
 
 class ProjectFiltersView(UserControl):
@@ -236,56 +225,28 @@ class ProjectFiltersView(UserControl):
 
     def __init__(self, onStateChanged: Callable[[ProjectStates], None]):
         super().__init__()
-        self.currentState = ProjectStates.ALL
+        self.current_state = ProjectStates.ALL
         self.stateTofilterButtonsMap = {}
         self.onStateChangedCallback = onStateChanged
 
-    def filter_button(
-        self,
-        state: ProjectStates,
-        label: str,
-        onClick: Callable[[ProjectStates], None],
-        tooltip: str,
-    ):
-        """creates a filter button for project status"""
-        button = ElevatedButton(
-            text=label,
-            col={"xs": 6, "sm": 3, "lg": 2},
-            on_click=lambda e: onClick(state),
-            height=dimens.CLICKABLE_PILL_HEIGHT,
-            color=colors.PRIMARY_COLOR
-            if state == self.currentState
-            else colors.GRAY_COLOR,
-            tooltip=tooltip,
-            style=ButtonStyle(
-                elevation={
-                    utils.PRESSED: 3,
-                    utils.SELECTED: 3,
-                    utils.HOVERED: 4,
-                    utils.OTHER_CONTROL_STATES: 2,
-                },
-            ),
-        )
-        return button
-
     def on_filter_button_clicked(self, state: ProjectStates):
         """sets the new state and updates selected button"""
-        self.stateTofilterButtonsMap[self.currentState].color = colors.GRAY_COLOR
-        self.currentState = state
-        self.stateTofilterButtonsMap[self.currentState].color = colors.PRIMARY_COLOR
+        self.stateTofilterButtonsMap[self.current_state].color = colors.GRAY_COLOR
+        self.current_state = state
+        self.stateTofilterButtonsMap[self.current_state].color = colors.PRIMARY_COLOR
         self.update()
         self.onStateChangedCallback(state)
 
     def set_filter_buttons(self):
         """sets the filter buttons for each project state"""
         for state in ProjectStates:
-            button = self.filter_button(
-                label=get_filter_button_label(state),
-                state=state,
-                onClick=self.on_filter_button_clicked,
-                tooltip=get_filter_button_tooltip(state),
+            self.stateTofilterButtonsMap[state] = views.TStatusFilterBtn(
+                label=state.__str__(),
+                is_current_state=state.value == self.current_state.value,
+                on_click=self.on_filter_button_clicked,
+                on_click_params=state,
+                tooltip=state.tooltip(),
             )
-            self.stateTofilterButtonsMap[state] = button
 
     def build(self):
         """builds the filter buttons"""
@@ -336,6 +297,9 @@ class ViewProjectScreen(TView, UserControl):
         _status = self.project.get_status(default="")
         if _status:
             self.project_status_control.value = f"Status {_status}"
+            self.project_status_control.visible = True
+        else:
+            self.project_status_control.visible = False
         self.project_tagline_control.value = f"{self.project.tag}"
         is_project_completed = self.project.is_completed
         self.toggle_complete_status_btn.icon = (
@@ -629,13 +593,7 @@ class ProjectsListView(TView, UserControl):
                 )
             ]
         )
-        self.projects_container = GridView(
-            expand=False,
-            max_extent=560,
-            child_aspect_ratio=1.0,
-            spacing=dimens.SPACE_STD,
-            run_spacing=dimens.SPACE_MD,
-        )
+        self.projects_container = views.THomeGrid(max_extent=600)
         self.projects_to_display = {}
         self.dialog = None
 
@@ -764,36 +722,19 @@ class ProjectEditorScreen(TView, UserControl):
         self.old_project_if_editing: Optional[Project] = None
         self.contracts_map = {}
         self.loading_indicator = views.TProgressBar()
-        self.title = ""
-        self.description = ""
-        self.tag = ""
         self.contract: Optional[Contract] = None
         self.start_date = None
         self.end_date = None
 
-    def on_title_changed(self, e):
-        """Called when the title input changes"""
-        self.title = e.control.value
-
-    def on_description_changed(self, e):
-        """Called when the description input changes"""
-        self.description = e.control.value
-
-    def on_tag_changed(self, e):
-        """Called when the tag input changes"""
-        self.tag = e.control.value
-
-    def add_tag_to_dropdown_item_id(self, id, value):
-        """given id and value, prepends a # symbol and returns as str"""
-        return f"#{id} {value}"
+    def make_dropdown_item_unique(self, id, value):
+        """Prefixes the dropdown item with an id to make it unique"""
+        return f"{id}. {value}"
 
     def get_id_from_dropdown_selection(self, selected: str):
         """given a dropdown selection, extracts the id from the selection"""
         _id = ""
         for c in selected:
-            if c == "#":
-                continue
-            if c == " ":
+            if c == ".":
                 break
             _id = _id + c
         return _id
@@ -801,10 +742,10 @@ class ProjectEditorScreen(TView, UserControl):
     def get_contracts_as_list(self):
         """transforms a map of id - to  - contract to a list for dropdown options"""
         contracts = []
-        for key in self.contracts_map:
+        for contract_id in self.contracts_map:
             contracts.append(
-                self.add_tag_to_dropdown_item_id(
-                    id=key, value=self.contracts_map[key].title
+                self.make_dropdown_item_unique(
+                    id=contract_id, value=self.contracts_map[contract_id].title
                 )
             )
         return contracts
@@ -848,18 +789,16 @@ class ProjectEditorScreen(TView, UserControl):
 
     def set_form_values(self):
         """Sets form data with info of project being edited"""
-        self.title_field.value = self.title = self.old_project_if_editing.title
-        self.description_field.value = (
-            self.description
-        ) = self.old_project_if_editing.description
+        self.title_field.value = self.old_project_if_editing.title
+        self.description_field.value = self.old_project_if_editing.description
         self.start_date = self.old_project_if_editing.start_date
         self.start_date_field.set_date(self.start_date)
         self.end_date = self.old_project_if_editing.end_date
         self.end_date_field.set_date(self.end_date)
-        self.tag_field.value = self.tag = self.old_project_if_editing.tag
+        self.tag_field.value = self.old_project_if_editing.tag
         self.contract = self.old_project_if_editing.contract
         if self.contract:
-            contract_as_list_item = self.add_tag_to_dropdown_item_id(
+            contract_as_list_item = self.make_dropdown_item_unique(
                 id=self.contract.id, value=self.contract.title
             )
             self.contracts_field.update_value(contract_as_list_item)
@@ -882,12 +821,12 @@ class ProjectEditorScreen(TView, UserControl):
 
     def on_save(self, e):
         """Called when the save button is clicked, validates the form and saves the project"""
-        if not self.title:
+        if not self.title_field.value:
             self.title_field.error_text = "Project title is required"
             self.update_self()
             return
 
-        if not self.description:
+        if not self.description_field.value:
             self.description_field.error_text = "Project description is required"
             self.update_self()
             return
@@ -909,22 +848,22 @@ class ProjectEditorScreen(TView, UserControl):
             return
 
         if self.contract is None:
-            self.contracts_field.error_text = "Please specify the contract"
+            self.contracts_field.update_error_txt("Please specify the contract")
             self.update_self()
             return
 
-        if self.tag is None:
+        if not self.tag_field.value:
             self.tag_field.error_text = "The project must have a tag."
             self.update_self()
             return
 
         self.toggle_progress_indicator(is_action_ongoing=True)
         result: IntentResult = self.intent.save_project(
-            title=self.title,
-            description=self.description,
+            title=self.title_field.value,
+            description=self.description_field.value,
             start_date=self.start_date,
             end_date=self.end_date,
-            unique_tag=self.tag,
+            unique_tag=self.tag_field.value,
             contract=self.contract,
             project=self.old_project_if_editing,
         )
@@ -946,19 +885,16 @@ class ProjectEditorScreen(TView, UserControl):
         self.title_field = views.TTextField(
             label="Title",
             hint="A short, unique title",
-            on_change=self.on_title_changed,
             on_focus=self.clear_title_error,
         )
         self.description_field = views.TMultilineField(
             label="Description",
             hint="A longer description of the project",
-            on_change=self.on_description_changed,
             on_focus=self.clear_description_error,
         )
         self.tag_field = views.TTextField(
             label="Tag",
             hint="A unique tag",
-            on_change=self.on_tag_changed,
         )
 
         self.contracts_field = views.TDropDown(
@@ -989,50 +925,33 @@ class ProjectEditorScreen(TView, UserControl):
             label="Create Project",
             on_click=self.on_save,
         )
-        view = Container(
-            expand=True,
-            padding=padding.all(dimens.SPACE_MD),
-            margin=margin.symmetric(vertical=dimens.SPACE_MD),
-            content=Card(
-                expand=True,
-                content=Container(
-                    Column(
-                        expand=True,
-                        controls=[
-                            Row(
-                                controls=[
-                                    IconButton(
-                                        icon=icons.CHEVRON_LEFT_ROUNDED,
-                                        on_click=self.navigate_back,
-                                        icon_size=dimens.ICON_SIZE,
-                                    ),
-                                    self.form_title,
-                                ]
-                            ),
-                            self.loading_indicator,
-                            views.Spacer(md_space=True),
-                            self.title_field,
-                            views.Spacer(),
-                            self.description_field,
-                            views.Spacer(),
-                            self.contract_editor,
-                            views.Spacer(),
-                            self.tag_field,
-                            views.Spacer(lg_space=True),
-                            self.start_date_field,
-                            views.Spacer(lg_space=True),
-                            self.end_date_field,
-                            views.Spacer(lg_space=True),
-                            self.submit_btn,
-                        ],
-                    ),
-                    padding=padding.all(dimens.SPACE_MD),
-                    width=dimens.MIN_WINDOW_WIDTH,
+        return views.TFullScreenFormContainer(
+            form_controls=[
+                Row(
+                    controls=[
+                        views.TBackButton(
+                            on_click=self.navigate_back,
+                        ),
+                        self.form_title,
+                    ]
                 ),
-            ),
+                self.loading_indicator,
+                views.Spacer(md_space=True),
+                self.title_field,
+                views.Spacer(),
+                self.description_field,
+                views.Spacer(),
+                self.contract_editor,
+                views.Spacer(),
+                self.tag_field,
+                views.Spacer(lg_space=True),
+                self.start_date_field,
+                views.Spacer(lg_space=True),
+                self.end_date_field,
+                views.Spacer(lg_space=True),
+                self.submit_btn,
+            ],
         )
-
-        return view
 
     def did_mount(self):
         """Called when the view is mounted"""

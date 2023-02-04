@@ -5,7 +5,6 @@ from flet import (
     Card,
     Column,
     Container,
-    GridView,
     Icon,
     ListTile,
     ResponsiveRow,
@@ -136,6 +135,56 @@ class ContactEditorPopUp(DialogHandler):
 
         title = "Edit contact" if contact is not None else "Add contact"
 
+        self.fname_field = views.TTextField(
+            label="First Name",
+            hint=self.contact.first_name,
+            initial_value=self.contact.first_name,
+        )
+        self.lname_field = views.TTextField(
+            label="Last Name",
+            hint=self.contact.last_name,
+            initial_value=self.contact.last_name,
+        )
+        self.company_name_field = views.TTextField(
+            label="Company",
+            hint=self.contact.company,
+            initial_value=self.contact.company,
+        )
+        self.email_field = views.TTextField(
+            label="Email",
+            hint=self.contact.email,
+            initial_value=self.contact.email,
+        )
+        self.street_name_field = views.TTextField(
+            label="Street",
+            hint=self.contact.address.street,
+            initial_value=self.contact.address.street,
+            width=width_spanning_half_of_container,
+        )
+        self.street_num_field = views.TTextField(
+            label="Street No.",
+            hint=self.contact.address.number,
+            initial_value=self.contact.address.number,
+            width=width_spanning_half_of_container,
+        )
+
+        self.postal_code_field = views.TTextField(
+            label="Postal code",
+            hint=self.contact.address.postal_code,
+            initial_value=self.contact.address.postal_code,
+            width=width_spanning_half_of_container,
+        )
+        self.city_field = views.TTextField(
+            label="City",
+            hint=self.contact.address.city,
+            initial_value=self.contact.address.city,
+            width=width_spanning_half_of_container,
+        )
+        self.country_field = views.TTextField(
+            label="Country",
+            hint=self.contact.address.country,
+            initial_value=self.contact.address.country,
+        )
         dialog = AlertDialog(
             content=Container(
                 height=pop_up_height,
@@ -144,74 +193,25 @@ class ContactEditorPopUp(DialogHandler):
                     controls=[
                         views.THeading(title=title, size=fonts.HEADLINE_4_SIZE),
                         views.Spacer(xs_space=True),
-                        views.TTextField(
-                            on_change=self.on_fname_changed,
-                            label="First Name",
-                            hint=self.contact.first_name,
-                            initial_value=self.contact.first_name,
-                        ),
-                        views.TTextField(
-                            on_change=self.on_lname_changed,
-                            label="Last Name",
-                            hint=self.contact.last_name,
-                            initial_value=self.contact.last_name,
-                        ),
-                        views.TTextField(
-                            on_change=self.on_company_changed,
-                            label="Company",
-                            hint=self.contact.company,
-                            initial_value=self.contact.company,
-                        ),
-                        views.TTextField(
-                            on_change=self.on_email_changed,
-                            label="Email",
-                            hint=self.contact.email,
-                            initial_value=self.contact.email,
-                        ),
+                        self.fname_field,
+                        self.lname_field,
+                        self.company_name_field,
+                        self.email_field,
                         Row(
                             vertical_alignment=utils.CENTER_ALIGNMENT,
                             controls=[
-                                views.TTextField(
-                                    on_change=self.on_street_changed,
-                                    label="Street",
-                                    hint=self.contact.address.street,
-                                    initial_value=self.contact.address.street,
-                                    width=width_spanning_half_of_container,
-                                ),
-                                views.TTextField(
-                                    on_change=self.on_street_num_changed,
-                                    label="Street No.",
-                                    hint=self.contact.address.number,
-                                    initial_value=self.contact.address.number,
-                                    width=width_spanning_half_of_container,
-                                ),
+                                self.street_name_field,
+                                self.street_num_field,
                             ],
                         ),
                         Row(
                             vertical_alignment=utils.CENTER_ALIGNMENT,
                             controls=[
-                                views.TTextField(
-                                    on_change=self.on_postal_code_changed,
-                                    label="Postal code",
-                                    hint=self.contact.address.postal_code,
-                                    initial_value=self.contact.address.postal_code,
-                                    width=width_spanning_half_of_container,
-                                ),
-                                views.TTextField(
-                                    on_change=self.on_city_changed,
-                                    label="City",
-                                    hint=self.contact.address.city,
-                                    initial_value=self.contact.address.city,
-                                    width=width_spanning_half_of_container,
-                                ),
+                                self.postal_code_field,
+                                self.city_field,
                             ],
                         ),
-                        views.TTextField(
-                            on_change=self.on_country_changed,
-                            label="Country",
-                            hint=self.contact.address.country,
-                            initial_value=self.contact.address.country,
-                        ),
+                        self.country_field,
                         views.Spacer(xs_space=True),
                     ],
                 ),
@@ -223,90 +223,35 @@ class ContactEditorPopUp(DialogHandler):
         )
         super().__init__(dialog=dialog, dialog_controller=dialog_controller)
 
-        self.fname = ""
-        self.lname = ""
-        self.company = ""
-        self.email = ""
-        self.street = ""
-        self.street_num = ""
-        self.postal_code = ""
-        self.city = ""
-        self.country = ""
         self.on_submit_callback = on_submit
         self.on_error_callback = on_error
 
-    def on_fname_changed(self, e):
-        """Called when the first name field is changed"""
-        self.fname = e.control.value
-
-    def on_lname_changed(self, e):
-        """Called when the last name field is changed"""
-        self.lname = e.control.value
-
-    def on_company_changed(self, e):
-        """Called when the company field is changed"""
-        self.company = e.control.value
-
-    def on_email_changed(self, e):
-        """Called when the email field is changed"""
-        self.email = e.control.value
-
-    def on_street_changed(self, e):
-        """Called when the street field is changed"""
-        self.street = e.control.value
-
-    def on_street_num_changed(self, e):
-        """Called when the street number field is changed"""
-        self.street_num = e.control.value
-
-    def on_postal_code_changed(self, e):
-        """Called when the postal code field is changed"""
-        self.postal_code = e.control.value
-
-    def on_city_changed(self, e):
-        """Called when the city field is changed"""
-        self.city = e.control.value
-
-    def on_country_changed(self, e):
-        """Called when the country field is changed"""
-        self.country = e.control.value
-
     def on_submit_btn_clicked(self, e):
         """Called when the submit button is clicked"""
-        self.contact.first_name = (
-            self.fname.strip() if self.fname.strip() else self.contact.first_name
-        )
-        self.contact.last_name = (
-            self.lname.strip() if self.lname.strip() else self.contact.last_name
-        )
-        self.contact.company = (
-            self.company.strip() if self.company.strip() else self.contact.company
-        )
-        self.contact.email = (
-            self.email.strip() if self.email.strip() else self.contact.email
-        )
-        self.address.street = (
-            self.street.strip() if self.street.strip() else self.contact.address.street
-        )
+        # get the values from the fields
+        fname = self.fname_field.value.strip()
+        lname = self.lname_field.value.strip()
+        company = self.company_name_field.value.strip()
+        email = self.email_field.value.strip()
+        street = self.street_name_field.value.strip()
+        street_num = self.street_num_field.value.strip()
+        postal_code = self.postal_code_field.value.strip()
+        city = self.city_field.value.strip()
+        country = self.country_field.value.strip()
 
-        self.address.number = (
-            self.street_num.strip()
-            if self.street_num.strip()
-            else self.contact.address.number
-        )
+        # update where updated else keep old value
+        self.contact.first_name = fname if fname else self.contact.first_name
+        self.contact.last_name = lname if lname else self.contact.last_name
+        self.contact.company = company if company else self.contact.company
+        self.contact.email = email if email else self.contact.email
+        self.address.street = street if street else self.contact.address.street
+
+        self.address.number = street_num if street_num else self.contact.address.number
         self.address.postal_code = (
-            self.postal_code.strip()
-            if self.postal_code.strip()
-            else self.contact.address.postal_code
+            postal_code if postal_code else self.contact.address.postal_code
         )
-        self.address.city = (
-            self.city.strip() if self.city.strip() else self.contact.address.city
-        )
-        self.address.country = (
-            self.country.strip()
-            if self.country.strip()
-            else self.contact.address.country
-        )
+        self.address.city = city if city else self.contact.address.city
+        self.address.country = country if country else self.contact.address.country
         self.contact.address = self.address
         if self.contact.address.is_empty:
             self.on_error_callback("Address cannot be empty")
@@ -342,13 +287,7 @@ class ContactsListView(TView, UserControl):
                 )
             ]
         )
-        self.contacts_container = GridView(
-            expand=False,
-            max_extent=540,
-            child_aspect_ratio=1.0,
-            spacing=dimens.SPACE_STD,
-            run_spacing=dimens.SPACE_MD,
-        )
+        self.contacts_container = views.THomeGrid()
         self.contacts_to_display = {}
         self.editor = None
 
