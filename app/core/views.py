@@ -2,7 +2,7 @@ import typing
 from typing import Callable, List, Optional, Union
 from dataclasses import dataclass
 import datetime
-
+from typing import Union
 from flet import (
     AlertDialog,
     Column,
@@ -91,7 +91,7 @@ class THeading(Text):
         color: Optional[str] = None,
         align: str = utils.TXT_ALIGN_LEFT,
         show: bool = True,
-        expand: bool | int | None = None,
+        expand: Optional[Union[bool, int]] = None,
     ):
         """Displays text formatted as a headline"""
         super().__init__(
@@ -116,7 +116,7 @@ class TSubHeading(Text):
         color: Optional[str] = None,
         align: str = utils.TXT_ALIGN_LEFT,
         show: bool = True,
-        expand: bool | int | None = None,
+        expand: Optional[Union[bool, int]] = None,
     ):
         super().__init__(
             subtitle,
