@@ -19,4 +19,5 @@ from . import (
     rendering,
     os_functions,
     mail,
+    app,
 )

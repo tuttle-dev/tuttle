@@ -328,55 +328,42 @@ class ClientEditorPopUp(DialogHandler, UserControl):
         self.toggle_form_error()
 
         # get values from fields
-        client_name =  self.client_name_field.value.strip()
-        first_name =  self.first_name_field.value.strip()
-        last_name =  self.last_name_field.value.strip()
-        company =  self.company_field.value.strip()
-        email =  self.email_field.value.strip()
-        street =  self.street_field.value.strip()
-        street_num =  self.street_num_field.value.strip()
-        postal_code =  self.postal_code_field.value.strip()
-        city =  self.city_field.value.strip()
-        country =  self.country_field.value.strip()
+        client_name = self.client_name_field.value.strip()
+        first_name = self.first_name_field.value.strip()
+        last_name = self.last_name_field.value.strip()
+        company = self.company_field.value.strip()
+        email = self.email_field.value.strip()
+        street = self.street_field.value.strip()
+        street_num = self.street_num_field.value.strip()
+        postal_code = self.postal_code_field.value.strip()
+        city = self.city_field.value.strip()
+        country = self.country_field.value.strip()
 
         # update where updated else keep old value
-        self.client.name = (
-            client_name if client_name else self.client.name
-        )
+        self.client.name = client_name if client_name else self.client.name
         self.invoicing_contact.first_name = (
             first_name if first_name else self.invoicing_contact.first_name
         )
         self.invoicing_contact.last_name = (
-            last_name if last_name
-            else self.invoicing_contact.last_name
+            last_name if last_name else self.invoicing_contact.last_name
         )
         self.invoicing_contact.company = (
-            company if company
-            else self.invoicing_contact.company
+            company if company else self.invoicing_contact.company
         )
-        self.invoicing_contact.email = (
-            email if email else self.invoicing_contact.email
-        )
+        self.invoicing_contact.email = email if email else self.invoicing_contact.email
         self.address.street = (
-            street if street
-            else self.invoicing_contact.address.street
+            street if street else self.invoicing_contact.address.street
         )
 
         self.address.number = (
-            street_num if street_num
-            else self.invoicing_contact.address.number
+            street_num if street_num else self.invoicing_contact.address.number
         )
         self.address.postal_code = (
-            postal_code if postal_code
-            else self.invoicing_contact.address.postal_code
+            postal_code if postal_code else self.invoicing_contact.address.postal_code
         )
-        self.address.city = (
-            city if city
-            else self.invoicing_contact.address.city
-        )
+        self.address.city = city if city else self.invoicing_contact.address.city
         self.address.country = (
-            country if country
-            else self.invoicing_contact.address.country
+            country if country else self.invoicing_contact.address.country
         )
         self.invoicing_contact.address = self.address
         self.client.invoicing_contact = self.invoicing_contact

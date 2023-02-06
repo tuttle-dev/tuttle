@@ -19,12 +19,6 @@ from flet import View
 from tuttle.dev import deprecated
 
 
-
-
-
-
-
-
 @dataclass
 class RouteView:
     """A utility class that defines a route view"""
