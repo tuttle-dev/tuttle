@@ -2,6 +2,8 @@ from typing import List, Optional, Type, Union
 
 import datetime
 
+from loguru import logger
+
 from core.abstractions import SQLModelDataSourceMixin
 from core.intent_result import IntentResult
 
@@ -72,6 +74,7 @@ class InvoicingDataSource(SQLModelDataSourceMixin):
         invoice: Invoice,
     ):
         """Creates or updates an invoice with given invoice and project info"""
+        logger.info(f"Saving invoice {invoice}")
         self.store(invoice)
 
     def save_timesheet(self, timesheet: Timesheet):

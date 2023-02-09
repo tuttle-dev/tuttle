@@ -596,6 +596,9 @@ class Invoice(SQLModel, table=True):
         description="Whether the invoice has been rendered as a PDF.",
     )
 
+    def __repr__(self):
+        return f"Invoice(id={self.id}, number={self.number}, date={self.date})"
+
     #
     @property
     def sum(self) -> Decimal:

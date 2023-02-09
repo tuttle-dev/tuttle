@@ -259,7 +259,7 @@ class SQLModelDataSourceMixin:
 
     def store(self, entity: sqlmodel.SQLModel):
         """Stores the given entity in the database"""
-        logger.debug(f"storing {entity}")
+        # logger.debug(f"storing {entity}")
         with self.create_session() as session:
             session.add(entity)
             session.commit()
