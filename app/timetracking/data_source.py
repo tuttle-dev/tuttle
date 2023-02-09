@@ -1,5 +1,7 @@
 from typing import Type, Union, Any, Optional
 
+from pathlib import Path
+
 from loguru import logger
 import icloudpy
 
@@ -122,6 +124,7 @@ class TimeTrackingCloudCalendarSource:
         icloud_connector = icloudpy.ICloudPyService(
             apple_id=apple_id,
             password=password,
+            cookie_directory=Path.home() / ".tuttle" / "cookies",
         )
         return CloudConnector(
             cloud_connector=icloud_connector,

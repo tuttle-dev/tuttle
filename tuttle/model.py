@@ -350,6 +350,8 @@ class Contract(SQLModel, table=True):
         """Check if contract is active.A contract is active if it is not completed and the end date is in the future."""
         if self.is_completed:
             return False
+        if self.is_upcoming():
+            return False
         if self.end_date:
             today = datetime.date.today()
             return self.end_date > today
@@ -440,6 +442,8 @@ class Project(SQLModel, table=True):
         """Is the project active? A project is active if it is not completed and if the end date is in the future."""
         if self.is_completed:
             return False
+        if self.is_upcoming():
+            return False
         if self.end_date:
             today = datetime.date.today()
             return self.end_date >= today
@@ -501,7 +505,13 @@ class Timesheet(SQLModel, table=True):
     # invoice: "Invoice" = Relationship(back_populates="timesheet")
     # period: str
     comment: Optional[str] = Field(description="A comment on the timesheet.")
-    items: List[TimeTrackingItem] = Relationship(back_populates="timesheet")
+    items: List[TimeTrackingItem] = Relationship(
+        back_populates="timesheet",
+        sa_relationship_kwargs={
+            "lazy": "subquery",
+            "cascade": "all, delete",  # delete all items when deleting a timesheet
+        },
+    )
 
     rendered: bool = Field(
         default=False,
@@ -568,7 +578,10 @@ class Invoice(SQLModel, table=True):
     # Invoice 1:n Timesheet
     timesheets: List[Timesheet] = Relationship(
         back_populates="invoice",
-        sa_relationship_kwargs={"lazy": "subquery"},
+        sa_relationship_kwargs={
+            "lazy": "subquery",
+            "cascade": "all, delete",  # delete all timesheets when invoice is deleted
+        },
     )
 
     # status -- corresponds to InvoiceStatus enum above
@@ -582,28 +595,37 @@ class Invoice(SQLModel, table=True):
     # invoice items
     items: List["InvoiceItem"] = Relationship(
         back_populates="invoice",
-        sa_relationship_kwargs={"lazy": "subquery"},
+        sa_relationship_kwargs={
+            "lazy": "subquery",
+            "cascade": "all, delete",  # delete all invoice items when invoice is deleted
+        },
     )
     rendered: bool = Field(
         default=False,
         description="Whether the invoice has been rendered as a PDF.",
     )
 
+    def __repr__(self):
+        return f"Invoice(id={self.id}, number={self.number}, date={self.date})"
+
     #
     @property
     def sum(self) -> Decimal:
         """Sum over all invoice items."""
-        return sum([item.subtotal for item in self.items])
+        s = sum([item.subtotal for item in self.items])
+        return Decimal(s)
 
     @property
     def VAT_total(self) -> Decimal:
         """Sum of VAT over all invoice items."""
-        return sum(item.VAT for item in self.items)
+        s = sum(item.VAT for item in self.items)
+        return Decimal(s)
 
     @property
     def total(self) -> Decimal:
         """Total invoiced amount."""
-        return self.sum + self.VAT_total
+        t = self.sum + self.VAT_total
+        return Decimal(t)
 
     def generate_number(self, pattern=None, counter=None) -> str:
         """Generate an invoice number"""

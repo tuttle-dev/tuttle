@@ -6,16 +6,19 @@ import datetime
 from flet import (
     AlertDialog,
     Column,
+    Card,
+    IconButton,
     Container,
     Dropdown,
     ElevatedButton,
     FilledButton,
-    OutlinedButton,
+    GridView,
     Icon,
     Image,
     PopupMenuButton,
     PopupMenuItem,
     ProgressBar,
+    ButtonStyle,
     margin,
     NavigationRail,
     Row,
@@ -227,9 +230,9 @@ class TMultilineField(TextField):
 
     def __init__(
         self,
-        on_change,
-        label: str,
-        hint: str,
+        on_change: typing.Optional[Callable] = None,
+        label: str = "",
+        hint: str = "",
         on_focus: typing.Optional[Callable] = None,
         keyboardType: str = utils.KEYBOARD_MULTILINE,
         minLines: int = 3,
@@ -398,8 +401,8 @@ class TDropDown(UserControl):
     def __init__(
         self,
         label: str,
-        on_change: Callable,
-        items: List[str],
+        on_change: Optional[Callable] = None,
+        items: List[str] = [],
         hint: Optional[str] = "",
         width: Optional[int] = None,
         initial_value: Optional[str] = None,
@@ -438,7 +441,13 @@ class TDropDown(UserControl):
     ):
         """Updates the dropdown value"""
         self.drop_down.value = new_value
+        self.drop_down.error_text = None  # clear error text
         self.update()
+
+    @property
+    def value(self):
+        """Returns the dropdown value"""
+        return self.drop_down.value
 
     def update_error_txt(self, error_txt: str = ""):
         """Updates Or clears the error text"""
@@ -857,4 +866,79 @@ class TNavigationMenu(NavigationRail):
             min_extended_width=width,
             destinations=destinations,
             on_change=on_change,
+        )
+
+
+class THomeGrid(GridView):
+    """Returns a grid view used in the home screen"""
+
+    def __init__(
+        self,
+        expand: bool = False,
+        max_extent: int = 540,
+        spacing: int = dimens.SPACE_STD,
+        run_spacing: int = dimens.SPACE_STD,
+    ):
+        return super().__init__(
+            expand=expand,
+            max_extent=max_extent,
+            spacing=spacing,
+            run_spacing=run_spacing,
+        )
+
+
+class TBackButton(IconButton):
+    """Returns a back button"""
+
+    def __init__(self, on_click: Optional[Callable] = None):
+        return super().__init__(
+            icon=icons.CHEVRON_LEFT_ROUNDED,
+            on_click=on_click,
+            icon_size=dimens.ICON_SIZE,
+        )
+
+
+class TFullScreenFormContainer(Container):
+    """Returns a container for a full screen form"""
+
+    def __init__(self, form_controls: list[UserControl]):
+        return super().__init__(
+            expand=True,
+            padding=padding.all(dimens.SPACE_MD),
+            margin=margin.symmetric(vertical=dimens.SPACE_MD),
+            content=Card(
+                expand=True,
+                content=Container(
+                    Column(expand=True, controls=form_controls),
+                    padding=padding.all(dimens.SPACE_MD),
+                    width=dimens.MIN_WINDOW_WIDTH,
+                ),
+            ),
+        )
+
+
+class TStatusFilterBtn(ElevatedButton):
+    def __init__(
+        self,
+        label: str,
+        is_current_state: bool,
+        on_click: Callable,
+        tooltip: str,
+        on_click_params: any,
+    ):
+        return super().__init__(
+            text=label,
+            col={"xs": 6, "sm": 3, "lg": 2},
+            on_click=lambda e: on_click(on_click_params),
+            height=dimens.CLICKABLE_PILL_HEIGHT,
+            color=colors.PRIMARY_COLOR if is_current_state else colors.GRAY_COLOR,
+            tooltip=tooltip,
+            style=ButtonStyle(
+                elevation={
+                    utils.PRESSED: 3,
+                    utils.SELECTED: 3,
+                    utils.HOVERED: 4,
+                    utils.OTHER_CONTROL_STATES: 2,
+                },
+            ),
         )
