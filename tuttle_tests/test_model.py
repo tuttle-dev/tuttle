@@ -9,7 +9,14 @@ from tracemalloc import stop
 import pytest
 from loguru import logger
 from pydantic import EmailStr, ValidationError
-from sqlmodel import Session, SQLModel, create_engine, select
+from sqlmodel import (
+    Session,
+    SQLModel,
+    create_engine,
+    select,
+    delete,
+)
+import sqlalchemy
 
 from tuttle import model, time
 from tuttle.model import (
@@ -22,6 +29,19 @@ from tuttle.model import (
     TimeUnit,
     Cycle,
 )
+
+
+@pytest.fixture
+def engine():
+    # in-memory sqlite db
+    engine = create_engine("sqlite:///", echo=True)
+    sqlalchemy.event.listen(
+        engine, "connect", lambda c, _: c.execute("PRAGMA foreign_keys = ON")
+    )
+
+    SQLModel.metadata.drop_all(engine)
+    SQLModel.metadata.create_all(engine)
+    return engine
 
 
 def store_and_retrieve(model_object):
@@ -116,6 +136,32 @@ class TestContact:
                 )
             )
 
+    def test_delete_if_required(self, engine):
+        """Test that a contact can be deleted if it is not required by a client."""
+        contact = Contact.validate(
+            dict(
+                first_name="Sam",
+                last_name="Lowry",
+                email="sam.lowry@miniinf.gov",
+                company="Ministry of Information",
+            )
+        )
+        client = Client.validate(
+            dict(
+                name="Ministry of Information",
+                invoicing_contact=contact,
+            )
+        )
+
+        with pytest.raises(sqlalchemy.exc.IntegrityError):
+            with Session(engine) as session:
+                session.add(client)
+                session.commit()
+                session.refresh(client)
+
+                session.exec(delete(Contact).where(Contact.id == 1))
+                session.commit()
+
 
 class TestClient:
     """Tests for the Client model."""
@@ -151,6 +197,32 @@ class TestClient:
     def test_missing_fields_instantiation(self):
         with pytest.raises(ValidationError):
             Client.validate(dict())
+
+    def test_delete_with_dependency(self, engine):
+        """Test that a client can be deleted when an invoicing contact is linked."""
+
+        contact = Contact.validate(
+            dict(
+                first_name="Sam",
+                last_name="Lowry",
+                email="sam.lowry@miniinf.gov",
+                company="Ministry of Information",
+            )
+        )
+        client = Client.validate(
+            dict(
+                name="Ministry of Information",
+                invoicing_contact=contact,
+            )
+        )
+
+        with Session(engine) as session:
+            session.add(client)
+            session.commit()
+            session.refresh(client)
+
+            session.exec(delete(Client).where(Client.id == 1))
+            session.commit()
 
 
 class TestContract:

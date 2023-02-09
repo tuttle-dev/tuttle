@@ -209,7 +209,11 @@ class Contact(SQLModel, table=True):
         back_populates="contacts", sa_relationship_kwargs={"lazy": "subquery"}
     )
     invoicing_contact_of: List["Client"] = Relationship(
-        back_populates="invoicing_contact", sa_relationship_kwargs={"lazy": "subquery"}
+        back_populates="invoicing_contact",
+        sa_relationship_kwargs={
+            "lazy": "subquery",
+            "passive_deletes": "all",  # can't delete contact if it's used in a client
+        },
     )
     # post address
 
