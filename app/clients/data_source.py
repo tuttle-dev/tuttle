@@ -68,12 +68,4 @@ class ClientDataSource(SQLModelDataSourceMixin):
                 log_message  : str  if an error or exception occurs
                 exception : Exception if an exception occurs
         """
-        try:
-            self.delete_by_id(Client, client_id)
-            return IntentResult(was_intent_successful=True)
-        except Exception as e:
-            return IntentResult(
-                was_intent_successful=False,
-                log_message=f"An exception was raised @ClientDataSource.delete_client_by_id {e.__class__.__name__}",
-                exception=e,
-            )
+        self.delete_by_id(Client, client_id)

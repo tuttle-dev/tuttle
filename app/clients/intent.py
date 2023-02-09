@@ -1,8 +1,10 @@
 from typing import Mapping, Type, Union
 
+from loguru import logger
+
 from contacts.intent import ContactsIntent
 from core.intent_result import IntentResult
-from core.abstractions import Intent
+from core.abstractions import Intent, DataIntegrityViolation
 
 from tuttle.model import Client, Contact
 
@@ -95,8 +97,14 @@ class ClientsIntent(Intent):
         Returns:
             IntentResult: An object indicating the result of the intent
         """
-        result: IntentResult = self._data_source.delete_client_by_id(client_id)
-        if not result.was_intent_successful:
-            result.error_msg = "Failed to delete the client! please retry"
-            result.log_message_if_any()
-        return result
+        try:
+            self._data_source.delete_client_by_id(client_id)
+            return IntentResult(was_intent_successful=True)
+        except Exception as e:
+            logger.error("Failed to delete the client")
+            logger.exception(e)
+            return IntentResult(
+                was_intent_successful=False,
+                error_msg="Failed to delete the client",
+                exception=e,
+            )

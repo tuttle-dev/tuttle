@@ -9,6 +9,7 @@ from flet import AlertDialog, file_picker
 
 import sqlmodel
 from sqlmodel import pool
+import sqlalchemy
 
 from loguru import logger
 
@@ -192,6 +193,12 @@ class SQLModelDataSourceMixin:
             connect_args={"check_same_thread": False},
             poolclass=pool.StaticPool,
         )
+        # required for raising foreign key constraint violations
+        sqlalchemy.event.listen(
+            self.db_engine,
+            "connect",
+            lambda c, _: c.execute("PRAGMA foreign_keys = ON"),
+        )
 
     def create_session(self):
         return sqlmodel.Session(
@@ -295,3 +302,22 @@ class Intent(ABC):
 
             return wrapped
         return attr
+
+
+class DataIntegrityViolation(Exception):
+    """Exception raised when an operation is not allowed due to data integrity reasons.
+
+    Attributes:
+        message (str): A string describing the error that caused the exception.
+        original_exception (Exception, optional): The original exception that caused the data integrity violation.
+    """
+
+    def __init__(self, message: str, original_exception: Optional[Exception] = None):
+        """Initializes a new instance of the DataIntegrityViolation class.
+
+        Args:
+            message (str): A string describing the error that caused the exception.
+            original_exception (Exception, optional): The original exception that caused the data integrity violation.
+        """
+        super().__init__(message)
+        self.original_exception = original_exception

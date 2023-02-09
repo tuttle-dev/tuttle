@@ -1,6 +1,6 @@
 from typing import List, Union
 
-from core.abstractions import SQLModelDataSourceMixin
+from core.abstractions import SQLModelDataSourceMixin, DataIntegrityViolation
 from core.intent_result import IntentResult
 from loguru import logger
 from sqlalchemy.exc import IntegrityError
@@ -83,7 +83,7 @@ class ContactDataSource(SQLModelDataSourceMixin):
                 exception=e,
             )
 
-    def delete_contact_by_id(self, contact_id) -> IntentResult[None]:
+    def delete_contact_by_id(self, contact_id):
         """Deletes a contact with the given id from the database
 
         Returns:
@@ -95,10 +95,12 @@ class ContactDataSource(SQLModelDataSourceMixin):
         """
         try:
             self.delete_by_id(Contact, contact_id)
-            return IntentResult(was_intent_successful=True)
-        except Exception as e:
-            return IntentResult(
-                was_intent_successful=False,
-                log_message=f"An exception was raised @ContactDataSource.delete_contact_by_id {e.__class__.__name__}",
-                exception=e,
+        except IntegrityError as integrity_error:
+            logger.error(
+                "Data integrity error trying to delete contact with id: {contact_id}"
+            )
+            logger.exception(integrity_error)
+            raise DataIntegrityViolation(
+                message=f"Cannot delete contact with id={contact_id} because it is required by another item in your database",
+                original_exception=integrity_error,
             )
