@@ -505,7 +505,13 @@ class Timesheet(SQLModel, table=True):
     # invoice: "Invoice" = Relationship(back_populates="timesheet")
     # period: str
     comment: Optional[str] = Field(description="A comment on the timesheet.")
-    items: List[TimeTrackingItem] = Relationship(back_populates="timesheet")
+    items: List[TimeTrackingItem] = Relationship(
+        back_populates="timesheet",
+        sa_relationship_kwargs={
+            "lazy": "subquery",
+            "cascade": "all, delete",  # delete all items when deleting a timesheet
+        },
+    )
 
     rendered: bool = Field(
         default=False,
@@ -572,7 +578,10 @@ class Invoice(SQLModel, table=True):
     # Invoice 1:n Timesheet
     timesheets: List[Timesheet] = Relationship(
         back_populates="invoice",
-        sa_relationship_kwargs={"lazy": "subquery"},
+        sa_relationship_kwargs={
+            "lazy": "subquery",
+            "cascade": "all, delete",  # delete all timesheets when invoice is deleted
+        },
     )
 
     # status -- corresponds to InvoiceStatus enum above
@@ -586,7 +595,10 @@ class Invoice(SQLModel, table=True):
     # invoice items
     items: List["InvoiceItem"] = Relationship(
         back_populates="invoice",
-        sa_relationship_kwargs={"lazy": "subquery"},
+        sa_relationship_kwargs={
+            "lazy": "subquery",
+            "cascade": "all, delete",  # delete all invoice items when invoice is deleted
+        },
     )
     rendered: bool = Field(
         default=False,
