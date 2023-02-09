@@ -64,22 +64,6 @@ def test_model_creation():
             pass
 
 
-def test_user():
-    user = model.User(
-        name="Archibald Tuttle",
-        subtitle="Heating Engineer",
-        email="harry@tuttle.com",
-    )
-
-    icloud_account = model.ICloudAccount(
-        user_name=user.email,
-    )
-
-    user.icloud_account = icloud_account
-
-    assert icloud_account.user.name == "Archibald Tuttle"
-
-
 class TestUser:
     """Tests for the User model."""
 
