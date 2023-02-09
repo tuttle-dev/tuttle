@@ -228,9 +228,11 @@ def create_fake_invoice(
     if user is None:
         user = create_fake_user(fake)
 
-    invoice_number = next(invoice_number_counter)
+    invoice_number = (
+        f"{datetime.date.today().strftime('%Y-%m-%d')}-{next(invoice_number_counter)}"
+    )
     invoice = Invoice(
-        number=str(invoice_number),
+        number=invoice_number,
         date=datetime.date.today(),
         sent=fake.pybool(),
         paid=fake.pybool(),
