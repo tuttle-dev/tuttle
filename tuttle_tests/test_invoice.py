@@ -48,7 +48,7 @@ def test_generate_invoice(
     demo_projects,
     demo_calendar_timetracking,
 ):
-    for project in demo_projects:
+    for i, project in enumerate(demo_projects):
         timesheets = []
         for period in ["January 2022", "February 2022"]:
             (period_start, period_end) = get_month_start_end(period)
@@ -66,5 +66,6 @@ def test_generate_invoice(
             contract=project.contract,
             project=project,
             date=datetime.date.today(),
+            number=f"{datetime.date.today().strftime('%Y-%m-%d')}-{i}",
         )
         # assert invoice.total > 0

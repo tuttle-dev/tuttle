@@ -3,6 +3,7 @@ from typing import List, Optional, Type, Union
 import datetime
 
 from loguru import logger
+import sqlmodel
 
 from core.abstractions import SQLModelDataSourceMixin
 from core.intent_result import IntentResult
@@ -81,33 +82,6 @@ class InvoicingDataSource(SQLModelDataSourceMixin):
         """Creates or updates a timesheet"""
         self.store(timesheet)
 
-    def get_last_invoice(self) -> IntentResult[Invoice]:
-        """Get the last invoice.
-
-        Returns:
-            IntentResult:
-                was_intent_successful : bool
-                data : Invoice
-                log_message  : str  if an error or exception occurs
-                exception : Exception if an exception occurs
-        """
-        try:
-            # query the database to get the Invoice that was last added
-            with self.create_session() as session:
-                last_invoice = (
-                    session.query(Invoice).order_by(Invoice.id.desc()).first()
-                )
-            return IntentResult(
-                was_intent_successful=True,
-                data=last_invoice,
-            )
-        except Exception as e:
-            return IntentResult(
-                was_intent_successful=False,
-                log_message=f"Exception raised @InvoicingDataSource.get_last_invoice_number {e.__class__.__name__}",
-                exception=e,
-            )
-
     def get_timesheet_for_invoice(self, invoice: Invoice) -> Timesheet:
         """Get the timesheet associated with an invoice
 
@@ -127,3 +101,22 @@ class InvoicingDataSource(SQLModelDataSourceMixin):
             )
         timesheet = invoice.timesheets[0]
         return timesheet
+
+    def generate_invoice_number(self, date: datetime.date) -> str:
+        """Generate a new valid invoice number"""
+        # invoice number scheme: YYYY-MM-DD-XX
+        prefix = date.strftime("%Y-%m-%d")
+
+        # where XX is the number of invoices for the day
+        # if there are no invoices for the day, start at 1
+        # if there are invoices for the day, start at the last invoice number + 1
+        # count the number of invoices for the day
+        with self.create_session() as session:
+            invoices = session.exec(
+                sqlmodel.select(Invoice).where(Invoice.date == date)
+            ).all()
+            invoice_count = len(invoices)
+            if invoice_count == 0:
+                return f"{prefix}-01"
+            else:
+                return f"{prefix}-{invoice_count + 1}"

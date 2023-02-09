@@ -17,13 +17,14 @@ def generate_invoice(
     timesheets: List[Timesheet],
     contract: Contract,
     project: Project,
+    number: str,
     date: datetime.date = datetime.date.today(),
-    counter: int = None,
 ) -> Invoice:
     invoice = Invoice(
         date=date,
         contract=contract,
         project=project,
+        number=number,
     )
     for timesheet in timesheets:
         total_hours = timesheet.total / pandas.Timedelta("1h")
@@ -38,8 +39,6 @@ def generate_invoice(
             description=timesheet.title,
         )
 
-    # TODO: replace with auto-incrementing numbers
-    invoice.generate_number(counter=counter)
     return invoice
 
 

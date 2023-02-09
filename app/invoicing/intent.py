@@ -108,13 +108,18 @@ class InvoicingIntent(Intent):
                 to_date,
             )
 
+            invoice_number = self._invoicing_data_source.generate_invoice_number(
+                invoice_date
+            )
+
             invoice: Invoice = invoicing.generate_invoice(
+                date=invoice_date,
+                number=invoice_number,
                 timesheets=[
                     timesheet,
                 ],
                 contract=project.contract,
                 project=project,
-                date=invoice_date,
             )
 
             if render:
@@ -361,30 +366,6 @@ class InvoicingIntent(Intent):
             return IntentResult(
                 was_intent_successful=False,
                 error_msg=error_message,
-            )
-
-    def generate_invoice_number(
-        self,
-        invoice_date: Optional[date] = None,
-    ) -> IntentResult[str]:
-        """Creates a unique invoice number"""
-        # get the number of the most recent invoice
-        result: IntentResult[Invoice] = self._invoicing_data_source.get_last_invoice()
-        if result.was_intent_successful:
-            last_invoice: Invoice = result.data
-            last_invoice_number: str = last_invoice.invoice_number
-            # increment the invoice number
-            invoice_number = last_invoice_number + 1
-            return IntentResult(
-                was_intent_successful=True,
-                data=f"{invoice_number:05d}",
-            )
-        else:
-            # create the first invoice number
-            invoice_number = 1
-            return IntentResult(
-                was_intent_successful=True,
-                data=f"{invoice_number:05d}",
             )
 
     def get_time_tracking_data_as_dataframe(self) -> Optional[DataFrame]:
