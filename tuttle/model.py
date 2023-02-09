@@ -586,7 +586,10 @@ class Invoice(SQLModel, table=True):
     # invoice items
     items: List["InvoiceItem"] = Relationship(
         back_populates="invoice",
-        sa_relationship_kwargs={"lazy": "subquery"},
+        sa_relationship_kwargs={
+            "lazy": "subquery",
+            "cascade": "all, delete",  # delete all invoice items when invoice is deleted
+        },
     )
     rendered: bool = Field(
         default=False,
