@@ -1,6 +1,7 @@
-from typing import Mapping, Optional
+from typing import Mapping, Optional, Tuple
 
 import datetime
+import random
 
 from clients.intent import ClientsIntent
 from contacts.intent import ContactsIntent
@@ -223,3 +224,21 @@ class ContractsIntent:
             result.log_message_if_any()
         result.data = contract
         return result
+
+    def get_contract_progress(
+        self, contract: Contract
+    ) -> IntentResult[Tuple[float, float]]:
+        """Gets the fraction of contract time budget spent if available."""
+        if contract.volume is None:
+            return IntentResult(
+                data=None,
+                was_intent_successful=False,
+                error_msg="The contract has no volume",
+            )
+        else:
+            # get random fraction of the contract volume
+            used = int(random.random() * contract.volume)
+            return IntentResult(
+                data=(used, contract.volume),
+                was_intent_successful=True,
+            )

@@ -1,6 +1,7 @@
 from typing import Callable, Optional
 
 from enum import Enum
+import random
 
 from flet import (
     Card,
@@ -17,6 +18,7 @@ from flet import (
     icons,
     margin,
     padding,
+    ProgressBar,
 )
 
 from clients.view import ClientEditorPopUp, ClientViewPopUp
@@ -36,14 +38,33 @@ class ContractCard(UserControl):
     """Formats a single contract info into a Card ui display"""
 
     def __init__(
-        self, contract: Contract, on_click_view, on_click_edit, on_click_delete
+        self,
+        contract: Contract,
+        on_click_view,
+        on_click_edit,
+        on_click_delete,
     ):
         super().__init__()
+        self.intent = ContractsIntent()
         self.contract = contract
         self.contract_info_container = Column(run_spacing=0, spacing=0)
         self.on_click_view = on_click_view
         self.on_click_edit = on_click_edit
         self.on_click_delete = on_click_delete
+
+    def show_progress(self):
+        """Show a progress bar indicating the contract time budget spent, if available."""
+        result = self.intent.get_contract_progress(self.contract)
+        if result.was_intent_successful:
+            (used, volume) = result.data
+            progress = used / volume
+            return ProgressBar(
+                value=progress,
+                bar_height=6,
+                tooltip=f"Time spent: {used} of {volume} {self.contract.unit}s",
+            )
+        else:
+            return views.Spacer(sm_space=True)
 
     def build(self):
         """Builds the contract card ui"""
@@ -65,6 +86,8 @@ class ContractCard(UserControl):
                 ),
                 on_click=lambda e: self.on_click_view(self.contract.id),
             ),
+            views.Spacer(md_space=True),
+            self.show_progress(),
             views.Spacer(md_space=True),
             ResponsiveRow(
                 controls=[
