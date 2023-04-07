@@ -176,3 +176,6 @@ class TimeTrackingIntent(Intent):
                 exception=ex,
                 data=None,
             )
+
+    # def get_time_spent_for_project(self, project: Project) -> IntentResult[float]:
+    #     raise NotImplementedError("TODO")

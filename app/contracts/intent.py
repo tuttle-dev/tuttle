@@ -5,6 +5,7 @@ import random
 
 from clients.intent import ClientsIntent
 from contacts.intent import ContactsIntent
+from timetracking.intent import TimeTrackingIntent
 from core.abstractions import ClientStorage, Intent
 from core.intent_result import IntentResult
 from preferences.intent import PreferencesIntent
@@ -22,6 +23,7 @@ class ContractsIntent:
     def __init__(self):
         self._clients_intent = ClientsIntent()
         self._contacts_intent = ContactsIntent()
+        # self._time_tracking_intent = TimeTrackingIntent()
         self._data_source = ContractDataSource()
 
     def get_preferred_currency_intent(
@@ -236,6 +238,8 @@ class ContractsIntent:
                 error_msg="The contract has no volume",
             )
         else:
+            # check if time tracking source available
+
             # get random fraction of the contract volume
             used = int(random.random() * contract.volume)
             return IntentResult(
