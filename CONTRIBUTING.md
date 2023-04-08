@@ -146,3 +146,40 @@ $ git push --tags
 ```
 
 Travis will then deploy to PyPI if tests pass.
+
+
+## Architecture Notes
+
+**The View**
+
+- builds Ui,
+- reacts to data changes (by updating the Ui)
+- listens for events and forwards them to the Intent
+
+**The Intent**
+
+- receives events
+- if some data is affected by the event, figure out which data source corresponds to that data
+- transforms the event data to the data format required by the data source
+- transform returned data source data to the data format required by the Ui
+- else, no data is affected by the event, handle the event (often using a util class).
+- an example of this is sending invoices by mail.
+
+**The Model (a.k.a data layer)**
+
+- defines the entity
+- define the entity source (file, remote API, local database, in-memory cache, etc)
+- if a relational database is used, define the entity's relationship to other entities
+- maintain the integrity of that relation (conflict strategies for insert operations are defined here, and integrity errors are thrown here, for example)
+- defines classes that manipulate this source (open, read, write, ....)
+
+
+As you go outer in layers (the outmost layer is the Ui, the innermost is the data layer), communication can occur down_ward across layers, and horizontally (for lack of a better word) BUT a layer cannot skip the layer directly below it. This is to say:
+
+* Data sources can communicate with each other. Thus `ClientDatasource.delete_client` can call. `ContractDatasource.get_contract ` for example.
+
+* Intents can communicate with each other, and with any data source. Thus `ClientIntent` can call `ContractIntent` or  `ContractDatasource` for example.
+The Ui can communicate with any intent (though often the Ui is tied to only a single intent, and the intent can instead call the 'other' intent). But it cannot communicate with a data source -> this would violate the do not skip layers rule.
+An inner layer cannot have a dependency on the layer above it. Thus an intent cannot instantiate a Ui class, and a data source cannot instantiate an Intent class.
+
+![](assets/images/mvi-concept.png)
