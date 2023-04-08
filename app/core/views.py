@@ -869,6 +869,73 @@ class TNavigationMenu(NavigationRail):
         )
 
 
+class TNavigationMenuNoLeading(UserControl):
+    """
+    Returns a navigation menu for the application without a leading content.
+
+    :param title: Title of the navigation menu.
+    :param on_change: Callable function to be called when the selected item in the menu changes.
+    :param selected_index: The index of the selected item in the menu.
+    :param destinations: List of destinations in the menu.
+    :param menu_height: The height of the menu.
+    :return: A NavigationRail widget containing the navigation menu.
+    """
+
+    def __init__(
+        self,
+        title: str,
+        on_change,
+        selected_index: Optional[int] = 0,
+        destinations=[],
+        menu_height: int = 200,
+        width: int = int(dimens.MIN_WINDOW_WIDTH * 0.3),
+        left_padding: int = dimens.SPACE_STD,
+        top_margin: int = dimens.SPACE_STD,
+    ):
+
+        super().__init__()
+        self.titleContainer = Container(
+            content=TSubHeading(
+                subtitle=title,
+                align=utils.TXT_ALIGN_LEFT,
+                expand=True,
+                color=colors.GRAY_DARK_COLOR,
+            ),
+            expand=False,
+            width=width,
+            alignment=alignment.center_left,
+            margin=margin.only(top=top_margin),
+            padding=padding.only(left=left_padding),
+        )
+        self.navigationRail = NavigationRail(
+            selected_index=selected_index,
+            min_width=utils.COMPACT_RAIL_WIDTH,
+            extended=True,
+            height=menu_height,
+            min_extended_width=width,
+            destinations=destinations,
+            on_change=on_change,
+        )
+
+    def setBgColor(self, side_bar_bg_color):
+        # set the background color of the navigation menu
+        self.navigationRail.bgcolor = side_bar_bg_color
+        self.titleContainer.bgcolor = side_bar_bg_color
+        self.update()
+
+    def build(self):
+        return Column(
+            controls=[
+                self.titleContainer,
+                self.navigationRail,
+            ],
+            alignment=utils.START_ALIGNMENT,
+            horizontal_alignment=utils.START_ALIGNMENT,
+            spacing=0,
+            run_spacing=0,
+        )
+
+
 class THomeGrid(GridView):
     """Returns a grid view used in the home screen"""
 

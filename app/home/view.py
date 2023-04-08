@@ -222,6 +222,8 @@ class SecondaryMenuHandler:
         ]
 
 
+
+SIDEBAR_WIDTH = 250 # width of the sidebar menu in home screen
 class HomeScreen(TView, UserControl):
     """The home screen"""
 
@@ -239,15 +241,17 @@ class HomeScreen(TView, UserControl):
         )
         self.selected_tab = 0
 
-        self.main_menu = views.TNavigationMenu(
+        self.main_menu = views.TNavigationMenuNoLeading(
             title=self.main_menu_handler.menu_title,
             destinations=self.get_menu_destinations(),
             on_change=lambda e: self.on_menu_destination_change(e),
+            
         )
-        self.secondary_menu = views.TNavigationMenu(
+        self.secondary_menu = views.TNavigationMenuNoLeading(
             title=self.secondary_menu_handler.menu_title,
             destinations=self.get_menu_destinations(menu_level=1),
             on_change=lambda e: self.on_menu_destination_change(e, menu_level=1),
+    
         )
         self.current_menu_handler = self.main_menu_handler
         self.destination_view = self.current_menu_handler.items[0].destination
@@ -347,22 +351,23 @@ class HomeScreen(TView, UserControl):
             ),
             height=dimens.FOOTER_HEIGHT,
         )
-        self.main_body = Column(
-            col={
-                "xs": 8,
-                "md": 9,
-                "lg": 10,
-            },
-            alignment=utils.START_ALIGNMENT,
-            horizontal_alignment=utils.START_ALIGNMENT,
-            controls=[
-                self.action_bar,
-                self.destination_content_container,
-            ],
+        self.main_body = Container(
+            width=dimens.MIN_WINDOW_WIDTH - SIDEBAR_WIDTH,
+            content=Column(
+                alignment=utils.START_ALIGNMENT,
+                horizontal_alignment=utils.START_ALIGNMENT,
+                controls=[
+                    self.action_bar,
+                    self.destination_content_container,
+                ],
+            ),
         )
         self.side_bar = Container(
-            col={"xs": 4, "md": 3, "lg": 2},
-            padding=padding.only(top=dimens.SPACE_XL),
+            width=SIDEBAR_WIDTH,
+            padding=padding.only(
+            top=dimens.SPACE_XL,
+            left=0,
+            ),
             content=Column(
                 controls=[
                     self.main_menu,
@@ -384,7 +389,7 @@ class HomeScreen(TView, UserControl):
         self.home_screen_view = Container(
             Column(
                 [
-                    ResponsiveRow(
+                    Row(
                         controls=[
                             self.side_bar,
                             self.main_body,
@@ -419,18 +424,14 @@ class HomeScreen(TView, UserControl):
             self.show_snack(result.error_msg, is_error=True)
             return
         self.preferred_theme = result.data
-        side_bar_components = [
-            self.side_bar,
-            self.main_menu,
-            self.secondary_menu,
-        ]
         side_bar_bg_color = colors.SIDEBAR_DARK_COLOR  # default is dark mode
         self.action_bar.bgcolor = colors.ACTION_BAR_DARK_COLOR
         if self.preferred_theme == theme.THEME_MODES.light.value:
             side_bar_bg_color = colors.SIDEBAR_LIGHT_COLOR
             self.action_bar.bgcolor = colors.ACTION_BAR_LIGHT_COLOR
-        for component in side_bar_components:
-            component.bgcolor = side_bar_bg_color
+        self.side_bar.bgcolor = side_bar_bg_color
+        self.main_menu.setBgColor(side_bar_bg_color)
+        self.secondary_menu.setBgColor(side_bar_bg_color)
         self.footer.bgcolor = side_bar_bg_color  # footer and side bar have same bgcolor
         self.update_self()
 
@@ -443,6 +444,7 @@ class HomeScreen(TView, UserControl):
             self.action_bar.height + self.footer.height + 50
         )
         self.destination_content_container.height = DESTINATION_CONTENT_PERCENT_HEIGHT
+        self.main_body.width = self.page_width - SIDEBAR_WIDTH
         self.update_self()
 
     def will_unmount(self):
