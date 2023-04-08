@@ -75,7 +75,7 @@ class ClientsIntent(Intent):
 
         if not result.was_intent_successful:
             result.log_message_if_any()
-            result.error_msg = "Failed to save the client! Please retry"
+            result.error_msg = "Failed to save the client! "
         return result
 
     def get_all_contacts_as_map(self) -> Mapping[int, Contact]:

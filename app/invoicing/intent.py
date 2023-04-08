@@ -83,7 +83,7 @@ class InvoicingIntent(Intent):
             logger.exception(ex)
             return IntentResult(
                 was_intent_successful=False,
-                message="Could not delete invoice. ",
+                error_msg="Could not delete invoice. ",
             )
 
     def create_invoice(

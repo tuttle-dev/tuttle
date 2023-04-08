@@ -79,7 +79,7 @@ class ProjectsIntent(Intent):
                     if old_project_result.was_intent_successful
                     else None
                 )
-            result.error_msg = "Failed to save the project. Please retry"
+            result.error_msg = "Failed to save the project. "
             result.log_message_if_any()
         return result
 
@@ -170,7 +170,7 @@ class ProjectsIntent(Intent):
         """
         result: IntentResult = self._data_source.delete_project_by_id(project_id)
         if not result.was_intent_successful:
-            result.error_msg = "Failed to delete that project! Please retry"
+            result.error_msg = "Failed to delete that project! "
             result.log_message_if_any()
         return result
 

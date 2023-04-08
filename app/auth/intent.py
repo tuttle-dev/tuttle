@@ -174,7 +174,7 @@ class AuthIntent(Intent):
         result = self._data_source.save_user(user)
 
         if not result.was_intent_successful:
-            result.error_msg = "Failed to update your info! Please retry"
+            result.error_msg = "Failed to update your info! "
             result.log_message_if_any()
         return result
 

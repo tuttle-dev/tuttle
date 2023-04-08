@@ -52,7 +52,7 @@ class ContractsIntent:
         """
         result = self._data_source.get_contract_by_id(contractId)
         if not result.was_intent_successful:
-            result.error_msg = "Failed to load contract details. Please retry"
+            result.error_msg = "Failed to load contract details. "
             result.log_message_if_any()
         return result
 
@@ -206,7 +206,7 @@ class ContractsIntent:
         """Deletes the contract with the given id"""
         result: IntentResult = self._data_source.delete_contract_by_id(contract_id)
         if not result.was_intent_successful:
-            result.error_msg = "Failed to delete that contract! Please retry"
+            result.error_msg = "Failed to delete that contract! "
             result.log_message_if_any()
         return result
 
@@ -217,9 +217,7 @@ class ContractsIntent:
         if not result.was_intent_successful:
             # undo the change
             contract.is_completed = not contract.is_completed
-            result.error_msg = (
-                "Failed to update the completed status of the contract. Please retry"
-            )
+            result.error_msg = "Failed to update the completed status of the contract. "
             result.log_message_if_any()
         result.data = contract
         return result

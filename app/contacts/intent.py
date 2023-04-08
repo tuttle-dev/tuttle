@@ -52,7 +52,7 @@ class ContactsIntent:
         """
         result: IntentResult[Contact] = self._data_source.get_contact_by_id(contact_id)
         if not result.was_intent_successful:
-            result.error_msg = "Retrieving contact failed. Please retry"
+            result.error_msg = "Retrieving contact failed. "
             result.log_message_if_any()
         return result
 
@@ -81,7 +81,7 @@ class ContactsIntent:
             )
         result = self._data_source.save_contact(contact=contact)
         if not result.was_intent_successful:
-            result.error_msg = "Saving contact failed. Please retry"
+            result.error_msg = "Saving contact failed. "
             result.log_message_if_any()
         return result
 
