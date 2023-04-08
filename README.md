@@ -112,6 +112,17 @@ $ pytest
 $ python app/app.py
 ```
 
+## Installation
+
+### macOS
+
+### Linux
+
+### Windows
+
+1. Requires [GTK](https://www.gtk.org).
+
+
 
 
 ## Contributing
