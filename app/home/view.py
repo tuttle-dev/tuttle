@@ -222,6 +222,8 @@ class SecondaryMenuHandler:
         ]
 
 
+
+SIDEBAR_WIDTH = 250 # width of the sidebar menu in home screen
 class HomeScreen(TView, UserControl):
     """The home screen"""
 
@@ -347,21 +349,19 @@ class HomeScreen(TView, UserControl):
             ),
             height=dimens.FOOTER_HEIGHT,
         )
-        self.main_body = Column(
-            col={
-                "xs": 8,
-                "md": 9,
-                "lg": 10,
-            },
-            alignment=utils.START_ALIGNMENT,
-            horizontal_alignment=utils.START_ALIGNMENT,
-            controls=[
-                self.action_bar,
-                self.destination_content_container,
-            ],
+        self.main_body = Container(
+            width=dimens.MIN_WINDOW_WIDTH - SIDEBAR_WIDTH,
+            content=Column(
+                alignment=utils.START_ALIGNMENT,
+                horizontal_alignment=utils.START_ALIGNMENT,
+                controls=[
+                    self.action_bar,
+                    self.destination_content_container,
+                ],
+            ),
         )
         self.side_bar = Container(
-            col={"xs": 4, "md": 3, "lg": 2},
+            width=SIDEBAR_WIDTH,
             padding=padding.only(top=dimens.SPACE_XL),
             content=Column(
                 controls=[
@@ -384,7 +384,7 @@ class HomeScreen(TView, UserControl):
         self.home_screen_view = Container(
             Column(
                 [
-                    ResponsiveRow(
+                    Row(
                         controls=[
                             self.side_bar,
                             self.main_body,
@@ -443,6 +443,7 @@ class HomeScreen(TView, UserControl):
             self.action_bar.height + self.footer.height + 50
         )
         self.destination_content_container.height = DESTINATION_CONTENT_PERCENT_HEIGHT
+        self.main_body.width = self.page_width - SIDEBAR_WIDTH
         self.update_self()
 
     def will_unmount(self):
