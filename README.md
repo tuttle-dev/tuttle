@@ -123,6 +123,13 @@ $ python app/app.py
 1. Requires [GTK](https://www.gtk.org).
 
 
+## Build
+
+To build an app bundle, run
+
+```shell
+python scripts/pack_app.py
+```
 
 
 ## Contributing
