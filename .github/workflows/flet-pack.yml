@@ -21,7 +21,7 @@ jobs:
     - run: pip install -r requirements.txt
     - run: pip install -r requirements_build.txt
     - run: pip install --no-dependencies -e .
-    - run: python scripts/build_app.py --one-file
+    - run: python scripts/pack_app.py
     # Optionally verify that it works (provided that it does not need user interaction)
     #- run: ./dist/your-code/your-code
     - uses: actions/upload-artifact@v3
