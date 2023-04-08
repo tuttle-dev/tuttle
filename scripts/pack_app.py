@@ -8,9 +8,9 @@ import subprocess
 
 import tuttle
 
-app_path = "app/app.py"
+app_path = "app.py"
 app_name = "Tuttle"
-icon_path = "app/assets/icon/macos/AppIcon.icns"
+icon_path = "tuttle/app/assets/icon/macos/AppIcon.icns"
 
 # files to be added to the app bundle
 added_files = [

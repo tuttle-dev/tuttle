@@ -222,8 +222,9 @@ class SecondaryMenuHandler:
         ]
 
 
+SIDEBAR_WIDTH = 250  # width of the sidebar menu in home screen
 
-SIDEBAR_WIDTH = 250 # width of the sidebar menu in home screen
+
 class HomeScreen(TView, UserControl):
     """The home screen"""
 
@@ -245,13 +246,11 @@ class HomeScreen(TView, UserControl):
             title=self.main_menu_handler.menu_title,
             destinations=self.get_menu_destinations(),
             on_change=lambda e: self.on_menu_destination_change(e),
-            
         )
         self.secondary_menu = views.TNavigationMenuNoLeading(
             title=self.secondary_menu_handler.menu_title,
             destinations=self.get_menu_destinations(menu_level=1),
             on_change=lambda e: self.on_menu_destination_change(e, menu_level=1),
-    
         )
         self.current_menu_handler = self.main_menu_handler
         self.destination_view = self.current_menu_handler.items[0].destination
@@ -365,8 +364,8 @@ class HomeScreen(TView, UserControl):
         self.side_bar = Container(
             width=SIDEBAR_WIDTH,
             padding=padding.only(
-            top=dimens.SPACE_XL,
-            left=0,
+                top=dimens.SPACE_XL,
+                left=0,
             ),
             content=Column(
                 controls=[

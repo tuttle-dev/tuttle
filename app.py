@@ -11,26 +11,33 @@ from flet import (
     app,
 )
 
-from auth.view import ProfileScreen, SplashScreen
-from contracts.view import ContractEditorScreen, ViewContractScreen
-from core.abstractions import TView, TViewParams
-from core.client_storage_impl import ClientStorageImpl
-from core.database_storage_impl import DatabaseStorageImpl
-from core.models import RouteView
-from core.utils import AlertDialogControls
-from core.views import THeading
-from error_views.page_not_found_screen import Error404Screen
-from home.view import HomeScreen
 from loguru import logger
 from pandas import DataFrame
-from preferences.intent import PreferencesIntent
-from preferences.model import PreferencesStorageKeys
-from preferences.view import PreferencesScreen
-from projects.view import ProjectEditorScreen, ViewProjectScreen
-from res.colors import BLACK_COLOR_ALT, ERROR_COLOR, PRIMARY_COLOR, WHITE_COLOR
-from res.dimens import MIN_WINDOW_HEIGHT, MIN_WINDOW_WIDTH
-from res.fonts import APP_FONTS, HEADLINE_4_SIZE, HEADLINE_FONT
-from res.res_utils import (
+
+
+from tuttle.app.auth.view import ProfileScreen, SplashScreen
+from tuttle.app.contracts.view import ContractEditorScreen, ViewContractScreen
+from tuttle.app.core.abstractions import TView, TViewParams
+from tuttle.app.core.client_storage_impl import ClientStorageImpl
+from tuttle.app.core.database_storage_impl import DatabaseStorageImpl
+from tuttle.app.core.models import RouteView
+from tuttle.app.core.utils import AlertDialogControls
+from tuttle.app.core.views import THeading
+from tuttle.app.error_views.page_not_found_screen import Error404Screen
+from tuttle.app.home.view import HomeScreen
+from tuttle.app.preferences.intent import PreferencesIntent
+from tuttle.app.preferences.model import PreferencesStorageKeys
+from tuttle.app.preferences.view import PreferencesScreen
+from tuttle.app.projects.view import ProjectEditorScreen, ViewProjectScreen
+from tuttle.app.res.colors import (
+    BLACK_COLOR_ALT,
+    ERROR_COLOR,
+    PRIMARY_COLOR,
+    WHITE_COLOR,
+)
+from tuttle.app.res.dimens import MIN_WINDOW_HEIGHT, MIN_WINDOW_WIDTH
+from tuttle.app.res.fonts import APP_FONTS, HEADLINE_4_SIZE, HEADLINE_FONT
+from tuttle.app.res.res_utils import (
     CONTRACT_DETAILS_SCREEN_ROUTE,
     CONTRACT_EDITOR_SCREEN_ROUTE,
     HOME_SCREEN_ROUTE,
@@ -40,8 +47,8 @@ from res.res_utils import (
     PROJECT_EDITOR_SCREEN_ROUTE,
     SPLASH_SCREEN_ROUTE,
 )
-from res.theme import APP_THEME, THEME_MODES, get_theme_mode_from_value
-from timetracking.intent import TimeTrackingIntent
+from tuttle.app.res.theme import APP_THEME, THEME_MODES, get_theme_mode_from_value
+from tuttle.app.timetracking.intent import TimeTrackingIntent
 
 
 class TuttleApp:

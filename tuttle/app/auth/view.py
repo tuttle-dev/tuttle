@@ -15,13 +15,13 @@ from flet import (
     Icon,
 )
 
-from auth.intent import AuthIntent
-from core import utils, views
-from core.abstractions import TView, TViewParams
-from core.intent_result import IntentResult
-from res import dimens, fonts, image_paths, res_utils, colors, theme
-from preferences.intent import PreferencesIntent
-from tuttle.model import User, BankAccount
+from ..auth.intent import AuthIntent
+from ..core import utils, views
+from ..core.abstractions import TView, TViewParams
+from ..core.intent_result import IntentResult
+from ..res import dimens, fonts, image_paths, res_utils, colors, theme
+from ..preferences.intent import PreferencesIntent
+from ..model import User, BankAccount
 
 from .intent import AuthIntent
 

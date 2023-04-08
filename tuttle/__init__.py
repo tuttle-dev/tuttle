@@ -6,6 +6,7 @@ __authors__ = [
 ]
 __version__ = "1.0.1"
 
+from . import app
 from . import (
     banking,
     calendar,
