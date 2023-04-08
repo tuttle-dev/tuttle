@@ -887,7 +887,7 @@ class TNavigationMenuNoLeading(UserControl):
         on_change,
         selected_index: Optional[int] = 0,
         destinations=[],
-        menu_height: int = 300,
+        menu_height: int = 200,
         width: int = int(dimens.MIN_WINDOW_WIDTH * 0.3),
         left_padding: int = dimens.SPACE_STD,
         top_margin: int = dimens.SPACE_STD,
