@@ -112,6 +112,13 @@ $ pytest
 $ python app/app.py
 ```
 
+## Build
+
+To build an app bundle, run
+
+```shell
+python scripts/pack_app.py
+```
 
 
 ## Contributing
