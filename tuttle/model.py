@@ -619,23 +619,13 @@ class Invoice(SQLModel, table=True):
     def VAT_total(self) -> Decimal:
         """Sum of VAT over all invoice items."""
         s = sum(item.VAT for item in self.items)
-        return Decimal(s)
+        return Decimal(round(s, 2))
 
     @property
     def total(self) -> Decimal:
         """Total invoiced amount."""
         t = self.sum + self.VAT_total
         return Decimal(t)
-
-    def generate_number(self, pattern=None, counter=None) -> str:
-        """Generate an invoice number"""
-        date_prefix = self.date.strftime("%Y-%m-%d")
-        # suffix = hashlib.shake_256(str(uuid.uuid4()).encode("utf-8")).hexdigest(2)
-        # TODO: auto-increment suffix for invoices generated on the same day
-        if counter is None:
-            counter = 1
-        suffix = f"{counter:02}"
-        self.number = f"{date_prefix}-{suffix}"
 
     @property
     def due_date(self) -> Optional[datetime.date]:

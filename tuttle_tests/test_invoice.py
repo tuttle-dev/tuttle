@@ -1,6 +1,7 @@
 """Tests for the invoice module."""
 
 import datetime
+from decimal import Decimal
 from pathlib import Path
 
 from tuttle import invoicing, timetracking, rendering
@@ -12,36 +13,39 @@ def test_invoice():
     the_invoice = Invoice(
         number="27B-6",
         date=datetime.date.today(),
-        due_date=datetime.date.today() + datetime.timedelta(days=14),
-        sent_date=datetime.date.today(),
         sent=True,
-        paid="foo",
+        paid=False,
         cancelled=False,
     )
 
     item_1 = InvoiceItem(
         invoice=the_invoice,
-        date=datetime.date.today(),
+        start_date=datetime.date.today(),
+        end_date=datetime.date.today(),
         quantity=10,
         unit="hours",
-        unit_price=50,
+        unit_price=Decimal(50),
         description="work work",
-        VAT_rate=0.20,
+        VAT_rate=Decimal(0.20),
     )
 
     item_2 = InvoiceItem(
         invoice=the_invoice,
-        date=datetime.date.today(),
+        start_date=datetime.date.today(),
+        end_date=datetime.date.today(),
         quantity=10,
         unit="hours",
-        unit_price=100,
+        unit_price=Decimal(100),
         description="work work",
-        VAT_rate=0.20,
+        VAT_rate=Decimal(0.20),
     )
 
-    assert the_invoice.sum == 1500
-    assert the_invoice.VAT_total == 300
-    assert the_invoice.total == 1800
+    assert item_1.invoice == the_invoice
+    assert item_2.invoice == the_invoice
+
+    assert the_invoice.sum == Decimal(1500)
+    assert the_invoice.VAT_total == Decimal(300)
+    assert the_invoice.total == Decimal(1800)
 
 
 def test_generate_invoice(

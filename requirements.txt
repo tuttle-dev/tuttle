@@ -9,7 +9,6 @@ babel
 loguru
 pandera
 weasyprint
-matplotlib
 faker
 PyPDF2
 flet
