@@ -14,13 +14,13 @@ from flet import (
     padding,
 )
 
-from clients.intent import ClientsIntent
-from core import utils, views
-from core.abstractions import DialogHandler, TView, TViewParams
-from core.intent_result import IntentResult
-from res import colors, dimens, fonts, res_utils
+from ..clients.intent import ClientsIntent
+from ..core import utils, views
+from ..core.abstractions import DialogHandler, TView, TViewParams
+from ..core.intent_result import IntentResult
+from ..res import colors, dimens, fonts, res_utils
 
-from tuttle.model import Address, Client, Contact
+from ...model import Address, Client, Contact
 
 
 class ClientCard(UserControl):

@@ -1,10 +1,10 @@
 from typing import Optional, Type, Union
 
-from core.abstractions import SQLModelDataSourceMixin
-from core.intent_result import IntentResult
+from ..core.abstractions import SQLModelDataSourceMixin
+from ..core.intent_result import IntentResult
 
-from tuttle.dev import deprecated
-from tuttle.model import User
+from ...dev import deprecated
+from ...model import User
 
 
 class UserDataSource(SQLModelDataSourceMixin):

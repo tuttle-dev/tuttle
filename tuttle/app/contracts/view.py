@@ -19,15 +19,15 @@ from flet import (
     padding,
 )
 
-from clients.view import ClientEditorPopUp, ClientViewPopUp
-from contracts.intent import ContractsIntent
-from core import utils, views
-from core.abstractions import DialogHandler, TView, TViewParams
-from core.intent_result import IntentResult
-from res import colors, dimens, fonts, res_utils
+from ..clients.view import ClientEditorPopUp, ClientViewPopUp
+from ..contracts.intent import ContractsIntent
+from ..core import utils, views
+from ..core.abstractions import DialogHandler, TView, TViewParams
+from ..core.intent_result import IntentResult
+from ..res import colors, dimens, fonts, res_utils
 
-from tuttle.model import Client, Contract, CONTRACT_DEFAULT_VAT_RATE
-from tuttle.time import Cycle, TimeUnit
+from ...model import Client, Contract, CONTRACT_DEFAULT_VAT_RATE
+from ...time import Cycle, TimeUnit
 
 LABEL_WIDTH = 80
 

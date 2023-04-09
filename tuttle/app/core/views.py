@@ -34,7 +34,7 @@ from flet import (
     Text,
 )
 
-from res import colors, dimens, fonts, image_paths
+from ..res import colors, dimens, fonts, image_paths
 
 from .abstractions import DialogHandler
 from . import utils

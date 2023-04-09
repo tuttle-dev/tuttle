@@ -1,9 +1,9 @@
 from typing import Type, Union, Optional
 
-from core.intent_result import IntentResult
-from core.abstractions import Intent
+from ..core.intent_result import IntentResult
+from ..core.abstractions import Intent
 
-from tuttle.model import User, Address
+from ...model import User, Address
 
 from .data_source import UserDataSource
 

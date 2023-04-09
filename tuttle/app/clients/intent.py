@@ -1,10 +1,10 @@
 from typing import Mapping, Type, Union
 
-from contacts.intent import ContactsIntent
-from core.intent_result import IntentResult
-from core.abstractions import Intent
+from ..contacts.intent import ContactsIntent
+from ..core.intent_result import IntentResult
+from ..core.abstractions import Intent
 
-from tuttle.model import Client, Contact
+from ...model import Client, Contact
 
 from .data_source import ClientDataSource
 
