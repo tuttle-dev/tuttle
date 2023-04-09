@@ -18,15 +18,8 @@
     </blockquote>
     <br />
   </p>
-  <p><i>
-      Tuttle is a time and finance planning tool tailored for the requirements of freelancers.
-      </i>
+  <p>
     </p>
-</div>
-
-
-<div align="center">
-<img src="https://c.tenor.com/I6kN-6X7nhAAAAAj/loading-buffering.gif" width=32 />
 </div>
 
 > **Note**: Tuttle is currently in development. The current version is a prototype, not quite ready for production use. However, we are happy to receive feedback from testers.
