@@ -3,7 +3,6 @@ from typing import Dict, List
 from flet import Column, DataCell, DataColumn, DataRow, DataTable
 
 import pandas
-from res import dimens
 
 from . import utils, views
 

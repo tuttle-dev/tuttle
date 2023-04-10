@@ -1,9 +1,9 @@
 from typing import List, Optional, Type, Union
 
-from core.abstractions import SQLModelDataSourceMixin
-from core.intent_result import IntentResult
+from ..core.abstractions import SQLModelDataSourceMixin
+from ..core.intent_result import IntentResult
 
-from tuttle.model import Client
+from ...model import Client
 
 
 class ClientDataSource(SQLModelDataSourceMixin):

@@ -22,14 +22,14 @@ from flet import (
     padding,
 )
 
-from clients.view import ClientViewPopUp
-from core import utils, views
-from core.abstractions import TView, TViewParams
-from core.intent_result import IntentResult
-from projects.intent import ProjectsIntent
-from res import colors, dimens, fonts, res_utils
+from ..clients.view import ClientViewPopUp
+from ..core import utils, views
+from ..core.abstractions import TView, TViewParams
+from ..core.intent_result import IntentResult
+from ..projects.intent import ProjectsIntent
+from ..res import colors, dimens, fonts, res_utils
 
-from tuttle.model import Contract, Project
+from ...model import Contract, Project
 
 
 class ProjectCard(UserControl):

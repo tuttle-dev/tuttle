@@ -1,12 +1,11 @@
 from typing import Callable
 
-import re
 from pathlib import Path
 
 import sqlmodel
 from loguru import logger
 
-from tuttle import demo
+from ... import demo
 
 from .abstractions import DatabaseStorage
 

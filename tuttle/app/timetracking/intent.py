@@ -5,11 +5,11 @@ from pathlib import Path
 from loguru import logger
 
 
-from core.abstractions import ClientStorage, Intent
-from core.intent_result import IntentResult
+from ..core.abstractions import ClientStorage, Intent
+from ..core.intent_result import IntentResult
 from pandas import DataFrame
-from preferences.intent import PreferencesIntent
-from preferences.model import PreferencesStorageKeys
+from ..preferences.intent import PreferencesIntent
+from ..preferences.model import PreferencesStorageKeys
 
 from .data_source import (
     TimeTrackingCloudCalendarSource,
@@ -17,8 +17,8 @@ from .data_source import (
     TimeTrackingFileCalendarSource,
     TimeTrackingSpreadsheetSource,
 )
-from tuttle.cloud import CloudConnector, CloudProvider
-from tuttle.calendar import Calendar
+from ...cloud import CloudConnector, CloudProvider
+from ...calendar import Calendar
 
 
 class TimeTrackingIntent(Intent):

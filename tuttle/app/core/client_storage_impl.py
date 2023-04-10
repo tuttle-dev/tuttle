@@ -5,7 +5,7 @@ import threading
 
 from flet import Page
 
-from core.abstractions import ClientStorage
+from ..core.abstractions import ClientStorage
 from loguru import logger
 
 

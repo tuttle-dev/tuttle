@@ -1,25 +1,24 @@
 from typing import Mapping, Optional, Type, Union
 
-import datetime
 import textwrap
 from datetime import date
 from pathlib import Path
 
-from auth.data_source import UserDataSource
-from core.abstractions import ClientStorage, Intent
-from core.intent_result import IntentResult
+from ..auth.data_source import UserDataSource
+from ..core.abstractions import ClientStorage, Intent
+from ..core.intent_result import IntentResult
 from loguru import logger
 from pandas import DataFrame
-from projects.intent import ProjectsIntent
-from timetracking.data_source import TimeTrackingDataFrameSource
-from timetracking.intent import TimeTrackingIntent
+from ..projects.intent import ProjectsIntent
+from ..timetracking.data_source import TimeTrackingDataFrameSource
+from ..timetracking.intent import TimeTrackingIntent
 
-from tuttle import invoicing, mail, os_functions, rendering, timetracking
-from tuttle.model import Invoice, Project, Timesheet, User
-from tuttle.os_functions import preview_pdf
+from ... import invoicing, mail, os_functions, rendering, timetracking
+from ...model import Invoice, Project, Timesheet, User
+from ...os_functions import preview_pdf
 
 from .data_source import InvoicingDataSource
-from auth.intent import AuthIntent
+from ..auth.intent import AuthIntent
 
 
 class InvoicingIntent(Intent):

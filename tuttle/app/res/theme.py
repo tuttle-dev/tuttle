@@ -5,7 +5,7 @@ from .fonts import DEFAULT_FONT
 from .colors import PRIMARY_COLOR
 from enum import Enum
 
-from tuttle.dev import deprecated
+from ...dev import deprecated
 
 
 class THEME_MODES(Enum):

@@ -5,10 +5,10 @@ import datetime
 from loguru import logger
 import sqlmodel
 
-from core.abstractions import SQLModelDataSourceMixin
-from core.intent_result import IntentResult
+from ..core.abstractions import SQLModelDataSourceMixin
+from ..core.intent_result import IntentResult
 
-from tuttle.model import Invoice, Project, Timesheet
+from ...model import Invoice, Project, Timesheet
 
 
 class InvoicingDataSource(SQLModelDataSourceMixin):

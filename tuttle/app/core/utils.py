@@ -15,7 +15,7 @@ from flet import icons
 
 import pycountry
 
-from tuttle.dev import deprecated
+from ...dev import deprecated
 
 
 class AlertDialogControls(Enum):

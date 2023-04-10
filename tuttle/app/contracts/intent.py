@@ -2,15 +2,15 @@ from typing import Mapping, Optional
 
 import datetime
 
-from clients.intent import ClientsIntent
-from contacts.intent import ContactsIntent
-from core.abstractions import ClientStorage, Intent
-from core.intent_result import IntentResult
-from preferences.intent import PreferencesIntent
-from preferences.model import PreferencesStorageKeys
+from ..clients.intent import ClientsIntent
+from ..contacts.intent import ContactsIntent
+from ..core.abstractions import ClientStorage, Intent
+from ..core.intent_result import IntentResult
+from ..preferences.intent import PreferencesIntent
+from ..preferences.model import PreferencesStorageKeys
 
-from tuttle.model import Client, Contact, Contract
-from tuttle.time import Cycle, TimeUnit
+from ...model import Client, Contact, Contract
+from ...time import Cycle, TimeUnit
 
 from .data_source import ContractDataSource
 

@@ -2,11 +2,11 @@ from typing import List, Optional, Union
 
 import datetime
 
-from core.abstractions import SQLModelDataSourceMixin
-from core.intent_result import IntentResult
+from ..core.abstractions import SQLModelDataSourceMixin
+from ..core.intent_result import IntentResult
 
-from tuttle.model import Client, Contract
-from tuttle.time import Cycle, TimeUnit
+from ...model import Client, Contract
+from ...time import Cycle, TimeUnit
 
 
 class ContractDataSource(SQLModelDataSourceMixin):

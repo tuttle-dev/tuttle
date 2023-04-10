@@ -15,14 +15,14 @@ from flet import (
     border,
 )
 
-from core import tabular, utils, views
-from core.abstractions import DialogHandler, TView
-from core.intent_result import IntentResult
+from ..core import tabular, utils, views
+from ..core.abstractions import DialogHandler, TView
+from ..core.intent_result import IntentResult
 from pandas import DataFrame
-from res import colors, dimens, fonts, res_utils
+from ..res import colors, dimens, fonts, res_utils
 
-from tuttle.calendar import Calendar
-from tuttle.cloud import CloudConnector
+from ...calendar import Calendar
+from ...cloud import CloudConnector
 
 from .intent import TimeTrackingIntent
 

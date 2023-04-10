@@ -17,18 +17,18 @@ from flet import (
     padding,
 )
 
-from core import utils, views
-from core.abstractions import TView, TViewParams
-from core.intent_result import IntentResult
+from ..core import utils, views
+from ..core.abstractions import TView, TViewParams
+from ..core.intent_result import IntentResult
 
-from core.utils import (
+from ..core.utils import (
     CENTER_ALIGNMENT,
     START_ALIGNMENT,
 )
-from preferences.intent import PreferencesIntent
-from preferences.model import Preferences
-from res import dimens
-from res.dimens import (
+from ..preferences.intent import PreferencesIntent
+from ..preferences.model import Preferences
+from ..res import dimens
+from ..res.dimens import (
     MIN_WINDOW_HEIGHT,
     MIN_WINDOW_WIDTH,
     SPACE_MD,
@@ -36,9 +36,9 @@ from res.dimens import (
     SPACE_XL,
     SPACE_XS,
 )
-from res.theme import THEME_MODES
+from ..res.theme import THEME_MODES
 
-from tuttle.cloud import CloudProvider
+from ...cloud import CloudProvider
 
 
 class PreferencesScreen(TView, UserControl):

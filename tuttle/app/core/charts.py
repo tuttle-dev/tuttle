@@ -8,9 +8,9 @@ from matplotlib.widgets import Slider
 matplotlib.use("svg")
 from flet import UserControl
 
-from custom_flet.custom_mat_chart import CustomMatplotlibChart
-from res.colors import BLACK_COLOR, GRAY_COLOR, PRIMARY_COLOR, WHITE_COLOR
-from res.fonts import BODY_1_SIZE
+from ..custom_flet.custom_mat_chart import CustomMatplotlibChart
+from ..res.colors import  GRAY_COLOR, PRIMARY_COLOR, WHITE_COLOR
+from ..res.fonts import BODY_1_SIZE
 
 
 class BarChart(UserControl):

@@ -1,6 +1,6 @@
 import warnings
 
-from tuttle.model import Cycle, TimeUnit
+from ...model import Cycle, TimeUnit
 
 warnings.warn(
     "wastebasket module, content will be moved to other modules",
@@ -10,13 +10,11 @@ warnings.warn(
 
 from typing import Callable, Optional
 
-import datetime
-import enum
 from dataclasses import dataclass
 
 from flet import View
 
-from tuttle.dev import deprecated
+from ...dev import deprecated
 
 
 @dataclass

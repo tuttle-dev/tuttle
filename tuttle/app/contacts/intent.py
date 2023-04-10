@@ -1,9 +1,9 @@
 from typing import Mapping, Union
 
-from core.intent_result import IntentResult
-from core.abstractions import Intent
+from ..core.intent_result import IntentResult
+from ..core.abstractions import Intent
 
-from tuttle.model import Contact
+from ...model import Contact
 
 from .data_source import ContactDataSource
 

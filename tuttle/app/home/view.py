@@ -21,17 +21,17 @@ from flet import (
     padding,
 )
 
-from clients.view import ClientsListView
-from contacts.view import ContactsListView
-from contracts.view import ContractsListView
-from core import utils, views
-from core.abstractions import DialogHandler, TView, TViewParams
-from invoicing.view import InvoicingListView
-from projects.view import ProjectsListView
-from res import colors, dimens, fonts, res_utils, theme
-from timetracking.view import TimeTrackingView
+from ..clients.view import ClientsListView
+from ..contacts.view import ContactsListView
+from ..contracts.view import ContractsListView
+from ..core import utils, views
+from ..core.abstractions import DialogHandler, TView, TViewParams
+from ..invoicing.view import InvoicingListView
+from ..projects.view import ProjectsListView
+from ..res import colors, dimens, fonts, res_utils, theme
+from ..timetracking.view import TimeTrackingView
 
-from preferences.intent import PreferencesIntent
+from ..preferences.intent import PreferencesIntent
 
 
 MIN_FOOTER_WIDTH = int(dimens.MIN_WINDOW_WIDTH * 0.7)

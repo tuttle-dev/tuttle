@@ -14,14 +14,14 @@ from flet import (
     icons,
 )
 
-from core import utils, views
-from core.abstractions import DialogHandler, TView, TViewParams
-from core.intent_result import IntentResult
+from ..core import utils, views
+from ..core.abstractions import DialogHandler, TView, TViewParams
+from ..core.intent_result import IntentResult
 from loguru import logger
 from pandas import DataFrame
-from res import colors, dimens, fonts, res_utils
+from ..res import colors, dimens, fonts, res_utils
 
-from tuttle.model import Invoice, Project, User
+from ...model import Invoice, Project, User
 
 from .intent import InvoicingIntent
 

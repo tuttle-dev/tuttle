@@ -2,12 +2,12 @@ from typing import Mapping, Optional, Union
 
 import datetime
 
-from clients.intent import ClientsIntent
-from contracts.intent import ContractsIntent
-from core.intent_result import IntentResult
-from core.abstractions import Intent
+from ..clients.intent import ClientsIntent
+from ..contracts.intent import ContractsIntent
+from ..core.intent_result import IntentResult
+from ..core.abstractions import Intent
 
-from tuttle.model import Client, Contract, Project
+from ...model import Client, Contract, Project
 
 from .data_source import ProjectDataSource
 

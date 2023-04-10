@@ -2,10 +2,10 @@ from typing import Callable
 
 from flet import Column, Container, UserControl, padding
 
-from core.abstractions import TView, TViewParams
-from core.utils import CENTER_ALIGNMENT
-from core.views import TErrorText, TPrimaryButton
-from res.dimens import SPACE_MD, SPACE_STD
+from ..core.abstractions import TView, TViewParams
+from ..core.utils import CENTER_ALIGNMENT
+from ..core.views import TErrorText, TPrimaryButton
+from ..res.dimens import SPACE_MD, SPACE_STD
 
 
 class Error404Screen(TView, UserControl):

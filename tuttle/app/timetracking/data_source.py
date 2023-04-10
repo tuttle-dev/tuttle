@@ -5,14 +5,14 @@ from pathlib import Path
 from loguru import logger
 import icloudpy
 
-from core.abstractions import SQLModelDataSourceMixin
-from core.intent_result import IntentResult
+from ..core.abstractions import SQLModelDataSourceMixin
+from ..core.intent_result import IntentResult
 from pandas import DataFrame
 
-from tuttle.calendar import ICSCalendar, ICloudCalendar, CloudCalendar
-from tuttle.dev import singleton
-from tuttle.cloud import CloudConnector, CloudProvider
-from tuttle import timetracking
+from ...calendar import ICSCalendar, ICloudCalendar, CloudCalendar
+from ...dev import singleton
+from ...cloud import CloudConnector, CloudProvider
+from ... import timetracking
 
 
 @singleton
