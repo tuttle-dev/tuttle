@@ -32,7 +32,10 @@ pack_options = [
     ("--icon", get_icon_path()),
     ("--product-name", app_name),
     ("--product-version", tuttle.__version__),
-    ("--copyright", "© 2021-2023 Tuttle developers. Licsened under the GNU GPL v3.0."),
+    (
+        "--copyright",
+        "(c) 2021-2023 Tuttle developers. Licsened under the GNU GPL v3.0.",
+    ),
 ]
 
 
