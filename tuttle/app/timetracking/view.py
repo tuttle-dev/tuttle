@@ -204,11 +204,12 @@ class TimeTrackingView(TView, UserControl):
     ):
         """Open file picker to select a file to upload"""
         self.close_pop_up_if_open()
+        if not is_spreadsheet and not is_ics:
+            return
         allowed_exts = ["ics"] if is_ics else ["xlsx", "csv", "xls", "tsv", "ods"]
         title = "Select .ics file" if is_ics else "Select excel file"
         self.pick_file_callback(
             on_file_picker_result=self.on_file_picker_result,
-            on_upload_progress=self.on_upload_progress,
             allowed_extensions=allowed_exts,
             dialog_title=title,
             file_type="custom",
@@ -220,33 +221,35 @@ class TimeTrackingView(TView, UserControl):
         if e.files and len(e.files) > 0:
             file = e.files[0]
             self.set_progress_hint(f"Uploading file {file.name}")
-            self.upload_file_callback(file)
             upload_path = Path(file.path)
             if upload_path:
                 self.uploaded_file_path = upload_path
+                self.extract_dataframe_from_file()
         else:
             self.set_progress_hint(hide_progress=True)
 
-    def on_upload_progress(self, e: FilePickerUploadEvent):
-        """Handle file upload progress"""
-        if e.progress == 1.0:
-            # upload complete
-            self.set_progress_hint(f"Upload complete, processing file...")
-            intent_result = self.intent.process_timetracking_file(
-                self.uploaded_file_path,
-            )
-            msg = (
-                "New work progress recorded."
-                if intent_result.was_intent_successful
-                else intent_result.error_msg
-            )
-            is_error = not intent_result.was_intent_successful
-            self.show_snack(msg, is_error)
-            if intent_result.was_intent_successful:
-                self.dataframe_to_display = intent_result.data
-                self.update_timetracking_dataframe()
-                self.display_dataframe()
-            self.set_progress_hint(hide_progress=True)
+    def extract_dataframe_from_file(self,):
+
+        """Execute intent to process file"""
+        if not self.uploaded_file_path:
+            return
+        # upload complete
+        self.set_progress_hint(f"Upload complete, processing file...")
+        intent_result = self.intent.process_timetracking_file(
+            self.uploaded_file_path,
+        )
+        msg = (
+            "New work progress recorded."
+            if intent_result.was_intent_successful
+            else intent_result.error_msg
+        )
+        is_error = not intent_result.was_intent_successful
+        self.show_snack(msg, is_error)
+        if intent_result.was_intent_successful:
+            self.dataframe_to_display = intent_result.data
+            self.update_timetracking_dataframe()
+            self.display_dataframe()
+        self.set_progress_hint(hide_progress=True)
 
     """Cloud calendar setup"""
 

@@ -105,14 +105,12 @@ class TuttleApp:
     def pick_file_callback(
         self,
         on_file_picker_result,
-        on_upload_progress,
         allowed_extensions,
         dialog_title,
         file_type,
     ):
         # used by views to request a file upload
         self.file_picker.on_result = on_file_picker_result
-        self.file_picker.on_upload = on_upload_progress
         self.file_picker.pick_files(
             allow_multiple=False,
             allowed_extensions=allowed_extensions,
@@ -120,23 +118,6 @@ class TuttleApp:
             file_type=file_type,
         )
 
-    def upload_file_callback(self, file):
-        try:
-            upload_to = self.page.get_upload_url(file.name, 600)
-            upload_item = FilePickerUploadFile(
-                file.name,
-                upload_url=upload_to,
-            )
-            self.file_picker.upload([upload_item])
-
-            upload_path_in_assets = f"{get_assets_uploads_url()}/{file.name}"
-            return upload_path_in_assets
-        except Exception as e:
-            logger.error(
-                f"Exception @app.upload_file_callback raised during file upload {e.__class__.__name__}"
-            )
-            logger.exception(e)
-            return None
 
     def on_theme_mode_changed(self, selected_theme: str):
         """callback function used by views for changing app theme mode"""
@@ -281,7 +262,6 @@ class TuttleRoutes:
             dialog_controller=app.control_alert_dialog,
             on_navigate_back=app.on_view_pop,
             client_storage=app.client_storage,
-            upload_file_callback=app.upload_file_callback,
             pick_file_callback=app.pick_file_callback,
         )
 

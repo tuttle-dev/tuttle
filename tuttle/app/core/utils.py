@@ -1,4 +1,5 @@
 import warnings
+import base64
 
 warnings.warn(
     "wastebasket module, content will be moved to other modules",
@@ -144,3 +145,17 @@ def get_currencies() -> List[Tuple[str, str, str]]:
     # sort alphabetically by abbreviation
     currencies.sort(key=lambda tup: tup[1])
     return currencies
+
+
+def toBase64(
+    image_path,
+) -> str:
+    """Returns base64 encoded image from the path"""
+    
+    # Read the image file as bytes
+    with open(image_path, "rb") as image_file:
+        image_bytes = image_file.read()
+    # Convert the bytes to a base64
+    stringbase64_string = base64.b64encode(image_bytes).decode("utf-8")
+ 
+    return stringbase64_string
