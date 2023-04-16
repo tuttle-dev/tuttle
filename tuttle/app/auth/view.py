@@ -1,5 +1,5 @@
 from typing import Callable, Optional
-
+from pathlib import Path
 from flet import (
     Column,
     Container,
@@ -501,7 +501,6 @@ class ProfilePhotoContent(TView, UserControl):
         """Callback for when user clicks on the update photo button"""
         self.pick_file_callback(
             on_file_picker_result=self.on_profile_photo_picked,
-            on_upload_progress=self.uploading_profile_pic_progress_listener,
             allowed_extensions=["png", "jpeg", "jpg"],
             dialog_title="Tuttle profile photo",
             file_type="custom",
@@ -511,30 +510,29 @@ class ProfilePhotoContent(TView, UserControl):
         """Callback for when profile photo has been picked"""
         if e.files and len(e.files) > 0:
             file = e.files[0]
-            upload_url = self.upload_file_callback(file)
+            upload_url = Path(file.path)
             if upload_url:
-                self.uploaded_photo_path = upload_url
+                self.uploaded_photo_path = str(upload_url)
+                self.setProfilePic()
 
-    def uploading_profile_pic_progress_listener(self, e):
-        """Callback for when profile photo is being uploaded"""
-        if e.progress == 1.0:
-            if self.uploaded_photo_path:
-                result = self.intent.update_user_photo_path(
-                    self.user_profile,
-                    self.uploaded_photo_path,
-                )
-                # assume error occurred
-                msg = result.error_msg
-                is_err = True
-                if result.was_intent_successful:
-                    self.profile_photo_img.src = self.uploaded_photo_path
-                    msg = "Profile photo updated"
-                    is_err = False
-                self.show_snack(msg, is_err)
-                if is_err:
-                    self.user_profile.profile_photo_path = ""
-                self.uploaded_photo_path = None  # clear
-            self.update_self()
+    def setProfilePic(self):
+        """Updates the profile photo"""
+        if not self.uploaded_photo_path:
+            return
+        result = self.intent.update_user_photo_path(self.user_profile, self.uploaded_photo_path,)
+        # assume error occurred
+        msg = result.error_msg
+        is_err = True
+        if result.was_intent_successful:
+            self.profile_photo_img.src_base64 = utils.toBase64(self.uploaded_photo_path)
+            msg = "Profile photo updated"
+            is_err = False
+        self.show_snack(msg, is_err)
+        if is_err:
+            self.user_profile.profile_photo_path = ""
+        self.uploaded_photo_path = None  # clear
+        self.update_self()
+                
 
     def build(self):
         self.profile_photo_img = views.TProfilePhotoImg()
@@ -564,7 +562,7 @@ class ProfilePhotoContent(TView, UserControl):
         else:
             self.user_profile: User = result.data
             if self.user_profile.profile_photo_path:
-                self.profile_photo_img.src = self.user_profile.profile_photo_path
+                self.profile_photo_img.src_base64 = utils.toBase64(self.user_profile.profile_photo_path)
             self.update_self()
 
     def will_unmount(self):

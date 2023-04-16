@@ -143,3 +143,4 @@ app/assets/uploads
 
 # visual studio workspaces
 *.code-workspace
+assets/uploads/*

@@ -95,7 +95,6 @@ class TViewParams:
     navigate_to_route: Callable
     show_snack: Callable
     dialog_controller: Callable
-    upload_file_callback: Callable
     pick_file_callback: Callable[[file_picker.FilePickerFile], str]
     client_storage: ClientStorage
     vertical_alignment_in_parent: str = START_ALIGNMENT
@@ -118,7 +117,6 @@ class TView(ABC):
         self.keep_back_stack = params.keep_back_stack
         self.navigate_back = params.on_navigate_back
         self.page_scroll_type = params.page_scroll_type
-        self.upload_file_callback = params.upload_file_callback
         self.pick_file_callback = params.pick_file_callback
         self.client_storage = params.client_storage
         self.mounted = False
