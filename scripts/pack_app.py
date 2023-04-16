@@ -10,7 +10,15 @@ import tuttle
 
 app_path = "app.py"
 app_name = "Tuttle"
-icon_path = "tuttle/app/assets/icon/macos/AppIcon.icns"
+
+
+def get_icon_path():
+    if sys.platform.startswith("darwin"):
+        icon_path = "tuttle/app/assets/icon/macos/AppIcon.icns"
+    else:
+        icon_path = "tuttle/app/assets/icon/web/icon-512-maskable.png"
+    return icon_path
+
 
 # files to be added to the app bundle
 added_files = [
@@ -21,20 +29,27 @@ added_files = [
 # options to be passed to flet pack
 pack_options = [
     ("--name", app_name),
-    ("--icon", icon_path),
+    ("--icon", get_icon_path()),
     ("--product-name", app_name),
     ("--product-version", tuttle.__version__),
-    ("--copyright", "© 2021-2023 Tuttle developers. Licsened under the GNU GPL v3.0."),
+    (
+        "--copyright",
+        "(c) 2021-2023 Tuttle developers. Licsened under the GNU GPL v3.0.",
+    ),
 ]
 
-if sys.platform.startswith("win"):
-    delimiter = ";"
-else:
-    delimiter = ":"
+
+def get_delimiter():
+    if sys.platform.startswith("win"):
+        delimiter = ";"
+    else:
+        delimiter = ":"
+    return delimiter
+
 
 added_data_options = []
 for src, dst in added_files:
-    added_data_options += ["--add-data", f"{src}{delimiter}{dst}"]
+    added_data_options += ["--add-data", f"{src}{get_delimiter()}{dst}"]
 pack_options_unpacked = [item for pair in pack_options for item in pair]
 
 
