@@ -74,7 +74,7 @@ Track regular expenses, taxes and social security contributions. Estimate them f
 Calculate your effective income and see how much you can spend without risking your financial security.
 
 
-## Prototype Test
+## Test via Python
 
 ### Setup
 
@@ -100,15 +100,22 @@ $ pytest
 $ python app/app.py
 ```
 
-## Installation
+## Test the App Bundle
+
+Download the latest [release](https://github.com/tuttle-dev/tuttle/releases) for your platform.
 
 ### macOS
 
+1. Run the .app bundle.
+
 ### Linux
+
+1. Run the executable.
 
 ### Windows
 
 1. Requires [GTK](https://www.gtk.org).
+2. Run the .exe file.
 
 
 ## Build
