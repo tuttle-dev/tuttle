@@ -1,6 +1,6 @@
 """Pandera schemata."""
 from pandera import (
-    SchemaModel,
+    # SchemaModel,
     DataFrameSchema,
     Column,
     Index,
