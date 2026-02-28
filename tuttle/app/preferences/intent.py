@@ -50,10 +50,6 @@ class PreferencesIntent(Intent):
                 preferences.theme_mode = preference_item_result.data
             elif item.value == PreferencesStorageKeys.default_currency_key.value:
                 preferences.default_currency = preference_item_result.data
-            elif item.value == PreferencesStorageKeys.cloud_acc_id_key.value:
-                preferences.cloud_acc_id = preference_item_result.data
-            elif item.value == PreferencesStorageKeys.cloud_provider_key.value:
-                preferences.cloud_acc_provider = preference_item_result.data
             elif item.value == PreferencesStorageKeys.language_key.value:
                 preferences.language = preference_item_result.data
 
@@ -66,13 +62,6 @@ class PreferencesIntent(Intent):
         try:
             self.set_preference_key_value_pair(
                 PreferencesStorageKeys.theme_mode_key, preferences.theme_mode
-            )
-            self.set_preference_key_value_pair(
-                PreferencesStorageKeys.cloud_acc_id_key, preferences.cloud_acc_id
-            )
-            self.set_preference_key_value_pair(
-                PreferencesStorageKeys.cloud_provider_key,
-                preferences.cloud_acc_provider,
             )
             self.set_preference_key_value_pair(
                 PreferencesStorageKeys.default_currency_key,

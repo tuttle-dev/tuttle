@@ -1,18 +1,13 @@
-from typing import Type, Union, Any, Optional
-
-from pathlib import Path
+from typing import Optional
 
 from loguru import logger
-import icloudpy
-
-from ..core.abstractions import SQLModelDataSourceMixin
-from ..core.intent_result import IntentResult
 from pandas import DataFrame
 
-from ...calendar import ICSCalendar, ICloudCalendar, CloudCalendar
+from ...calendar import ICSCalendar, system_calendar_available
 from ...dev import singleton
-from ...cloud import CloudConnector, CloudProvider
 from ... import timetracking
+
+SYSTEM_CALENDAR_AVAILABLE = system_calendar_available()
 
 
 @singleton
@@ -40,14 +35,7 @@ class TimeTrackingSpreadsheetSource:
         self,
         file_path: str,
     ) -> DataFrame:
-        """loads time tracking data from a spreadsheet file
-
-        Arguments:
-            file_path : path to an uploaded spreadsheet file
-
-        Returns:
-            DataFrame: time tracking data
-        """
+        """Loads time tracking data from a spreadsheet file."""
         logger.info(f"Loading time tracking data from {file_path}...")
         timetracking_data: DataFrame = timetracking.import_from_spreadsheet(
             path=file_path,
@@ -66,18 +54,7 @@ class TimeTrackingFileCalendarSource:
         self,
         ics_file_path,
     ) -> DataFrame:
-        """loads time tracking data from a .ics file
-
-        Args:
-            ics_file_path : path to an uploaded ics or spreadsheet file
-
-        Returns:
-            IntentResult:
-                was_intent_successful : bool
-                data : Calendar if was_intent_successful else None
-                log_message  : str  if an error or exception occurs
-                exception : Exception if an exception occurs
-        """
+        """Loads time tracking data from a .ics file."""
         file_calendar: ICSCalendar = ICSCalendar(
             name=ics_file_path.name,
             path=ics_file_path,
@@ -86,57 +63,21 @@ class TimeTrackingFileCalendarSource:
         return calendar_data
 
 
-class TimeTrackingCloudCalendarSource:
-    """Configures and processes calendar data from the cloud"""
+class TimeTrackingSystemCalendarSource:
+    """Loads time tracking data from the system calendar."""
 
-    def __init__(self):
-        super().__init__()
+    def list_calendars(self) -> list[dict]:
+        """Returns all calendars available on this system."""
+        if not SYSTEM_CALENDAR_AVAILABLE:
+            return []
+        from ...calendar import SystemCalendar
 
-    def load_data(
-        self,
-        calendar_name: str,
-        cloud_connector: CloudConnector,
-    ) -> DataFrame:
-        """Loads data from a cloud calendar"""
-        calendar = None
-        if cloud_connector.provider == CloudProvider.ICloud.value:
-            icloud_connector: icloudpy.ICloudPyService = (
-                cloud_connector.concrete_connector
-            )
-            calendar: CloudCalendar = ICloudCalendar(
-                name=calendar_name,
-                icloud_connector=icloud_connector,
-            )
-        else:
-            raise NotImplementedError
+        cal = SystemCalendar()
+        return cal.list_available_calendars()
 
-        calendar_data: DataFrame = calendar.to_data()
-        return calendar_data
+    def load_data(self, calendar_name: str) -> DataFrame:
+        """Loads events from a named system calendar as time tracking data."""
+        from ...calendar import SystemCalendar
 
-    def login_to_icloud(
-        self,
-        apple_id: str,
-        password: str,
-    ) -> CloudConnector:
-        """Attempts to authenticate user with their icloud account"""
-        # TODO: error handling - login may fail
-        logger.info(f"Logging in to iCloud with {apple_id}...")
-        icloud_connector = icloudpy.ICloudPyService(
-            apple_id=apple_id,
-            password=password,
-            cookie_directory=Path.home() / ".tuttle" / "cookies",
-        )
-        return CloudConnector(
-            cloud_connector=icloud_connector,
-            account_name=apple_id,
-        )
-
-    """ GOOGLE LOGIN STEPS """
-
-    def login_to_google(
-        self,
-        google_account: str,
-        google_account_password: str,
-    ):
-        """TODO Attempts to authenticate user with their google account"""
-        raise NotImplementedError
+        cal = SystemCalendar(name=calendar_name)
+        return cal.to_data()

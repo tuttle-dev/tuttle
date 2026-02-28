@@ -23,13 +23,13 @@ classifiers = [
 ]
 
 dependencies = [
+    "calendula @ file:///Users/cls/Documents/Work/RnD/FLOSS/calendula",
     "pytest",
     "pandas",
     "matplotlib",
     "altair",
     "pydantic",
     "sqlmodel",
-    "ics",
     "tatsu<5.8",
     "babel",
     "loguru",
@@ -40,7 +40,6 @@ dependencies = [
     "pymupdf",
     "flet>=0.81.0,<0.82.0",
     "pycountry",
-    "icloudpy",
 ]
 
 [project.urls]
@@ -66,6 +65,9 @@ build = [
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["tuttle"]

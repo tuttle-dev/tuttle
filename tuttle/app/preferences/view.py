@@ -40,8 +40,6 @@ from ..res.dimens import (
 )
 from ..res.theme import THEME_MODES
 
-from ...cloud import CloudProvider
-
 
 class PreferencesScreen(TView, Row):
     def __init__(
@@ -69,22 +67,10 @@ class PreferencesScreen(TView, Row):
             return
         self.preferences.default_currency = e.control.value
 
-    def on_cloud_account_id_changed(self, e):
-        if not self.preferences:
-            return
-        self.preferences.cloud_acc_id = e.control.value
-
-    def on_cloud_provider_selected(self, e):
-        if not self.preferences:
-            return
-        self.preferences.cloud_acc_provider = e.control.value
-
     def refresh_preferences_items(self):
         if self.preferences is None:
             return
         self.theme_control.update_value(self.preferences.theme_mode)
-        self.cloud_provider_control.update_value(self.preferences.cloud_acc_provider)
-        self.cloud_account_id_control.value = self.preferences.cloud_acc_id
         self.currencies_control.update_value(self.preferences.default_currency)
         self.languages_control.update_value(self.preferences.language)
 
@@ -182,16 +168,6 @@ class PreferencesScreen(TView, Row):
             label="Appearance",
             hint="",
         )
-        self.cloud_provider_control = views.TDropDown(
-            label="Cloud Provider",
-            on_change=self.on_cloud_provider_selected,
-            items=[item.value for item in CloudProvider],
-        )
-        self.cloud_account_id_control = views.TTextField(
-            label="Cloud Account Name",
-            hint="Your cloud account name",
-            on_change=self.on_cloud_account_id_changed,
-        )
         self.currencies_control = views.TDropDown(
             label="Default Currency",
             on_change=self.on_currency_selected,
@@ -216,7 +192,7 @@ class PreferencesScreen(TView, Row):
         self.tabs = Tabs(
             selected_index=0,
             animation_duration=300,
-            length=3,
+            length=2,
             width=self.body_width - SPACE_MD,
             height=MIN_WINDOW_HEIGHT,
             content=Column(
@@ -225,7 +201,6 @@ class PreferencesScreen(TView, Row):
                     TabBar(
                         tabs=[
                             self._make_tab_header("General", Icons.SETTINGS_OUTLINED),
-                            self._make_tab_header("Cloud", Icons.CLOUD_OUTLINED),
                             self._make_tab_header("Locale", Icons.LANGUAGE_OUTLINED),
                         ],
                     ),
@@ -237,16 +212,6 @@ class PreferencesScreen(TView, Row):
                                     self.theme_control,
                                     views.Spacer(lg_space=True),
                                     self.reset_button,
-                                ]
-                            ),
-                            self._make_tab_content(
-                                [
-                                    views.TBodyText(
-                                        txt="Setting up your cloud account will enable you to import time tracking data from your cloud calendar.",
-                                    ),
-                                    views.Spacer(sm_space=True),
-                                    self.cloud_provider_control,
-                                    self.cloud_account_id_control,
                                 ]
                             ),
                             self._make_tab_content(

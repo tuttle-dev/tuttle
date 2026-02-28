@@ -1,34 +1,14 @@
-"""Pandera schemata."""
-import pandera.pandas as pa
+"""Pandera schemata — time tracking schemas delegated to calendula."""
+
+from calendula.schema import time_planning, time_tracking
+
 from pandera.pandas import (
-    # SchemaModel,
-    DataFrameSchema,
     Column,
-    Index,
+    DataFrameSchema,
     DateTime,
-    Timedelta,
-    String,
     Decimal,
-    Bool,
+    String,
 )
-
-
-time_tracking = DataFrameSchema(
-    # TODO: fix datetime type
-    # index=Index(DateTime, name="begin", allow_duplicates=True),
-    columns={
-        # "begin": Column(Timestamp, nullable=True),
-        # "end": Column(DateTime, nullable=True),
-        "title": Column(String, nullable=True),
-        "tag": Column(String),
-        "description": Column(String, nullable=True),
-        "duration": Column(Timedelta),
-        "all_day": Column(Bool, nullable=True),
-    },
-)
-
-time_planning = time_tracking  # REVIEW: identical?
-
 
 ledger = DataFrameSchema(
     columns={
@@ -40,3 +20,9 @@ ledger = DataFrameSchema(
         "amount": Column(Decimal),
     },
 )
+
+__all__ = [
+    "time_tracking",
+    "time_planning",
+    "ledger",
+]
