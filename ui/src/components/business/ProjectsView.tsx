@@ -11,6 +11,7 @@ import { ViewModeToggle } from "../shared/ViewModeToggle";
 import { KanbanBoard, useStageStore, type BoardColumn } from "../shared/KanbanBoard";
 import { useNavigation } from "../shared/NavigationContext";
 import type { Entity } from "../../api/types";
+import { projectColumnAfterCompletedToggle } from "./projectBoard";
 
 interface BudgetEntry {
   project_id: number;
@@ -117,7 +118,11 @@ export function ProjectsView() {
   }
 
   async function handleToggle(id: number) {
-    await rpc("projects.toggle_completed", { id });
+    const res = await rpc("projects.toggle_completed", { id });
+    if (res.ok) {
+      const proj = projects.find((p) => p.id === id);
+      if (proj) stageStore.setColumn(id, projectColumnAfterCompletedToggle(projectStatus(proj)));
+    }
     await load();
   }
 

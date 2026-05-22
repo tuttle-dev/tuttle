@@ -8,6 +8,7 @@
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite",
+    "test": "node test/project-board.test.mjs",
     "build": "tsc && vite build",
     "pack": "electron-builder --dir",
     "dist": "electron-builder",
