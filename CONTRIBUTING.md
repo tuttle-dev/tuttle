@@ -48,6 +48,22 @@ If you are proposing a feature:
 -   Remember that this is a volunteer-driven project, and that
     contributions are welcome :)
 
+## AI-Assisted Contributions
+
+AI tools are welcome for drafting code and documentation, but contributors remain fully responsible for what they submit.
+
+Contributors are expected to:
+
+- Understand all code and documentation they submit.
+- Verify that AI-generated suggestions are correct.
+- Test changes before opening a pull request.
+- Be able to explain the reasoning behind their changes during review.
+
+Pull requests that consist primarily of unreviewed AI-generated content may be rejected. The contributor, not the AI tool, is responsible for the quality and correctness of the submission.
+
+When AI assistance was substantial, please mention it in the pull request description.
+
+
 # Get Started!
 
 Ready to contribute? Here's how to set up Tuttle for
