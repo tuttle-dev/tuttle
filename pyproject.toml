@@ -43,6 +43,7 @@ dependencies = [
     "llama-index-llms-openai-like",
     "drafthorse",
     "alembic>=1.18.4",
+    "segno",
 ]
 
 [project.scripts]

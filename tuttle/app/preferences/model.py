@@ -48,6 +48,7 @@ class Preferences:
     invoice_number_scheme: str = DEFAULT_INVOICE_NUMBER_SCHEME
     e_invoice_profile: str = DEFAULT_E_INVOICE_PROFILE
     include_logo: bool = DEFAULT_INCLUDE_LOGO
+    show_payment_qr: bool = True
 
 
 class PreferencesStorageKeys(Enum):
@@ -61,6 +62,7 @@ class PreferencesStorageKeys(Enum):
     invoice_number_scheme_key = "preferred_invoice_number_scheme"
     e_invoice_profile_key = "preferred_e_invoice_profile"
     include_logo_key = "preferred_include_logo"
+    show_payment_qr_key = "preferred_show_payment_qr"
 
     def __str__(self) -> str:
         return str(self.value)

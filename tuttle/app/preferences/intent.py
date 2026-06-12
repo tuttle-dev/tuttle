@@ -15,6 +15,7 @@ from .model import (
     DEFAULT_INVOICE_TEMPLATE,
     PreferencesStorageKeys,
 )
+import json
 
 
 class PreferencesIntent:
@@ -31,6 +32,17 @@ class PreferencesIntent:
             include_logo = DEFAULT_INCLUDE_LOGO
         else:
             include_logo = raw_include_logo == "true"
+
+        show_payment_qr_val = self._app_db.get_setting(
+            PreferencesStorageKeys.show_payment_qr_key.value,
+        )
+        if show_payment_qr_val is None:
+            show_payment_qr = True
+        else:
+            try:
+                show_payment_qr = json.loads(show_payment_qr_val)
+            except Exception:
+                show_payment_qr = show_payment_qr_val == "true"
 
         return IntentResult(
             was_intent_successful=True,
@@ -52,6 +64,7 @@ class PreferencesIntent:
                 )
                 or DEFAULT_E_INVOICE_PROFILE,
                 "include_logo": include_logo,
+                "show_payment_qr": show_payment_qr,
             },
         )
 
@@ -62,6 +75,7 @@ class PreferencesIntent:
         invoice_number_scheme=None,
         e_invoice_profile=None,
         include_logo=None,
+        show_payment_qr=None,
     ) -> IntentResult:
         if invoice_template is not None:
             self._app_db.set_setting(
@@ -87,6 +101,11 @@ class PreferencesIntent:
             self._app_db.set_setting(
                 PreferencesStorageKeys.include_logo_key.value,
                 "true" if include_logo else "false",
+            )
+        if show_payment_qr is not None:
+            self._app_db.set_setting(
+                PreferencesStorageKeys.show_payment_qr_key.value,
+                show_payment_qr,
             )
         return IntentResult(was_intent_successful=True, data=None)
 

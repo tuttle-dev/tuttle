@@ -358,6 +358,11 @@ class InvoicingIntent(Intent):
                     else True
                 )
 
+                show_payment_qr = True
+                prefs_result = self._preferences_intent.get()
+                if prefs_result.was_intent_successful and prefs_result.data:
+                    show_payment_qr = prefs_result.data.get("show_payment_qr", True)
+
                 try:
                     rendering.render_invoice(
                         user=user,
@@ -368,6 +373,7 @@ class InvoicingIntent(Intent):
                         language=language,
                         e_invoice_profile=e_invoice_profile,
                         include_logo=resolved_include_logo,
+                        show_payment_qr=show_payment_qr,
                     )
                 except Exception as ex:
                     logger.error(f"Error rendering invoice for {project.title}: {ex}")
@@ -486,6 +492,12 @@ class InvoicingIntent(Intent):
                     )
                     if tmpl_result.was_intent_successful and tmpl_result.data:
                         resolved_template = tmpl_result.data
+
+                show_payment_qr = True
+                prefs_result = self._preferences_intent.get()
+                if prefs_result.was_intent_successful and prefs_result.data:
+                    show_payment_qr = prefs_result.data.get("show_payment_qr", True)
+
                 try:
                     rendering.render_invoice(
                         user=user,
@@ -494,6 +506,7 @@ class InvoicingIntent(Intent):
                         template_name=resolved_template,
                         only_final=True,
                         language=language,
+                        show_payment_qr=show_payment_qr,
                     )
                     self._invoicing_data_source.save_invoice(reminder)
                 except Exception as ex:

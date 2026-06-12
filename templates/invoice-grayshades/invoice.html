@@ -93,6 +93,23 @@
     </tr>
   </table>
 
+  {% if user.bank_account %}
+  <div class="payment-box" style="margin-top: 20pt; margin-bottom: 20pt; display: flex; justify-content: space-between; align-items: flex-start; max-width: 320pt; border-top: 1px solid #ddd; padding-top: 10pt;">
+    <div>
+      <span class="totals-label" style="font-size: 7pt; font-weight: 600; text-transform: uppercase; color: #555;">Payment Details</span>
+      <div style="font-size: 8.5pt; margin-top: 4pt; color: #333;">
+        IBAN: {{ user.bank_account.IBAN }}
+        {% if user.bank_account.BIC %}<br>BIC: {{ user.bank_account.BIC }}{% endif %}
+      </div>
+    </div>
+    {% if payment_qr_code %}
+    <div class="payment-qr" style="flex-shrink: 0; width: 64pt; height: 64pt;">
+      {{ payment_qr_code | safe }}
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
   <div class="closing">
     <p>{% if is_reminder %}{{ l.reminder_closing }}{% elif notes %}<span style="white-space:pre-line">{{ notes }}</span>{% else %}{{ l.closing }}{% endif %}</p>
     <br>

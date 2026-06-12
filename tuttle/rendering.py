@@ -13,6 +13,7 @@ import base64
 import io
 import PyPDF2
 import PIL
+import segno
 
 
 from .model import User, Invoice, Timesheet, Project
@@ -141,6 +142,80 @@ def convert_html_to_pdf(
     book.write_to_pdf(str(out_path))
 
 
+def generate_payment_qr(user: User, invoice: Invoice) -> Optional[str]:
+    """Generate EPC-compliant QR code for SEPA payments as an inline SVG string.
+
+    Returns None if currency is not EUR, if bank details are incomplete,
+    or if generation fails.
+    """
+    if (
+        not user.bank_account
+        or not user.bank_account.IBAN
+        or not user.bank_account.name
+    ):
+        logger.info("Payment QR code generation skipped: bank account details missing.")
+        return None
+
+    currency = (
+        getattr(invoice.contract, "currency", "EUR") if invoice.contract else "EUR"
+    )
+    if currency != "EUR":
+        logger.info(
+            f"Payment QR code generation skipped: currency is {currency}, must be EUR."
+        )
+        return None
+
+    # Service tag: BCD
+    # Version: 002
+    # Character set: 1 (UTF-8)
+    # Identification: SCT
+    # BIC: optional (fall back to empty string if not present)
+    # Name: Recipient name (max 70 chars)
+    # IBAN: Recipient IBAN (max 34 chars, clean spaces)
+    # Amount: EUR + float formatted with 2 decimal places
+    # Purpose Code: empty
+    # Structured Reference: empty
+    # Unstructured Reference: Invoice number / prefix (max 140 chars)
+    # Additional Info: empty
+
+    bic = (user.bank_account.BIC or "").strip().upper()
+    name = (user.bank_account.name or "").strip()[:70]
+    iban = (user.bank_account.IBAN or "").strip().replace(" ", "").upper()
+
+    amount = float(invoice.total)
+    amount_str = f"EUR{amount:.2f}"
+
+    reference = (invoice.number or invoice.prefix or "").strip()[:140]
+
+    lines = [
+        "BCD",
+        "002",
+        "1",
+        "SCT",
+        bic,
+        name,
+        iban,
+        amount_str,
+        "",
+        "",
+        reference,
+        "",
+    ]
+
+    # Strip trailing empty elements
+    while lines and not lines[-1]:
+        lines.pop()
+
+    payload = "\n".join(lines)
+
+    try:
+        qr = segno.make(payload, error="M")
+        return qr.svg_inline(scale=2, svgclass="payment-qr-code")
+    except Exception as e:
+        logger.error(f"Failed to generate payment QR code SVG: {e}")
+        return None
+
+
 def render_invoice(
     user: User,
     invoice: Invoice,
@@ -151,6 +226,7 @@ def render_invoice(
     language: str = "en",
     e_invoice_profile: Optional[str] = None,
     include_logo: bool = True,
+    show_payment_qr: Optional[bool] = None,
 ):
     """Render an Invoice using an HTML template.
 
@@ -221,6 +297,14 @@ def render_invoice(
         tpl = labels.get("reminder_n", "{n}. Payment Reminder")
         reminder_title = tpl.format(n=n)
 
+    if show_payment_qr is None:
+        show_payment_qr = True
+
+    if show_payment_qr:
+        payment_qr_code = generate_payment_qr(user, invoice)
+    else:
+        payment_qr_code = None
+
     invoice_template = template_env.get_template("invoice.html")
     html = invoice_template.render(
         user=user,
@@ -230,6 +314,7 @@ def render_invoice(
         reminder_title=reminder_title,
         notes=invoice.notes,
         include_logo=include_logo,
+        payment_qr_code=payment_qr_code,
     )
     if out_dir is None:
         return html
@@ -237,7 +322,7 @@ def render_invoice(
     invoice_dir = Path(out_dir) / Path(invoice.prefix)
     invoice_dir.mkdir(parents=True, exist_ok=True)
     invoice_path = invoice_dir / Path(f"{invoice.prefix}.html")
-    with open(invoice_path, "w") as invoice_file:
+    with open(invoice_path, "w", encoding="utf-8") as invoice_file:
         invoice_file.write(html)
 
     # Copy all CSS files and subdirectories from the template
@@ -346,7 +431,7 @@ def render_timesheet(
         timesheet_dir = Path(out_dir) / Path(prefix)
         timesheet_dir.mkdir(parents=True, exist_ok=True)
         timesheet_path = timesheet_dir / Path(f"{prefix}.html")
-        with open(timesheet_path, "w") as timesheet_file:
+        with open(timesheet_path, "w", encoding="utf-8") as timesheet_file:
             timesheet_file.write(html)
         # copy stylsheets
         if style:

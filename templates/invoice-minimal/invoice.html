@@ -122,11 +122,18 @@
     </div>
   </div>
 
-  <div class="payment">
-    <span class="field-label">{{ l.payment }}</span>
-    <div class="payment-value">
-      {% if user.bank_account %}<div>IBAN: {{ user.bank_account.IBAN }}{% if user.bank_account.BIC %}&emsp;BIC: {{ user.bank_account.BIC }}{% endif %}</div>{% endif %}
+  <div class="payment" style="display: flex; justify-content: space-between; align-items: flex-start; max-width: 320pt;">
+    <div style="flex: 1;">
+      <span class="field-label">{{ l.payment }}</span>
+      <div class="payment-value">
+        {% if user.bank_account %}<div>IBAN: {{ user.bank_account.IBAN }}{% if user.bank_account.BIC %}&emsp;BIC: {{ user.bank_account.BIC }}{% endif %}</div>{% endif %}
+      </div>
     </div>
+    {% if payment_qr_code %}
+    <div class="payment-qr" style="flex-shrink: 0; width: 64pt; height: 64pt; margin-left: 16px;">
+      {{ payment_qr_code | safe }}
+    </div>
+    {% endif %}
   </div>
 
   <div class="closing">

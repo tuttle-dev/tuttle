@@ -90,12 +90,19 @@
   </table>
 
   <div class="bottom-section">
-    <div class="payment">
-      <span class="party-label">Payment Details</span>
-      <div class="payment-value">
-        {% if user.bank_account %}IBAN: {{ user.bank_account.IBAN }}
-        {% if user.bank_account.BIC %}<br>BIC: {{ user.bank_account.BIC }}{% endif %}{% endif %}
+    <div class="payment" style="display: flex; gap: 16px; align-items: flex-start;">
+      <div style="flex: 1;">
+        <span class="party-label">Payment Details</span>
+        <div class="payment-value">
+          {% if user.bank_account %}IBAN: {{ user.bank_account.IBAN }}
+          {% if user.bank_account.BIC %}<br>BIC: {{ user.bank_account.BIC }}{% endif %}{% endif %}
+        </div>
       </div>
+      {% if payment_qr_code %}
+      <div class="payment-qr" style="flex-shrink: 0; width: 64pt; height: 64pt;">
+        {{ payment_qr_code | safe }}
+      </div>
+      {% endif %}
     </div>
     <div class="totals">
       <div class="totals-line">

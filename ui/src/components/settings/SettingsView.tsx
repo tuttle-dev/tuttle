@@ -72,6 +72,7 @@ interface InvoicingPrefs {
   invoice_number_scheme: string;
   e_invoice_profile: string;
   include_logo: boolean;
+  show_payment_qr: boolean;
 }
 
 const DEFAULT_INVOICING: InvoicingPrefs = {
@@ -80,6 +81,7 @@ const DEFAULT_INVOICING: InvoicingPrefs = {
   invoice_number_scheme: "daily",
   e_invoice_profile: "EN16931",
   include_logo: true,
+  show_payment_qr: true,
 };
 
 const SCHEME_EXAMPLES: Record<string, string> = {
@@ -322,6 +324,7 @@ export function SettingsView() {
       invoice_number_scheme: invoicing.invoice_number_scheme,
       e_invoice_profile: invoicing.e_invoice_profile,
       include_logo: invoicing.include_logo,
+      show_payment_qr: invoicing.show_payment_qr,
     });
     setInvoicingStatus(res.ok ? { type: "success", msg: "Invoicing preferences saved." } : { type: "error", msg: res.error || "Failed to save." });
     setInvoicingSaving(false);
@@ -679,6 +682,24 @@ export function SettingsView() {
             <p className="mt-1 text-xs text-muted">
               When enabled, invoices include machine-readable data (ZUGFeRD/Factur-X) embedded in the PDF. "Standard" works for most B2B invoicing. Use "XRechnung" only for German government clients.
             </p>
+          </div>
+
+          <div className="flex items-start gap-2 pt-2">
+            <input
+              id="show_payment_qr"
+              type="checkbox"
+              checked={invoicing.show_payment_qr}
+              onChange={(e) => setInvoicing((p) => ({ ...p, show_payment_qr: e.target.checked }))}
+              className="mt-1 rounded border-border-subtle bg-bg-card text-accent focus:ring-accent"
+            />
+            <div>
+              <label htmlFor="show_payment_qr" className="text-sm font-medium text-primary select-none cursor-pointer">
+                Show SEPA payment QR code
+              </label>
+              <p className="text-xs text-muted">
+                Display an EPC-compliant QR code on invoices when currency is EUR and bank details (IBAN, bank name) are configured.
+              </p>
+            </div>
           </div>
 
           {invoicingStatus && (

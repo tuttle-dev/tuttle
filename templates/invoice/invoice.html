@@ -84,22 +84,29 @@
     </tbody>
   </table>
 
-  <table id="total">
-    <thead>
-      <tr>
-        <th>Due by</th>
-        <th>Account number</th>
-        <th>Total due</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>{{ invoice.effective_due_date }}</td>
-        <td>{% if user.bank_account %}{{ user.bank_account.IBAN }}{% endif %}</td>
-        <td>{{ invoice.total | as_currency }}</td>
-      </tr>
-    </tbody>
-  </table>
+  <div style="display: flex; gap: 20px; align-items: flex-start; justify-content: space-between;">
+    <table id="total" style="flex: 1;">
+      <thead>
+        <tr>
+          <th>Due by</th>
+          <th>Account number</th>
+          <th>Total due</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>{{ invoice.effective_due_date }}</td>
+          <td>{% if user.bank_account %}{{ user.bank_account.IBAN }}{% endif %}</td>
+          <td>{{ invoice.total | as_currency }}</td>
+        </tr>
+      </tbody>
+    </table>
+    {% if payment_qr_code %}
+    <div class="payment-qr" style="flex-shrink: 0; width: 64pt; height: 64pt; margin-top: 10px;">
+      {{ payment_qr_code | safe }}
+    </div>
+    {% endif %}
+  </div>
 </div>
 
 </div>

@@ -126,8 +126,15 @@
     <tbody>
       <tr>
         <td class="payment-info">
-          <div>
-            {% if user.bank_account %}IBAN: <strong>{{ user.bank_account.IBAN }}</strong><br>{% endif %}
+          <div style="display: flex; gap: 12px; align-items: flex-start;">
+            <div style="flex: 1;">
+              {% if user.bank_account %}IBAN: <strong>{{ user.bank_account.IBAN }}</strong><br>{% endif %}
+            </div>
+            {% if payment_qr_code %}
+            <div class="payment-qr" style="flex-shrink: 0; width: 64pt; height: 64pt;">
+              {{ payment_qr_code | safe }}
+            </div>
+            {% endif %}
           </div>
         </td>
         <td class="bold">{{ invoice.effective_due_date }}</td>

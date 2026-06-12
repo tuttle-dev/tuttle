@@ -3,14 +3,19 @@
 import datetime
 from decimal import Decimal
 
+from unittest.mock import patch, MagicMock
 import faker
 import pandas
 import pytest
 from sqlmodel import Session, SQLModel, create_engine, select
 
+from tuttle.app.invoicing.intent import InvoicingIntent
+from tuttle.app.core.intent_result import IntentResult
+
 from tuttle import demo, invoicing, rendering, timetracking
 from tuttle.model import (
     Address,
+    BankAccount,
     Client,
     Contract,
     Invoice,
@@ -386,3 +391,189 @@ class TestInvoiceNotesRendering:
 
         assert "See you next quarter!" in html
         assert "Thank you" not in html
+
+
+class TestInvoicePaymentQR:
+    """Tests for invoice payment QR code generation."""
+
+    def test_no_qr_when_bank_account_missing(self, fake):
+        user = demo.create_fake_user(fake)
+        user.bank_account = None
+        invoice = demo.create_fake_invoice(fake)
+
+        html = rendering.render_invoice(
+            user=user,
+            invoice=invoice,
+            out_dir=None,
+            document_format="html",
+        )
+        assert "payment-qr-code" not in html
+
+    def test_no_qr_when_iban_missing(self, fake):
+        user = demo.create_fake_user(fake)
+        user.bank_account = BankAccount(name="Test Account", IBAN="", BIC="COBADEFFXXX")
+        invoice = demo.create_fake_invoice(fake)
+
+        html = rendering.render_invoice(
+            user=user,
+            invoice=invoice,
+            out_dir=None,
+            document_format="html",
+        )
+        assert "payment-qr-code" not in html
+
+    def test_no_qr_when_currency_not_eur(self, fake):
+        user = demo.create_fake_user(fake)
+        user.bank_account = BankAccount(
+            name="Test Account", IBAN="DE89370400440532013000", BIC="COBADEFFXXX"
+        )
+        invoice = demo.create_fake_invoice(fake)
+        invoice.contract.currency = "USD"
+
+        html = rendering.render_invoice(
+            user=user,
+            invoice=invoice,
+            out_dir=None,
+            document_format="html",
+        )
+        assert "payment-qr-code" not in html
+
+    def test_qr_generation_with_valid_details(self, fake):
+        user = demo.create_fake_user(fake)
+        user.bank_account = BankAccount(
+            name="Test Account Holder", IBAN="DE89370400440532013000", BIC="COBADEFFXXX"
+        )
+        invoice = demo.create_fake_invoice(fake)
+        invoice.contract.currency = "EUR"
+        invoice.number = "INV-2026-99"
+
+        # Explicitly mock/set items so we have a predictable total amount
+        invoice.items = [
+            InvoiceItem(
+                start_date=datetime.date.today(),
+                quantity=2.5,
+                unit="hour",
+                unit_price=Decimal("100.00"),
+                description="Test Item",
+                VAT_rate=Decimal("0.19"),
+            )
+        ]
+
+        # 2.5 * 100 = 250.00, VAT = 250.00 * 0.19 = 47.50, Total = 297.50
+        assert invoice.total == Decimal("297.50")
+
+        html = rendering.render_invoice(
+            user=user,
+            invoice=invoice,
+            out_dir=None,
+            document_format="html",
+        )
+
+        assert "payment-qr-code" in html
+        assert "<svg" in html
+
+    def test_no_qr_when_show_payment_qr_false(self, fake):
+        user = demo.create_fake_user(fake)
+        user.bank_account = BankAccount(
+            name="Test Account Holder", IBAN="DE89370400440532013000", BIC="COBADEFFXXX"
+        )
+        invoice = demo.create_fake_invoice(fake)
+        invoice.contract.currency = "EUR"
+
+        html = rendering.render_invoice(
+            user=user,
+            invoice=invoice,
+            out_dir=None,
+            document_format="html",
+            show_payment_qr=False,
+        )
+        assert "payment-qr-code" not in html
+
+    def test_qr_when_show_payment_qr_true(self, fake):
+        user = demo.create_fake_user(fake)
+        user.bank_account = BankAccount(
+            name="Test Account Holder", IBAN="DE89370400440532013000", BIC="COBADEFFXXX"
+        )
+        invoice = demo.create_fake_invoice(fake)
+        invoice.contract.currency = "EUR"
+
+        html = rendering.render_invoice(
+            user=user,
+            invoice=invoice,
+            out_dir=None,
+            document_format="html",
+            show_payment_qr=True,
+        )
+        assert "payment-qr-code" in html
+
+    def test_qr_when_db_setting_false(self, fake):
+
+        user = demo.create_fake_user(fake)
+        user.bank_account = BankAccount(
+            name="Test Account Holder", IBAN="DE89370400440532013000", BIC="COBADEFFXXX"
+        )
+        project = demo.create_fake_project(fake)
+        project.contract.currency = "EUR"
+
+        intent = InvoicingIntent()
+
+        with patch("tuttle.app.invoicing.intent.UserDataSource.get_user", return_value=user), \
+             patch("tuttle.app.invoicing.intent.PreferencesIntent.get", return_value=IntentResult(
+                 was_intent_successful=True,
+                 data={"show_payment_qr": False}
+             )), \
+             patch("tuttle.app.invoicing.intent.PreferencesIntent.get_preferred_invoice_template", return_value=IntentResult(
+                 was_intent_successful=True,
+                 data="invoice-modern"
+             )), \
+             patch("tuttle.app.invoicing.intent.InvoicingDataSource.generate_invoice_number", return_value="INV-001"), \
+             patch("tuttle.app.invoicing.intent.InvoicingDataSource.save_invoice"), \
+             patch("tuttle.app.invoicing.intent.rendering.render_invoice") as mock_render:
+
+            intent.create_invoice(
+                invoice_date=datetime.date.today(),
+                project=project,
+                from_date=datetime.date.today(),
+                to_date=datetime.date.today(),
+                render=True,
+                manual_quantity=1.0,
+            )
+            mock_render.assert_called_once()
+            kwargs = mock_render.call_args.kwargs
+            assert kwargs.get("show_payment_qr") is False
+
+    def test_qr_when_db_setting_true(self, fake):
+
+        user = demo.create_fake_user(fake)
+        user.bank_account = BankAccount(
+            name="Test Account Holder", IBAN="DE89370400440532013000", BIC="COBADEFFXXX"
+        )
+        project = demo.create_fake_project(fake)
+        project.contract.currency = "EUR"
+
+        intent = InvoicingIntent()
+
+        with patch("tuttle.app.invoicing.intent.UserDataSource.get_user", return_value=user), \
+             patch("tuttle.app.invoicing.intent.PreferencesIntent.get", return_value=IntentResult(
+                 was_intent_successful=True,
+                 data={"show_payment_qr": True}
+             )), \
+             patch("tuttle.app.invoicing.intent.PreferencesIntent.get_preferred_invoice_template", return_value=IntentResult(
+                 was_intent_successful=True,
+                 data="invoice-modern"
+             )), \
+             patch("tuttle.app.invoicing.intent.InvoicingDataSource.generate_invoice_number", return_value="INV-001"), \
+             patch("tuttle.app.invoicing.intent.InvoicingDataSource.save_invoice"), \
+             patch("tuttle.app.invoicing.intent.rendering.render_invoice") as mock_render:
+
+            intent.create_invoice(
+                invoice_date=datetime.date.today(),
+                project=project,
+                from_date=datetime.date.today(),
+                to_date=datetime.date.today(),
+                render=True,
+                manual_quantity=1.0,
+            )
+            mock_render.assert_called_once()
+            kwargs = mock_render.call_args.kwargs
+            assert kwargs.get("show_payment_qr") is True
