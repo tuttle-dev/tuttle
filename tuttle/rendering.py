@@ -63,7 +63,7 @@ INVOICE_LABELS = {
         "qty": "Menge",
         "unit": "Einheit",
         "unit_price": "Einzelpreis",
-        "vat": "MwSt.",
+        "vat": "USt.",
         "subtotal": "Zwischensumme",
         "total_due": "Gesamtbetrag",
         "payment": "Zahlung",
@@ -79,6 +79,7 @@ INVOICE_LABELS = {
         "units": {
             "hour": ("Stunde", "Stunden"),
             "day": ("Tag", "Tage"),
+            "fixed_price": ("pauschal", "pauschal"),
         },
     },
     "es": {
