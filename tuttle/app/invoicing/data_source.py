@@ -175,6 +175,28 @@ class InvoicingDataSource(SQLModelDataSourceMixin):
             ).all()
         return {row for row in rows if row is not None}
 
+    def get_deposit_invoices(self, contract_id: int, project_id: int) -> IntentResult[List[Invoice]]:
+        """Deposit invoices of one project, oldest first, ready to be settled.
+
+        Cancelled deposits are left out: a voided instalment was never charged,
+        so deducting it on the final invoice would short the total owed.
+        """
+        try:
+            deposits = [
+                inv
+                for inv in self.query(Invoice)
+                if inv.is_deposit and inv.contract_id == contract_id and inv.project_id == project_id and not inv.cancelled
+            ]
+            deposits.sort(key=lambda inv: (inv.date, inv.id or 0))
+            return IntentResult(was_intent_successful=True, data=deposits)
+        except Exception as ex:
+            return IntentResult(
+                was_intent_successful=False,
+                error_msg="Could not load the deposit invoices of this project.",
+                log_message=f"InvoicingDataSource.get_deposit_invoices({contract_id}, {project_id}): {ex}",
+                exception=ex,
+            )
+
     def get_all_reminders_for_invoice(self, invoice_id: int) -> List[Invoice]:
         """Return only the reminders (not the root) for a given root invoice id."""
         with self.create_session() as session:

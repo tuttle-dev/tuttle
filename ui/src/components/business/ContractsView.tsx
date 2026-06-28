@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import {
   FileText, FileSignature, Plus, Trash2, Save, X, DollarSign, Calendar,
   FileUp, Sparkles, Check, CheckCheck, Loader2, CheckCircle2,
-  FolderKanban, ReceiptText, ArrowRight, ChevronRight, XCircle,
+  FolderKanban, ReceiptText, ArrowRight, ChevronDown, ChevronRight, XCircle, Milestone,
 } from "lucide-react";
 import { rpc } from "../../api/rpc";
 import { str, num, bool, entity as subEntity, list as entityList, displayName, formatDate } from "../../api/entity";
@@ -78,13 +78,13 @@ export function ContractsView() {
   function startImport() { setSelected(null); setParsedContracts([]); setParseError(null); setMode("import"); }
   function selectContract(c: Entity) { setSelected(c); setMode("view"); setDeleteError(null); }
 
-  async function handleSave(data: ContractFormData) {
+  async function handleSave(data: ContractFormData, milestones?: MilestoneSavePayload): Promise<boolean> {
     setSaveError(null);
     const titleTrimmed = data.title.trim().toLowerCase();
     const duplicate = contracts.find(
       (c) => str(c, "title").trim().toLowerCase() === titleTrimmed && c.id !== selected?.id,
     );
-    if (duplicate) { setSaveError("A contract with this title already exists."); return; }
+    if (duplicate) { setSaveError("A contract with this title already exists."); return false; }
     const contract: Record<string, unknown> = {
       title: data.title,
       client_id: data.clientId,
@@ -112,9 +112,33 @@ export function ContractsView() {
       })),
     };
     if (mode === "edit" && selected) contract.id = selected.id;
-    const res = await rpc("contracts.save", { contract });
-    if (res.ok) { setMode("view"); await load(); }
-    else setSaveError(res.error || "Failed to save contract.");
+    const res = await rpc<Entity>("contracts.save", { contract });
+    if (!res.ok) {
+      setSaveError(res.error || "Failed to save contract.");
+      return false;
+    }
+
+    const contractId = res.data?.id ?? selected?.id;
+    const isFixed = data.type === "fixed_price";
+    if (isFixed && milestones?.open && contractId != null) {
+      const msRes = await rpc("contracts.save_milestones", {
+        contract_id: contractId,
+        milestones: milestones.milestones.map((m, i) => ({
+          id: m.id,
+          title: m.title,
+          percentage: parseFloat(m.percentage) || null,
+          position: i,
+        })),
+      });
+      if (!msRes.ok) {
+        setSaveError(msRes.error || "Contract saved, but payment schedule could not be saved.");
+        return false;
+      }
+    }
+
+    setMode("view");
+    await load();
+    return true;
   }
 
   async function handleDelete(id: number) {
@@ -392,6 +416,32 @@ function ContractDetail({ contract, onEdit, onDelete, onToggle, deleteError }: {
         </div>
       </DetailSection>
 
+      {/* Payment Schedule (only shown if milestones exist) */}
+      {(() => {
+        const ms = entityList(contract, "payment_milestones");
+        if (ms.length === 0) return null;
+        return (
+          <DetailSection label="Payment Schedule">
+            <div className="space-y-1.5">
+              {ms.map((m) => (
+                <div key={m.id} className="flex items-center justify-between px-3 py-2 rounded-md bg-bg-card border border-border-subtle">
+                  <div className="flex items-center gap-2">
+                    <Milestone size={12} className="text-tertiary" />
+                    <span className="text-sm">{str(m, "title") || "Untitled"}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-secondary tabular-nums">{num(m, "percentage")}%</span>
+                    {bool(m, "invoiced")
+                      ? <span className="text-[10px] text-green-500 font-medium px-1.5 py-0.5 rounded bg-green-500/10">Invoiced</span>
+                      : <span className="text-[10px] text-tertiary font-medium px-1.5 py-0.5 rounded bg-bg-hover">Open</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </DetailSection>
+        );
+      })()}
+
       {/* Related */}
       <DetailSection label="Related">
         <div className="flex items-center gap-3">
@@ -445,6 +495,18 @@ function RelatedCard({ icon, count, label, onClick }: { icon: React.ReactNode; c
 
 /* ---------- Form ---------- */
 
+interface MilestoneRow {
+  id?: number;
+  title: string;
+  percentage: string;
+  invoiced?: boolean;
+}
+
+interface MilestoneSavePayload {
+  open: boolean;
+  milestones: MilestoneRow[];
+}
+
 interface ContractFormData {
   title: string;
   clientId: number | null;
@@ -497,13 +559,17 @@ function isBlankCharge(row: ChargeRow): boolean {
   return !row.description.trim() && !row.amount.trim();
 }
 
+function isBlankMilestone(row: MilestoneRow): boolean {
+  return !row.title.trim() && !row.percentage.trim();
+}
+
 function ContractForm({ contract, clients, defaultCurrency, currencies, bankAccounts, onSave, onCancel, error }: {
   contract: Entity | null;
   clients: Record<string, Entity>;
   defaultCurrency: string;
   currencies: string[];
   bankAccounts: Entity[];
-  onSave: (data: ContractFormData) => void;
+  onSave: (data: ContractFormData, milestones?: MilestoneSavePayload) => Promise<boolean>;
   onCancel: () => void;
   error?: string | null;
 }) {
@@ -555,6 +621,21 @@ function ContractForm({ contract, clients, defaultCurrency, currencies, bankAcco
   const [showCharges, setShowCharges] = useState(chargeRowsFrom(contract).length > 0);
   const isNew = !contract;
   const isFixed = pricingMode === "fixed_price";
+
+  const [milestonesOpen, setMilestonesOpen] = useState(() => {
+    if (!contract) return false;
+    const ms = entityList(contract, "payment_milestones");
+    return ms.length > 0;
+  });
+  const [milestones, setMilestones] = useState<MilestoneRow[]>(() => {
+    if (!contract) return [];
+    return entityList(contract, "payment_milestones").map((m) => ({
+      id: m.id,
+      title: str(m, "title"),
+      percentage: String(num(m, "percentage") || ""),
+      invoiced: bool(m, "invoiced"),
+    }));
+  });
 
   const clientList = Object.values(clients);
   // Keep an existing contract's currency selectable even if it left the list.
@@ -627,9 +708,25 @@ function ContractForm({ contract, clients, defaultCurrency, currencies, bankAcco
       setValidationError("Give every additional charge a description and an amount greater than zero");
       return;
     }
+    const schedule = milestones.filter((m) => !isBlankMilestone(m));
+    if (isFixed && milestonesOpen && schedule.length > 0) {
+      if (schedule.some((m) => !m.title.trim())) {
+        setValidationError("Give every payment milestone a title");
+        return;
+      }
+      const total = schedule.reduce((s, m) => s + (parseFloat(m.percentage) || 0), 0);
+      if (Math.abs(total - 100) > 0.01) {
+        setValidationError(`Milestone percentages must sum to 100% (currently ${total.toFixed(1)}%)`);
+        return;
+      }
+    }
     setSaving(true);
-    await onSave({ ...form, charges });
+    const ok = await onSave(
+      { ...form, charges },
+      isFixed && milestonesOpen ? { open: true, milestones: schedule } : undefined,
+    );
     setSaving(false);
+    if (!ok) return;
   }
 
   const inputCls = "w-full px-3 py-2 rounded-md text-sm bg-bg-card text-primary border border-border-subtle outline-none focus:border-accent transition-colors";
@@ -825,6 +922,80 @@ function ContractForm({ contract, clients, defaultCurrency, currencies, bankAcco
           </p>
         </div>
       </Section>
+
+      {isFixed && (
+        <Section title="Payment Schedule">
+          {!milestonesOpen ? (
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 py-3 rounded-lg bg-bg-card border border-dashed border-border-subtle">
+              <p className="text-xs text-secondary leading-relaxed">
+                Split a fixed-price contract into instalments for deposit and final invoices.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setMilestonesOpen(true);
+                  if (milestones.length === 0) {
+                    setMilestones([
+                      { title: "", percentage: "50" },
+                      { title: "", percentage: "50" },
+                    ]);
+                  }
+                }}
+                className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium bg-bg-content text-primary border border-border-subtle hover:bg-bg-hover transition-colors shrink-0">
+                <Plus size={14} /> Add payment schedule
+              </button>
+            </div>
+          ) : (
+            <div>
+              <button type="button" onClick={() => setMilestonesOpen(false)}
+                className="flex items-center gap-1.5 text-xs text-tertiary hover:text-secondary mb-3 transition-colors">
+                <ChevronDown size={12} className="rotate-180" /> Collapse
+              </button>
+              <div className="space-y-2">
+                {milestones.map((m, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <input type="text" placeholder="Milestone title" value={m.title}
+                      onChange={(e) => setMilestones((prev) => prev.map((ms, i) => i === idx ? { ...ms, title: e.target.value } : ms))}
+                      disabled={m.invoiced}
+                      className={`flex-1 ${inputCls} ${m.invoiced ? "opacity-50" : ""}`} />
+                    <div className="flex items-center gap-1">
+                      <input type="number" min="0" max="100" step="0.1" placeholder="%" value={m.percentage}
+                        onChange={(e) => setMilestones((prev) => prev.map((ms, i) => i === idx ? { ...ms, percentage: e.target.value } : ms))}
+                        disabled={m.invoiced}
+                        className={`w-20 ${inputCls} ${m.invoiced ? "opacity-50" : ""}`} />
+                      <span className="text-xs text-muted">%</span>
+                    </div>
+                    {m.invoiced ? (
+                      <span className="text-[10px] text-green-500 font-medium px-1.5 py-0.5 rounded bg-green-500/10">Invoiced</span>
+                    ) : (
+                      <button type="button" onClick={() => setMilestones((prev) => prev.filter((_, i) => i !== idx))}
+                        disabled={milestones.length <= 1}
+                        className="p-1 rounded text-muted hover:text-red-400 disabled:opacity-30 transition-colors">
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => setMilestones((prev) => [...prev, { title: "", percentage: "" }])}
+                className="mt-3 flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium bg-bg-content text-primary border border-border-subtle hover:bg-bg-hover transition-colors">
+                <Plus size={14} /> Add milestone
+              </button>
+              {milestones.length > 0 && (() => {
+                const total = milestones.reduce((s, m) => s + (parseFloat(m.percentage) || 0), 0);
+                const ok = Math.abs(total - 100) < 0.01;
+                return (
+                  <div className={`mt-2 text-xs ${ok ? "text-green-500" : "text-amber-400"}`}>
+                    Total: {total.toFixed(1)}%{!ok && " (must be 100%)"}
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+        </Section>
+      )}
     </form>
   );
 }

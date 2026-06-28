@@ -24,10 +24,12 @@ from tuttle.model import (
     Contact,
     Contract,
     ContractCharge,
+    ContractType,
     Cycle,
     FinancialGoal,
     Invoice,
     InvoiceItem,
+    PaymentMilestone,
     Project,
     TaxCategory,
     Timesheet,
@@ -622,27 +624,45 @@ def create_heating_data(
     # -- contracts (one per client) --------------------------------------------
 
     contracts = []
+    sam_lowry_contract = None
     for i, client in enumerate(clients):
         if client is sam_lowry:
-            rate = 0
-            title = "Heating Repair"
+            # Fixed price with a milestone schedule: the deposit / final
+            # invoice workflow (Abschlagsrechnung / Schlussrechnung).
+            contract = Contract(
+                title=f"Heating Repair – {client.name}",
+                client=client,
+                signature_date=fake.date_between(start_date="-30M", end_date="-24M"),
+                start_date=fake.date_between(start_date="-24M", end_date="-20M"),
+                type=ContractType.fixed_price,
+                rate=None,
+                fixed_price=Decimal("5000"),
+                currency="EUR",
+                VAT_rate=Decimal("0.19"),
+                unit=TimeUnit.hour,
+                units_per_workday=8,
+                volume=40,
+                term_of_payment=14,
+                billing_cycle=Cycle.monthly,
+            )
+            sam_lowry_contract = contract
         else:
             rate = random.choice([65, 72, 80, 85, 95])
             title = _HEATING_CONTRACTS[i % len(_HEATING_CONTRACTS)]
-        contract = Contract(
-            title=f"{title} – {client.name}",
-            client=client,
-            signature_date=fake.date_between(start_date="-30M", end_date="-24M"),
-            start_date=fake.date_between(start_date="-24M", end_date="-20M"),
-            rate=rate,
-            currency="EUR",
-            VAT_rate=Decimal("0.19"),
-            unit=TimeUnit.hour,
-            units_per_workday=8,
-            volume=random.randint(100, 400),
-            term_of_payment=14,
-            billing_cycle=Cycle.monthly,
-        )
+            contract = Contract(
+                title=f"{title} – {client.name}",
+                client=client,
+                signature_date=fake.date_between(start_date="-30M", end_date="-24M"),
+                start_date=fake.date_between(start_date="-24M", end_date="-20M"),
+                rate=rate,
+                currency="EUR",
+                VAT_rate=Decimal("0.19"),
+                unit=TimeUnit.hour,
+                units_per_workday=8,
+                volume=random.randint(100, 400),
+                term_of_payment=14,
+                billing_cycle=Cycle.monthly,
+            )
         contracts.append(contract)
 
     _CANONICAL_PROJECTS = {
@@ -731,9 +751,14 @@ def create_heating_data(
 
     today = datetime.date.today()
     invoices = [us_invoice]
+    sam_lowry_project = None
+    # The last project is the US one, already invoiced above. Sam Lowry's is
+    # billed through the milestone schedule further down, not as a lump sum.
     for i, project in enumerate(projects[:-1]):
+        if project.contract is sam_lowry_contract:
+            sam_lowry_project = project
+            continue
         if i < 2:
-            # First two invoices: sent but unpaid, dated 30+ days ago → overdue
             inv_date = today - timedelta(days=random.randint(30, 60))
             inv = create_fake_invoice(
                 fake,
@@ -746,7 +771,82 @@ def create_heating_data(
         else:
             inv = create_fake_invoice(fake, project=project, user=user)
         invoices.append(inv)
+
+    if sam_lowry_contract and sam_lowry_project:
+        invoices.extend(
+            create_milestone_invoices(
+                contract=sam_lowry_contract,
+                project=sam_lowry_project,
+                user=user,
+                today=today,
+            )
+        )
+
     return projects, invoices, client_contacts
+
+
+def create_milestone_invoices(
+    contract: Contract,
+    project: Project,
+    user: User,
+    today: date,
+) -> List[Invoice]:
+    """Bill a fixed-price contract in two instalments, deposit then settlement.
+
+    Demonstrates the Abschlagsrechnung / Schlussrechnung chain: the first
+    milestone is invoiced as a paid deposit, the second closes the contract
+    with a final invoice that states the full price and deducts the deposit.
+    """
+    # Attaching to the contract is what persists them: the schedule reaches the
+    # database through the contract's milestone cascade.
+    schedule = [
+        PaymentMilestone(
+            contract=contract,
+            title=title,
+            percentage=Decimal("50"),
+            position=position,
+            invoiced=True,
+        )
+        for position, title in enumerate(("Half upfront on commissioning", "Half on delivery"))
+    ]
+    first = schedule[0]
+
+    deposit_date = today - timedelta(days=45)
+    deposit = invoicing.generate_deposit_invoice(
+        contract=contract,
+        project=project,
+        milestone=first,
+        number=f"{deposit_date.strftime('%Y-%m-%d')}-{next(invoice_number_counter)}",
+        date=deposit_date,
+    )
+    deposit.milestone = first
+    deposit.sent = True
+    deposit.paid = True
+
+    final_date = today - timedelta(days=7)
+    final = invoicing.generate_final_invoice(
+        contract=contract,
+        project=project,
+        deposit_invoices=[deposit],
+        number=f"{final_date.strftime('%Y-%m-%d')}-{next(invoice_number_counter)}",
+        date=final_date,
+    )
+    final.sent = True
+    final.paid = False
+
+    for invoice, label in ((deposit, "deposit"), (final, "final")):
+        try:
+            rendering.render_invoice(
+                user=user,
+                invoice=invoice,
+                out_dir=get_data_dir() / "Invoices",
+                only_final=True,
+            )
+            logger.info(f"✅ rendered {label} invoice for {project.title}")
+        except Exception as ex:
+            logger.error(f"❌ Error rendering {label} invoice for {project.title}: {ex}")
+
+    return [deposit, final]
 
 
 def create_fake_data(
@@ -1011,6 +1111,7 @@ def install_demo_data(
                 )
             except Exception as ex:
                 logger.warning(f"Could not render demo invoice {inv.number}: {ex}")
+        session.commit()
 
     logger.info("Adding financial goals...")
     with Session(db_engine) as session:

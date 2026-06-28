@@ -1,6 +1,7 @@
 from decimal import Decimal, InvalidOperation
+from typing import Optional
 
-from ...model import Client, Contract, ContractCharge, User
+from ...model import Client, Contract, ContractCharge, PaymentMilestone, User
 from ...tax import get_tax_system
 from ...time import ChargeBasis
 from ..clients.intent import ClientsIntent
@@ -25,6 +26,17 @@ def _parse_amount(value) -> Decimal:
         return Decimal(str(value))
     except (InvalidOperation, TypeError, ValueError):
         raise ValueError(f"Additional charge amount must be a number, got {value!r}")
+
+
+def _parse_milestone_number(value, field: str) -> Decimal:
+    """Coerce a milestone percentage or amount from JSON into a Decimal."""
+    try:
+        parsed = Decimal(str(value))
+    except (InvalidOperation, TypeError, ValueError):
+        raise ValueError(f"Milestone {field} must be a number, got {value!r}")
+    if parsed <= 0:
+        raise ValueError(f"Milestone {field} must be greater than zero, got {value!r}")
+    return parsed
 
 
 def _parse_basis(value) -> ChargeBasis:
@@ -52,7 +64,7 @@ class ContractsIntent(CrudIntent):
         ("projects", "projects", lambda p: p.title),
         ("invoices", "invoices", lambda i: i.number or f"#{i.id}"),
     ]
-    __save_skip__ = {"client", "projects", "invoices"}
+    __save_skip__ = {"client", "projects", "invoices", "payment_milestones"}
 
     def __init__(self):
         super().__init__()
@@ -193,3 +205,119 @@ class ContractsIntent(CrudIntent):
         return "Failed to save the contract."
 
     toggle_complete_status = CrudIntent.toggle_completed
+
+    # -- Milestone management --------------------------------------------------
+
+    def save_milestones(self, contract_id, milestones) -> IntentResult:
+        """Replace a contract's payment schedule with the incoming rows.
+
+        Rows are matched to existing milestones by id so an edit preserves
+        identity, and with it the record of whether the instalment has already
+        been invoiced. Every rule is checked before anything is written: a
+        half-applied schedule whose parts no longer sum to the contract total
+        would silently under- or over-bill the client.
+
+        Each entry is a dict with keys: id, title, percentage, amount.
+        """
+        result = self.get_by_id(contract_id)
+        if not result.was_intent_successful or not result.data:
+            return IntentResult(
+                was_intent_successful=False,
+                error_msg="Contract not found.",
+            )
+        contract = result.data
+
+        existing_by_id = {m.id: m for m in contract.payment_milestones if m.id is not None}
+        incoming_ids = set()
+        rows = []
+        for position, raw in enumerate(milestones):
+            mid = raw.get("id")
+            pct = raw.get("percentage")
+            amt = raw.get("amount")
+            try:
+                percentage = _parse_milestone_number(pct, "percentage") if pct is not None else None
+                amount = _parse_milestone_number(amt, "amount") if amt is not None else None
+            except ValueError as e:
+                return IntentResult(was_intent_successful=False, error_msg=str(e))
+            existing = existing_by_id.get(mid) if mid else None
+            if existing is not None:
+                incoming_ids.add(mid)
+            rows.append(
+                {
+                    "existing": existing,
+                    "title": raw.get("title") or (existing.title if existing else ""),
+                    "percentage": percentage,
+                    "amount": amount,
+                    "position": position,
+                }
+            )
+
+        error = self._validate_milestone_schedule(contract, rows, existing_by_id, incoming_ids)
+        if error:
+            return IntentResult(was_intent_successful=False, error_msg=error)
+
+        for old_id, old_ms in existing_by_id.items():
+            if old_id not in incoming_ids:
+                self.delete_by_id(PaymentMilestone, old_id)
+
+        for row in rows:
+            ms = row["existing"]
+            if ms is None:
+                ms = PaymentMilestone(contract_id=contract_id, invoiced=False)
+            ms.title = row["title"]
+            ms.percentage = row["percentage"]
+            ms.amount = row["amount"]
+            ms.position = row["position"]
+            self.store(ms)
+
+        return IntentResult(was_intent_successful=True)
+
+    @staticmethod
+    def _validate_milestone_schedule(contract, rows, existing_by_id, incoming_ids) -> Optional[str]:
+        """Why a payment schedule cannot be saved, or None when it is sound."""
+        for old_id, old_ms in existing_by_id.items():
+            if old_id not in incoming_ids and old_ms.invoiced:
+                return f"Cannot remove milestone '{old_ms.title}' — it has already been invoiced."
+
+        for row in rows:
+            existing = row["existing"]
+            if existing is None or not existing.invoiced:
+                continue
+            if row["percentage"] != existing.percentage or row["amount"] != existing.amount:
+                return f"Cannot change the amount of milestone '{existing.title}' — it has already been invoiced."
+
+        if not rows:
+            return None
+
+        if not any(row["title"].strip() for row in rows):
+            return "Every payment milestone needs a title."
+
+        if all(row["percentage"] is not None and row["amount"] is None for row in rows):
+            total = sum(row["percentage"] for row in rows)
+            if total != Decimal("100"):
+                return f"Milestone percentages must sum to 100% (currently {total}%)."
+            return None
+
+        if all(row["amount"] is not None and row["percentage"] is None for row in rows):
+            if contract.fixed_price is None:
+                return "Amount-based milestones require a fixed-price contract."
+            total = sum(row["amount"] for row in rows)
+            fixed = Decimal(str(contract.fixed_price))
+            if total != fixed:
+                return f"Milestone amounts must sum to the contract fixed price ({fixed}, currently {total})."
+            return None
+
+        return "Each milestone must use either a percentage or an amount, consistently across the schedule."
+
+    def get_milestones(self, contract_id) -> IntentResult:
+        """Get all payment milestones for a contract."""
+        result = self.get_by_id(contract_id)
+        if not result.was_intent_successful or not result.data:
+            return IntentResult(
+                was_intent_successful=False,
+                error_msg="Contract not found.",
+            )
+        return IntentResult(
+            was_intent_successful=True,
+            data=result.data.payment_milestones,
+        )

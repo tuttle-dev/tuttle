@@ -34,6 +34,11 @@ from ..timetracking.intent import TimeTrackingIntent
 from .data_source import InvoicingDataSource
 
 
+def _as_date(value) -> date:
+    """Coerce an RPC date argument, which arrives as an ISO string, to a date."""
+    return value if isinstance(value, date) else _dt.date.fromisoformat(value)
+
+
 class InvoicingIntent(Intent):
     """Invoicing CRUD, creation orchestration, and status toggles."""
 
@@ -138,6 +143,211 @@ class InvoicingIntent(Intent):
             language=language,
             template_name=template_name,
         )
+
+    def create_deposit(
+        self,
+        project_id,
+        milestone_id,
+        invoice_date,
+    ) -> IntentResult[Invoice]:
+        """Create a deposit invoice (Abschlagsrechnung) for one payment milestone.
+
+        Invoicing the last open milestone produces a final invoice instead: the
+        closing instalment of a schedule *is* the settlement, and issuing it as
+        a plain deposit would leave the contract without the Schlussrechnung
+        that German tax law expects.
+        """
+        proj_result = self._projects_intent.get_by_id(project_id)
+        if not proj_result.was_intent_successful or proj_result.data is None:
+            return IntentResult(was_intent_successful=False, error_msg="Project not found.")
+
+        project = proj_result.data
+        contract = project.contract
+        if contract is None or not contract.is_fixed_price:
+            return IntentResult(
+                was_intent_successful=False,
+                error_msg="Deposit invoices require a fixed-price contract.",
+            )
+
+        milestone = next((m for m in contract.payment_milestones if m.id == int(milestone_id)), None)
+        if milestone is None:
+            return IntentResult(was_intent_successful=False, error_msg="Payment milestone not found.")
+        if milestone.invoiced:
+            return IntentResult(
+                was_intent_successful=False,
+                error_msg="This milestone has already been invoiced.",
+            )
+
+        open_milestones = [m for m in contract.payment_milestones if not m.invoiced]
+        if len(open_milestones) == 1:
+            # ``create_final`` closes out every remaining milestone itself.
+            return self.create_final(project_id, invoice_date)
+
+        try:
+            invoice = invoicing.generate_deposit_invoice(
+                contract=contract,
+                project=project,
+                milestone=milestone,
+                number=self._next_invoice_number(invoice_date),
+                date=_as_date(invoice_date),
+            )
+            for item in invoice.items:
+                item.validate_vat()
+
+            self._invoicing_data_source.save_invoice(invoice)
+            self._mark_milestone_invoiced(milestone)
+
+            invoice, warnings = self._render_saved_invoice(invoice.id, "deposit invoice")
+            return IntentResult(
+                was_intent_successful=True,
+                data=invoice,
+                warning="; ".join(warnings),
+            )
+        except Exception as ex:
+            logger.error(f"Failed to create deposit invoice: {ex}")
+            logger.exception(ex)
+            return IntentResult(
+                was_intent_successful=False,
+                error_msg=f"Failed to create deposit invoice: {ex}",
+            )
+
+    def create_final(
+        self,
+        project_id,
+        invoice_date,
+    ) -> IntentResult[Invoice]:
+        """Create a final invoice (Schlussrechnung) settling a contract's deposits."""
+        proj_result = self._projects_intent.get_by_id(project_id)
+        if not proj_result.was_intent_successful or proj_result.data is None:
+            return IntentResult(was_intent_successful=False, error_msg="Project not found.")
+
+        project = proj_result.data
+        contract = project.contract
+        if contract is None or not contract.is_fixed_price:
+            return IntentResult(
+                was_intent_successful=False,
+                error_msg="Final invoices require a fixed-price contract.",
+            )
+
+        deposits_result = self._invoicing_data_source.get_deposit_invoices(contract.id, project.id)
+        if not deposits_result.was_intent_successful:
+            return deposits_result
+        deposit_invoices = deposits_result.data or []
+
+        already_settled = [d for d in deposit_invoices if d.deposit_for_id is not None]
+        if already_settled:
+            return IntentResult(
+                was_intent_successful=False,
+                error_msg="A final invoice already settles the deposits of this project.",
+            )
+
+        try:
+            invoice = invoicing.generate_final_invoice(
+                contract=contract,
+                project=project,
+                deposit_invoices=deposit_invoices,
+                number=self._next_invoice_number(invoice_date),
+                date=_as_date(invoice_date),
+                charges=self._eligible_charges(contract),
+            )
+            for item in invoice.items:
+                item.validate_vat()
+
+            # ``generate_final_invoice`` cannot set deposit_for_id before the
+            # final invoice has an id, so the chain is linked after the insert.
+            self._invoicing_data_source.save_invoice(invoice)
+            for dep in deposit_invoices:
+                dep.deposit_for_id = invoice.id
+                self._invoicing_data_source.save_invoice(dep)
+
+            # The settlement bills whatever the deposits left, so no milestone
+            # of this contract is still open once it exists.
+            for milestone in contract.payment_milestones:
+                if not milestone.invoiced:
+                    self._mark_milestone_invoiced(milestone)
+
+            invoice, warnings = self._render_saved_invoice(invoice.id, "final invoice")
+
+            unpaid = [d for d in deposit_invoices if not d.paid]
+            if unpaid:
+                nums = ", ".join(d.number or f"#{d.id}" for d in unpaid)
+                warnings.append(f"Deposit invoices still unpaid: {nums}")
+
+            return IntentResult(
+                was_intent_successful=True,
+                data=invoice,
+                warning="; ".join(warnings),
+            )
+        except Exception as ex:
+            logger.error(f"Failed to create final invoice: {ex}")
+            logger.exception(ex)
+            return IntentResult(
+                was_intent_successful=False,
+                error_msg=f"Failed to create final invoice: {ex}",
+            )
+
+    def _mark_milestone_invoiced(self, milestone) -> None:
+        milestone.invoiced = True
+        self._invoicing_data_source.store(milestone)
+
+    def _next_invoice_number(self, invoice_date) -> str:
+        app_db = AppDatabase()
+        scheme = app_db.get_setting(PreferencesStorageKeys.invoice_number_scheme_key.value) or DEFAULT_INVOICE_NUMBER_SCHEME
+        return self._invoicing_data_source.generate_invoice_number(_as_date(invoice_date), scheme=scheme)
+
+    def _render_saved_invoice(self, invoice_id: int, description: str) -> tuple[Invoice, list[str]]:
+        """Render a persisted invoice's PDF, returning it and any warnings.
+
+        Rendering happens from a freshly loaded instance so that the deposit
+        chain and milestone are hydrated — a final invoice rendered from the
+        in-memory object would print no deduction lines and overstate what the
+        client owes.
+        """
+        warnings: list[str] = []
+        reloaded = self._invoicing_data_source.get_invoice_by_id(invoice_id)
+        invoice = reloaded.data if reloaded.was_intent_successful and reloaded.data else None
+        if invoice is None:
+            warnings.append(f"The {description} was saved but could not be reloaded for rendering.")
+            return invoice, warnings
+
+        options = self._resolved_render_options()
+        try:
+            rendering.render_invoice(
+                user=self._user_data_source.get_user(),
+                invoice=invoice,
+                out_dir=get_data_dir() / "Invoices",
+                only_final=True,
+                **options,
+            )
+            self._invoicing_data_source.save_invoice(invoice)
+        except Exception as ex:
+            logger.error(f"Error rendering {description}: {ex}")
+            logger.exception(ex)
+            warnings.append(f"Invoice PDF could not be generated: {ex}")
+        return invoice, warnings
+
+    def _resolved_render_options(self) -> dict:
+        """Template, language and layout preferences for rendering a document."""
+        app_db = AppDatabase()
+        language = app_db.get_setting(PreferencesStorageKeys.language_key.value) or "en"
+
+        def _pref(getter, default):
+            result = getter()
+            if result.was_intent_successful and result.data is not None:
+                return result.data
+            return default
+
+        return {
+            "language": language,
+            "template_name": _pref(
+                self._preferences_intent.get_preferred_invoice_template,
+                DEFAULT_INVOICE_TEMPLATE,
+            ),
+            "include_logo": _pref(self._preferences_intent.get_include_logo, True),
+            "include_due_date": _pref(self._preferences_intent.get_include_due_date, True),
+            "include_signature": _pref(self._preferences_intent.get_include_signature, True),
+            "accent_color": self._user_data_source.get_user().accent_color or "",
+        }
 
     def toggle_sent(self, id) -> IntentResult:
         return self._toggle("sent", id)
@@ -729,13 +939,12 @@ Best regards,
             )
 
     def toggle_invoice_paid_status(self, invoice: Invoice) -> IntentResult[Invoice]:
-        """Toggle paid status.  Propagates across the entire reminder chain."""
+        """Toggle paid status. Propagates across reminder and deposit chains."""
         try:
             new_paid = not invoice.paid
             chain_result = self._invoicing_data_source.get_reminder_chain(invoice.id)
             if chain_result.was_intent_successful and chain_result.data:
                 for inv in chain_result.data:
-                    # Re-load each invoice in its own session to avoid detached errors
                     fresh = self._invoicing_data_source.get_invoice_by_id(inv.id)
                     if fresh.was_intent_successful and fresh.data:
                         fresh.data.paid = new_paid
@@ -743,7 +952,19 @@ Best regards,
             else:
                 invoice.paid = new_paid
                 self._invoicing_data_source.save_invoice(invoice)
-            # Return a fresh copy of the toggled invoice
+
+            # Settling the Schlussrechnung settles the whole contract: its
+            # remaining balance is what is left after the deposits, so a paid
+            # final invoice means every deposit in the chain was paid too.
+            if invoice.is_final_invoice and new_paid:
+                reload = self._invoicing_data_source.get_invoice_by_id(invoice.id)
+                final = reload.data if reload.was_intent_successful and reload.data else invoice
+                for dep in final.deposits:
+                    dep_fresh = self._invoicing_data_source.get_invoice_by_id(dep.id)
+                    if dep_fresh.was_intent_successful and dep_fresh.data:
+                        dep_fresh.data.paid = True
+                        self._invoicing_data_source.save_invoice(dep_fresh.data)
+
             result = self._invoicing_data_source.get_invoice_by_id(invoice.id)
             return IntentResult(
                 was_intent_successful=True,

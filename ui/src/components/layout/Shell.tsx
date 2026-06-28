@@ -86,6 +86,7 @@ export function Shell() {
 
   useEffect(() => {
     (async () => {
+      setBootError(null);
       setBootPhase("registry");
       const ensured = await rpc("db.ensure");
       if (!ensured.ok) {

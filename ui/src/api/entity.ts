@@ -154,6 +154,14 @@ export function isReminder(e: Entity): boolean {
   return bool(e, "is_reminder") || str(e, "document_type") === "reminder";
 }
 
+export function isDeposit(e: Entity): boolean {
+  return bool(e, "is_deposit") || str(e, "document_type") === "deposit";
+}
+
+export function isFinalInvoice(e: Entity): boolean {
+  return bool(e, "is_final_invoice") || str(e, "document_type") === "final";
+}
+
 export function reminderLevel(e: Entity): number {
   return num(e, "reminder_level");
 }
@@ -162,4 +170,74 @@ export function reminderChainHeadId(e: Entity): number | null {
   const v = e.reminder_chain_head_id;
   if (v == null) return null;
   return typeof v === "number" ? v : null;
+}
+
+export function depositChainHeadId(e: Entity): number | null {
+  const v = e.deposit_chain_head_id;
+  if (v == null) return null;
+  return typeof v === "number" ? v : null;
+}
+
+/** Milestone title or first line-item description for a deposit invoice. */
+export function depositMilestoneLabel(e: Entity): string {
+  const title = deepStr(e, "milestone.title");
+  if (title) return title;
+  const items = list(e, "items");
+  if (items.length > 0) {
+    const desc = str(items[0], "description");
+    if (desc) return desc;
+  }
+  return "";
+}
+
+export type MilestoneScheduleStatus = {
+  /** Milestones in the contract's payment schedule. */
+  total: number;
+  /** Milestones already billed. */
+  invoicedCount: number;
+  /** Documents issued for this schedule: the deposits plus the final invoice. */
+  issuedCount: number;
+  /** How many of those documents are paid. */
+  paidCount: number;
+  hasFinal: boolean;
+  /** Nothing left to bill or collect on this contract. */
+  settled: boolean;
+};
+
+export function chainDepositInvoices(root: Entity, nestedDeposits: Entity[]): Entity[] {
+  const deps = nestedDeposits.filter(isDeposit);
+  if (isDeposit(root)) return [root, ...deps];
+  return deps;
+}
+
+/** Progress of a contract's payment schedule across a grouped invoice chain.
+ *
+ * Derived from the invoices themselves rather than the milestones' `invoiced`
+ * flags: the invoice list is what the view reloads, so a count taken from it
+ * cannot go stale against a contract snapshot embedded in an older invoice.
+ */
+export function milestoneScheduleStatus(
+  root: Entity,
+  nestedDeposits: Entity[],
+): MilestoneScheduleStatus | null {
+  const contract = entity(root, "contract");
+  if (!contract) return null;
+  const total = list(contract, "payment_milestones").length;
+  if (total === 0) return null;
+
+  const deposits = chainDepositInvoices(root, nestedDeposits);
+  const hasFinal = isFinalInvoice(root);
+  const issued = hasFinal ? [...deposits, root] : deposits;
+  const paidCount = issued.filter((inv) => invoiceStatus(inv) === "Paid").length;
+
+  // A final invoice settles every milestone the deposits did not cover, so its
+  // presence means the whole schedule has been billed out.
+  const covered = new Set(deposits.map((d) => int(d, "milestone_id")).filter((id) => id > 0));
+  const invoicedCount = hasFinal ? total : covered.size;
+
+  const settled = hasFinal
+    ? invoiceStatus(root) === "Paid"
+    : invoicedCount === total && issued.length > 0 && paidCount === issued.length;
+
+  return { total, invoicedCount, issuedCount: issued.length, paidCount, hasFinal, settled };
 }
