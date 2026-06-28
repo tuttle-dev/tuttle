@@ -227,11 +227,21 @@ def render_invoice(
         tpl = labels.get("reminder_n", "{n}. Payment Reminder")
         reminder_title = tpl.format(n=n)
 
+    # Derive the column header from the contract's unit type so that the
+    # rendered invoice makes it explicit whether the quantity column refers
+    # to hours, days, or a fixed price — see issue #358.
+    contract_unit = getattr(invoice.contract, "unit", None)
+    if contract_unit is not None:
+        unit_header = unit_label(contract_unit.value, 2)
+    else:
+        unit_header = labels.get("unit", "Unit")
+
     invoice_template = template_env.get_template("invoice.html")
     html = invoice_template.render(
         user=user,
         invoice=invoice,
         l=labels,
+        unit_header=unit_header,
         is_reminder=is_reminder,
         reminder_title=reminder_title,
         notes=invoice.notes,
