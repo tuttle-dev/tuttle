@@ -230,11 +230,14 @@ def render_invoice(
     # Derive the column header from the contract's unit type so that the
     # rendered invoice makes it explicit whether the quantity column refers
     # to hours, days, or a fixed price — see issue #358.
-    contract_unit = getattr(invoice.contract, "unit", None)
-    if contract_unit is not None:
-        unit_header = unit_label(contract_unit.value, 2)
+    if getattr(invoice.contract, "is_fixed_price", False):
+        unit_header = labels.get("fixed_price", "fixed price")
     else:
-        unit_header = labels.get("unit", "Unit")
+        contract_unit = getattr(invoice.contract, "unit", None)
+        if contract_unit is not None:
+            unit_header = unit_label(contract_unit.value, 2)
+        else:
+            unit_header = labels.get("unit", "Unit")
 
     invoice_template = template_env.get_template("invoice.html")
     html = invoice_template.render(
