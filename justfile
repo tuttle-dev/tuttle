@@ -151,6 +151,10 @@ deps-node:
 # Install all dependencies
 deps-all: deps deps-node
 
+# Install the pre-commit hooks (run once after cloning)
+precommit:
+    {{venv}}/bin/pre-commit install
+
 # Reset the demo user data
 demo-reset:
     {{python}} -c "from tuttle.app.demo.intent import DemoIntent; DemoIntent().reset(); print('Demo user reset')"
