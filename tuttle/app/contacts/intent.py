@@ -38,7 +38,7 @@ class ContactsIntent(CrudIntent):
         except Exception as e:
             return IntentResult(
                 was_intent_successful=False,
-                error_msg="Failed to load clients for this contact.",
+                error_msg=f"Failed to load clients for this contact: {e}",
                 log_message=f"get_clients_for_contact({contact_id}): {e}",
                 exception=e,
             )
@@ -54,7 +54,7 @@ class ContactsIntent(CrudIntent):
         except Exception as e:
             return IntentResult(
                 was_intent_successful=False,
-                error_msg="Failed to add client to contact.",
+                error_msg=f"Failed to add client to contact: {e}",
                 log_message=f"add_client_to_contact({contact_id}, {client_id}): {e}",
                 exception=e,
             )
@@ -67,7 +67,7 @@ class ContactsIntent(CrudIntent):
         except Exception as e:
             return IntentResult(
                 was_intent_successful=False,
-                error_msg="Failed to remove client from contact.",
+                error_msg=f"Failed to remove client from contact: {e}",
                 log_message=f"remove_client_contact({association_id}): {e}",
                 exception=e,
             )
@@ -89,7 +89,7 @@ class ContactsIntent(CrudIntent):
         except Exception as e:
             return IntentResult(
                 was_intent_successful=False,
-                error_msg="Failed to update contact role.",
+                error_msg=f"Failed to update contact role: {e}",
                 log_message=f"update_client_contact_role({association_id}): {e}",
                 exception=e,
             )

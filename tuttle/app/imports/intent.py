@@ -57,12 +57,12 @@ class ImportsIntent(SQLModelDataSourceMixin):
                     "projects": [p.to_rpc_dict() for p in self.query(Project)],
                 },
             )
-        except Exception as e:
+        except Exception as ex:
             return IntentResult(
                 was_intent_successful=False,
-                error_msg="Failed to load existing entities for matching.",
-                log_message=f"ImportsIntent.get_existing_entities: {e}",
-                exception=e,
+                error_msg=f"Failed to load existing entities for matching: {ex}",
+                log_message=f"ImportsIntent.get_existing_entities: {ex}",
+                exception=ex,
             )
 
     def get_field_metadata(self) -> IntentResult:

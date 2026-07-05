@@ -52,7 +52,7 @@ class DashboardIntent(SQLModelDataSourceMixin, Intent):
         except Exception as e:
             return IntentResult(
                 was_intent_successful=False,
-                error_msg="Failed to compute KPIs.",
+                error_msg=f"Failed to compute KPIs: {e}",
                 log_message=f"DashboardIntent.get_kpis: {e}",
                 exception=e,
             )
@@ -66,7 +66,7 @@ class DashboardIntent(SQLModelDataSourceMixin, Intent):
         except Exception as e:
             return IntentResult(
                 was_intent_successful=False,
-                error_msg="Failed to load monthly revenue.",
+                error_msg=f"Failed to load monthly revenue: {e}",
                 log_message=f"DashboardIntent.get_monthly_revenue: {e}",
                 exception=e,
             )
@@ -85,7 +85,7 @@ class DashboardIntent(SQLModelDataSourceMixin, Intent):
         except Exception as e:
             return IntentResult(
                 was_intent_successful=False,
-                error_msg="Failed to load monthly spendable income.",
+                error_msg=f"Failed to load monthly spendable income: {e}",
                 log_message=f"DashboardIntent.get_monthly_spendable_income: {e}",
                 exception=e,
             )
@@ -106,7 +106,7 @@ class DashboardIntent(SQLModelDataSourceMixin, Intent):
         except Exception as e:
             return IntentResult(
                 was_intent_successful=False,
-                error_msg="Failed to load chart data.",
+                error_msg=f"Failed to load chart data: {e}",
                 log_message=f"DashboardIntent.get_monthly_chart_data: {e}",
                 exception=e,
             )
@@ -129,7 +129,7 @@ class DashboardIntent(SQLModelDataSourceMixin, Intent):
         except Exception as e:
             return IntentResult(
                 was_intent_successful=False,
-                error_msg="Failed to generate revenue forecast.",
+                error_msg=f"Failed to generate revenue forecast: {e}",
                 log_message=f"DashboardIntent.get_revenue_curve: {e}",
                 exception=e,
             )
@@ -156,7 +156,7 @@ class DashboardIntent(SQLModelDataSourceMixin, Intent):
         except Exception as e:
             return IntentResult(
                 was_intent_successful=False,
-                error_msg="Failed to generate cash flow projection.",
+                error_msg=f"Failed to generate cash flow projection: {e}",
                 log_message=f"DashboardIntent.get_cash_flow: {e}",
                 exception=e,
             )
@@ -171,7 +171,7 @@ class DashboardIntent(SQLModelDataSourceMixin, Intent):
         except Exception as e:
             return IntentResult(
                 was_intent_successful=False,
-                error_msg="Failed to load project budgets.",
+                error_msg=f"Failed to load project budgets: {e}",
                 log_message=f"DashboardIntent.get_project_budgets: {e}",
                 exception=e,
             )
@@ -208,7 +208,7 @@ class DashboardIntent(SQLModelDataSourceMixin, Intent):
         except Exception as e:
             return IntentResult(
                 was_intent_successful=False,
-                error_msg="Failed to load financial goals.",
+                error_msg=f"Failed to load financial goals: {e}",
                 log_message=f"DashboardIntent.get_financial_goals: {e}",
                 exception=e,
             )
@@ -221,7 +221,7 @@ class DashboardIntent(SQLModelDataSourceMixin, Intent):
         except Exception as e:
             return IntentResult(
                 was_intent_successful=False,
-                error_msg="Failed to save financial goal.",
+                error_msg=f"Failed to save financial goal: {e}",
                 log_message=f"DashboardIntent.save_financial_goal: {e}",
                 exception=e,
             )
@@ -234,7 +234,7 @@ class DashboardIntent(SQLModelDataSourceMixin, Intent):
         except Exception as e:
             return IntentResult(
                 was_intent_successful=False,
-                error_msg="Failed to delete financial goal.",
+                error_msg=f"Failed to delete financial goal: {e}",
                 log_message=f"DashboardIntent.delete_financial_goal: {e}",
                 exception=e,
             )

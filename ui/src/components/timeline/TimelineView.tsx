@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { rpc } from "../../api/rpc";
 import { Toolbar, ToolbarFilterGroup } from "../shared/ToolbarButtons";
+import { EmptyStateIntro } from "../shared/EmptyStateIntro";
 import type { Entity } from "../../api/types";
 import { str, bool } from "../../api/entity";
 
@@ -131,11 +132,7 @@ export function TimelineView() {
     return (
       <div className="flex flex-col h-full">
         <Toolbar title="Timeline" />
-        <div className="flex flex-col items-center justify-center flex-1 gap-3 text-secondary">
-          <CalendarDays size={40} strokeWidth={1.2} />
-          <span className="text-lg font-medium">No Events Yet</span>
-          <span className="text-sm text-muted">Create invoices, contracts, or projects to see them here.</span>
-        </div>
+        <EmptyStateIntro icon={CalendarDays} description="Key events — new contracts, sent invoices, and project milestones — appear here in chronological order." />
       </div>
     );
   }

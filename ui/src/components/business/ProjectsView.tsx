@@ -12,6 +12,7 @@ import { ViewModeToggle } from "../shared/ViewModeToggle";
 import { KanbanBoard, useStageStore, type BoardColumn } from "../shared/KanbanBoard";
 import { Toolbar, ToolbarButtonPrimary, ToolbarButtonSecondary, ToolbarFilterGroup, ListDetailLayout, LIST_ROW_PADDING } from "../shared/ToolbarButtons";
 import { useNavigation } from "../shared/NavigationContext";
+import { EmptyStateIntro } from "../shared/EmptyStateIntro";
 import type { Entity } from "../../api/types";
 
 interface BudgetEntry {
@@ -214,11 +215,13 @@ export function ProjectsView() {
         search={{ value: search, onChange: setSearch }}
       />
 
-      {viewMode === "list" ? (
+      {projects.length === 0 && mode === "view" ? (
+        <EmptyStateIntro icon={FolderKanban} description="A project is a unit of work you do under a contract. Track time against projects to generate invoices." />
+      ) : viewMode === "list" ? (
         <ListDetailLayout
           footer={<>{filtered.length} project{filtered.length !== 1 ? "s" : ""}</>}
           list={filtered.length === 0
-            ? <div className="p-4 text-sm text-center text-tertiary">{search ? "No matches." : "No projects."}</div>
+            ? <div className="p-4 text-sm text-center text-tertiary">No matches.</div>
             : filtered.map((p) => {
               const isSelected = selected?.id === p.id && mode === "view";
               const isHighlighted = !isSelected && navFilter.contractId != null && num(p, "contract_id") === navFilter.contractId;

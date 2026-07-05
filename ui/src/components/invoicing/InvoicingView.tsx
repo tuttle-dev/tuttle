@@ -12,6 +12,7 @@ import { ViewModeToggle } from "../shared/ViewModeToggle";
 import { KanbanBoard, useStageStore, type BoardColumn } from "../shared/KanbanBoard";
 import { Toolbar, ToolbarButtonPrimary, ToolbarFilterGroup, ListDetailLayout, LIST_ROW_PADDING } from "../shared/ToolbarButtons";
 import { useNavigation } from "../shared/NavigationContext";
+import { EmptyStateIntro } from "../shared/EmptyStateIntro";
 import type { Entity } from "../../api/types";
 
 type InvoiceChain = { root: Entity; reminders: Entity[] };
@@ -150,11 +151,13 @@ export function InvoicingView() {
         </div>
       )}
 
-      {viewMode === "list" ? (
+      {invoices.length === 0 ? (
+        <EmptyStateIntro icon={FileText} description="Invoices are how you bill clients for completed work. Create, track, and send them from here." />
+      ) : viewMode === "list" ? (
         <ListDetailLayout
           footer={<>{filtered.length} invoice{filtered.length !== 1 ? "s" : ""}</>}
           list={chains.length === 0
-            ? <div className="p-4 text-sm text-center text-tertiary">{search ? "No matches." : "No invoices."}</div>
+            ? <div className="p-4 text-sm text-center text-tertiary">No matches.</div>
             : chains.map((chain) => {
               const inv = chain.root;
               const isSelected = selected?.id === inv.id;

@@ -25,6 +25,10 @@ from loguru import logger
 logger.remove()
 logger.add(sys.stderr, level="DEBUG")
 
+from tuttle.app.system.log_sink import sink as _log_sink  # noqa: E402
+
+logger.add(_log_sink, level="DEBUG")
+
 
 def _start_parent_watchdog(interval: float = 2.0):
     """Exit if the parent process (Electron) disappears.

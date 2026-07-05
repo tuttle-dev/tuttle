@@ -63,7 +63,7 @@ class TaxIntent(SQLModelDataSourceMixin, Intent):
         except Exception as e:
             return IntentResult(
                 was_intent_successful=False,
-                error_msg="Failed to compute spendable income.",
+                error_msg=f"Failed to compute spendable income: {e}",
                 log_message=f"TaxIntent.get_spendable_income: {e}",
                 exception=e,
             )
@@ -116,7 +116,7 @@ class TaxIntent(SQLModelDataSourceMixin, Intent):
         except Exception as e:
             return IntentResult(
                 was_intent_successful=False,
-                error_msg="Failed to compute income tax estimate.",
+                error_msg=f"Failed to compute income tax estimate: {e}",
                 log_message=f"TaxIntent.get_income_tax_estimate: {e}",
                 exception=e,
             )
@@ -167,7 +167,7 @@ class TaxIntent(SQLModelDataSourceMixin, Intent):
         except Exception as e:
             return IntentResult(
                 was_intent_successful=False,
-                error_msg="Failed to get available years.",
+                error_msg=f"Failed to get available years: {e}",
                 log_message=f"TaxIntent.get_available_years: {e}",
                 exception=e,
             )
@@ -188,7 +188,7 @@ class TaxIntent(SQLModelDataSourceMixin, Intent):
         except Exception as e:
             return IntentResult(
                 was_intent_successful=False,
-                error_msg="Failed to compute monthly VAT.",
+                error_msg=f"Failed to compute monthly VAT: {e}",
                 log_message=f"TaxIntent.get_monthly_vat: {e}",
                 exception=e,
             )

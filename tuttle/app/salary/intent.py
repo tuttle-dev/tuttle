@@ -57,7 +57,7 @@ class SalaryIntent(SQLModelDataSourceMixin, Intent):
         except Exception as e:
             return IntentResult(
                 was_intent_successful=False,
-                error_msg="Failed to compute effective salary.",
+                error_msg=f"Failed to compute effective salary: {e}",
                 log_message=f"SalaryIntent.get_effective_salary: {e}",
                 exception=e,
             )

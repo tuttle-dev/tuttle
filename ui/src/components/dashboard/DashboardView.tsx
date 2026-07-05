@@ -6,6 +6,7 @@ import {
 import { rpc } from "../../api/rpc";
 import { str, num, int } from "../../api/entity";
 import { KPICard } from "../shared/KPICard";
+import { EmptyStateIntro } from "../shared/EmptyStateIntro";
 import type { Entity } from "../../api/types";
 import {
   Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
@@ -105,9 +106,7 @@ export function DashboardView() {
 
   if (loading) return <div className="flex items-center justify-center h-full text-secondary">Loading dashboard…</div>;
   if (!kpis) return (
-    <div className="flex flex-col items-center justify-center h-full gap-2 text-secondary">
-      <BarChart3 size={40} strokeWidth={1.2} /><span>No data. Install demo data to get started.</span>
-    </div>
+    <EmptyStateIntro icon={BarChart3} description="Your key business metrics — revenue, outstanding payments, and project progress — will appear here." />
   );
 
   return (

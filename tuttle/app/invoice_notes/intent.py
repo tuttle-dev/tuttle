@@ -37,7 +37,7 @@ class InvoiceNotesIntent(Intent):
             logger.error(f"Failed to create invoice note: {ex}")
             return IntentResult(
                 was_intent_successful=False,
-                error_msg="Failed to save note.",
+                error_msg=f"Failed to save note: {ex}",
             )
 
     def delete(self, id: int) -> IntentResult[None]:
@@ -48,5 +48,5 @@ class InvoiceNotesIntent(Intent):
             logger.error(f"Failed to delete invoice note {id}: {ex}")
             return IntentResult(
                 was_intent_successful=False,
-                error_msg="Failed to delete note.",
+                error_msg=f"Failed to delete note: {ex}",
             )

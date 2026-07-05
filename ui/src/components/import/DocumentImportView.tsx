@@ -444,8 +444,7 @@ function UploadPhase({ parsing, parseError, importSteps, onFileSelected }: {
       <div className="text-center space-y-2">
         <h2 className="text-xl font-semibold">Import a Document</h2>
         <p className="text-sm text-secondary">
-          Upload a document and AI will extract contracts, invoices, clients,
-          contacts, and projects from it.
+          Import contacts, clients, and contracts from documents using AI-powered extraction.
         </p>
       </div>
 

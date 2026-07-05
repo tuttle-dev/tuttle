@@ -9,6 +9,7 @@ import { str, num, bool, entity as subEntity, list as entityList, displayName, f
 import { Toolbar, ToolbarButtonPrimary, ToolbarButtonSecondary, ToolbarFilterGroup, ListDetailLayout, LIST_ROW_PADDING } from "../shared/ToolbarButtons";
 import { StatusBadge } from "../shared/StatusBadge";
 import { useNavigation } from "../shared/NavigationContext";
+import { EmptyStateIntro } from "../shared/EmptyStateIntro";
 import type { Entity } from "../../api/types";
 
 type Mode = "view" | "edit" | "create" | "import";
@@ -182,10 +183,13 @@ export function ContractsView() {
         search={{ value: search, onChange: setSearch }}
       />
 
+      {contracts.length === 0 && mode === "view" ? (
+        <EmptyStateIntro icon={FileText} description="A contract defines the business terms for working with a client — rate, billing cycle, and duration of the agreement." />
+      ) : (
       <ListDetailLayout
         footer={<>{filtered.length} contract{filtered.length !== 1 ? "s" : ""}</>}
         list={filtered.length === 0
-          ? <div className="p-4 text-sm text-center text-tertiary">{search || statusFilter !== "All" ? "No matches." : "No contracts."}</div>
+          ? <div className="p-4 text-sm text-center text-tertiary">No matches.</div>
           : filtered.map((c) => (
             <ContractRow key={c.id} contract={c}
               isSelected={selected?.id === c.id && mode !== "create" && mode !== "import"}
@@ -217,6 +221,7 @@ export function ContractsView() {
           )
         }
       />
+      )}
     </div>
   );
 }

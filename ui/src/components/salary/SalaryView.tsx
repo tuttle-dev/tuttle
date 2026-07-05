@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { Wallet, BarChart3 } from "lucide-react";
 import { rpc } from "../../api/rpc";
+import { EmptyStateIntro } from "../shared/EmptyStateIntro";
 import type { Entity } from "../../api/types";
 import { num } from "../../api/entity";
 
@@ -54,11 +55,7 @@ export function SalaryView() {
 
   if (!salary) {
     return (
-      <div className="flex flex-col items-center justify-center h-full gap-3 text-secondary">
-        <Wallet size={40} strokeWidth={1.2} />
-        <span className="text-lg font-medium">Effective Salary</span>
-        <span className="text-sm text-muted">No invoice data yet. Start by adding contracts and tracking time.</span>
-      </div>
+      <EmptyStateIntro icon={Wallet} description="Your effective salary is what remains after taxes and business expenses — your actual take-home as a freelancer." />
     );
   }
 

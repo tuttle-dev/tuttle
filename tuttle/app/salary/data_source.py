@@ -22,7 +22,7 @@ class SalaryDataSource(SQLModelDataSourceMixin):
         except Exception as ex:
             return IntentResult(
                 was_intent_successful=False,
-                error_msg="Failed to load recurring expenses.",
+                error_msg=f"Failed to load recurring expenses: {ex}",
                 log_message=f"SalaryDataSource.get_all_expenses: {ex}",
                 exception=ex,
             )
@@ -37,7 +37,7 @@ class SalaryDataSource(SQLModelDataSourceMixin):
         except Exception as ex:
             return IntentResult(
                 was_intent_successful=False,
-                error_msg="Failed to save recurring expense.",
+                error_msg=f"Failed to save recurring expense: {ex}",
                 log_message=f"SalaryDataSource.save_expense: {ex}",
                 exception=ex,
             )
@@ -61,7 +61,7 @@ class SalaryDataSource(SQLModelDataSourceMixin):
         except Exception as ex:
             return IntentResult(
                 was_intent_successful=False,
-                error_msg="Failed to delete recurring expense.",
+                error_msg=f"Failed to delete recurring expense: {ex}",
                 log_message=f"SalaryDataSource.delete_expense_by_id: {ex}",
                 exception=ex,
             )

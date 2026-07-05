@@ -7,6 +7,7 @@ import { rpc } from "../../api/rpc";
 import { str, num, entity as subEntity, displayName, fullName } from "../../api/entity";
 import { Toolbar, ToolbarButtonPrimary, ToolbarButtonSecondary, ListDetailLayout, LIST_ROW_PADDING } from "../shared/ToolbarButtons";
 import { EditableClientContactRole } from "../shared/EditableClientContactRole";
+import { EmptyStateIntro } from "../shared/EmptyStateIntro";
 import type { Entity } from "../../api/types";
 
 type Mode = "view" | "edit" | "create" | "import";
@@ -156,10 +157,13 @@ export function ClientsView() {
         search={{ value: search, onChange: setSearch }}
       />
 
+      {clients.length === 0 && mode === "view" ? (
+        <EmptyStateIntro icon={Building2} description="A client is a company or person you do business with. Add clients to link them to contracts and invoices." />
+      ) : (
       <ListDetailLayout
         footer={<>{filtered.length} client{filtered.length !== 1 ? "s" : ""}</>}
         list={filtered.length === 0
-          ? <div className="p-4 text-sm text-center text-tertiary">{search ? "No matches." : "No clients."}</div>
+          ? <div className="p-4 text-sm text-center text-tertiary">No matches.</div>
           : filtered.map((c) => (
             <ClientRow key={c.id} client={c}
               isSelected={selected?.id === c.id && mode !== "create" && mode !== "import"}
@@ -188,6 +192,7 @@ export function ClientsView() {
           )
         }
       />
+      )}
     </div>
   );
 }

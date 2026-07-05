@@ -212,11 +212,11 @@ class InvoicingIntent(Intent):
             self._invoicing_data_source.delete_invoice_by_id(invoice_id)
             return IntentResult(was_intent_successful=True)
         except Exception as ex:
-            logger.error(f"Could not delete invoice with id {invoice_id}.")
+            logger.error(f"Could not delete invoice with id {invoice_id}: {ex}")
             logger.exception(ex)
             return IntentResult(
                 was_intent_successful=False,
-                error_msg="Could not delete invoice.",
+                error_msg=f"Could not delete invoice: {ex}",
             )
 
     def create_invoice(
@@ -411,12 +411,11 @@ class InvoicingIntent(Intent):
                 error_msg=error_message,
             )
         except Exception as ex:
-            error_message = "Failed to create invoice."
-            logger.error(error_message)
+            logger.error(f"Failed to create invoice: {ex}")
             logger.exception(ex)
             return IntentResult(
                 was_intent_successful=False,
-                error_msg=error_message,
+                error_msg=f"Failed to create invoice: {ex}",
             )
 
     def _create_reminder(
@@ -551,11 +550,11 @@ class InvoicingIntent(Intent):
                 warning=render_warning,
             )
         except Exception as ex:
-            logger.error("Failed to create reminder.")
+            logger.error(f"Failed to create reminder: {ex}")
             logger.exception(ex)
             return IntentResult(
                 was_intent_successful=False,
-                error_msg="Failed to create reminder.",
+                error_msg=f"Failed to create reminder: {ex}",
             )
 
     def send_reminder_by_mail(self, invoice: Invoice) -> IntentResult[None]:
@@ -584,7 +583,8 @@ class InvoicingIntent(Intent):
                 )
 
             level_label = f"{'2nd ' if invoice.reminder_level == 2 else '3rd ' if invoice.reminder_level >= 3 else ''}reminder"
-            email_body = textwrap.dedent(f"""\
+            email_body = textwrap.dedent(
+                f"""\
 Dear {greeting},
 
 This is a {level_label} regarding the outstanding invoice {invoice.number} for {invoice.project.title}.
@@ -592,7 +592,8 @@ This is a {level_label} regarding the outstanding invoice {invoice.number} for {
 Please find attached the payment reminder.
 
 Best regards,
-{user.name}""")
+{user.name}"""
+            )
             mail.compose_email(
                 to=recipient,
                 subject=f"Payment Reminder: Invoice {invoice.number}",
@@ -605,7 +606,7 @@ Best regards,
             logger.exception(ex)
             return IntentResult(
                 was_intent_successful=False,
-                error_msg="Failed to send the reminder by mail.",
+                error_msg=f"Failed to send the reminder by mail: {ex}",
             )
 
     def update_invoice(
@@ -615,8 +616,6 @@ Best regards,
         result: IntentResult = self._invoicing_data_source.save_invoice(invoice)
         if not result.was_intent_successful:
             result.log_message_if_any()
-            result.error_msg = "Failed to update the invoice."
-            # TODO re-load old invoice
         return result
 
     def send_invoice_by_mail(self, invoice: Invoice) -> IntentResult[None]:
@@ -646,13 +645,15 @@ Best regards,
                     error_msg="No contact email available for this client.",
                 )
 
-            email_body = textwrap.dedent(f"""\
+            email_body = textwrap.dedent(
+                f"""\
 Dear {greeting},
 
 Please find attached the invoice for {invoice.project.title}.
 
 Best regards,
-{user.name}""")
+{user.name}"""
+            )
             mail.compose_email(
                 to=recipient,
                 subject=f"Invoice {invoice.number}",
@@ -664,11 +665,11 @@ Best regards,
                 was_intent_successful=True,
             )
         except Exception as ex:
-            logger.error(f"❌ Error sending invoice by mail: {ex}")
+            logger.error(f"Error sending invoice by mail: {ex}")
             logger.exception(ex)
             return IntentResult(
                 was_intent_successful=False,
-                error_msg="Failed to send the invoice by mail. ",
+                error_msg=f"Failed to send the invoice by mail: {ex}",
             )
 
     def generate_invoice_doc(self, invoice: Invoice) -> IntentResult:
@@ -695,11 +696,11 @@ Best regards,
                 data=invoice,
             )
         except Exception as ex:
-            logger.error(f"❌ Error toggling invoice sent status: {ex}")
+            logger.error(f"Error toggling invoice sent status: {ex}")
             logger.exception(ex)
             return IntentResult(
                 was_intent_successful=False,
-                error_msg="Failed to toggle the invoice sent status. ",
+                error_msg=f"Failed to toggle the invoice sent status: {ex}",
             )
 
     def toggle_invoice_paid_status(self, invoice: Invoice) -> IntentResult[Invoice]:
@@ -728,7 +729,7 @@ Best regards,
             logger.exception(ex)
             return IntentResult(
                 was_intent_successful=False,
-                error_msg="Failed to toggle the invoice paid status.",
+                error_msg=f"Failed to toggle the invoice paid status: {ex}",
             )
 
     def toggle_invoice_cancelled_status(
@@ -753,11 +754,11 @@ Best regards,
                 data=invoice,
             )
         except Exception as ex:
-            logger.error(f"❌ Error toggling invoice cancelled status: {ex}")
+            logger.error(f"Error toggling invoice cancelled status: {ex}")
             logger.exception(ex)
             return IntentResult(
                 was_intent_successful=False,
-                error_msg="Failed to toggle the invoice cancelled status. ",
+                error_msg=f"Failed to toggle the invoice cancelled status: {ex}",
             )
 
     def view_invoice(self, invoice: Invoice) -> IntentResult[Path]:
@@ -857,7 +858,7 @@ Best regards,
             logger.exception(ex)
             return IntentResult(
                 was_intent_successful=False,
-                error_msg="Failed to render the timesheet.",
+                error_msg=f"Failed to render the timesheet: {ex}",
             )
 
     def check_rendering(self) -> IntentResult:

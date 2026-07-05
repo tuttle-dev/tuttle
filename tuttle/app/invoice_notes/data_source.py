@@ -22,7 +22,7 @@ class InvoiceNotesDataSource(SQLModelDataSourceMixin):
             logger.error(f"Failed to load invoice notes: {ex}")
             return IntentResult(
                 was_intent_successful=False,
-                error_msg="Failed to load saved notes.",
+                error_msg=f"Failed to load saved notes: {ex}",
                 exception=ex,
             )
 

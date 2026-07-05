@@ -399,12 +399,17 @@ function SourceChooser({
           Your calendar connection could not be restored. Please reconnect below.
         </div>
       )}
-      <h3 className="text-base font-semibold text-primary">Choose your calendar source</h3>
-      <p className="text-xs text-secondary max-w-sm text-center leading-relaxed">
-        Tag calendar events with project hashtags (e.g. <code className="font-semibold text-primary">#myproject</code>) to assign them to projects.
-      </p>
+      <Clock size={40} strokeWidth={1.2} className="text-secondary" />
+      <div className="max-w-md text-center space-y-2">
+        <p className="text-sm text-tertiary">
+          Time tracking records the hours you spend on projects, so you can generate accurate timesheets and invoices.
+        </p>
+        <p className="text-xs text-tertiary">
+          Tuttle reads your calendar events and matches them to projects using hashtags in the event title (e.g. <code className="font-semibold text-primary">#myproject</code>).
+        </p>
+      </div>
 
-      <div className={`flex gap-4 w-full max-w-xl ${isMac ? "" : "justify-center"}`}>
+      <div className="flex gap-4 w-full max-w-xl">
         {/* Option A: ICS file */}
         <div
           className={`flex-1 max-w-xs flex flex-col items-center gap-3 rounded-xl border-2 border-dashed p-8 transition-colors cursor-default ${dragOver ? "border-accent bg-accent/10" : "border-border-subtle hover:border-secondary"}`}
@@ -429,8 +434,8 @@ function SourceChooser({
           )}
         </div>
 
-        {/* Option B: System Calendar (macOS only) */}
-        {isMac && (
+        {/* Option B: System Calendar */}
+        {isMac ? (
           <div className="flex-1 max-w-xs flex flex-col items-center gap-3 rounded-xl border-2 border-border-subtle p-8 transition-colors">
             <div className="w-12 h-12 rounded-2xl bg-bg-card flex items-center justify-center">
               <MonitorSmartphone size={22} strokeWidth={1.5} className="text-primary" />
@@ -438,7 +443,7 @@ function SourceChooser({
             <div className="text-center">
               <h4 className="text-sm font-semibold mb-1 text-primary">System Calendar</h4>
               <p className="text-xs text-secondary leading-relaxed">
-                Connect directly to a macOS calendar (iCloud, Google, etc.).
+                Connect directly to your system calendar.
               </p>
             </div>
 
@@ -484,6 +489,18 @@ function SourceChooser({
                 {sysCalLoading ? "Loading…" : "Connect"}
               </button>
             )}
+          </div>
+        ) : (
+          <div className="flex-1 max-w-xs flex flex-col items-center gap-3 rounded-xl border-2 border-border-subtle border-dashed p-8 opacity-60">
+            <div className="w-12 h-12 rounded-2xl bg-bg-card flex items-center justify-center">
+              <MonitorSmartphone size={22} strokeWidth={1.5} className="text-tertiary" />
+            </div>
+            <div className="text-center">
+              <h4 className="text-sm font-semibold mb-1 text-tertiary">System Calendar</h4>
+              <p className="text-xs text-tertiary leading-relaxed">
+                Not yet available on this platform.
+              </p>
+            </div>
           </div>
         )}
       </div>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { BarChart3, Receipt, Calculator, ChevronDown } from "lucide-react";
 import { rpc } from "../../api/rpc";
+import { EmptyStateIntro } from "../shared/EmptyStateIntro";
 import type { Entity } from "../../api/types";
 import { str, num, bool } from "../../api/entity";
 
@@ -65,6 +66,10 @@ export function TaxReservesView() {
   const hasAnyIncome = sp && (num(sp, "gross_revenue_ytd") > 0 || num(sp, "planned_revenue") > 0);
   const isCurrentYear = selectedYear === new Date().getFullYear();
   const periodLabel = isCurrentYear ? "YTD" : `${selectedYear}`;
+
+  if (!hasAnyIncome && months.length === 0) {
+    return <EmptyStateIntro icon={Calculator} description="Tax reserves help you set aside money for income tax and VAT throughout the year, so nothing comes as a surprise." />;
+  }
 
   return (
     <div className="p-6 space-y-6 max-w-3xl">

@@ -7,6 +7,7 @@ import { rpc } from "../../api/rpc";
 import { str, num, entity as subEntity, fullName, initials, displayName } from "../../api/entity";
 import { Toolbar, ToolbarButtonPrimary, ToolbarButtonSecondary, ListDetailLayout, LIST_ROW_PADDING } from "../shared/ToolbarButtons";
 import { EditableClientContactRole } from "../shared/EditableClientContactRole";
+import { EmptyStateIntro } from "../shared/EmptyStateIntro";
 import type { Entity } from "../../api/types";
 
 type Mode = "view" | "edit" | "create" | "import";
@@ -178,10 +179,13 @@ export function ContactsView() {
         search={{ value: search, onChange: setSearch }}
       />
 
+      {contacts.length === 0 && mode === "view" ? (
+        <EmptyStateIntro icon={Users} description="Contacts are people in your professional network — colleagues at client companies, or other collaborators." />
+      ) : (
       <ListDetailLayout
         footer={<>{filtered.length} contact{filtered.length !== 1 ? "s" : ""}</>}
         list={filtered.length === 0
-          ? <div className="p-4 text-sm text-center text-tertiary">{search ? "No matches." : "No contacts."}</div>
+          ? <div className="p-4 text-sm text-center text-tertiary">No matches.</div>
           : filtered.map((c) => (
             <ContactRow key={c.id} contact={c}
               isSelected={selected?.id === c.id && mode !== "create" && mode !== "import"}
@@ -217,6 +221,7 @@ export function ContactsView() {
           )
         }
       />
+      )}
     </div>
   );
 }

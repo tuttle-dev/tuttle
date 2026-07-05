@@ -103,7 +103,7 @@ class TimelineIntent(SQLModelDataSourceMixin, Intent):
         except Exception as e:
             return IntentResult(
                 was_intent_successful=False,
-                error_msg="Failed to load timeline events.",
+                error_msg=f"Failed to load timeline events: {e}",
                 log_message=f"TimelineIntent.get_events: {e}",
                 exception=e,
             )

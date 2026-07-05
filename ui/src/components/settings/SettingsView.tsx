@@ -11,7 +11,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { Settings, RefreshCw, Save, CheckCircle2, AlertCircle, User, Bot, FileText, RotateCcw, Trash2, AlertTriangle, Monitor, Info, Image as ImageIcon, X, Sun, Moon, Laptop, Palette } from "lucide-react";
+import { Settings, RefreshCw, Save, CheckCircle2, AlertCircle, User, Bot, FileText, RotateCcw, Trash2, AlertTriangle, Monitor, Info, Image as ImageIcon, X, Sun, Moon, Laptop, Palette, Terminal, Clipboard, Check } from "lucide-react";
 import { useTheme, type ThemeChoice } from "../../hooks/useTheme";
 import { rpc } from "../../api/rpc";
 import type { Entity } from "../../api/types";
@@ -93,7 +93,7 @@ const SCHEME_EXAMPLES: Record<string, string> = {
   plain: "01",
 };
 
-type Tab = "profile" | "branding" | "invoicing" | "llm" | "system";
+type Tab = "profile" | "branding" | "invoicing" | "llm" | "system" | "debug";
 
 const TABS: { id: Tab; label: string; icon: typeof User }[] = [
   { id: "profile", label: "Profile", icon: User },
@@ -101,6 +101,7 @@ const TABS: { id: Tab; label: string; icon: typeof User }[] = [
   { id: "invoicing", label: "Invoicing", icon: FileText },
   { id: "llm", label: "AI / LLM", icon: Bot },
   { id: "system", label: "System", icon: Monitor },
+  { id: "debug", label: "Debug", icon: Terminal },
 ];
 
 // ---------------------------------------------------------------------------
@@ -408,8 +409,8 @@ export function SettingsView() {
       </nav>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-6">
-        <div className="max-w-xl">
+      <div className={`flex-1 p-6 ${tab === "debug" ? "flex flex-col overflow-hidden" : "overflow-y-auto"}`}>
+        <div className={tab === "debug" ? "flex flex-col flex-1 min-h-0" : "max-w-xl"}>
 
       {tab === "profile" && (
         <section className="space-y-4">
@@ -818,6 +819,10 @@ export function SettingsView() {
         <SystemTab />
       )}
 
+      {tab === "debug" && (
+        <BackendLogs />
+      )}
+
       {tab === "llm" && (
         <section className="space-y-4">
           <div>
@@ -1057,6 +1062,128 @@ function SystemTab() {
           </div>
         )}
       </div>
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Backend Logs
+// ---------------------------------------------------------------------------
+
+const LEVEL_STYLES: Record<string, string> = {
+  ERROR: "text-red-400",
+  WARNING: "text-amber-400",
+  INFO: "text-blue-400",
+  DEBUG: "text-muted",
+};
+
+type LogEntry = {
+  ts: string;
+  level: string;
+  message: string;
+  module: string;
+  function: string;
+  line: number;
+  exception?: string;
+};
+
+function BackendLogs() {
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [levelFilter, setLevelFilter] = useState<string>("all");
+  const [copied, setCopied] = useState(false);
+
+  async function fetchLogs() {
+    setLoading(true);
+    const res = await rpc("system.get_logs", { limit: 200 });
+    if (res.ok && Array.isArray(res.data)) setLogs(res.data);
+    setLoading(false);
+  }
+
+  useEffect(() => { fetchLogs(); }, []);
+
+  const filtered = levelFilter === "all" ? logs : logs.filter((e) => e.level === levelFilter);
+
+  async function handleClear() {
+    await rpc("system.clear_logs");
+    setLogs([]);
+  }
+
+  function formatAsText(): string {
+    return filtered
+      .map((e) => {
+        const time = new Date(e.ts).toLocaleTimeString();
+        const line = `[${time}] ${e.level.padEnd(7)} ${e.message}`;
+        return e.exception ? `${line}\n  ${e.exception}` : line;
+      })
+      .join("\n");
+  }
+
+  async function handleCopy() {
+    await navigator.clipboard.writeText(formatAsText());
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  return (
+    <section className="h-full flex flex-col gap-3">
+      <div className="flex items-center gap-2 shrink-0">
+        <select
+          value={levelFilter}
+          onChange={(e) => setLevelFilter(e.target.value)}
+          className="text-xs border border-border-subtle rounded px-2 py-1 bg-bg-primary text-primary"
+        >
+          <option value="all">All levels</option>
+          <option value="ERROR">Error</option>
+          <option value="WARNING">Warning</option>
+          <option value="INFO">Info</option>
+          <option value="DEBUG">Debug</option>
+        </select>
+        <button
+          onClick={fetchLogs}
+          disabled={loading}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-bg-hover text-primary hover:bg-border-subtle border border-border-subtle transition-colors disabled:opacity-40"
+        >
+          <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
+          {loading ? "Loading…" : "Refresh"}
+        </button>
+        <button
+          onClick={handleCopy}
+          disabled={filtered.length === 0}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-bg-hover text-primary hover:bg-border-subtle border border-border-subtle transition-colors disabled:opacity-40"
+        >
+          {copied ? <Check size={12} /> : <Clipboard size={12} />}
+          {copied ? "Copied!" : "Copy to clipboard"}
+        </button>
+        <button
+          onClick={handleClear}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-muted hover:text-primary hover:bg-bg-hover border border-transparent hover:border-border-subtle transition-colors"
+        >
+          Clear
+        </button>
+      </div>
+      {filtered.length === 0 ? (
+        <p className="text-xs text-muted">No log entries.</p>
+      ) : (
+        <pre className="flex-1 overflow-auto rounded-md border border-border-subtle bg-bg-primary p-2 text-[11px] leading-tight font-mono text-secondary whitespace-pre-wrap break-words">
+          {filtered.map((entry, i) => {
+            const time = new Date(entry.ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+            const levelCls = LEVEL_STYLES[entry.level] || "";
+            const tag = entry.level.slice(0, 4);
+            return (
+              <span key={i}>
+                <span className="text-muted">{time}</span>{" "}
+                <span className={levelCls}>{tag}</span>{" "}
+                {entry.message}
+                {entry.exception && (
+                  <span className="text-red-400">{"\n     " + entry.exception}</span>
+                )}
+                {"\n"}
+              </span>
+            );
+          })}
+        </pre>
+      )}
     </section>
   );
 }

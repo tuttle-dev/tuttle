@@ -363,7 +363,7 @@ class TimeTrackingIntent(Intent):
         except Exception as ex:
             return IntentResult(
                 was_intent_successful=False,
-                error_msg="Failed to load time tracking data",
+                error_msg=f"Failed to load time tracking data: {ex}",
                 exception=ex,
                 data=None,
             )
@@ -375,7 +375,7 @@ class TimeTrackingIntent(Intent):
                 was_intent_successful=True,
             )
         except Exception as ex:
-            error_msg = "Failed to store time tracking data"
+            error_msg = f"Failed to store time tracking data: {ex}"
             logger.error(error_msg)
             logger.exception(ex)
             return IntentResult(
