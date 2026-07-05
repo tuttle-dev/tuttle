@@ -38,7 +38,7 @@ DEFAULT_INCLUDE_LOGO = True
 
 DEFAULT_INCLUDE_DUE_DATE = True
 
-DEFAULT_THEME_MODE = "dark"
+DEFAULT_THEME_MODE = "system"
 
 
 @dataclass
