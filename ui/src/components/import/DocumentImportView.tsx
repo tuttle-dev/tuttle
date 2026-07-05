@@ -6,6 +6,7 @@ import {
   XCircle, Receipt, Plus, Minus,
 } from "lucide-react";
 import { rpc } from "../../api/rpc";
+import { UNIT_OPTIONS } from "../../constants";
 
 // ---------------------------------------------------------------------------
 // Types — RPC response shapes from `imports.parse_document_for_import`.
@@ -112,8 +113,6 @@ function makeSteps(upTo: number, running: number): ImportStep[] {
 // ---------------------------------------------------------------------------
 // Main View
 // ---------------------------------------------------------------------------
-
-const UNIT_OPTIONS = ["hour", "day", "piece", "flat"] as const;
 
 export function DocumentImportView() {
   const [phase, setPhase] = useState<Phase>("upload");
@@ -762,6 +761,9 @@ function InvoiceCard({ item, onUpdate, importedContracts, importedProjects, exis
             const missing = (f: string, v: any) => ireq(f) && (v == null || v === "");
             const borderCls = (f: string, v: any) =>
               missing(f, v) ? "border-red-400/60" : "border-fuchsia-400/20";
+            const unitOptions = li.unit && !(UNIT_OPTIONS as readonly string[]).includes(li.unit)
+              ? [...UNIT_OPTIONS, li.unit]
+              : [...UNIT_OPTIONS];
             return (
             <div key={idx} className="grid grid-cols-[1fr_80px_60px_90px_70px_28px] gap-1.5 items-end">
               <div>
@@ -785,7 +787,7 @@ function InvoiceCard({ item, onUpdate, importedContracts, importedProjects, exis
                 <select value={li.unit ?? ""} onChange={(e) => updateItem(idx, "unit", e.target.value)}
                   className={`w-full px-2 py-1 rounded text-xs bg-bg-card text-primary border ${borderCls("unit", li.unit)} outline-none focus:border-fuchsia-400`}>
                   <option value="" disabled>Select unit</option>
-                  {UNIT_OPTIONS.map((u) => <option key={u} value={u}>{u}</option>)}
+                  {unitOptions.map((u) => <option key={u} value={u}>{u}</option>)}
                 </select>
               </div>
               <div>

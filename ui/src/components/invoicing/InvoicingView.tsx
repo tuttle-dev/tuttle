@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { rpc, readFileAsDataURL } from "../../api/rpc";
 import { str, num, bool, entity as subEntity, list as entityList, formatDate, invoiceStatus, deepStr, isReminder, reminderLevel } from "../../api/entity";
+import { UNIT_OPTIONS } from "../../constants";
 import { StatusBadge } from "../shared/StatusBadge";
 import { ViewModeToggle } from "../shared/ViewModeToggle";
 import { KanbanBoard, useStageStore, type BoardColumn } from "../shared/KanbanBoard";
@@ -217,8 +218,6 @@ interface LineItem {
   unit: string;
   unitPrice: string;
 }
-
-const UNIT_OPTIONS = ["hour", "day", "piece", "flat"] as const;
 
 function makeDefaultItem(project?: Entity | null): LineItem {
   const contract = project ? (project as Record<string, unknown>).contract as Record<string, unknown> | undefined : undefined;
