@@ -113,6 +113,8 @@ function makeSteps(upTo: number, running: number): ImportStep[] {
 // Main View
 // ---------------------------------------------------------------------------
 
+const UNIT_OPTIONS = ["hour", "day", "piece", "flat"] as const;
+
 export function DocumentImportView() {
   const [phase, setPhase] = useState<Phase>("upload");
   const [parsing, setParsing] = useState(false);
@@ -780,8 +782,11 @@ function InvoiceCard({ item, onUpdate, importedContracts, importedProjects, exis
                 <label className="block text-[10px] text-tertiary mb-0.5">
                   Unit{ireq("unit") && <span className="text-red-400 ml-0.5">*</span>}
                 </label>
-                <input value={li.unit} onChange={(e) => updateItem(idx, "unit", e.target.value)}
-                  className={`w-full px-2 py-1 rounded text-xs bg-bg-card text-primary border ${borderCls("unit", li.unit)} outline-none focus:border-fuchsia-400`} />
+                <select value={li.unit ?? ""} onChange={(e) => updateItem(idx, "unit", e.target.value)}
+                  className={`w-full px-2 py-1 rounded text-xs bg-bg-card text-primary border ${borderCls("unit", li.unit)} outline-none focus:border-fuchsia-400`}>
+                  <option value="" disabled>Select unit</option>
+                  {UNIT_OPTIONS.map((u) => <option key={u} value={u}>{u}</option>)}
+                </select>
               </div>
               <div>
                 <label className="block text-[10px] text-tertiary mb-0.5">
