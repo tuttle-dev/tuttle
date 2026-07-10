@@ -248,7 +248,7 @@ def render_invoice(
     invoice_dir = Path(out_dir) / Path(invoice.prefix)
     invoice_dir.mkdir(parents=True, exist_ok=True)
     invoice_path = invoice_dir / Path(f"{invoice.prefix}.html")
-    with open(invoice_path, "w") as invoice_file:
+    with open(invoice_path, "w", encoding="utf-8") as invoice_file:
         invoice_file.write(html)
 
     # Copy all CSS files and subdirectories from the template
@@ -369,7 +369,7 @@ def render_timesheet(
         timesheet_dir = Path(out_dir) / Path(prefix)
         timesheet_dir.mkdir(parents=True, exist_ok=True)
         timesheet_path = timesheet_dir / Path(f"{prefix}.html")
-        with open(timesheet_path, "w") as timesheet_file:
+        with open(timesheet_path, "w", encoding="utf-8") as timesheet_file:
             timesheet_file.write(html)
         # copy stylsheets
         if style:
