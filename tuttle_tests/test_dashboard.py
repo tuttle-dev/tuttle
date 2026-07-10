@@ -28,6 +28,7 @@ from tuttle.kpi import (
     monthly_revenue_breakdown,
     monthly_spendable_breakdown,
     project_budget_status,
+    _format_amount_by_currency,
 )
 
 
@@ -179,6 +180,65 @@ def unpaid_invoice(active_contract, project):
     return inv
 
 
+@pytest.fixture
+def usd_contract(client):
+    today = datetime.date.today()
+    return Contract(
+        title="USD Contract",
+        client=client,
+        signature_date=today - datetime.timedelta(days=60),
+        start_date=today - datetime.timedelta(days=30),
+        end_date=today + datetime.timedelta(days=180),
+        rate=Decimal("100.00"),
+        currency="USD",
+        unit=TimeUnit.hour,
+        units_per_workday=8,
+        volume=500,
+        term_of_payment=14,
+        billing_cycle=Cycle.monthly,
+    )
+
+
+@pytest.fixture
+def usd_project(usd_contract):
+    today = datetime.date.today()
+    return Project(
+        title="USD Project",
+        tag="#USDProject",
+        description="A USD-billed project",
+        start_date=today - datetime.timedelta(days=30),
+        end_date=today + datetime.timedelta(days=180),
+        contract=usd_contract,
+    )
+
+
+@pytest.fixture
+def unpaid_usd_invoice(usd_contract, usd_project):
+    today = datetime.date.today()
+    inv = Invoice(
+        number="2026-USD-001",
+        date=today - datetime.timedelta(days=5),
+        contract=usd_contract,
+        project=usd_project,
+        sent=True,
+        paid=False,
+        rendered=True,
+    )
+    inv.items.append(
+        InvoiceItem(
+            invoice=inv,
+            start_date=today - datetime.timedelta(days=10),
+            end_date=today - datetime.timedelta(days=5),
+            quantity=20,
+            unit="hour",
+            unit_price=Decimal("100.00"),
+            description="US client work",
+            VAT_rate=Decimal("0.19"),
+        )
+    )
+    return inv
+
+
 # ── Forecasting Tests ─────────────────────────────────────────
 
 
@@ -305,6 +365,86 @@ class TestComputeKPIs:
         assert kpis.vat_reserve == 0
         assert kpis.income_tax_reserve == 0
         assert kpis.spendable_income == 0
+
+    def test_outstanding_currency_matches_invoice_currency(
+        self, unpaid_usd_invoice, usd_contract, usd_project
+    ):
+        """A USD invoice's outstanding amount must be labeled USD, not EUR.
+
+        Regression test for https://github.com/tuttle-dev/tuttle/issues/400:
+        the dashboard previously formatted the outstanding amount using the
+        tax system's currency (EUR for Germany) regardless of the invoice's
+        actual currency.
+        """
+        kpis = compute_kpis(
+            [unpaid_usd_invoice], [usd_contract], [usd_project], country="Germany"
+        )
+        assert kpis.tax_currency == "EUR"
+        assert kpis.outstanding_by_currency == {"USD": unpaid_usd_invoice.total}
+        formatted = kpis.to_rpc_dict()["outstanding_amount_formatted"]
+        assert "$" in formatted
+        assert "€" not in formatted
+
+    def test_outstanding_amounts_in_different_currencies_not_mixed(
+        self,
+        unpaid_invoice,
+        active_contract,
+        project,
+        unpaid_usd_invoice,
+        usd_contract,
+        usd_project,
+    ):
+        """Outstanding amounts in different currencies must not be summed together."""
+        kpis = compute_kpis(
+            [unpaid_invoice, unpaid_usd_invoice],
+            [active_contract, usd_contract],
+            [project, usd_project],
+            country="Germany",
+        )
+        assert kpis.outstanding_by_currency == {
+            "EUR": unpaid_invoice.total,
+            "USD": unpaid_usd_invoice.total,
+        }
+        formatted = kpis.to_rpc_dict()["outstanding_amount_formatted"]
+        assert "$" in formatted
+        assert "€" in formatted
+
+    def test_overdue_currency_matches_invoice_currency(
+        self, unpaid_usd_invoice, usd_contract, usd_project
+    ):
+        """Overdue amounts follow the same per-currency labeling as outstanding."""
+        # usd_contract.term_of_payment is 14 days, so an invoice issued 20
+        # days ago has a due date 6 days in the past, i.e. it's overdue.
+        unpaid_usd_invoice.date = datetime.date.today() - datetime.timedelta(days=20)
+        kpis = compute_kpis(
+            [unpaid_usd_invoice], [usd_contract], [usd_project], country="Germany"
+        )
+        assert kpis.overdue_by_currency == {"USD": unpaid_usd_invoice.total}
+        formatted = kpis.to_rpc_dict()["overdue_amount_formatted"]
+        assert "$" in formatted
+        assert "€" not in formatted
+
+
+class TestFormatAmountByCurrency:
+    def test_single_currency_uses_that_currency(self):
+        result = _format_amount_by_currency(
+            Decimal("100"), {"USD": Decimal("100")}, "EUR"
+        )
+        assert "$" in result
+        assert "€" not in result
+
+    def test_no_breakdown_uses_fallback(self):
+        result = _format_amount_by_currency(Decimal("0"), {}, "EUR")
+        assert "€" in result
+
+    def test_multiple_currencies_are_not_summed(self):
+        result = _format_amount_by_currency(
+            Decimal("300"),
+            {"USD": Decimal("100"), "EUR": Decimal("200")},
+            "EUR",
+        )
+        assert "$" in result
+        assert "€" in result
 
 
 class TestMonthlyRevenueBreakdown:

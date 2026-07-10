@@ -2,7 +2,7 @@
 
 import datetime
 from decimal import Decimal
-from typing import List, Optional, NamedTuple
+from typing import Dict, List, Optional, NamedTuple
 
 from pandas import DataFrame
 
@@ -33,13 +33,22 @@ class KPISummary(NamedTuple):
     income_tax_reserve: Decimal
     spendable_income: Decimal
     tax_currency: str = "EUR"
+    # Unpaid/overdue totals broken down by the invoice's own currency, since
+    # invoices are not necessarily denominated in the tax system's currency
+    # (e.g. tax_currency is EUR but an invoice was issued in USD).
+    outstanding_by_currency: Dict[str, Decimal] = {}
+    overdue_by_currency: Dict[str, Decimal] = {}
 
     def to_rpc_dict(self) -> dict:
         d = self._asdict()
         tc = self.tax_currency or "EUR"
         d["total_revenue_ytd_formatted"] = fmt_currency(self.total_revenue_ytd, tc)
-        d["outstanding_amount_formatted"] = fmt_currency(self.outstanding_amount, tc)
-        d["overdue_amount_formatted"] = fmt_currency(self.overdue_amount, tc)
+        d["outstanding_amount_formatted"] = _format_amount_by_currency(
+            self.outstanding_amount, self.outstanding_by_currency, tc
+        )
+        d["overdue_amount_formatted"] = _format_amount_by_currency(
+            self.overdue_amount, self.overdue_by_currency, tc
+        )
         d["vat_reserve_formatted"] = fmt_currency(self.vat_reserve, tc)
         d["income_tax_reserve_formatted"] = fmt_currency(self.income_tax_reserve, tc)
         d["spendable_income_formatted"] = fmt_currency(self.spendable_income, tc)
@@ -54,6 +63,28 @@ class KPISummary(NamedTuple):
             else "—"
         )
         return d
+
+
+def _format_amount_by_currency(
+    total: Decimal, by_currency: Dict[str, Decimal], fallback_currency: str
+) -> str:
+    """Format a monetary total using its actual currency breakdown.
+
+    When all amounts share a single currency, that currency is used for
+    formatting (which may differ from ``fallback_currency``, e.g. the tax
+    system's currency). When multiple currencies are involved, each is
+    formatted separately and joined, rather than silently summing amounts
+    in different currencies under one (possibly wrong) currency label.
+    """
+    non_zero = {c: v for c, v in by_currency.items() if v}
+    if not non_zero:
+        return fmt_currency(total, fallback_currency)
+    if len(non_zero) == 1:
+        (currency, value) = next(iter(non_zero.items()))
+        return fmt_currency(value, currency)
+    return " + ".join(
+        fmt_currency(value, currency) for currency, value in sorted(non_zero.items())
+    )
 
 
 def compute_kpis(
@@ -80,11 +111,19 @@ def compute_kpis(
     unpaid_invoices = 0
     overdue_invoices = 0
     paid_revenue = Decimal(0)
+    outstanding_by_currency: Dict[str, Decimal] = {}
+    overdue_by_currency: Dict[str, Decimal] = {}
 
     for inv in invoices:
         if inv.cancelled:
             continue
         inv_total = inv.total
+        # Use the invoice's own currency (via its contract), matching
+        # Invoice.total_formatted, rather than assuming the tax system's
+        # currency applies to every invoice.
+        inv_currency = (
+            inv.contract.currency if inv.contract and inv.contract.currency else "EUR"
+        )
 
         if inv.paid:
             total_revenue += inv_total
@@ -93,9 +132,15 @@ def compute_kpis(
             paid_revenue += inv_total
         else:
             outstanding_amount += inv_total
+            outstanding_by_currency[inv_currency] = (
+                outstanding_by_currency.get(inv_currency, Decimal(0)) + inv_total
+            )
             unpaid_invoices += 1
             if inv.due_date and inv.due_date < today:
                 overdue_amount += inv_total
+                overdue_by_currency[inv_currency] = (
+                    overdue_by_currency.get(inv_currency, Decimal(0)) + inv_total
+                )
                 overdue_invoices += 1
 
     # Total tracked hours from calendar data
@@ -165,6 +210,8 @@ def compute_kpis(
         income_tax_reserve=income_tax_reserve,
         spendable_income=spendable_income,
         tax_currency=tax_currency,
+        outstanding_by_currency=outstanding_by_currency,
+        overdue_by_currency=overdue_by_currency,
     )
 
 
