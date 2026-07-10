@@ -70,7 +70,9 @@ class TestRenderTimesheet:
         simulate that environment and confirm the write now always uses
         UTF-8.
         """
-        monkeypatch.setattr(locale, "getpreferredencoding", lambda do_setlocale=True: "cp1252")
+        monkeypatch.setattr(
+            locale, "getpreferredencoding", lambda do_setlocale=True: "cp1252"
+        )
 
         user = demo.create_fake_user(fake)
         timesheet = demo.create_fake_timesheet(fake)
@@ -146,7 +148,9 @@ class TestRenderInvoice:
         simulate that environment and confirm the write now always uses
         UTF-8.
         """
-        monkeypatch.setattr(locale, "getpreferredencoding", lambda do_setlocale=True: "cp1252")
+        monkeypatch.setattr(
+            locale, "getpreferredencoding", lambda do_setlocale=True: "cp1252"
+        )
 
         user = demo.create_fake_user(fake)
         invoice = demo.create_fake_invoice(fake, render=False)
