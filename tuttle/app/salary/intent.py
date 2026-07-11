@@ -88,3 +88,21 @@ class SalaryIntent(SQLModelDataSourceMixin, Intent):
     def delete_expense(self, expense_id: int) -> IntentResult:
         """Remove a recurring expense by id."""
         return self._data_source.delete_expense_by_id(expense_id)
+
+    def get_field_requirements(self) -> IntentResult:
+        """Return field metadata derived from the RecurringExpense model schema."""
+        fields = {}
+        for name, field_info in RecurringExpense.model_fields.items():
+            if name == "id" or name.endswith("_id"):
+                continue
+            annotation = field_info.annotation
+            origin = getattr(annotation, "__origin__", None)
+            if origin is list:
+                continue
+            label = field_info.description or name.replace("_", " ").title()
+            fields[name] = {
+                "required": field_info.is_required(),
+                "label": label,
+            }
+        return IntentResult(was_intent_successful=True, data=fields)
+
