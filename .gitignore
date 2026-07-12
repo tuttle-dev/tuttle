@@ -154,3 +154,9 @@ ui/dist/
 ui/dist-electron/
 ui/release/
 ui/.vite/
+!ui/build/
+ui/build/*
+!ui/build/entitlements.mac.plist
+!ui/build/icon.icns
+!ui/build/icon.ico
+!ui/build/icon.png
