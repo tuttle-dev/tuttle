@@ -148,6 +148,9 @@ function MonthlyBreakdown({ salary }: { salary: SalaryData }) {
     { label: "Gross Revenue / month", amount: gross, color: "var(--color-status-info)" },
     { label: "VAT (to remit)", amount: vatReserve, color: "var(--color-status-warning)" },
     { label: "Est. Income Tax + Soli", amount: incomeTaxReserve, color: "var(--color-status-warning)" },
+    // Recurring expenses are already subtracted from available salary; list them so the
+    // breakdown matches Expenses view data (tuttle-dev/tuttle#413).
+    { label: "Recurring expenses", amount: monthlyExpenses, color: "var(--color-status-warning)" },
     { label: "= Available Salary", amount: optimistic, color: optimistic >= 0 ? "var(--color-status-success)" : "var(--color-status-danger)", bold: true },
   ];
 
