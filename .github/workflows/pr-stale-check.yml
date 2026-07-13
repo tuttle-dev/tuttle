@@ -1,0 +1,153 @@
+name: PR Stale Check
+
+on:
+  schedule:
+    - cron: "0 7 * * *"
+  workflow_dispatch:
+
+permissions:
+  pull-requests: write
+  issues: write
+
+jobs:
+  stale-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Label stale PRs
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const STALE_LABEL = 'stale';
+            const HIGH_LABEL = 'priority: high';
+            const HIGH_DAYS = 3;
+            const DEFAULT_DAYS = 7;
+            const now = Date.now();
+            const msPerDay = 86400000;
+
+            const prs = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+            });
+
+            for (const pr of prs.data) {
+              if (pr.draft) continue;
+
+              const labels = pr.labels.map(l => l.name);
+              const isHigh = labels.includes(HIGH_LABEL);
+
+              // Also check linked issue labels
+              if (!isHigh) {
+                const { data: events } = await github.rest.issues.listEventsForTimeline({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pr.number,
+                  per_page: 100,
+                });
+                for (const evt of events) {
+                  if (evt.event === 'cross-referenced' && evt.source?.issue) {
+                    const issue = evt.source.issue;
+                    if (issue.labels?.some(l => l.name === HIGH_LABEL)) {
+                      labels.push(HIGH_LABEL);
+                      break;
+                    }
+                  }
+                }
+              }
+
+              const staleDays = labels.includes(HIGH_LABEL) ? HIGH_DAYS : DEFAULT_DAYS;
+
+              // Find the last review requesting changes or comment from a maintainer
+              const reviews = await github.rest.pulls.listReviews({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pr.number,
+              });
+
+              let lastMaintainerAction = null;
+              for (const review of reviews.data) {
+                if (review.state === 'CHANGES_REQUESTED') {
+                  const t = new Date(review.submitted_at).getTime();
+                  if (!lastMaintainerAction || t > lastMaintainerAction) {
+                    lastMaintainerAction = t;
+                  }
+                }
+              }
+
+              if (!lastMaintainerAction) {
+                // No changes requested — not a candidate for stale
+                if (labels.includes(STALE_LABEL)) {
+                  await github.rest.issues.removeLabel({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: pr.number,
+                    name: STALE_LABEL,
+                  }).catch(() => {});
+                }
+                continue;
+              }
+
+              // Check if the author responded after the last review
+              const authorLogin = pr.user.login;
+              const comments = await github.rest.issues.listComments({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+              });
+
+              let authorRespondedAfter = false;
+              for (const c of comments.data) {
+                if (c.user.login === authorLogin && new Date(c.created_at).getTime() > lastMaintainerAction) {
+                  authorRespondedAfter = true;
+                  break;
+                }
+              }
+
+              // Also check if author pushed after the review
+              if (!authorRespondedAfter) {
+                const commits = await github.rest.pulls.listCommits({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: pr.number,
+                });
+                for (const c of commits.data) {
+                  const commitTime = new Date(c.commit.committer.date).getTime();
+                  if (c.author?.login === authorLogin && commitTime > lastMaintainerAction) {
+                    authorRespondedAfter = true;
+                    break;
+                  }
+                }
+              }
+
+              if (authorRespondedAfter) {
+                if (labels.includes(STALE_LABEL)) {
+                  await github.rest.issues.removeLabel({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: pr.number,
+                    name: STALE_LABEL,
+                  }).catch(() => {});
+                  core.info(`PR #${pr.number}: author responded, removed stale label`);
+                }
+                continue;
+              }
+
+              const daysSince = Math.floor((now - lastMaintainerAction) / msPerDay);
+              core.info(`PR #${pr.number}: ${daysSince}d since changes requested (SLA: ${staleDays}d)`);
+
+              if (daysSince >= staleDays && !labels.includes(STALE_LABEL)) {
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pr.number,
+                  labels: [STALE_LABEL],
+                });
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pr.number,
+                  body: `This PR has had no author follow-up for ${daysSince} days since changes were requested. Marking as **stale**. Please push updates or comment if you're still working on this.`,
+                });
+                core.info(`PR #${pr.number}: marked stale (${daysSince}d)`);
+              }
+            }

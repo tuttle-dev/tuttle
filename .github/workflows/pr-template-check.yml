@@ -11,6 +11,20 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
+            const author = context.payload.pull_request.user.login;
+            const { data: perm } = await github.rest.repos.getCollaboratorPermissionLevel({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              username: author,
+            }).catch(() => ({ data: null }));
+
+            const level = perm?.permission;
+            core.info(`PR author: ${author}, repo permission: ${level}`);
+            if (level === 'admin' || level === 'write') {
+              core.info(`Skipping checklist check for repo ${level}`);
+              return;
+            }
+
             const body = context.payload.pull_request.body || '';
             if (!body.includes('## Checklist')) {
               core.setFailed(
