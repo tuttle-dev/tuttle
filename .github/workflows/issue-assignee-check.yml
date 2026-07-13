@@ -1,0 +1,95 @@
+name: Issue Assignee Check
+
+on:
+  schedule:
+    - cron: "0 7 * * *"
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  check-assignees:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Un-assign inactive contributors
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const DAYS = 7;
+            const now = Date.now();
+            const msPerDay = 86400000;
+
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100,
+            });
+
+            for (const issue of issues) {
+              if (issue.pull_request) continue;
+              if (!issue.assignees || issue.assignees.length === 0) continue;
+
+              for (const assignee of issue.assignees) {
+                const { data: perm } = await github.rest.repos.getCollaboratorPermissionLevel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  username: assignee.login,
+                }).catch(() => ({ data: null }));
+
+                const level = perm?.permission;
+                if (level === 'admin' || level === 'write') continue;
+
+                // Find when this user was assigned
+                const events = await github.rest.issues.listEvents({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number,
+                });
+
+                let assignedAt = null;
+                for (const evt of events.data) {
+                  if (evt.event === 'assigned' && evt.assignee?.login === assignee.login) {
+                    assignedAt = new Date(evt.created_at).getTime();
+                  }
+                }
+
+                if (!assignedAt) continue;
+                const daysSince = Math.floor((now - assignedAt) / msPerDay);
+                if (daysSince < DAYS) continue;
+
+                // Check if a draft or open PR references this issue
+                const prs = await github.rest.pulls.list({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  state: 'open',
+                });
+
+                let hasPR = false;
+                for (const pr of prs.data) {
+                  if (pr.user.login !== assignee.login) continue;
+                  const body = pr.body || '';
+                  if (body.includes(`#${issue.number}`) || body.includes(`issues/${issue.number}`)) {
+                    hasPR = true;
+                    break;
+                  }
+                }
+
+                if (hasPR) continue;
+
+                await github.rest.issues.removeAssignees({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number,
+                  assignees: [assignee.login],
+                });
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number,
+                  body: `Un-assigning @${assignee.login} — no draft or open PR was submitted within ${DAYS} days. The issue is available for others to pick up. Feel free to request re-assignment if you're still working on it.`,
+                });
+                core.info(`Issue #${issue.number}: un-assigned ${assignee.login} (${daysSince}d, no PR)`);
+              }
+            }

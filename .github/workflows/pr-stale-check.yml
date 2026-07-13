@@ -8,6 +8,8 @@ on:
 permissions:
   pull-requests: write
   issues: write
+  checks: read
+  statuses: read
 
 jobs:
   stale-check:
@@ -21,6 +23,7 @@ jobs:
             const HIGH_LABEL = 'priority: high';
             const HIGH_DAYS = 3;
             const DEFAULT_DAYS = 7;
+            const CLOSE_AFTER_STALE_DAYS = 14;
             const now = Date.now();
             const msPerDay = 86400000;
 
@@ -57,25 +60,40 @@ jobs:
 
               const staleDays = labels.includes(HIGH_LABEL) ? HIGH_DAYS : DEFAULT_DAYS;
 
-              // Find the last review requesting changes or comment from a maintainer
+              // Find the last event requiring author action:
+              // either a "changes requested" review or a failing CI check
               const reviews = await github.rest.pulls.listReviews({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 pull_number: pr.number,
               });
 
-              let lastMaintainerAction = null;
+              let actionNeededSince = null;
               for (const review of reviews.data) {
                 if (review.state === 'CHANGES_REQUESTED') {
                   const t = new Date(review.submitted_at).getTime();
-                  if (!lastMaintainerAction || t > lastMaintainerAction) {
-                    lastMaintainerAction = t;
+                  if (!actionNeededSince || t > actionNeededSince) {
+                    actionNeededSince = t;
                   }
                 }
               }
 
-              if (!lastMaintainerAction) {
-                // No changes requested — not a candidate for stale
+              // Check for failing CI on the head commit
+              const { data: checkRuns } = await github.rest.checks.listForRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: pr.head.sha,
+              });
+              for (const run of checkRuns.check_runs) {
+                if (run.conclusion === 'failure' && run.completed_at) {
+                  const t = new Date(run.completed_at).getTime();
+                  if (!actionNeededSince || t > actionNeededSince) {
+                    actionNeededSince = t;
+                  }
+                }
+              }
+
+              if (!actionNeededSince) {
                 if (labels.includes(STALE_LABEL)) {
                   await github.rest.issues.removeLabel({
                     owner: context.repo.owner,
@@ -97,7 +115,7 @@ jobs:
 
               let authorRespondedAfter = false;
               for (const c of comments.data) {
-                if (c.user.login === authorLogin && new Date(c.created_at).getTime() > lastMaintainerAction) {
+                if (c.user.login === authorLogin && new Date(c.created_at).getTime() > actionNeededSince) {
                   authorRespondedAfter = true;
                   break;
                 }
@@ -112,7 +130,7 @@ jobs:
                 });
                 for (const c of commits.data) {
                   const commitTime = new Date(c.commit.committer.date).getTime();
-                  if (c.author?.login === authorLogin && commitTime > lastMaintainerAction) {
+                  if (c.author?.login === authorLogin && commitTime > actionNeededSince) {
                     authorRespondedAfter = true;
                     break;
                   }
@@ -132,7 +150,7 @@ jobs:
                 continue;
               }
 
-              const daysSince = Math.floor((now - lastMaintainerAction) / msPerDay);
+              const daysSince = Math.floor((now - actionNeededSince) / msPerDay);
               core.info(`PR #${pr.number}: ${daysSince}d since changes requested (SLA: ${staleDays}d)`);
 
               if (daysSince >= staleDays && !labels.includes(STALE_LABEL)) {
@@ -146,8 +164,39 @@ jobs:
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   issue_number: pr.number,
-                  body: `This PR has had no author follow-up for ${daysSince} days since changes were requested. Marking as **stale**. Please push updates or comment if you're still working on this.`,
+                  body: `This PR has had no author follow-up for ${daysSince} days since changes were requested. Marking as **stale**. Please push updates or comment if you're still working on this.\n\nThis PR will be closed automatically if there is no activity within ${CLOSE_AFTER_STALE_DAYS} days.`,
                 });
                 core.info(`PR #${pr.number}: marked stale (${daysSince}d)`);
+              } else if (labels.includes(STALE_LABEL)) {
+                // Find when the stale label was added
+                const events = await github.rest.issues.listEvents({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pr.number,
+                });
+                let staledAt = null;
+                for (const evt of events.data) {
+                  if (evt.event === 'labeled' && evt.label?.name === STALE_LABEL) {
+                    staledAt = new Date(evt.created_at).getTime();
+                  }
+                }
+                if (staledAt) {
+                  const staleDaysSince = Math.floor((now - staledAt) / msPerDay);
+                  if (staleDaysSince >= CLOSE_AFTER_STALE_DAYS) {
+                    await github.rest.issues.createComment({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      issue_number: pr.number,
+                      body: `Closing this PR after ${CLOSE_AFTER_STALE_DAYS} days with no activity since being marked stale. Feel free to reopen if you'd like to continue working on this.`,
+                    });
+                    await github.rest.pulls.update({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      pull_number: pr.number,
+                      state: 'closed',
+                    });
+                    core.info(`PR #${pr.number}: auto-closed (${staleDaysSince}d stale)`);
+                  }
+                }
               }
             }

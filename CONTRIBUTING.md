@@ -29,6 +29,10 @@ Look through the GitHub issues for features. Anything tagged with
 "enhancement" and "help wanted" is open to whoever wants to
 implement it.
 
+## Claiming Issues
+
+When you're assigned to an issue, please open a draft PR within **7 days** to show progress. If no draft or open PR is submitted within that window, you will be un-assigned automatically so the issue is available for others. You can always request re-assignment if you need more time.
+
 ## Write Documentation
 
 Tuttle could always use more documentation, whether as part of the
