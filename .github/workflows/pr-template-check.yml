@@ -1,7 +1,7 @@
 name: PR Template Check
 on:
   pull_request:
-    types: [opened, edited]
+    types: [opened, edited, synchronize]
 
 jobs:
   check-template:
@@ -11,6 +11,17 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
+            const author = context.payload.pull_request.user.login;
+            const { data: membership } = await github.rest.orgs.getMembershipForUser({
+              org: context.repo.owner,
+              username: author,
+            }).catch(() => ({ data: null }));
+
+            if (membership && ['member', 'admin'].includes(membership.role)) {
+              core.info(`Skipping checklist check for org member: ${author}`);
+              return;
+            }
+
             const body = context.payload.pull_request.body || '';
             if (!body.includes('## Checklist')) {
               core.setFailed(

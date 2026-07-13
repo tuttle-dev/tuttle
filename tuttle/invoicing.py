@@ -44,6 +44,7 @@ def generate_invoice(
             unit=contract.unit.value,
             unit_price=unit_price,
             VAT_rate=vat_rate,
+            VAT_category=contract.VAT_category,
             description=timesheet.title,
         )
         invoice.items.append(item)
@@ -74,6 +75,7 @@ def generate_fixed_price_invoice(
         unit="fixed_price",
         unit_price=Decimal(str(contract.fixed_price)),
         VAT_rate=vat_rate,
+        VAT_category=contract.VAT_category,
         description=contract.title,
     )
     invoice.items.append(item)

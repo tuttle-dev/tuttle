@@ -17,6 +17,7 @@ from tuttle.model import (
     InvoiceItem,
     InvoiceNote,
     Project,
+    TaxCategory,
 )
 from tuttle.time import ContractType, Cycle, TimeUnit
 from tuttle.calendar import get_month_start_end
@@ -68,7 +69,7 @@ def test_generate_invoice(
     for i, project in enumerate(demo_projects):
         timesheets = []
         for period in ["January 2022", "February 2022"]:
-            (period_start, period_end) = get_month_start_end(period)
+            period_start, period_end = get_month_start_end(period)
             try:
                 timesheet = timetracking.generate_timesheet(
                     timetracking_data=demo_calendar_timetracking.to_data(),
@@ -497,3 +498,40 @@ class TestInvoiceNotesRendering:
 
         assert "See you next quarter!" in html
         assert "Thank you" not in html
+
+
+class TestTaxCategoryPropagation:
+    """Invoice items snapshot the contract's tax category at creation."""
+
+    def _outside_scope_project(self, tag: str) -> Project:
+        project = _build_fixed_price_project(Decimal("5000"), tag=tag)
+        project.contract.VAT_rate = Decimal("0")
+        project.contract.VAT_category = TaxCategory.outside_scope
+        project.contract.validate_vat()
+        return project
+
+    def test_fixed_price_invoice_inherits_contract_category(self):
+        project = self._outside_scope_project("#FPOutside")
+        invoice = invoicing.generate_fixed_price_invoice(
+            contract=project.contract,
+            project=project,
+            number="FP-O-001",
+            date=datetime.date(2022, 2, 1),
+        )
+        assert all(
+            item.VAT_category is TaxCategory.outside_scope for item in invoice.items
+        )
+        assert invoice.is_outside_scope is True
+        assert invoice.total == Decimal("5000")  # no VAT added
+
+    def test_fixed_price_standard_contract_stays_standard(self):
+        project = _build_fixed_price_project(Decimal("4500"), tag="#FPStd")
+        invoice = invoicing.generate_fixed_price_invoice(
+            contract=project.contract,
+            project=project,
+            number="FP-S-001",
+            date=datetime.date(2022, 2, 1),
+        )
+        assert all(item.VAT_category is TaxCategory.standard for item in invoice.items)
+        assert invoice.is_outside_scope is False
+        assert invoice.total == Decimal("5355.00")

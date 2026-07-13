@@ -92,10 +92,12 @@
       <td class="totals-label">{{ l.subtotal }}</td>
       <td class="totals-value">{{ invoice.sum | as_currency }}</td>
     </tr>
+    {% if not invoice.is_outside_scope %}
     <tr>
       <td class="totals-label">{{ l.vat }} ({{ (invoice.items[0].VAT_rate * 100) | int }}%)</td>
       <td class="totals-value">{{ invoice.VAT_total | as_currency }}</td>
     </tr>
+    {% endif %}
     {% if is_reminder and invoice.reminder_fee %}
     <tr>
       <td class="totals-label">{{ l.reminder_fee }}</td>
@@ -107,6 +109,10 @@
       <td class="totals-value"><strong>{{ invoice.total | as_currency }}</strong></td>
     </tr>
   </table>
+
+  {% if invoice.is_outside_scope %}
+  <div class="tax-note">{{ l.outside_scope_note }}</div>
+  {% endif %}
 
   <div class="closing">
     <p>{% if is_reminder %}{{ l.reminder_closing }}{% elif notes %}<span style="white-space:pre-line">{{ notes }}</span>{% else %}{{ l.closing }}{% endif %}</p>
@@ -130,7 +136,7 @@
       {% if user.website %}<span>{{ user.website }}</span>{% endif %}
     </div>
     <div class="footer-right">
-      {% if user.VAT_number %}<span>USt.ID: {{ user.VAT_number }}</span>{% endif %}
+      {% if seller_tax_id %}<span>{{ seller_tax_id_label }}: {{ seller_tax_id }}</span>{% endif %}
     </div>
   </div>
 

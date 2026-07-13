@@ -3,7 +3,7 @@ from ..contacts.intent import ContactsIntent
 from ..core.abstractions import CrudIntent
 from ..core.intent_result import IntentResult
 
-from ...model import Client, Contract, User, normalize_vat_rate
+from ...model import Client, Contract, User
 from ...tax import get_tax_system
 
 
@@ -56,7 +56,7 @@ class ContractsIntent(CrudIntent):
                 log_message=f"ContractsIntent._validated_save: {e}",
             )
         try:
-            contract.VAT_rate = normalize_vat_rate(contract.VAT_rate)
+            contract.validate_vat()
         except ValueError as e:
             return IntentResult(
                 was_intent_successful=False,

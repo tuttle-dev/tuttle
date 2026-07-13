@@ -2,10 +2,11 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import {
   FileText, Send, CheckCircle, XCircle, Mail, Trash2,
   Building2, FolderKanban, Calendar, Banknote, Eye, DollarSign,
-  Plus, Clock, AlertTriangle, ChevronLeft, ChevronRight, Search, Share,
+  Plus, Clock, AlertTriangle, ChevronLeft, ChevronRight, Search, Share, Receipt,
 } from "lucide-react";
 import { rpc, readFileAsDataURL } from "../../api/rpc";
 import { str, num, bool, entity as subEntity, list as entityList, formatDate, invoiceStatus, deepStr, isReminder, reminderLevel } from "../../api/entity";
+import { taxCategory, taxTreatment } from "../../api/tax";
 import { StatusBadge } from "../shared/StatusBadge";
 import { ViewModeToggle } from "../shared/ViewModeToggle";
 import { KanbanBoard, useStageStore, type BoardColumn } from "../shared/KanbanBoard";
@@ -678,6 +679,12 @@ function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid, onTog
   const showTimesheetTab = hasTimesheet && !isRem;
   const canCreateReminder = status === "Overdue" && !isCancelled;
 
+  // Line items snapshot the tax category at creation, so they outrank the
+  // contract, which may have been edited since. BR-O-11/12 keep them uniform.
+  const taxSource = items[0] ?? subEntity(invoice, "contract");
+  const invoiceTaxCategory = taxCategory(taxSource ? str(taxSource, "VAT_category") : "S");
+  const invoiceVatRate = taxSource ? num(taxSource, "VAT_rate") : 0;
+
   const chain = useMemo(() => {
     const headId = invoice.reminder_chain_head_id ?? invoice.id;
     const root = allInvoices.find((i) => i.id === headId);
@@ -762,7 +769,7 @@ function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid, onTog
 
         <div className="grid grid-cols-3 gap-2">
           <AmountCard label="Subtotal" value={str(invoice, "sum_formatted")} />
-          <AmountCard label="VAT" value={str(invoice, "vat_total_formatted")} color="#f97316" />
+          <AmountCard label="VAT" value={invoiceTaxCategory === "O" ? "—" : str(invoice, "vat_total_formatted")} color="#f97316" />
           <AmountCard label="Total" value={str(invoice, "total_formatted")} prominent />
         </div>
 
@@ -904,7 +911,7 @@ function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid, onTog
                     <div className="flex items-center gap-3 mt-1.5 text-xs text-secondary">
                       <span>{num(item, "quantity").toFixed(1)} {str(item, "unit") || "hour"}</span>
                       <span>{str(item, "unit_price_formatted")}/{str(item, "unit") || "hour"}</span>
-                      <span>{(((v) => (v > 1 ? v / 100 : v))(num(item, "VAT_rate")) * 100).toFixed(0)}% VAT</span>
+                      <span>{taxTreatment(taxCategory(str(item, "VAT_category")), num(item, "VAT_rate"))}</span>
                     </div>
                   </div>
                 ))}
@@ -919,6 +926,7 @@ function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid, onTog
               <DRow icon={<FolderKanban size={14} />} label="Project" value={deepStr(invoice, "project.title") || "—"} />
               <DRow icon={<FileText size={14} />} label="Contract" value={deepStr(invoice, "contract.title") || "—"} />
               <DRow icon={<Banknote size={14} />} label="Currency" value={str(invoice, "currency") || "EUR"} />
+              <DRow icon={<Receipt size={14} />} label="Tax" value={taxTreatment(invoiceTaxCategory, invoiceVatRate)} />
               {isRem && num(invoice, "reminder_fee") > 0 && (
                 <DRow icon={<Banknote size={14} />} label="Reminder Fee" value={String(num(invoice, "reminder_fee"))} />
               )}

@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { rpc } from "../../api/rpc";
 import { str, num, bool, entity as subEntity, list as entityList, displayName, formatDate } from "../../api/entity";
+import { TAX_CATEGORY_LABELS, taxCategory, taxTreatment, type TaxCategory } from "../../api/tax";
 import { Toolbar, ToolbarButtonPrimary, ToolbarButtonSecondary, ToolbarFilterGroup, ListDetailLayout, LIST_ROW_PADDING } from "../shared/ToolbarButtons";
 import { StatusBadge } from "../shared/StatusBadge";
 import { useNavigation } from "../shared/NavigationContext";
@@ -87,6 +88,7 @@ export function ContractsView() {
       billing_cycle: data.billingCycle,
       volume: data.volume || null,
       VAT_rate: data.vatRate,
+      VAT_category: data.vatCategory,
       signature_date: data.signatureDate,
       start_date: data.startDate,
       end_date: data.endDate || null,
@@ -324,11 +326,10 @@ function ContractDetail({ contract, onEdit, onDelete, onToggle, deleteError }: {
           {!isFixed && <TermItem label="Billing" value={str(contract, "billing_cycle") || "—"} />}
           <TermItem
             label="VAT"
-            value={(() => {
-              const v = num(contract, "VAT_rate");
-              const frac = v > 1 ? v / 100 : v;
-              return `${(frac * 100).toFixed(0)}%`;
-            })()}
+            value={taxTreatment(
+              taxCategory(str(contract, "VAT_category")),
+              num(contract, "VAT_rate"),
+            )}
           />
           <TermItem label="Payment" value={str(contract, "term_of_payment") ? `${str(contract, "term_of_payment")} days` : "—"} />
           {!isFixed && <TermItem label="Workday" value={`${str(contract, "units_per_workday") || "8"} ${unit}s`} />}
@@ -412,6 +413,7 @@ interface ContractFormData {
   billingCycle: string;
   volume: number | null;
   vatRate: number;
+  vatCategory: TaxCategory;
   signatureDate: string;
   startDate: string;
   endDate: string;
@@ -448,9 +450,10 @@ function ContractForm({ contract, clients, defaultCurrency, onSave, onCancel, er
       volume: num(contract, "volume") || null,
       vatRate: (() => {
         const v = num(contract, "VAT_rate");
-        if (!v) return 0.19;
+        if (!v) return 0;
         return v > 1 ? v / 100 : v;
       })(),
+      vatCategory: taxCategory(str(contract, "VAT_category")),
       signatureDate: str(contract, "signature_date"),
       startDate: str(contract, "start_date"),
       endDate: str(contract, "end_date"),
@@ -459,7 +462,7 @@ function ContractForm({ contract, clients, defaultCurrency, onSave, onCancel, er
     };
     return {
       title: "", clientId: null, type: "time_based", fixedPrice: null, rate: null, currency: defaultCurrency,
-      unit: "hour", billingCycle: "monthly", volume: null, vatRate: 0.19,
+      unit: "hour", billingCycle: "monthly", volume: null, vatRate: 0.19, vatCategory: "S",
       signatureDate: "", startDate: "", endDate: "", termOfPayment: 31, unitsPerWorkday: 8,
     };
   });
@@ -473,6 +476,12 @@ function ContractForm({ contract, clients, defaultCurrency, onSave, onCancel, er
 
   function update<K extends keyof ContractFormData>(field: K, value: ContractFormData[K]) {
     setForm((prev) => ({ ...prev, [field]: value }));
+  }
+
+  // Only standard-rated supplies carry a VAT rate; the backend rejects any
+  // other category with a non-zero rate.
+  function setVatCategory(category: TaxCategory) {
+    setForm((prev) => ({ ...prev, vatCategory: category, vatRate: category === "S" ? prev.vatRate : 0 }));
     setValidationError(null);
   }
 
@@ -567,11 +576,20 @@ function ContractForm({ contract, clients, defaultCurrency, onSave, onCancel, er
               </select>
             </div>
             <div>
+              <label className="block text-xs text-tertiary mb-1">Tax Category</label>
+              <select value={form.vatCategory} onChange={(e) => setVatCategory(e.target.value as TaxCategory)} className={inputCls}>
+                {(Object.keys(TAX_CATEGORY_LABELS) as TaxCategory[]).map((c) => (
+                  <option key={c} value={c}>{TAX_CATEGORY_LABELS[c]}</option>
+                ))}
+              </select>
+            </div>
+            <div>
               <label className="block text-xs text-tertiary mb-1">VAT Rate (%)</label>
               <input type="number" step="0.1" min="0" max="100"
+                disabled={form.vatCategory !== "S"}
                 value={Math.round(form.vatRate * 10000) / 100}
-                onChange={(e) => { const pct = parseFloat(e.target.value); update("vatRate", Number.isFinite(pct) ? pct / 100 : 0.19); }}
-                className={inputCls} />
+                onChange={(e) => { const pct = parseFloat(e.target.value); update("vatRate", Number.isFinite(pct) ? pct / 100 : 0); }}
+                className={`${inputCls} disabled:opacity-50 disabled:cursor-not-allowed`} />
             </div>
           </div>
         ) : (
@@ -594,11 +612,20 @@ function ContractForm({ contract, clients, defaultCurrency, onSave, onCancel, er
               </select>
             </div>
             <div>
+              <label className="block text-xs text-tertiary mb-1">Tax Category</label>
+              <select value={form.vatCategory} onChange={(e) => setVatCategory(e.target.value as TaxCategory)} className={inputCls}>
+                {(Object.keys(TAX_CATEGORY_LABELS) as TaxCategory[]).map((c) => (
+                  <option key={c} value={c}>{TAX_CATEGORY_LABELS[c]}</option>
+                ))}
+              </select>
+            </div>
+            <div>
               <label className="block text-xs text-tertiary mb-1">VAT Rate (%)</label>
               <input type="number" step="0.1" min="0" max="100"
+                disabled={form.vatCategory !== "S"}
                 value={Math.round(form.vatRate * 10000) / 100}
-                onChange={(e) => { const pct = parseFloat(e.target.value); update("vatRate", Number.isFinite(pct) ? pct / 100 : 0.19); }}
-                className={inputCls} />
+                onChange={(e) => { const pct = parseFloat(e.target.value); update("vatRate", Number.isFinite(pct) ? pct / 100 : 0); }}
+                className={`${inputCls} disabled:opacity-50 disabled:cursor-not-allowed`} />
             </div>
             <div>
               <label className="block text-xs text-tertiary mb-1">Billing Cycle</label>
@@ -676,6 +703,7 @@ interface ParsedContract {
   start_date: string;
   end_date: string;
   VAT_rate: number | null;
+  VAT_category: string | null;
   term_of_payment: number | null;
   client_name_hint: string;
   selectedClientId?: number;

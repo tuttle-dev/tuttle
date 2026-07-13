@@ -313,3 +313,157 @@ def test_no_model_imports_in_versions() -> None:
         f"These migration scripts import tuttle.model, which breaks when the "
         f"model evolves: {offenders}. Use a local sa.table(...) snapshot instead."
     )
+
+
+# -- Tax category backfill (revision 5f919b074635) ----------------------------
+
+_TAX_CATEGORY_REVISION = "5f919b074635"
+_BEFORE_TAX_CATEGORY = "16093a6ceba4"
+
+
+def _insert(cur: sqlite3.Cursor, table: str, **values: object) -> None:
+    """Insert a row, filling any other NOT NULL column with a placeholder."""
+    info = list(cur.execute(f"PRAGMA table_info({table})"))
+    row = dict(values)
+    for _cid, name, typ, notnull, default, pk in info:
+        if name in row or pk or not notnull or default is not None:
+            continue
+        row[name] = _seed_value(typ)
+    cols = ", ".join(f'"{k}"' for k in row)
+    marks = ", ".join("?" for _ in row)
+    cur.execute(f"INSERT INTO {table} ({cols}) VALUES ({marks})", tuple(row.values()))
+
+
+def _seed_contract(cur, cid, client_id, vat_rate, title):
+    _insert(
+        cur,
+        "contract",
+        id=cid,
+        title=title,
+        client_id=client_id,
+        VAT_rate=vat_rate,
+        currency="EUR",
+        start_date="2024-01-01",
+        unit="hour",
+        type="time_based",
+        rate=100,
+    )
+    _insert(
+        cur,
+        "project",
+        id=cid,
+        title=f"p{cid}",
+        tag=f"#t{cid}",
+        contract_id=cid,
+        start_date="2024-01-01",
+    )
+    _insert(
+        cur,
+        "invoice",
+        id=cid,
+        number=f"INV{cid}",
+        date="2024-02-01",
+        contract_id=cid,
+        project_id=cid,
+        document_type="invoice",
+    )
+    _insert(
+        cur,
+        "invoiceitem",
+        id=cid,
+        quantity=1,
+        unit="hour",
+        unit_price=100,
+        description="work",
+        VAT_rate=vat_rate,
+        invoice_id=cid,
+    )
+
+
+@pytest.fixture
+def backfilled_db(tmp_db: tuple[Path, str]):
+    """A DB seeded at the revision before the tax category, then upgraded."""
+    db, url = tmp_db
+    cfg = _alembic_config_for(url)
+    command.upgrade(cfg, _BEFORE_TAX_CATEGORY)
+
+    con = sqlite3.connect(db)
+    cur = con.cursor()
+    for aid, country in [(1, "United States"), (2, "France"), (3, "Germany"), (4, "")]:
+        _insert(cur, "address", id=aid, country=country)
+    for cid, aid, name in [
+        (1, 1, "US Corp"),
+        (2, 2, "FR SARL"),
+        (3, 3, "DE GmbH"),
+        (4, 4, "Nowhere Ltd"),
+    ]:
+        _insert(cur, "client", id=cid, name=name, address_id=aid)
+
+    _seed_contract(cur, 1, 1, 0.0, "us-zero")
+    _seed_contract(cur, 2, 2, 0.0, "fr-zero")
+    _seed_contract(cur, 3, 3, 0.19, "de-standard")
+    _seed_contract(cur, 4, 4, 0.0, "unknown-country-zero")
+    _seed_contract(cur, 5, 1, 0.19, "us-standard")
+    # A 0% line under a taxed contract: zero-rated, never outside scope.
+    _insert(
+        cur,
+        "invoiceitem",
+        id=99,
+        quantity=1,
+        unit="hour",
+        unit_price=50,
+        description="freebie",
+        VAT_rate=0.0,
+        invoice_id=5,
+    )
+    con.commit()
+    con.close()
+
+    command.upgrade(cfg, _TAX_CATEGORY_REVISION)
+    con = sqlite3.connect(db)
+    yield con
+    con.close()
+
+
+@pytest.mark.parametrize(
+    "title,expected",
+    [
+        ("us-zero", "outside_scope"),  # 0% to a non-EU client
+        ("fr-zero", "zero_rated"),  # 0% inside the EU VAT area
+        ("de-standard", "standard"),
+        ("us-standard", "standard"),
+        # An unresolvable country keeps the historical reading rather than
+        # silently reclassifying the invoice as outside the scope of tax.
+        ("unknown-country-zero", "zero_rated"),
+    ],
+)
+def test_contract_tax_category_backfill(backfilled_db, title, expected):
+    row = backfilled_db.execute(
+        'SELECT "VAT_category" FROM contract WHERE title = ?', (title,)
+    ).fetchone()
+    assert row[0] == expected
+
+
+def test_invoice_item_inherits_contract_category(backfilled_db):
+    row = backfilled_db.execute(
+        'SELECT i."VAT_category" FROM invoiceitem i '
+        "JOIN invoice v ON v.id = i.invoice_id "
+        "JOIN contract c ON c.id = v.contract_id WHERE c.title = 'us-zero'"
+    ).fetchone()
+    assert row[0] == "outside_scope"
+
+
+def test_zero_rate_line_under_taxed_contract_is_zero_rated(backfilled_db):
+    """Must not become O — that would mix categories and violate BR-O-11/12."""
+    row = backfilled_db.execute(
+        'SELECT "VAT_category" FROM invoiceitem WHERE description = ?', ("freebie",)
+    ).fetchone()
+    assert row[0] == "zero_rated"
+
+
+def test_backfill_leaves_no_null_categories(backfilled_db):
+    for table in ("contract", "invoiceitem"):
+        count = backfilled_db.execute(
+            f'SELECT COUNT(*) FROM {table} WHERE "VAT_category" IS NULL'
+        ).fetchone()[0]
+        assert count == 0, f"{table} has NULL VAT_category rows"
