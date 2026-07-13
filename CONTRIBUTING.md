@@ -29,6 +29,10 @@ Look through the GitHub issues for features. Anything tagged with
 "enhancement" and "help wanted" is open to whoever wants to
 implement it.
 
+## Claiming Issues
+
+When you're assigned to an issue, please open a draft PR within **7 days** to show progress. If no draft or open PR is submitted within that window, you will be un-assigned automatically so the issue is available for others. You can always request re-assignment if you need more time.
+
 ## Write Documentation
 
 Tuttle could always use more documentation, whether as part of the
@@ -50,30 +54,59 @@ If you are proposing a feature:
 
 ## AI-Assisted Contributions
 
-AI tools are welcome for drafting code and documentation, but contributors remain fully responsible for all submitted changes.
+AI tools are welcome for drafting code and documentation, but contributors remain fully responsible for all submitted changes. Pull requests consisting primarily of unreviewed or untested AI-generated content may be rejected.
 
-### Contributors are expected to:
-- Understand all code and documentation they submit
-- Verify that AI-generated suggestions are correct
-- Test changes before opening a pull request
-- Be able to explain the reasoning behind their changes during review
+Contributors using AI assistance are expected to:
 
-## Guidelines for AI-generated content
+-   Understand and be able to explain all submitted code during review
+-   Verify that AI-generated suggestions are correct
+-   Test changes locally before opening a pull request
+-   Disclose significant AI assistance in the pull request description
 
-- Pull requests consisting primarily of unreviewed or untested AI-generated content may be rejected
-- Contributors are responsible for all submitted content, regardless of AI assistance
-- If AI assistance was significant, it should be disclosed in the pull request description
+# Pull Request Guidelines
+
+## PR Template
+
+When you open a pull request, your PR body will be pre-filled from the [PR template](/.github/PULL_REQUEST_TEMPLATE.md). It contains a **Summary** section and a **Checklist** of items to complete before requesting review. Please work through each checklist item — it covers testing, pre-commit hooks, documentation, schema migrations, and screenshots where applicable.
+
+Outside contributors are required to keep the checklist in their PR body. Org members may omit it.
+
+## CI Checks
+
+Your PR must pass the following automated checks before it can be merged:
+
+| Check | What it verifies |
+|---|---|
+| `build (3.x)` | The test suite passes on each supported Python version |
+| `check-template` | PR body includes the Checklist section (outside contributors only) |
+| `conflict-check` | The branch has no merge conflicts with `main` |
+
+In addition, the following rules are enforced on the `main` branch:
+
+-   **At least one approving review** is required (the maintainer can bypass this for their own PRs).
+-   **Stale reviews are dismissed** when new commits are pushed — reviewers must re-approve after changes.
+-   **All review conversations must be resolved** before merging.
+-   **The branch must be up-to-date with `main`**. If your branch falls behind, rebase or merge `main` into it.
+
+### Responding to review feedback
+
+When changes are requested on your PR, please respond (by pushing updates or commenting) within:
+
+-   **3 days** for issues labeled `priority: high`
+-   **7 days** for all other issues
+
+PRs without author follow-up within this window will be labeled `stale`.
 
 # Get Started!
 
-Ready to contribute? Here's how to set up Tuttle for
-local development.
+Ready to contribute? Here's how to set up Tuttle for local development.
 
 ## Prerequisites
 
--   Python 3.12 or newer
--   [uv](https://docs.astral.sh/uv/) (recommended) or pip
--   Node.js 22 or newer
+-   Python (see `pyproject.toml` for the minimum version)
+-   [uv](https://docs.astral.sh/uv/)
+-   [just](https://github.com/casey/just) (task runner)
+-   Node.js (see `ui/package.json` for the minimum version)
 
 ## Development Setup
 
@@ -86,18 +119,16 @@ local development.
     cd tuttle/
     ```
 
-3.  Install the Python core dependencies with [uv](https://docs.astral.sh/uv/):
+3.  Install all dependencies (Python + Node):
 
     ```shell
-    uv sync
+    just deps-all
     ```
 
-4.  Install the Electron UI dependencies:
+4.  Install the pre-commit hooks:
 
     ```shell
-    cd ui
-    npm install
-    cd ..
+    just precommit
     ```
 
 5.  Create a branch for local development:
@@ -106,37 +137,13 @@ local development.
     git checkout -b name-of-your-bugfix-or-feature
     ```
 
-    Now you can make your changes locally.
-
-
-    **Install the pre-commit hooks before making your first commit to ensure that you match the code style**:
+6.  When you're done making changes, run the full test suite (Python tests + TypeScript type-check):
 
     ```shell
-    pre-commit install
+    just test
     ```
 
-6.  If you haven't done so already, install and/or activate
-    [pyright](https://github.com/microsoft/pyright).
-    The "basic" level should suffice and help you to avoid type errors.
-    If you are getting a type error, ask yourself:
-    Can this occur at runtime?
-
-    No -> add `#type: ignore` to the end of the line
-
-    Yes -> ensure that it doesn't, e.g. by using an `assert` statement
-
-    Oftentimes, type errors indicate bad design,
-    so keep refactoring in mind as a third option.
-
-7.  When you're done making changes, check that your changes pass
-    the tests:
-
-    ```shell
-    uv run pytest
-    ```
-
-
-8.  Commit your changes and push your branch to GitHub:
+7.  Commit your changes and push your branch to GitHub:
 
     ```shell
     git add .
@@ -144,7 +151,22 @@ local development.
     git push origin name-of-your-bugfix-or-feature
     ```
 
-9.  Submit a pull request through the GitHub website.
+8.  Submit a pull request through the GitHub website.
+
+## Key `just` Commands
+
+Run `just --list` to see all available tasks. Here are the most important ones:
+
+| Command | Description |
+|---|---|
+| `just dev` | Start the Electron app in dev mode (hot reload) |
+| `just test` | Run the full test suite (Python + TypeScript type-check) |
+| `just deps-all` | Install/sync all dependencies (Python + Node) |
+| `just precommit` | Install the pre-commit hooks |
+| `just build` | Full production build (PyInstaller + Electron) |
+| `just migrate "<msg>"` | Generate an Alembic migration from model changes |
+| `just sync-data` | Copy production data into the dev directory for testing |
+| `just reset` | Wipe the dev data directory and start fresh |
 
 ## Running the App
 
@@ -152,8 +174,7 @@ Start the Electron app in development mode. The Python RPC core is
 spawned automatically:
 
 ```shell
-cd ui
-npm run dev
+just dev
 ```
 
 ### Dev vs production data
@@ -167,50 +188,21 @@ just sync-data   # one-way copy ~/.tuttle → ~/.tuttle-dev
 ```
 
 The dev app will auto-migrate the copies to the current schema on next
-launch. Use `just reset-dev` to wipe the dev data directory.
-
-## Building for Production
-
-```shell
-just build
-```
-
-This builds the Python core with PyInstaller and packages the Electron
-app with electron-builder.
-
-# Pull Request Guidelines
-
-Before you submit a pull request, check that it meets these guidelines:
-
-1.  The pull request should include tests.
-2.  If the pull request adds functionality, the docs should be updated.
-    Put your new functionality into a function with a docstring.
-3.  The pull request should work for Python 3.12 and 3.13.
+launch. Use `just reset` to wipe the dev data directory.
 
 # Tips
 
 To run a subset of tests:
 
 ```shell
-uv run pytest tuttle_tests/test_model.py
+just test tuttle_tests/test_model.py
 ```
 
 To run a specific test:
 
 ```shell
-uv run pytest tuttle_tests/test_model.py::TestContract::test_valid_instantiation
+just test tuttle_tests/test_model.py::TestContract::test_valid_instantiation
 ```
-
-# Deploying
-
-Make sure all your changes are committed. Then run:
-
-```shell
-bump2version patch  # possible: major / minor / patch
-git push
-git push --tags
-```
-
 
 # Architecture
 
