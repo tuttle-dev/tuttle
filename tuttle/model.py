@@ -22,6 +22,7 @@ for the full rationale.
 
 from typing import Literal, Optional, List, Type
 
+import enum
 import re
 import datetime
 import textwrap
@@ -31,7 +32,6 @@ import pandas
 import sqlalchemy
 
 from pydantic import BaseModel, condecimal, validator
-from sqlalchemy.orm import validates
 from sqlmodel import SQLModel, Field, Relationship
 
 
@@ -194,6 +194,11 @@ class User(RpcMixin, SQLModel, table=True):
     VAT_number: Optional[str] = Field(
         default=None,
         description="Value Added Tax number of the user, legally required for invoices.",
+    )
+    tax_number: Optional[str] = Field(
+        default=None,
+        description="Tax number (Steuernummer) of the user. Required on invoices "
+        "outside the scope of VAT, where EN16931 BR-O-02 forbids the VAT number.",
     )
     # User 1:1 business BankAccount
     bank_account_id: Optional[int] = Field(default=None, foreign_key="bankaccount.id")
@@ -412,6 +417,20 @@ class Client(RpcMixin, SQLModel, table=True):
 CONTRACT_DEFAULT_VAT_RATE = 0.19
 
 
+class TaxCategory(enum.Enum):
+    """VAT category of a supply, as UNTDID 5305 codes used verbatim by EN16931.
+
+    ``outside_scope`` is not the same as ``zero_rated``: a zero-rated supply is
+    taxable at 0%, while a supply outside the scope of tax is not taxable at all
+    (e.g. B2B services to a non-EU recipient, where the place of supply is the
+    recipient's country under §3a (2) UStG / Art. 44 VAT Directive).
+    """
+
+    standard = "S"
+    zero_rated = "Z"
+    outside_scope = "O"
+
+
 def normalize_vat_rate(value) -> Decimal:
     """Coerce a VAT rate into the canonical [0, 1] fraction form.
 
@@ -439,7 +458,54 @@ def normalize_vat_rate(value) -> Decimal:
     return d
 
 
-class Contract(RpcMixin, SQLModel, table=True):
+def normalize_tax_category(value) -> TaxCategory:
+    """Coerce a tax category into a ``TaxCategory``, accepting UNTDID codes.
+
+    ``"O"``, ``"outside_scope"`` and ``TaxCategory.outside_scope`` all resolve
+    to the same member, so RPC payloads, database rows and Python callers can
+    share one ingress path.
+    """
+    if value is None:
+        raise ValueError("Tax category cannot be None")
+    if isinstance(value, TaxCategory):
+        return value
+    try:
+        return TaxCategory(value)
+    except ValueError:
+        pass
+    try:
+        return TaxCategory[value]
+    except KeyError as e:
+        raise ValueError(f"Unknown tax category {value!r}") from e
+
+
+class VatCategoryMixin:
+    """Shared VAT rate/category normalisation and the invariant binding them."""
+
+    def validate_vat(self) -> None:
+        """Normalise the VAT rate/category pair in place and check consistency.
+
+        Enforces EN16931 BR-Z-09 (a zero-rated tax amount is 0) and BR-O-05/09
+        (a supply outside the scope of tax has neither a tax amount nor a rate).
+
+        This is an explicit method, not a SQLAlchemy ``@validates`` hook, for
+        two reasons. Hooks are silently dropped on ``SQLModel(table=True)``
+        classes — pydantic's ``__setattr__`` overwrites the instrumented value
+        afterwards — and they fire once per attribute, so a contract switching
+        from ``O`` back to ``S`` would trip on whichever of the two attributes
+        ``save_from_dict`` happened to set first. Call this on write paths, as
+        ``Contract.validate_pricing()`` already is.
+        """
+        self.VAT_rate = normalize_vat_rate(self.VAT_rate)
+        self.VAT_category = normalize_tax_category(self.VAT_category)
+        if self.VAT_category is not TaxCategory.standard and self.VAT_rate != 0:
+            raise ValueError(
+                f"VAT rate must be 0 for tax category "
+                f"'{self.VAT_category.value}', got {self.VAT_rate}"
+            )
+
+
+class Contract(RpcMixin, VatCategoryMixin, SQLModel, table=True):
     """A contract defines the business conditions of a project"""
 
     __rpc_relationships__ = {
@@ -500,6 +566,18 @@ class Contract(RpcMixin, SQLModel, table=True):
     VAT_rate: Decimal = Field(
         description="VAT rate applied to the contractual rate.",
         default=CONTRACT_DEFAULT_VAT_RATE,  # TODO: configure by country?
+    )
+    VAT_category: TaxCategory = Field(
+        description="Tax category of the supply. Determines the EN16931 category "
+        "code on generated e-invoices. Must be paired with a zero VAT_rate for "
+        "anything other than the standard category.",
+        sa_column=sqlalchemy.Column(
+            sqlalchemy.Enum(TaxCategory),
+            nullable=False,
+            # sqlalchemy.Enum persists member *names*, not values
+            server_default=TaxCategory.standard.name,
+        ),
+        default=TaxCategory.standard,
     )
     unit: TimeUnit = Field(
         description="Unit of time tracked. The rate applies to this unit.",
@@ -613,10 +691,6 @@ class Contract(RpcMixin, SQLModel, table=True):
             if not (self.rate is not None and self.rate > 0):
                 raise ValueError("A time-based contract needs a rate.")
             self.fixed_price = None
-
-    @validates("VAT_rate")
-    def _normalize_vat_rate(self, _key, value):
-        return normalize_vat_rate(value)
 
 
 class Project(RpcMixin, SQLModel, table=True):
@@ -834,6 +908,7 @@ class Invoice(RpcMixin, SQLModel, table=True):
     __rpc_computed__ = (
         "sum",
         "VAT_total",
+        "is_outside_scope",
         "total",
         "due_date",
         "effective_due_date",
@@ -974,6 +1049,18 @@ class Invoice(RpcMixin, SQLModel, table=True):
         return Decimal(round(s, 2))
 
     @property
+    def is_outside_scope(self) -> bool:
+        """Whether this invoice is outside the scope of VAT (EN16931 category O).
+
+        EN16931 BR-O-11/12 forbid mixing category O with any other category, so
+        a single item is enough to characterise the whole invoice.
+        """
+        return any(
+            normalize_tax_category(item.VAT_category) is TaxCategory.outside_scope
+            for item in self.items
+        )
+
+    @property
     def total(self) -> Decimal:
         """Total invoiced amount, including reminder fee if present."""
         t = self.sum + self.VAT_total
@@ -1091,7 +1178,7 @@ class Invoice(RpcMixin, SQLModel, table=True):
         return str(p) if p.exists() else None
 
 
-class InvoiceItem(RpcMixin, SQLModel, table=True):
+class InvoiceItem(RpcMixin, VatCategoryMixin, SQLModel, table=True):
     __rpc_computed__ = ("subtotal", "subtotal_formatted", "unit_price_formatted")
 
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -1108,6 +1195,16 @@ class InvoiceItem(RpcMixin, SQLModel, table=True):
     unit_price: Decimal
     description: str
     VAT_rate: Decimal
+    VAT_category: TaxCategory = Field(
+        description="Tax category, snapshotted from the contract at invoice "
+        "creation so that later contract edits cannot alter an issued invoice.",
+        sa_column=sqlalchemy.Column(
+            sqlalchemy.Enum(TaxCategory),
+            nullable=False,
+            server_default=TaxCategory.standard.name,
+        ),
+        default=TaxCategory.standard,
+    )
     # invoice
     invoice_id: Optional[int] = Field(
         default=None, foreign_key="invoice.id", ondelete="CASCADE"
@@ -1128,10 +1225,6 @@ class InvoiceItem(RpcMixin, SQLModel, table=True):
     @property
     def unit_price_formatted(self) -> str:
         return fmt_currency(self.unit_price)
-
-    @validates("VAT_rate")
-    def _normalize_vat_rate(self, _key, value):
-        return normalize_vat_rate(value)
 
     @property
     def VAT(self) -> Decimal:

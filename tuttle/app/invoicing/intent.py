@@ -266,6 +266,7 @@ class InvoicingIntent(Intent):
                         unit_price=it["unit_price"],
                         description=it.get("description", project.title),
                         VAT_rate=contract.VAT_rate,
+                        VAT_category=contract.VAT_category,
                     )
                     for it in manual_items
                 ]
@@ -288,6 +289,7 @@ class InvoicingIntent(Intent):
                     unit_price=contract.rate,
                     description=project.title,
                     VAT_rate=contract.VAT_rate,
+                    VAT_category=contract.VAT_category,
                 )
                 invoice = Invoice(
                     date=invoice_date,
@@ -323,6 +325,22 @@ class InvoicingIntent(Intent):
                     project=project,
                 )
                 timesheet.invoice = invoice
+
+            for item in invoice.items:
+                item.validate_vat()
+            categories = {item.VAT_category for item in invoice.items}
+            if len(categories) > 1:
+                # EN16931 BR-O-11/12: category O may not be mixed with any other
+                # category. Guarding all mixtures keeps the tax breakdown honest.
+                names = ", ".join(sorted(c.value for c in categories))
+                error_message = (
+                    f"Invoice mixes tax categories ({names}); every item must "
+                    "share one category."
+                )
+                logger.error(error_message)
+                return IntentResult(
+                    was_intent_successful=False, error_msg=error_message
+                )
 
             if notes:
                 invoice.notes = notes.strip() or None
@@ -478,6 +496,7 @@ class InvoicingIntent(Intent):
                     unit_price=item.unit_price,
                     description=item.description,
                     VAT_rate=item.VAT_rate,
+                    VAT_category=item.VAT_category,
                 )
                 for item in root.items
             ]

@@ -1,6 +1,7 @@
 """Tests for the ZUGFeRD / Factur-X e-invoice generation."""
 
 import datetime
+import re
 from decimal import Decimal
 
 import pytest
@@ -20,10 +21,10 @@ from tuttle.model import (
     Invoice,
     InvoiceItem,
     Project,
+    TaxCategory,
     User,
 )
 from tuttle.time import Cycle, TimeUnit
-
 
 # -- Helper fixtures ----------------------------------------------------------
 
@@ -289,3 +290,155 @@ class TestBuildZugferdDocument:
         )
         augmented_size = pdf_path.stat().st_size
         assert augmented_size > original_size
+
+
+# -- Tax category "O" (outside the scope of tax) ------------------------------
+
+
+def _make_outside_scope_invoice() -> Invoice:
+    """The same invoice, re-cast as a supply outside the scope of German VAT."""
+    invoice = _make_invoice()
+    invoice.contract.VAT_rate = Decimal("0")
+    invoice.contract.VAT_category = TaxCategory.outside_scope
+    for item in invoice.items:
+        item.VAT_rate = Decimal("0")
+        item.VAT_category = TaxCategory.outside_scope
+    return invoice
+
+
+class TestOutsideScopeOfTax:
+    """EN16931 category O, per the official CII schematron (BR-O-01 … BR-O-14)."""
+
+    @staticmethod
+    def _xml(user=None, invoice=None, profile="EN16931") -> str:
+        user = user if user is not None else _make_user()
+        invoice = invoice if invoice is not None else _make_outside_scope_invoice()
+        return serialize_zugferd_xml(
+            invoice, user, profile=profile, validate=True
+        ).decode("utf-8")
+
+    @staticmethod
+    def _breakdowns(xml_str: str) -> list[str]:
+        """The header-level VAT breakdown groups (BG-23), not the line-level ones."""
+        settlement = re.search(
+            r"<ram:ApplicableHeaderTradeSettlement>.*?"
+            r"</ram:ApplicableHeaderTradeSettlement>",
+            xml_str,
+            re.S,
+        ).group(0)
+        return re.findall(
+            r"<ram:ApplicableTradeTax>.*?</ram:ApplicableTradeTax>", settlement, re.S
+        )
+
+    def test_invoice_reports_outside_scope(self):
+        assert _make_outside_scope_invoice().is_outside_scope is True
+        assert _make_invoice().is_outside_scope is False
+
+    def test_br_o_01_exactly_one_breakdown_with_category_o(self):
+        breakdowns = self._breakdowns(self._xml())
+        assert len(breakdowns) == 1
+        assert "<ram:CategoryCode>O</ram:CategoryCode>" in breakdowns[0]
+
+    def test_br_o_02_no_seller_or_buyer_vat_identifier(self):
+        """An O invoice must not carry BT-31, BT-63 or BT-48."""
+        user = _make_user()
+        user.tax_number = "21/815/08150"
+        assert user.VAT_number  # the seller has one; it must still be omitted
+        xml_str = self._xml(user=user)
+        assert 'schemeID="VA"' not in xml_str
+        assert user.VAT_number not in xml_str
+
+    def test_seller_tax_number_emitted_as_scheme_fc(self):
+        """§14 UStG still wants an identifier; CII carries it under scheme FC."""
+        user = _make_user()
+        user.tax_number = "21/815/08150"
+        xml_str = self._xml(user=user)
+        assert '<ram:ID schemeID="FC">21/815/08150</ram:ID>' in xml_str
+
+    def test_no_tax_identifier_when_user_has_no_tax_number(self):
+        user = _make_user()
+        user.tax_number = None
+        xml_str = self._xml(user=user)
+        assert 'schemeID="FC"' not in xml_str
+        assert 'schemeID="VA"' not in xml_str
+
+    def test_br_o_05_line_items_carry_no_vat_rate(self):
+        xml_str = self._xml()
+        assert "RateApplicablePercent" not in xml_str
+        assert (
+            xml_str.count("<ram:CategoryCode>O</ram:CategoryCode>") == 3
+        )  # 2 lines + 1 breakdown
+
+    def test_br_o_09_breakdown_tax_amount_is_zero(self):
+        breakdown = self._breakdowns(self._xml())[0]
+        assert "<ram:CalculatedAmount>0.00</ram:CalculatedAmount>" in breakdown
+
+    def test_br_o_10_breakdown_carries_exemption_reason(self):
+        breakdown = self._breakdowns(self._xml())[0]
+        assert (
+            "<ram:ExemptionReasonCode>VATEX-EU-O</ram:ExemptionReasonCode>" in breakdown
+        )
+        assert (
+            "<ram:ExemptionReason>Not subject to VAT</ram:ExemptionReason>" in breakdown
+        )
+
+    def test_totals_carry_no_tax(self):
+        """Net 7200 with nothing added, against 8568 on the standard invoice."""
+        xml_str = self._xml()
+        assert (
+            '<ram:TaxTotalAmount currencyID="EUR">0.00</ram:TaxTotalAmount>' in xml_str
+        )
+        assert "<ram:GrandTotalAmount>7200.000</ram:GrandTotalAmount>" in xml_str
+        assert "8568" not in xml_str
+
+    @pytest.mark.parametrize("profile", ["EN16931", "EXTENDED", "BASIC", "MINIMUM"])
+    def test_schema_validation_all_profiles(self, profile):
+        assert len(self._xml(profile=profile)) > 0
+
+    def test_zero_rated_still_uses_category_z_with_a_rate(self):
+        """Category O must not swallow the zero-rated case."""
+        invoice = _make_invoice()
+        invoice.contract.VAT_rate = Decimal("0")
+        invoice.contract.VAT_category = TaxCategory.zero_rated
+        for item in invoice.items:
+            item.VAT_rate = Decimal("0")
+            item.VAT_category = TaxCategory.zero_rated
+        breakdown = self._breakdowns(self._xml(invoice=invoice))[0]
+        assert "<ram:CategoryCode>Z</ram:CategoryCode>" in breakdown
+        assert "<ram:RateApplicablePercent>0</ram:RateApplicablePercent>" in breakdown
+        assert "VATEX-EU-O" not in breakdown
+
+    def test_standard_invoice_is_unchanged(self):
+        """Regression guard: the pre-existing S output must not shift."""
+        xml_str = self._xml(invoice=_make_invoice())
+        breakdown = self._breakdowns(xml_str)[0]
+        assert "<ram:CategoryCode>S</ram:CategoryCode>" in breakdown
+        assert (
+            "<ram:RateApplicablePercent>19.00</ram:RateApplicablePercent>" in breakdown
+        )
+        assert "<ram:CalculatedAmount>1368.00</ram:CalculatedAmount>" in breakdown
+        assert 'schemeID="VA"' in xml_str
+
+    def test_zero_rated_and_outside_scope_lines_do_not_share_a_breakdown(self):
+        """Both sit at 0%; keying the aggregate by rate alone would merge them."""
+        invoice = _make_invoice()
+        invoice.contract.VAT_rate = Decimal("0")
+        for item, category in zip(
+            invoice.items, [TaxCategory.zero_rated, TaxCategory.outside_scope]
+        ):
+            item.VAT_rate = Decimal("0")
+            item.VAT_category = category
+
+        user = _make_user()
+        user.VAT_number = None  # BR-O-02, so the document still validates
+        xml_str = serialize_zugferd_xml(
+            invoice, user, profile="EN16931", validate=True
+        ).decode("utf-8")
+
+        breakdowns = self._breakdowns(xml_str)
+        assert len(breakdowns) == 2
+        categories = {
+            re.search(r"<ram:CategoryCode>(\w)</ram:CategoryCode>", b).group(1)
+            for b in breakdowns
+        }
+        assert categories == {"Z", "O"}

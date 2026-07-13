@@ -289,6 +289,7 @@ class UsersIntent:
                 website=params.get("website", ""),
                 operating_country=params.get("operating_country", "Germany"),
                 VAT_number=params.get("vat_number", ""),
+                tax_number=params.get("tax_number", ""),
                 address=address,
             )
             bank = params.get("bank_account")
@@ -324,6 +325,7 @@ class UsersIntent:
             "phone_number",
             "website",
             "VAT_number",
+            "tax_number",
             "operating_country",
         ):
             if k in profile_data:

@@ -106,7 +106,7 @@
         <td class="right">{{ item.quantity }}</td>
         <td class="right">{{ item.unit | unit_label(item.quantity) }}</td>
         <td class="right">{{ item.unit_price | as_currency}} €</td>
-        <td class="right">{{ item.VAT_rate | as_percentage }}</td>
+        <td class="right">{% if invoice.is_outside_scope %}&mdash;{% else %}{{ item.VAT_rate | as_percentage }}{% endif %}</td>
         <td class="right">{{ item.subtotal | as_currency }}</td>
       </tr>
       {% endfor %}
@@ -131,11 +131,15 @@
           </div>
         </td>
         <td class="bold">{{ invoice.effective_due_date }}</td>
-        <td>{{ invoice.VAT_total | as_currency }}</td>
+        <td>{% if invoice.is_outside_scope %}&mdash;{% else %}{{ invoice.VAT_total | as_currency }}{% endif %}</td>
         <td class="bold">{{ invoice.total | as_currency }}</td>
       </tr>
     </tbody>
   </table>
+
+  {% if invoice.is_outside_scope %}
+  <div class="tax-note">{{ l.outside_scope_note }}</div>
+  {% endif %}
 
   <div>
     <p>
@@ -152,7 +156,7 @@
     <div class="footer-info">
       {% if user.bank_account %}<span>IBAN: {{ user.bank_account.IBAN }} </span> |
       <span>BIC: {{ user.bank_account.BIC  }}</span> |{% endif %}
-      <span>VAT No: {{ user.VAT_number }}</span>
+      {% if seller_tax_id %}<span>{{ seller_tax_id_label }}: {{ seller_tax_id }}</span>{% endif %}
     </div>
   </div>
 

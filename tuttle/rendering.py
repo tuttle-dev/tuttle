@@ -35,6 +35,8 @@ INVOICE_LABELS = {
         "unit": "Unit",
         "unit_price": "Unit Price",
         "vat": "VAT",
+        "vat_number": "VAT No.",
+        "tax_number": "Tax No.",
         "subtotal": "Subtotal",
         "total_due": "Total Due",
         "payment": "Payment",
@@ -42,6 +44,10 @@ INVOICE_LABELS = {
         "account_holder": "Account",
         "description": "Description",
         "closing": "Thank you for your business.",
+        "outside_scope_note": (
+            "Not subject to German VAT — the place of supply is the recipient's "
+            "country (§ 3a (2) UStG / Art. 44 VAT Directive)."
+        ),
         "reminder": "Payment Reminder",
         "reminder_n": "{n}. Payment Reminder",
         "reminder_fee": "Reminder Fee",
@@ -65,6 +71,8 @@ INVOICE_LABELS = {
         "unit": "Einheit",
         "unit_price": "Einzelpreis",
         "vat": "USt.",
+        "vat_number": "USt-IdNr.",
+        "tax_number": "St.-Nr.",
         "subtotal": "Zwischensumme",
         "total_due": "Gesamtbetrag",
         "payment": "Zahlung",
@@ -72,6 +80,10 @@ INVOICE_LABELS = {
         "account_holder": "Konto",
         "description": "Beschreibung",
         "closing": "Vielen Dank für Ihren Auftrag.",
+        "outside_scope_note": (
+            "Nicht steuerbare sonstige Leistung — Leistungsort im Ausland "
+            "gemäß § 3a Abs. 2 UStG / Art. 44 MwStSystRL."
+        ),
         "reminder": "Zahlungserinnerung",
         "reminder_n": "{n}. Mahnung",
         "reminder_fee": "Mahngebühr",
@@ -95,6 +107,8 @@ INVOICE_LABELS = {
         "unit": "Unidad",
         "unit_price": "Precio unit.",
         "vat": "IVA",
+        "vat_number": "N.º IVA",
+        "tax_number": "N.º fiscal",
         "subtotal": "Subtotal",
         "total_due": "Total a pagar",
         "payment": "Pago",
@@ -102,6 +116,10 @@ INVOICE_LABELS = {
         "account_holder": "Titular",
         "description": "Descripción",
         "closing": "Gracias por su confianza.",
+        "outside_scope_note": (
+            "No sujeto al IVA alemán — el lugar de prestación es el país del "
+            "destinatario (art. 44 de la Directiva del IVA)."
+        ),
         "reminder": "Recordatorio de pago",
         "reminder_n": "{n}.º recordatorio de pago",
         "reminder_fee": "Cargo por recordatorio",
@@ -229,11 +247,23 @@ def render_invoice(
         tpl = labels.get("reminder_n", "{n}. Payment Reminder")
         reminder_title = tpl.format(n=n)
 
+    # EN16931 BR-O-02 keeps the VAT number off an outside-scope e-invoice, so the
+    # printed document must not contradict the embedded XML: show the tax number
+    # (Steuernummer) instead, and nothing at all when the user has not set one.
+    if invoice.is_outside_scope:
+        seller_tax_id_label = labels.get("tax_number", "Tax No.")
+        seller_tax_id = user.tax_number or ""
+    else:
+        seller_tax_id_label = labels.get("vat_number", "VAT No.")
+        seller_tax_id = user.VAT_number or ""
+
     invoice_template = template_env.get_template("invoice.html")
     html = invoice_template.render(
         user=user,
         invoice=invoice,
         l=labels,
+        seller_tax_id=seller_tax_id,
+        seller_tax_id_label=seller_tax_id_label,
         is_reminder=is_reminder,
         reminder_title=reminder_title,
         notes=invoice.notes,

@@ -3,6 +3,7 @@
 import datetime
 import os
 import sqlite3
+from decimal import Decimal
 from pathlib import Path
 
 import pytest
@@ -15,10 +16,13 @@ from tuttle.model import (
     ClientContact,
     Contact,
     Contract,
+    InvoiceItem,
     Project,
+    TaxCategory,
     User,
     TimeUnit,
     Cycle,
+    normalize_tax_category,
 )
 
 
@@ -494,3 +498,100 @@ class TestDeletionGuards:
         with Session(engine) as s:
             s.delete(s.get(Contact, contact.id))
             s.commit()
+
+
+class TestTaxCategory:
+    """Tax category coercion and the rate/category invariant (EN16931 BR-O/BR-Z)."""
+
+    @staticmethod
+    def _contract(**kwargs) -> Contract:
+        defaults = dict(
+            title="Third-country services",
+            start_date=datetime.date(2024, 1, 1),
+            currency="EUR",
+        )
+        return Contract(**{**defaults, **kwargs})
+
+    def test_defaults_to_standard(self):
+        assert self._contract().VAT_category is TaxCategory.standard
+
+    def test_untndid_codes_are_the_enum_values(self):
+        """The values go straight into the e-invoice XML, so they must be codes."""
+        assert TaxCategory.standard.value == "S"
+        assert TaxCategory.zero_rated.value == "Z"
+        assert TaxCategory.outside_scope.value == "O"
+
+    @pytest.mark.parametrize(
+        "value,expected",
+        [
+            ("O", TaxCategory.outside_scope),
+            ("outside_scope", TaxCategory.outside_scope),
+            (TaxCategory.outside_scope, TaxCategory.outside_scope),
+            ("S", TaxCategory.standard),
+            ("zero_rated", TaxCategory.zero_rated),
+        ],
+    )
+    def test_normalize_accepts_codes_names_and_members(self, value, expected):
+        assert normalize_tax_category(value) is expected
+
+    @pytest.mark.parametrize("value", [None, "", "X", "bogus"])
+    def test_normalize_rejects_unknown(self, value):
+        with pytest.raises(ValueError):
+            normalize_tax_category(value)
+
+    def test_validate_vat_normalizes_rate_and_category(self):
+        contract = self._contract(VAT_rate=19, VAT_category="S")
+        contract.validate_vat()
+        assert contract.VAT_rate == Decimal("0.19")
+        assert contract.VAT_category is TaxCategory.standard
+
+    def test_outside_scope_requires_zero_rate(self):
+        contract = self._contract(VAT_rate=Decimal("0.19"), VAT_category="O")
+        with pytest.raises(ValueError, match="must be 0 for tax category 'O'"):
+            contract.validate_vat()
+
+    def test_zero_rated_requires_zero_rate(self):
+        contract = self._contract(VAT_rate=Decimal("0.19"), VAT_category="Z")
+        with pytest.raises(ValueError, match="must be 0 for tax category 'Z'"):
+            contract.validate_vat()
+
+    def test_outside_scope_with_zero_rate_is_valid(self):
+        contract = self._contract(VAT_rate=Decimal("0"), VAT_category="O")
+        contract.validate_vat()
+        assert contract.VAT_category is TaxCategory.outside_scope
+
+    @pytest.mark.parametrize("order", ["rate_first", "category_first"])
+    def test_switching_back_to_standard_is_order_independent(self, order):
+        """save_from_dict assigns attributes in payload order; neither may trip."""
+        contract = self._contract(VAT_rate=Decimal("0"), VAT_category="O")
+        contract.validate_vat()
+        if order == "rate_first":
+            contract.VAT_rate = Decimal("0.19")
+            contract.VAT_category = "S"
+        else:
+            contract.VAT_category = "S"
+            contract.VAT_rate = Decimal("0.19")
+        contract.validate_vat()
+        assert contract.VAT_category is TaxCategory.standard
+        assert contract.VAT_rate == Decimal("0.19")
+
+    def test_invoice_item_carries_its_own_category(self):
+        item = InvoiceItem(
+            quantity=1, unit="hour", unit_price=Decimal("100"),
+            description="work", VAT_rate=Decimal("0"), VAT_category="O",
+        )
+        item.validate_vat()
+        assert item.VAT_category is TaxCategory.outside_scope
+
+    def test_category_survives_a_database_round_trip(self):
+        contract = self._contract(VAT_rate=Decimal("0"), VAT_category="O")
+        contract.validate_vat()
+
+        engine = create_engine("sqlite:///")
+        SQLModel.metadata.create_all(engine)
+        with Session(engine) as session:
+            session.add(contract)
+            session.commit()
+        with Session(engine) as session:
+            restored = session.exec(select(Contract)).one()
+            assert restored.VAT_category is TaxCategory.outside_scope

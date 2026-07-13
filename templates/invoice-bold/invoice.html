@@ -91,7 +91,7 @@
         <td class="col-qty num">{{ item.quantity }}</td>
         <td class="col-unit">{{ item.unit | unit_label(item.quantity) }}</td>
         <td class="col-price num">{{ item.unit_price | as_currency }}</td>
-        <td class="col-vat num">{{ item.VAT_rate | as_percentage }}</td>
+        <td class="col-vat num">{% if invoice.is_outside_scope %}&mdash;{% else %}{{ item.VAT_rate | as_percentage }}{% endif %}</td>
         <td class="col-subtotal num">{{ item.subtotal | as_currency }}</td>
       </tr>
       {% endfor %}
@@ -114,10 +114,12 @@
         <span class="totals-label">{{ l.subtotal }}</span>
         <span class="totals-amount">{{ invoice.sum | as_currency }}</span>
       </div>
+      {% if not invoice.is_outside_scope %}
       <div class="totals-line">
         <span class="totals-label">{{ l.vat }}</span>
         <span class="totals-amount">{{ invoice.VAT_total | as_currency }}</span>
       </div>
+      {% endif %}
       {% if is_reminder and invoice.reminder_fee %}
       <div class="totals-line">
         <span class="totals-label">{{ l.reminder_fee }}</span>
@@ -130,6 +132,10 @@
       </div>
     </div>
   </div>
+
+  {% if invoice.is_outside_scope %}
+  <div class="tax-note">{{ l.outside_scope_note }}</div>
+  {% endif %}
 
   <div class="closing">
     <p>{% if is_reminder %}{{ l.reminder_closing }}{% else %}{{ l.closing }}{% endif %}</p>
@@ -145,7 +151,7 @@
     <span>{{ user.name }}</span>
     {% if user.bank_account %}<span>IBAN: {{ user.bank_account.IBAN }}</span>
     {% if user.bank_account.BIC %}<span>BIC: {{ user.bank_account.BIC }}</span>{% endif %}{% endif %}
-    {% if user.VAT_number %}<span>{{ l.vat }}: {{ user.VAT_number }}</span>{% endif %}
+    {% if seller_tax_id %}<span>{{ seller_tax_id_label }}: {{ seller_tax_id }}</span>{% endif %}
   </div>
 
 </div>

@@ -13,8 +13,7 @@ from drafthorse.models.payment import PaymentMeans, PaymentTerms
 from drafthorse.models.tradelines import LineItem
 from drafthorse.pdf import attach_xml
 
-from .model import Invoice, User
-
+from .model import Invoice, TaxCategory, User, normalize_tax_category
 
 # -- Helpers ------------------------------------------------------------------
 
@@ -75,14 +74,9 @@ def _rate_to_percent(vat_rate: Decimal) -> Decimal:
     return Decimal("0") if pct == 0 else pct
 
 
-def _vat_category_code(vat_rate: Decimal) -> str:
-    """Derive ZUGFeRD tax category code from a VAT rate.
-
-    S = standard rate (>0), Z = zero-rated, E = exempt.
-    """
-    if vat_rate is None or vat_rate == 0:
-        return "Z"
-    return "S"
+#: BT-121 exemption reason code and BT-120 text required by EN16931 BR-O-10.
+VATEX_OUTSIDE_SCOPE = "VATEX-EU-O"
+VATEX_OUTSIDE_SCOPE_REASON = "Not subject to VAT"
 
 
 # -- Schema name mapping ------------------------------------------------------
@@ -135,6 +129,8 @@ def build_zugferd_document(
     doc.header.issue_date_time = invoice.date
 
     is_minimum = profile == "MINIMUM"
+    # BR-O-11/12: category O never coexists with another category on one invoice.
+    outside_scope = invoice.is_outside_scope
 
     # -- Seller (User) --------------------------------------------------------
     doc.trade.agreement.seller.name = user.name
@@ -148,7 +144,20 @@ def build_zugferd_document(
         doc.trade.agreement.seller.address.country_id = country_to_iso(
             user.address.country
         )
-    if user.VAT_number:
+    # BR-O-02 forbids the seller VAT identifier on invoices outside the scope of
+    # tax. §14 UStG still wants an identifier, so fall back to the tax number,
+    # which CII carries under a different scheme ("FC", Steuernummer).
+    if outside_scope:
+        if user.tax_number:
+            doc.trade.agreement.seller.tax_registrations.add(
+                TaxRegistration(id=("FC", user.tax_number))
+            )
+        else:
+            logger.warning(
+                "Invoice is outside the scope of VAT but the user has no tax "
+                "number; the e-invoice will carry no seller tax identifier."
+            )
+    elif user.VAT_number:
         doc.trade.agreement.seller.tax_registrations.add(
             TaxRegistration(id=("VA", user.VAT_number))
         )
@@ -169,7 +178,7 @@ def build_zugferd_document(
             buyer_address.country
         )
     buyer_vat = getattr(client, "vat_number", None)
-    if buyer_vat:
+    if buyer_vat and not outside_scope:  # BR-O-02
         doc.trade.agreement.buyer.tax_registrations.add(
             TaxRegistration(id=("VA", buyer_vat))
         )
@@ -188,10 +197,13 @@ def build_zugferd_document(
         doc.trade.settlement.payment_means.add(pm)
 
     # -- Line items & tax (not in MINIMUM) -------------------------------------
-    tax_aggregates: dict[Decimal, Decimal] = {}  # rate -> basis_amount
     total_tax = Decimal("0")
 
     if not is_minimum:
+        # Keyed by (category, rate) rather than rate alone: a zero-rated line and
+        # an outside-scope line both sit at 0% but must not collapse into one
+        # breakdown.
+        tax_aggregates: dict[tuple[str, Decimal], Decimal] = {}
         for idx, item in enumerate(invoice.items, start=1):
             li = LineItem()
             li.document.line_id = str(idx)
@@ -201,39 +213,48 @@ def build_zugferd_document(
             quantity = Decimal(str(item.quantity))
             net_price = item.unit_price
             line_total = Decimal(str(item.subtotal))
+            category = normalize_tax_category(item.VAT_category).value
+            vat_pct = _rate_to_percent(item.VAT_rate)
 
             li.agreement.net.amount = net_price
             li.agreement.net.basis_quantity = (Decimal("1"), unit_code)
             li.delivery.billed_quantity = (quantity, unit_code)
             li.settlement.trade_tax.type_code = "VAT"
-            li.settlement.trade_tax.category_code = _vat_category_code(item.VAT_rate)
-            vat_pct = _rate_to_percent(item.VAT_rate)
-            li.settlement.trade_tax.rate_applicable_percent = vat_pct
+            li.settlement.trade_tax.category_code = category
+            # BR-O-05: an outside-scope line carries no rate at all.
+            if category != TaxCategory.outside_scope.value:
+                li.settlement.trade_tax.rate_applicable_percent = vat_pct
             li.settlement.monetary_summation.total_amount = line_total
             doc.trade.items.add(li)
-            tax_aggregates[vat_pct] = (
-                tax_aggregates.get(vat_pct, Decimal("0")) + line_total
-            )
+            key = (category, vat_pct)
+            tax_aggregates[key] = tax_aggregates.get(key, Decimal("0")) + line_total
 
         # -- Tax summary ------------------------------------------------------
-        for rate_pct, basis in tax_aggregates.items():
+        for (category, rate_pct), basis in tax_aggregates.items():
             tax_amount = (basis * rate_pct / Decimal("100")).quantize(Decimal("0.01"))
             total_tax += tax_amount
             trade_tax = ApplicableTradeTax()
             trade_tax.calculated_amount = tax_amount
             trade_tax.basis_amount = basis
             trade_tax.type_code = "VAT"
-            trade_tax.category_code = _vat_category_code(rate_pct / Decimal("100"))
-            trade_tax.rate_applicable_percent = rate_pct
+            trade_tax.category_code = category
+            if category == TaxCategory.outside_scope.value:
+                # BR-O-10 requires a reason; BR-48 exempts O from carrying a rate.
+                trade_tax.exemption_reason_code = VATEX_OUTSIDE_SCOPE
+                trade_tax.exemption_reason = VATEX_OUTSIDE_SCOPE_REASON
+            else:
+                trade_tax.rate_applicable_percent = rate_pct
             doc.trade.settlement.trade_tax.add(trade_tax)
     else:
+        # MINIMUM carries no breakdown, only the total, so the category does not
+        # matter here and the basis can be aggregated by rate alone.
+        rate_bases: dict[Decimal, Decimal] = {}
         for item in invoice.items:
-            vat_pct = _rate_to_percent(item.VAT_rate)
-            line_total = Decimal(str(item.subtotal))
-            tax_aggregates[vat_pct] = (
-                tax_aggregates.get(vat_pct, Decimal("0")) + line_total
+            pct = _rate_to_percent(item.VAT_rate)
+            rate_bases[pct] = rate_bases.get(pct, Decimal("0")) + Decimal(
+                str(item.subtotal)
             )
-        for rate_pct, basis in tax_aggregates.items():
+        for rate_pct, basis in rate_bases.items():
             total_tax += (basis * rate_pct / Decimal("100")).quantize(Decimal("0.01"))
 
     # -- Monetary summation ---------------------------------------------------
