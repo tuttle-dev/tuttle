@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
 import { Sidebar, type RegisteredUser } from "./Sidebar";
 import { OnboardingWizard, type OnboardingData } from "./OnboardingWizard";
+import { TasksView } from "../tasks/TasksView";
 import { DashboardView } from "../dashboard/DashboardView";
 import { ProjectsView } from "../business/ProjectsView";
 import { ClientsView } from "../business/ClientsView";
@@ -231,6 +232,7 @@ export function Shell() {
 
 function DetailView({ id }: { id: string }) {
   switch (id) {
+    case "tasks": return <TasksView />;
     case "dashboard": return <DashboardView />;
     case "timeline": return <TimelineView />;
     case "tax": return <TaxReservesView />;

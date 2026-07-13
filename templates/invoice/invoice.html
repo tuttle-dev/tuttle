@@ -10,6 +10,15 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300italic,700,700italic">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/milligram/1.4.1/milligram.css">
+    <style>
+.tax-note {
+  margin-top: 14px;
+      margin-bottom: 12px;
+  font-size: 9pt;
+  line-height: 1.4;
+  color: #555;
+}
+    </style>
     {% else %}
     <!-- pure HTML -->
     {% endif %}
@@ -76,13 +85,17 @@
         <td>{{ item.quantity }}</td>
         <td>{{ item.unit | unit_label(item.quantity) }}</td>
         <td>{{ item.unit_price | as_currency}} €</td>
-        <td>{{ item.VAT_rate | as_percentage }}</td>
+        <td>{% if invoice.is_outside_scope %}&mdash;{% else %}{{ item.VAT_rate | as_percentage }}{% endif %}</td>
         <td>{{ item.subtotal | as_currency }}</td>
-        <td>{{ item.VAT | as_currency }}</td>
+        <td>{% if invoice.is_outside_scope %}&mdash;{% else %}{{ item.VAT | as_currency }}{% endif %}</td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
+
+  {% if invoice.is_outside_scope %}
+  <div class="tax-note">{{ l.outside_scope_note }}</div>
+  {% endif %}
 
   <table id="total">
     <thead>
@@ -122,7 +135,7 @@
           {{ user.phone_number }}
         </td>
         <td>
-          VAT Number: {{ user.VAT_number }}<br>
+          {% if seller_tax_id %}{{ seller_tax_id_label }}: {{ seller_tax_id }}<br>{% endif %}
           {% if user.bank_account %}IBAN: {{ user.bank_account.IBAN }}{% endif %}
         </td>
       </tr>

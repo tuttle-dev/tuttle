@@ -3,7 +3,7 @@ import {
   FileUp, Sparkles, Loader2, X, Check, CheckCheck,
   Trash2, ChevronDown, ChevronRight, Link2, AlertTriangle,
   Users, Building2, FileSignature, FolderKanban, Circle,
-  XCircle, Receipt, Plus, Minus,
+  XCircle, ReceiptText, Plus, Minus,
 } from "lucide-react";
 import { rpc } from "../../api/rpc";
 
@@ -579,7 +579,7 @@ function InvoiceSection({ invoices, setInvoices, importedContracts, importedProj
       <div onClick={() => setCollapsed((c) => !c)}
         className="flex items-center gap-2 w-full py-2 text-left group cursor-pointer" role="button">
         {collapsed ? <ChevronRight size={14} className="text-tertiary" /> : <ChevronDown size={14} className="text-tertiary" />}
-        <span className="text-tertiary"><Receipt size={16} /></span>
+        <span className="text-tertiary"><ReceiptText size={16} /></span>
         <span className="text-sm font-semibold">Invoices</span>
         <span className="text-xs text-fuchsia-400 font-medium">
           {acceptedCount}/{invoices.length}

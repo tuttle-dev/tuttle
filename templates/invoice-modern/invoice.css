@@ -311,3 +311,11 @@ body {
 .footer span {
   color: #888;
 }
+
+.tax-note {
+  margin-top: 14px;
+  margin-bottom: 12px;
+  font-size: 9pt;
+  line-height: 1.4;
+  color: #555;
+}

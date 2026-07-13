@@ -1,6 +1,6 @@
 [project]
 name = "tuttle"
-version = "3.14.0"
+version = "4.0.0"
 description = "Painless business planning for freelancers."
 readme = "README.md"
 license = "GPL-3.0-only"
@@ -92,7 +92,7 @@ known_typing = ["typing"]
 sections = ["FUTURE", "TYPING", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
 
 [tool.bumpversion]
-current_version = "3.14.0"
+current_version = "4.0.0"
 commit = true
 tag = true
 tag_name = "v{new_version}"

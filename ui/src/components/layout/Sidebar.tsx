@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import {
   LayoutDashboard, CalendarDays, PieChart, Banknote,
   FolderKanban, FileSignature, Building2, Users, Clock, FileText,
-  FileUp, Settings, ChevronUp, UserPlus, Trash2, Receipt,
+  FileUp, Settings, ChevronUp, UserPlus, Trash2, CheckSquare, ReceiptText,
   type LucideIcon,
 } from "lucide-react";
 
@@ -15,13 +15,13 @@ const SECTIONS: { label: string; items: SidebarItem[] }[] = [
       { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
       { id: "timeline", label: "Timeline", icon: CalendarDays },
       { id: "tax", label: "Tax & Reserves", icon: PieChart },
-      { id: "expenses", label: "Expenses", icon: Receipt },
       { id: "salary", label: "Salary", icon: Banknote },
     ],
   },
   {
     label: "Workflows",
     items: [
+      { id: "tasks", label: "Tasks", icon: CheckSquare },
       { id: "import", label: "Import", icon: FileUp },
       { id: "timetracking", label: "Time Tracking", icon: Clock },
       { id: "invoicing", label: "Invoicing", icon: FileText },
@@ -34,15 +34,12 @@ const SECTIONS: { label: string; items: SidebarItem[] }[] = [
       { id: "clients", label: "Clients", icon: Building2 },
       { id: "contracts", label: "Contracts", icon: FileSignature },
       { id: "projects", label: "Projects", icon: FolderKanban },
-    ],
-  },
-  {
-    label: "",
-    items: [
-      { id: "settings", label: "Settings", icon: Settings },
+      { id: "expenses", label: "Expenses", icon: ReceiptText },
     ],
   },
 ];
+
+const SETTINGS_ITEM: SidebarItem = { id: "settings", label: "Settings", icon: Settings };
 
 export type RegisteredUser = {
   id: number;
@@ -92,7 +89,7 @@ export function Sidebar({
         {SECTIONS.map((section) => (
           <div key={section.label}>
             {!collapsed && (
-              <div className="px-2 pb-1 text-xs font-semibold uppercase tracking-widest text-tertiary">
+              <div className="px-2 pb-1 text-[13px] font-medium text-tertiary">
                 {section.label}
               </div>
             )}
@@ -117,6 +114,20 @@ export function Sidebar({
           </div>
         ))}
       </nav>
+
+      {/* Settings */}
+      <div className="shrink-0 px-2 pb-2">
+        <button
+          onClick={() => onSelect(SETTINGS_ITEM.id)}
+          className={`no-drag flex items-center gap-2.5 w-full rounded-md px-2.5 py-1.5 text-sm transition-colors cursor-default
+            ${selected === SETTINGS_ITEM.id ? "bg-bg-selected text-primary" : "text-secondary hover:bg-bg-hover hover:text-primary"}
+            ${collapsed ? "justify-center" : ""}`}
+          title={collapsed ? SETTINGS_ITEM.label : undefined}
+        >
+          <SETTINGS_ITEM.icon size={16} strokeWidth={1.8} className="shrink-0" />
+          {!collapsed && <span className="truncate">{SETTINGS_ITEM.label}</span>}
+        </button>
+      </div>
 
       {/* User switcher */}
       <div className="relative shrink-0 border-t border-border-subtle" ref={menuRef}>

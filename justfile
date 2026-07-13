@@ -97,8 +97,9 @@ calendar-setup:
 
 # ── Test ─────────────────────────────────────────────────────────────────────
 
-# Run the test suite
+# Run the full test suite (Python unit tests + TypeScript type-check)
 test *args="":
+    cd {{electron}} && npx tsc --noEmit
     {{python}} -m pytest {{args}}
 
 

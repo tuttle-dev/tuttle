@@ -18,6 +18,7 @@ function createWindow() {
     height: 960,
     minWidth: 1024,
     minHeight: 700,
+    show: false,
     titleBarStyle: "hiddenInset",
     trafficLightPosition: { x: 16, y: 18 },
     backgroundColor: "#292929",
@@ -27,6 +28,11 @@ function createWindow() {
       nodeIntegration: false,
       plugins: true,
     },
+  });
+
+  mainWindow.once("ready-to-show", () => {
+    mainWindow?.maximize();
+    mainWindow?.show();
   });
 
   if (process.env.VITE_DEV_SERVER_URL) {

@@ -48,6 +48,7 @@ interface ProfileForm {
   signature: string;
   accent_color: string;
   VAT_number: string;
+  tax_number: string;
   operating_country: string;
   street: string;
   number: string;
@@ -63,7 +64,7 @@ const EMPTY_PROFILE: ProfileForm = {
   name: "", subtitle: "", email: "", phone_number: "", website: "", logo: "",
   signature: "",
   accent_color: "#2563eb",
-  VAT_number: "", operating_country: "Germany",
+  VAT_number: "", tax_number: "", operating_country: "Germany",
   street: "", number: "", postal_code: "", city: "", country: "Germany",
   bank_name: "", bank_IBAN: "", bank_BIC: "",
 };
@@ -225,6 +226,7 @@ export function SettingsView() {
           signature: str(p, "signature"),
           accent_color: str(p, "accent_color") || "#2563eb",
           VAT_number: str(p, "VAT_number"),
+          tax_number: str(p, "tax_number"),
           operating_country: str(p, "operating_country") || "Germany",
           street: addr ? str(addr, "street") : "",
           number: addr ? str(addr, "number") : "",
@@ -254,6 +256,7 @@ export function SettingsView() {
         signature: profile.signature,
         accent_color: profile.accent_color,
         VAT_number: profile.VAT_number,
+        tax_number: profile.tax_number,
         operating_country: profile.operating_country,
         address: {
           street: profile.street,
@@ -531,6 +534,11 @@ export function SettingsView() {
               <div>
                 <label className={labelCls}>VAT number <span className="text-accent">*</span></label>
                 <input className={inputCls} value={profile.VAT_number} onChange={pset("VAT_number")} placeholder="DE123456789" />
+              </div>
+              <div>
+                <label className={labelCls}>Tax number</label>
+                <input className={inputCls} value={profile.tax_number} onChange={pset("tax_number")} placeholder="21/815/08150" />
+                <p className="text-xs text-secondary mt-1">Steuernummer. Used on invoices outside the scope of VAT, where the VAT number may not appear.</p>
               </div>
               <div>
                 <label className={labelCls}>Operating country <span className="text-accent">*</span></label>

@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { Receipt, Plus, Trash2, Save, X, Info } from "lucide-react";
+import { ReceiptText, Plus, Trash2, Save, X, Info } from "lucide-react";
 import { rpc } from "../../api/rpc";
 import { str, num } from "../../api/entity";
 import { Toolbar, ToolbarButtonPrimary, ListDetailLayout, LIST_ROW_PADDING } from "../shared/ToolbarButtons";
@@ -164,7 +164,7 @@ export function ExpensesView() {
 
       {expenses.length === 0 && mode === "view" ? (
         <EmptyStateIntro
-          icon={Receipt}
+          icon={ReceiptText}
           description="Track your recurring business and personal expenses (e.g. health insurance, software) to accurately calculate your effective freelancer take-home salary."
         />
       ) : (
@@ -214,7 +214,7 @@ export function ExpensesView() {
               />
             ) : (
               <div className="flex flex-col items-center justify-center h-full gap-2 text-tertiary">
-                <Receipt size={36} strokeWidth={1.2} />
+                <ReceiptText size={36} strokeWidth={1.2} />
                 <span className="text-sm">Select an expense</span>
               </div>
             )
@@ -240,7 +240,7 @@ function ExpenseRow({ expense, isSelected, onSelect }: {
       className={`w-full text-left ${LIST_ROW_PADDING} border-b border-border-subtle transition-colors flex items-center gap-3
         ${isSelected ? "bg-bg-selected" : "hover:bg-bg-hover"}`}>
       <div className="w-9 h-9 rounded-full bg-bg-card flex items-center justify-center text-sm font-semibold text-secondary shrink-0">
-        <Receipt size={16} />
+        <ReceiptText size={16} />
       </div>
       <div className="min-w-0 flex-1">
         <div className="text-sm font-medium truncate">{title}</div>
@@ -310,7 +310,7 @@ function ExpenseDetail({ expense, onEdit, onDelete, deleteError }: {
       )}
 
       <div className="grid grid-cols-2 gap-4">
-        <InfoRow icon={<Receipt size={14} />} label="Amount" value={fmt(amount, currency)} />
+        <InfoRow icon={<ReceiptText size={14} />} label="Amount" value={fmt(amount, currency)} />
         <InfoRow icon={<Info size={14} />} label="Period" value={period.charAt(0).toUpperCase() + period.slice(1)} />
       </div>
 

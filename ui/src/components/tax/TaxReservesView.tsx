@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BarChart3, Receipt, Calculator, ChevronDown } from "lucide-react";
+import { BarChart3, ReceiptText, Calculator, ChevronDown } from "lucide-react";
 import { rpc } from "../../api/rpc";
 import { EmptyStateIntro } from "../shared/EmptyStateIntro";
 import type { Entity } from "../../api/types";
@@ -131,7 +131,7 @@ export function TaxReservesView() {
       </Section>
 
       {/* Monthly VAT */}
-      <Section title="Monthly VAT" icon={<Receipt size={16} />}>
+      <Section title="Monthly VAT" icon={<ReceiptText size={16} />}>
         {months.length === 0 ? (
           <p className="text-sm text-muted">No VAT data available.</p>
         ) : (
