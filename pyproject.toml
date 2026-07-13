@@ -4,7 +4,7 @@ version = "4.0.0"
 description = "Painless business planning for freelancers."
 readme = "README.md"
 license = "GPL-3.0-only"
-requires-python = ">=3.12"
+requires-python = ">=3.13"
 authors = [
     { name = "Christian Staudt" },
     { name = "Vladimir Peter" },
@@ -16,8 +16,8 @@ classifiers = [
     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Natural Language :: English",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
 ]
 
 dependencies = [
