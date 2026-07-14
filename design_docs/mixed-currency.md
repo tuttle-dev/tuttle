@@ -62,29 +62,31 @@ USD in the PDF, the e-invoice, the invoice list, and the timeline. Conversion to
 user's primary currency happens exclusively where values from multiple invoices are
 summed: dashboard KPIs, tax reserves, spendable income, forecasting.
 
-### Freeze the rate on the invoice
-
-Add a nullable `Invoice.fx_rate` (Numeric) column, populated once when the invoice
-is created and never recomputed. The alternative — converting on the fly from a live
-rate table — would make last year's tax figures change every time the app is opened,
-which is unusable for anything that gets filed. This is the only schema migration
-the feature needs.
-
-### Which rate
+### The rate is a function, not a column
 
 The **ECB monthly average for the month of the invoice date**. Under § 16 Abs. 6
 UStG the binding rate is the monthly *Umsatzsteuer-Umrechnungskurs* published by the
 BMF, which is derived from ECB reference rates — so the legally required rate and the
 sensible default coincide.
 
+A closed month's average never changes, so `rate(currency, month)` is already
+deterministic: last year's tax figures cannot move under us. That means **no
+`Invoice.fx_rate` column, no migration, and no backfill** — converting on read is
+just as stable as freezing a value, and is a function instead of a schema.
+
 Source: `frankfurter.dev` (free, no API key, ECB data, supports date-range averages).
-Cached in the existing `app_db` key/value settings store. On fetch failure or
-offline, fall back to a manual rate field on the invoice, prefilled where a cached
-value exists.
+Fetched rates are cached in the existing `app_db` key/value store, which is what makes
+the app work offline for months it has already seen. A month with no cached rate and
+no network stays unconverted and is flagged — it does not silently count as zero.
 
 Pinning to the *invoice date* means VAT (supply date) and income tax (Zufluss /
-payment date) use the same rate. This is a deliberate simplification: one rate per
-invoice, one column. Revisit only if the drift is shown to matter.
+payment date) use the same rate. Deliberate simplification; revisit only if the drift
+is shown to matter.
+
+**When the column earns its place:** the first time someone must override a rate (a
+tax advisor insists on a different one), or wants to see on the invoice which rate was
+applied. Add `Invoice.fx_rate` then, nullable, falling back to the function. Not
+before.
 
 ### Conversion fee: salary only, never tax
 
@@ -125,7 +127,7 @@ no-op and the numbers are identical to today's.
 ### Display
 
 Individual invoices always render in their native currency. Converted aggregates are
-marked as approximate (`≈` or a footnote), because they are.
+prefixed with `≈`, because they are approximate.
 
 ## Plan
 
@@ -136,22 +138,22 @@ marked as approximate (`≈` or a footnote), because they are.
 2. **Settings.** New "Currency conversion" fieldset with `currency.primary` (defaulted
    from the operating country's tax system) and `currency.fx_haircut`, plus the
    explainer.
-3. **FX rate module.** Fetch the ECB monthly average, cache it, expose a manual
-   override. One small module, no new heavy dependency.
-4. **Migration + capture.** `Invoice.fx_rate`, populated at invoice creation;
-   backfill existing invoices lazily on first read rather than in a batch job.
-5. **Convert the aggregates.** Delete the skip branches in `tuttle/kpi.py` and
-   `tuttle/tax_reserves.py`; convert invoice totals via `fx_rate` instead. Converted
-   VAT is zero for every in-scope case, so no VAT rounding rules are needed.
-6. **Salary haircut.** `currency.fx_haircut` applied in `compute_spendable_income`.
-7. **Guard the unsupported case.** Warn on a contract with nonzero `VAT_rate` and a
-   currency other than the tax currency.
+3. **FX rate module.** `rate(currency, month)` against frankfurter.dev, cached in
+   `app_db`. One small module, no schema change, no new heavy dependency.
+4. **Convert the aggregates.** Delete the skip branches in `tuttle/kpi.py` and
+   `tuttle/tax_reserves.py`; convert invoice totals through `rate()` instead.
+   Converted VAT is zero for every in-scope case, so no VAT rounding rules are needed.
+5. **Salary haircut.** `currency.fx_haircut` applied in `compute_spendable_income`.
+6. **Guard the unsupported cases.** Warn on a contract with nonzero `VAT_rate` and a
+   currency other than the tax currency, and on a month whose rate could not be
+   resolved.
 
 ## Out of scope
 
 - **Domestic VAT on a foreign-currency invoice** (third row above) — converted VAT
   amounts, VAT rounding rules, nonzero BT-111. Guarded with a warning instead.
+- **Per-invoice stored rate and manual override** (`Invoice.fx_rate`) — the monthly
+  average is deterministic, so nothing needs freezing until someone must override it.
 - Currencies beyond EUR, GBP, USD.
-- Batch backfill of historical rates (lazy on first view instead).
 - Per-client or per-project currency defaults.
 - Rate pinned to payment date as well as invoice date.
