@@ -23,3 +23,9 @@ Schema lives in `tuttle/model.py`. Migrations are Alembic in `tuttle/migrations/
 Any change to a SQLModel class requires `just migrate "<msg>"` + reviewing the
 generated revision for rename-as-drop+add traps. See
 `.cursor/rules/schema-migrations.mdc` and `tuttle/migrations/README.md`.
+
+## Verification
+
+### UI
+Test UI changes using playwright electron. https://playwright.dev/docs/api/class-electron
+Provide screenshots as artefacts in PR comments to be reviewed.
