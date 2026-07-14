@@ -484,3 +484,38 @@ class TestOutsideScopeOfTax:
             for b in breakdowns
         }
         assert categories == {"Z", "O"}
+
+
+# -- Foreign-currency invoices: BT-6 / BT-111 ---------------------------------
+
+
+class TestForeignCurrency:
+    """EN16931 BR-53: with a tax currency code (BT-6), BT-111 must be present."""
+
+    @staticmethod
+    def _usd_invoice() -> Invoice:
+        """A USD invoice to a US client — outside the scope of German VAT."""
+        invoice = _make_outside_scope_invoice()
+        invoice.contract.currency = "USD"
+        return invoice
+
+    def test_euro_invoice_emits_neither_bt6_nor_a_second_tax_total(self):
+        xml_str = serialize_zugferd_xml(
+            _make_invoice(), _make_user(), profile="EN16931", validate=True
+        ).decode("utf-8")
+        assert "TaxCurrencyCode" not in xml_str
+        assert len(re.findall(r"<ram:TaxTotalAmount", xml_str)) == 1
+
+    def test_usd_invoice_emits_bt6_and_bt111_in_the_tax_currency(self):
+        user = _make_user()
+        user.operating_country = "Germany"
+        xml_str = serialize_zugferd_xml(
+            self._usd_invoice(), user, profile="EN16931", validate=True
+        ).decode("utf-8")
+
+        assert "<ram:InvoiceCurrencyCode>USD</ram:InvoiceCurrencyCode>" in xml_str
+        assert "<ram:TaxCurrencyCode>EUR</ram:TaxCurrencyCode>" in xml_str
+        # Outside the scope of VAT: zero VAT, so BT-111 is 0.00 and needs no rate.
+        assert (
+            '<ram:TaxTotalAmount currencyID="EUR">0.00</ram:TaxTotalAmount>' in xml_str
+        )

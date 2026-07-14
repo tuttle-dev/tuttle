@@ -38,6 +38,7 @@ from sqlmodel import SQLModel, Field, Relationship
 from pathlib import Path
 
 from .app.core.formatting import fmt_currency
+from .fx import convert, primary_currency, rate
 from .data_dir import get_data_dir
 from .dev import deprecated
 from .time import ContractType, Cycle, TimeUnit
@@ -310,22 +311,18 @@ class Contact(RpcMixin, SQLModel, table=True):
             return ""
 
         if address_only:
-            return textwrap.dedent(
-                f"""
+            return textwrap.dedent(f"""
                 {self.address.street} {self.address.number}
                 {self.address.postal_code} {self.address.city}
-                {self.address.country}"""
-            )
+                {self.address.country}""")
 
-        return textwrap.dedent(
-            f"""
+        return textwrap.dedent(f"""
         {self.name}
         {self.company}
         {self.address.street} {self.address.number}
         {self.address.postal_code} {self.address.city}
         {self.address.country}
-        """
-        )
+        """)
 
 
 class ClientContact(SQLModel, table=True):
@@ -917,6 +914,9 @@ class Invoice(RpcMixin, SQLModel, table=True):
         "sum_formatted",
         "vat_total_formatted",
         "total_formatted",
+        "currency",
+        "fx_rate_formatted",
+        "total_primary_formatted",
         "pdf_path",
         "is_reminder",
         "reminder_chain_head_id",
@@ -1153,6 +1153,39 @@ class Invoice(RpcMixin, SQLModel, table=True):
     def total_formatted(self) -> str:
         currency = self.contract.currency if self.contract else "EUR"
         return fmt_currency(self.total, currency)
+
+    @property
+    def currency(self) -> str:
+        return self.contract.currency if self.contract else "EUR"
+
+    @property
+    def fx_rate_formatted(self) -> Optional[str]:
+        """The rate applied when converting this invoice, e.g. "1 USD = 0.9174 EUR".
+
+        None when the invoice is already in the primary currency (the usual
+        case), so the UI shows nothing.
+        """
+        primary = primary_currency()
+        if self.currency == primary:
+            return None
+        r = rate(self.currency, primary, self.date)
+        if r is None:
+            return None
+        return (
+            f"1 {self.currency} = {r:.4f} {primary} "
+            f"(ECB monthly average, {self.date:%b %Y})"
+        )
+
+    @property
+    def total_primary_formatted(self) -> Optional[str]:
+        """This invoice's total in the primary currency, prefixed "≈" (approximate)."""
+        primary = primary_currency()
+        if self.currency == primary:
+            return None
+        converted = convert(self.total, self.currency, primary, self.date)
+        if converted is None:
+            return None
+        return f"≈ {fmt_currency(converted, primary)}"
 
     @property
     def pdf_path(self) -> Optional[str]:

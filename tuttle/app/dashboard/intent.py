@@ -61,7 +61,9 @@ class DashboardIntent(SQLModelDataSourceMixin, Intent):
         """Get monthly revenue breakdown for the last n months."""
         try:
             invoices = self.query(Invoice)
-            data = monthly_revenue_breakdown(invoices, n_months=n_months)
+            data = monthly_revenue_breakdown(
+                invoices, n_months=n_months, country=self._get_country()
+            )
             return IntentResult(was_intent_successful=True, data=data)
         except Exception as e:
             return IntentResult(
@@ -95,7 +97,9 @@ class DashboardIntent(SQLModelDataSourceMixin, Intent):
         try:
             invoices = self.query(Invoice)
             country = self._get_country()
-            revenue = monthly_revenue_breakdown(invoices, n_months=n_months)
+            revenue = monthly_revenue_breakdown(
+                invoices, n_months=n_months, country=country
+            )
             spendable = monthly_spendable_breakdown(
                 invoices, country=country, n_months=n_months
             )

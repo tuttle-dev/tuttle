@@ -28,13 +28,13 @@ from tuttle.model import (
     FinancialGoal,
     Invoice,
     InvoiceItem,
+    TaxCategory,
     Timesheet,
     TimeTrackingItem,
     Project,
     TimeUnit,
     User,
 )
-
 
 # ---------------------------------------------------------------------------
 # Curated heating-repair domain data
@@ -356,6 +356,7 @@ def create_fake_invoice(
         _HEATING_INVOICE_ITEMS,
         k=min(number_of_items, len(_HEATING_INVOICE_ITEMS)),
     )
+    contract = project.contract
     for desc, unit in used_items:
         unit_price = abs(round(numpy.random.normal(75, 20), 2))
         item_end = inv_date - timedelta(days=random.randint(1, 10))
@@ -367,7 +368,10 @@ def create_fake_invoice(
             unit=unit,
             unit_price=Decimal(unit_price),
             description=desc,
-            VAT_rate=Decimal("0.19"),
+            # Follow the contract: a USD contract to a US client is outside the
+            # scope of German VAT, so its items must not carry 19%.
+            VAT_rate=contract.VAT_rate,
+            VAT_category=contract.VAT_category,
             invoice=invoice,
         )
 
@@ -404,6 +408,91 @@ def create_fake_invoice(
             logger.exception(ex)
 
     return invoice
+
+
+def create_usd_security_data(user: User) -> tuple[Project, Invoice, ClientContact]:
+    """A US client billed in USD — the mixed-currency case, end to end."""
+    contact = Contact(
+        first_name="Dana",
+        last_name="Reyes",
+        email="reyes@ductworksecurity.com",
+        company="Ductwork Security Inc.",
+        address=Address(
+            street="Market Street",
+            number="1200",
+            postal_code="94103",
+            city="San Francisco",
+            country="United States",
+        ),
+    )
+    client = Client(name="Ductwork Security Inc.", invoicing_contact=contact)
+
+    contract = Contract(
+        title="IT Security Review – Ductwork Security Inc.",
+        client=client,
+        signature_date=datetime.date.today() - timedelta(days=120),
+        start_date=datetime.date.today() - timedelta(days=110),
+        rate=Decimal("1000.00"),
+        currency="USD",
+        # Outside the scope of German VAT: B2B service to a non-EU recipient.
+        VAT_rate=Decimal("0"),
+        VAT_category=TaxCategory.outside_scope,
+        unit=TimeUnit.day,
+        units_per_workday=8,
+        volume=10,
+        term_of_payment=14,
+        billing_cycle=Cycle.monthly,
+    )
+
+    project = Project(
+        title="IT Security Review",
+        tag="#itsecurity",
+        description="Security review of the pneumatic ductwork control systems",
+        is_completed=False,
+        start_date=contract.start_date,
+        end_date=datetime.date.today() + timedelta(days=60),
+        contract=contract,
+    )
+
+    inv_date = datetime.date.today() - timedelta(days=45)
+    invoice = Invoice(
+        number=f"{inv_date.strftime('%Y-%m-%d')}-{next(invoice_number_counter)}",
+        date=inv_date,
+        sent=True,
+        paid=True,
+        cancelled=False,
+        contract=contract,
+        project=project,
+        rendered=True,
+    )
+    InvoiceItem(
+        start_date=inv_date - timedelta(days=30),
+        end_date=inv_date - timedelta(days=2),
+        quantity=1,
+        unit="unit",
+        unit_price=Decimal("1000.00"),
+        description="IT security review",
+        VAT_rate=Decimal("0"),
+        VAT_category=TaxCategory.outside_scope,
+        invoice=invoice,
+    )
+
+    try:
+        rendering.render_invoice(
+            user=user,
+            invoice=invoice,
+            out_dir=get_data_dir() / "Invoices",
+            only_final=True,
+        )
+        logger.info("✅ rendered USD invoice for IT Security Review")
+    except Exception as ex:
+        logger.error(f"❌ Error rendering USD invoice: {ex}")
+
+    return (
+        project,
+        invoice,
+        ClientContact(client=client, contact=contact, role="invoicing"),
+    )
 
 
 def create_heating_data(
@@ -559,9 +648,17 @@ def create_heating_data(
         )
         projects.append(project)
 
+    # -- one US client invoiced in USD ----------------------------------------
+    # Harry is taxed in Germany but bills this one in dollars: the mixed-currency
+    # case. B2B to a non-EU recipient, so the supply is outside the scope of
+    # German VAT (§ 3a Abs. 2 UStG).
+    us_project, us_invoice, us_client_contact = create_usd_security_data(user)
+    projects.append(us_project)
+    client_contacts.append(us_client_contact)
+
     today = datetime.date.today()
-    invoices = []
-    for i, project in enumerate(projects):
+    invoices = [us_invoice]
+    for i, project in enumerate(projects[:-1]):
         if i < 2:
             # First two invoices: sent but unpaid, dated 30+ days ago → overdue
             inv_date = today - timedelta(days=random.randint(30, 60))

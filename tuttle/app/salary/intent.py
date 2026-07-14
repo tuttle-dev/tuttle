@@ -3,8 +3,8 @@
 from ..core.abstractions import SQLModelDataSourceMixin, Intent
 from ..core.intent_result import IntentResult
 
+from ...fx import primary_currency
 from ...model import Invoice, RecurringExpense, User
-from ...tax import get_tax_system
 from ...tax_reserves import compute_effective_salary
 
 from .data_source import SalaryDataSource
@@ -27,10 +27,8 @@ class SalaryIntent(SQLModelDataSourceMixin, Intent):
         return "Germany"
 
     def _get_tax_currency(self, country: str) -> str:
-        try:
-            return get_tax_system(country).currency
-        except NotImplementedError:
-            return "EUR"
+        """The currency aggregates are shown in (settings, default: tax system)."""
+        return primary_currency(country)
 
     def get_effective_salary(self) -> IntentResult:
         """Compute the effective salary range."""
@@ -105,4 +103,3 @@ class SalaryIntent(SQLModelDataSourceMixin, Intent):
                 "label": label,
             }
         return IntentResult(was_intent_successful=True, data=fields)
-

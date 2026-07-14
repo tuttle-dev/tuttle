@@ -12,6 +12,7 @@ from typing import List, NamedTuple, Optional
 
 from pandas import DataFrame
 
+from .fx import convert, fx_haircut
 from .model import Invoice, Project, RecurringExpense
 from .tax import get_tax_system
 from .time import Cycle, TimeUnit
@@ -48,13 +49,14 @@ class SpendableIncome(NamedTuple):
     taxable_profit: Decimal  # net_revenue - business_expenses
     vat_reserve: Decimal  # VAT to set aside
     income_tax_reserve: Decimal  # estimated income tax + soli
-    spendable: Decimal  # taxable_profit - income_tax_reserve
+    spendable: Decimal  # taxable_profit - income_tax_reserve - conversion_fee
     # breakdown by income source
     received_gross: Decimal  # paid invoices, gross
     received_net: Decimal  # paid invoices, net of VAT
     outstanding_gross: Decimal  # sent but unpaid, gross
     outstanding_net: Decimal  # sent but unpaid, net of VAT
     planned_revenue: Decimal  # calendar-derived future revenue (net)
+    conversion_fee: Decimal = Decimal(0)  # FX spread on foreign-currency revenue
 
 
 def _invoice_currency(inv: Invoice) -> Optional[str]:
@@ -64,6 +66,38 @@ def _invoice_currency(inv: Invoice) -> Optional[str]:
     return None
 
 
+def convert_invoice(
+    inv: Invoice, currency: Optional[str]
+) -> Optional[tuple[Decimal, Decimal]]:
+    """Invoice (total, VAT) expressed in *currency*.
+
+    Returns ``None`` when the invoice is in another currency and the ECB rate
+    for its month cannot be resolved — the caller must leave it out and say so,
+    never count it as zero.
+    """
+    inv_currency = _invoice_currency(inv)
+    if not currency or inv_currency in (currency, None):
+        return inv.total, inv.VAT_total
+
+    if inv.VAT_total:
+        # The design's third row: place of supply is domestic, so the invoice
+        # carries VAT in a foreign currency. Converting it needs rounding rules
+        # we deliberately do not have — warn instead of guessing.
+        logger.warning(
+            "Invoice %s is in %s and carries VAT (%s). VAT on foreign-currency "
+            "invoices is not supported; the converted VAT figure is an estimate.",
+            inv.number or inv.id,
+            inv_currency,
+            inv.VAT_total,
+        )
+
+    total = convert(inv.total, inv_currency, currency, inv.date)
+    vat = convert(inv.VAT_total, inv_currency, currency, inv.date)
+    if total is None or vat is None:
+        return None
+    return total, vat
+
+
 def compute_planned_revenue(
     projects: List[Project],
     time_data: Optional[DataFrame] = None,
@@ -71,9 +105,9 @@ def compute_planned_revenue(
 ) -> Decimal:
     """Net revenue expected from future calendar events in the current year.
 
-    Converts planned hours to revenue via each project's contract rate.
-    Only includes future events (today onward) within the current year.
-    If *currency* is given, only projects with matching currency are counted.
+    Converts planned hours to revenue via each project's contract rate, and
+    contracts in a foreign currency into *currency* at the current month's rate
+    (future revenue has no invoice date to pin a rate to).
     """
     if time_data is None or time_data.empty:
         return Decimal(0)
@@ -104,13 +138,17 @@ def compute_planned_revenue(
         if not project:
             continue
         contract = project.contract
-        if currency and contract.currency not in (currency, None):
-            continue
         if not contract.rate:
             continue
         unit_hours = contract.units_per_workday if contract.unit == TimeUnit.day else 1
         billable_units = Decimal(str(hours)) / Decimal(str(unit_hours))
-        total += billable_units * contract.rate
+        revenue = billable_units * contract.rate
+        if currency and contract.currency not in (currency, None):
+            converted = convert(revenue, contract.currency, currency, today)
+            if converted is None:
+                continue
+            revenue = converted
+        total += revenue
 
     return total.quantize(Decimal("0.01"))
 
@@ -123,27 +161,21 @@ def compute_vat_reserves(
 ) -> VATReserve:
     """Sum VAT collected on non-cancelled invoices in the given period.
 
-    If *currency* is given, only invoices denominated in that currency are
-    included; others are silently skipped (a debug log is emitted).
+    Invoices in another currency are converted to *currency* at the ECB monthly
+    average. For the supported cases (reverse charge, outside scope) their VAT
+    is zero before and after conversion.
     """
     vat_total = Decimal(0)
     count = 0
-    skipped = 0
     for inv in invoices:
         if inv.cancelled:
             continue
         if period_start <= inv.date <= period_end:
-            if currency and _invoice_currency(inv) not in (currency, None):
-                skipped += 1
+            converted = convert_invoice(inv, currency)
+            if converted is None:
                 continue
-            vat_total += inv.VAT_total
+            vat_total += converted[1]
             count += 1
-    if skipped:
-        logger.debug(
-            "compute_vat_reserves: skipped %d invoice(s) with currency != %s",
-            skipped,
-            currency,
-        )
     return VATReserve(
         vat_collected=vat_total,
         invoice_count=count,
@@ -254,28 +286,24 @@ def compute_spendable_income(
     received_vat = Decimal(0)
     outstanding_gross = Decimal(0)
     outstanding_vat = Decimal(0)
-    skipped = 0
+    foreign_net = Decimal(0)  # converted net revenue that must be exchanged
 
     for inv in invoices:
         if inv.cancelled:
             continue
         if year_start <= inv.date <= year_end:
-            if currency and _invoice_currency(inv) not in (currency, None):
-                skipped += 1
+            converted = convert_invoice(inv, currency)
+            if converted is None:
                 continue
+            gross, vat = converted
+            if _invoice_currency(inv) not in (currency, None):
+                foreign_net += gross - vat
             if inv.paid:
-                received_gross += inv.total
-                received_vat += inv.VAT_total
+                received_gross += gross
+                received_vat += vat
             else:
-                outstanding_gross += inv.total
-                outstanding_vat += inv.VAT_total
-
-    if skipped:
-        logger.debug(
-            "compute_spendable_income: skipped %d invoice(s) with currency != %s",
-            skipped,
-            currency,
-        )
+                outstanding_gross += gross
+                outstanding_vat += vat
 
     received_net = received_gross - received_vat
     outstanding_net = outstanding_gross - outstanding_vat
@@ -301,9 +329,7 @@ def compute_spendable_income(
                 + 1,
                 1,
             )
-            biz_expenses_ytd = (monthly_exp * months_elapsed).quantize(
-                Decimal("0.01")
-            )
+            biz_expenses_ytd = (monthly_exp * months_elapsed).quantize(Decimal("0.01"))
     else:
         biz_expenses_ytd = Decimal(0)
 
@@ -313,7 +339,11 @@ def compute_spendable_income(
         taxable_profit, country, deductions, year=year
     )
 
-    spendable = taxable_profit - tax_reserve.ytd_reserve
+    # The bank/Wise spread never reduces taxable revenue — only what lands in
+    # the account, so it is subtracted after the tax reserve, not before.
+    conversion_fee = (foreign_net * fx_haircut() / 100).quantize(Decimal("0.01"))
+
+    spendable = taxable_profit - tax_reserve.ytd_reserve - conversion_fee
 
     return SpendableIncome(
         gross_revenue_ytd=gross_ytd,
@@ -328,6 +358,7 @@ def compute_spendable_income(
         outstanding_gross=outstanding_gross,
         outstanding_net=outstanding_net,
         planned_revenue=planned,
+        conversion_fee=conversion_fee,
     )
 
 
@@ -406,14 +437,16 @@ def compute_effective_salary(
             continue
         if inv.date < year_start:
             continue
-        if currency and _invoice_currency(inv) not in (currency, None):
+        converted = convert_invoice(inv, currency)
+        if converted is None:
             continue
+        gross, vat = converted
         if inv.paid:
-            gross_paid += inv.total
-            vat_paid += inv.VAT_total
+            gross_paid += gross
+            vat_paid += vat
         else:
-            gross_outstanding += inv.total
-            vat_outstanding += inv.VAT_total
+            gross_outstanding += gross
+            vat_outstanding += vat
 
     net_paid = gross_paid - vat_paid
     net_all = net_paid + (gross_outstanding - vat_outstanding)

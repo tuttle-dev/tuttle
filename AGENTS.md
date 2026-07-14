@@ -26,6 +26,8 @@ generated revision for rename-as-drop+add traps. See
 
 ## Verification
 
+For big new features, add a new contract and project to the Harry tuttle user for demonstration purposes.
+
 ### UI
-Test UI changes using playwright electron. https://playwright.dev/docs/api/class-electron
-Provide screenshots as artefacts in PR comments to be reviewed.
+- Test UI changes using playwright electron. https://playwright.dev/docs/api/class-electron
+- launch the electron app and provide screenshots as artefacts in PR comments to be reviewed.

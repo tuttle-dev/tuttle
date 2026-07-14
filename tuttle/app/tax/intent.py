@@ -7,6 +7,7 @@ from ..core.abstractions import SQLModelDataSourceMixin, Intent
 from ..core.intent_result import IntentResult
 from ..timetracking.data_source import TimeTrackingDataFrameSource
 
+from ...fx import primary_currency
 from ...model import Invoice, Project, RecurringExpense, User
 from ...tax import get_tax_system, supported_countries
 from ...tax_reserves import (
@@ -34,11 +35,8 @@ class TaxIntent(SQLModelDataSourceMixin, Intent):
         return "Germany"
 
     def _get_tax_currency(self, country: str) -> str:
-        """Return the ISO 4217 currency for the country's tax system."""
-        try:
-            return get_tax_system(country).currency
-        except NotImplementedError:
-            return "EUR"
+        """The currency aggregates are shown in (settings, default: tax system)."""
+        return primary_currency(country)
 
     def get_spendable_income(self, year: int | None = None) -> IntentResult:
         """Compute spendable income breakdown."""

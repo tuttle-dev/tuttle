@@ -6,11 +6,12 @@ from typing import List, Optional, NamedTuple
 
 from pandas import DataFrame
 
+from .fx import primary_currency
 from .model import Contract, Invoice, Project
 from .time import TimeUnit
 from .timetracking import sum_hours_by_tag
 from .tax import get_tax_system
-from .tax_reserves import compute_spendable_income
+from .tax_reserves import compute_spendable_income, convert_invoice
 
 from .app.core.formatting import fmt_currency
 
@@ -67,10 +68,12 @@ def compute_kpis(
 
     *time_data* (the calendar DataFrame) is the source of truth for hours
     worked.  It drives ``effective_hourly_rate`` and ``utilization_rate``.
-    Revenue metrics come from invoices.
+    Revenue metrics come from invoices, converted into the primary currency.
     """
     today = datetime.date.today()
     year_start = today.replace(month=1, day=1)
+
+    currency = primary_currency(country)
 
     # Revenue metrics (from invoices)
     total_revenue = Decimal(0)
@@ -84,7 +87,10 @@ def compute_kpis(
     for inv in invoices:
         if inv.cancelled:
             continue
-        inv_total = inv.total
+        converted = convert_invoice(inv, currency)
+        if converted is None:
+            continue
+        inv_total = converted[0]
 
         if inv.paid:
             total_revenue += inv_total
@@ -132,16 +138,8 @@ def compute_kpis(
         if available_hours > 0:
             utilization_rate = float(total_hours / available_hours)
 
-    # Tax reserves — resolve currency from the tax system
-    tax_currency = "EUR"
     try:
-        tax_system = get_tax_system(country)
-        tax_currency = tax_system.currency
-    except NotImplementedError:
-        pass
-
-    try:
-        spending = compute_spendable_income(invoices, country, currency=tax_currency)
+        spending = compute_spendable_income(invoices, country, currency=currency)
         vat_reserve = spending.vat_reserve
         income_tax_reserve = spending.income_tax_reserve
         spendable_income = spending.spendable
@@ -164,20 +162,22 @@ def compute_kpis(
         vat_reserve=vat_reserve,
         income_tax_reserve=income_tax_reserve,
         spendable_income=spendable_income,
-        tax_currency=tax_currency,
+        tax_currency=currency,
     )
 
 
 def monthly_revenue_breakdown(
     invoices: List[Invoice],
     n_months: int = 12,
+    country: str = "Germany",
 ) -> list:
-    """Revenue breakdown by month for the last n_months.
+    """Revenue breakdown by month for the last n_months, in the primary currency.
 
     Returns a list of dicts with keys: month, revenue, pipeline, invoice_count.
     ``revenue`` is paid invoices; ``pipeline`` is sent-but-unpaid invoices.
     """
     today = datetime.date.today()
+    currency = primary_currency(country)
     start = (today - datetime.timedelta(days=30 * n_months)).replace(day=1)
 
     months = {}
@@ -198,11 +198,14 @@ def monthly_revenue_breakdown(
         key = inv.date.strftime("%Y-%m")
         if key not in months:
             continue
+        converted = convert_invoice(inv, currency)
+        if converted is None:
+            continue
         if inv.paid:
-            months[key]["revenue"] += inv.total
+            months[key]["revenue"] += converted[0]
             months[key]["invoice_count"] += 1
         elif inv.sent:
-            months[key]["pipeline"] += inv.total
+            months[key]["pipeline"] += converted[0]
 
     return sorted(months.values(), key=lambda x: x["month"])
 
@@ -240,23 +243,20 @@ def monthly_spendable_breakdown(
         }
         current = (current + datetime.timedelta(days=32)).replace(day=1)
 
-    # Resolve currency from the tax system. Non-matching invoice currencies are
-    # skipped to avoid mixing values in the spendable estimate.
-    currency = None
-    try:
-        currency = get_tax_system(country).currency
-    except NotImplementedError:
-        pass
+    # Foreign-currency invoices are converted into the primary currency at the
+    # ECB monthly average, not dropped.
+    currency = primary_currency(country)
 
     for inv in invoices:
         if inv.cancelled or not inv.paid:
             continue
-        if currency and inv.contract and inv.contract.currency not in (currency, None):
-            continue
         key = inv.date.strftime("%Y-%m")
         if key in months:
-            months[key]["gross_revenue"] += inv.total
-            months[key]["vat_due"] += inv.VAT_total
+            converted = convert_invoice(inv, currency)
+            if converted is None:
+                continue
+            months[key]["gross_revenue"] += converted[0]
+            months[key]["vat_due"] += converted[1]
             months[key]["invoice_count"] += 1
 
     sorted_keys = sorted(months.keys())

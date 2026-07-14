@@ -13,7 +13,9 @@ from drafthorse.models.payment import PaymentMeans, PaymentTerms
 from drafthorse.models.tradelines import LineItem
 from drafthorse.pdf import attach_xml
 
+from .fx import convert
 from .model import Invoice, TaxCategory, User, normalize_tax_category
+from .tax import get_tax_system
 
 # -- Helpers ------------------------------------------------------------------
 
@@ -77,6 +79,34 @@ def _rate_to_percent(vat_rate: Decimal) -> Decimal:
 #: BT-121 exemption reason code and BT-120 text required by EN16931 BR-O-10.
 VATEX_OUTSIDE_SCOPE = "VATEX-EU-O"
 VATEX_OUTSIDE_SCOPE_REASON = "Not subject to VAT"
+
+
+def _tax_currency(user: User) -> str:
+    """The currency VAT is accounted in — the operating country's tax currency."""
+    try:
+        return get_tax_system(user.operating_country or "Germany").currency
+    except NotImplementedError:
+        return "EUR"
+
+
+def _vat_in_tax_currency(
+    invoice: Invoice, total_tax: Decimal, currency: str, tax_currency: str
+) -> Decimal:
+    """BT-111 — the invoice's VAT total expressed in the accounting currency.
+
+    For the cases Tuttle supports (reverse charge, outside scope) a foreign-
+    currency invoice carries no VAT, so this is zero and needs no rate at all.
+    """
+    if not total_tax:
+        return Decimal("0.00")
+    converted = convert(total_tax, currency, tax_currency, invoice.date)
+    if converted is None:
+        raise ValueError(
+            f"Invoice {invoice.number or invoice.id} carries VAT in {currency} but "
+            f"the {currency}/{tax_currency} rate for {invoice.date:%Y-%m} could not "
+            "be resolved, so BT-111 cannot be computed."
+        )
+    return converted
 
 
 # -- Schema name mapping ------------------------------------------------------
@@ -274,6 +304,19 @@ def build_zugferd_document(
         doc.trade.settlement.monetary_summation.allowance_total = Decimal("0.00")
     doc.trade.settlement.monetary_summation.tax_basis_total = line_total_sum
     doc.trade.settlement.monetary_summation.tax_total = (total_tax, currency)
+
+    # BT-6 / BT-111: when the invoice currency differs from the VAT accounting
+    # currency, EN16931 requires the tax currency code and the VAT total in it.
+    tax_currency = _tax_currency(user)
+    if not is_minimum and tax_currency != currency:
+        doc.trade.settlement.tax_currency_code = tax_currency
+        doc.trade.settlement.monetary_summation.tax_total_other_currency.add(
+            (
+                _vat_in_tax_currency(invoice, total_tax, currency, tax_currency),
+                tax_currency,
+            )
+        )
+
     doc.trade.settlement.monetary_summation.grand_total = grand_total
     doc.trade.settlement.monetary_summation.due_amount = due_amount
 

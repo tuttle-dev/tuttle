@@ -927,6 +927,13 @@ function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid, onTog
               <DRow icon={<FileText size={14} />} label="Contract" value={deepStr(invoice, "contract.title") || "—"} />
               <DRow icon={<Banknote size={14} />} label="Currency" value={str(invoice, "currency") || "EUR"} />
               <DRow icon={<Receipt size={14} />} label="Tax" value={taxTreatment(invoiceTaxCategory, invoiceVatRate)} />
+              {/* Only shown when the invoice currency differs from the primary one. */}
+              {str(invoice, "fx_rate_formatted") && (
+                <DRow icon={<Banknote size={14} />} label="Exchange rate" value={str(invoice, "fx_rate_formatted")} />
+              )}
+              {str(invoice, "total_primary_formatted") && (
+                <DRow icon={<Banknote size={14} />} label="Converted total" value={str(invoice, "total_primary_formatted")} />
+              )}
               {isRem && num(invoice, "reminder_fee") > 0 && (
                 <DRow icon={<Banknote size={14} />} label="Reminder Fee" value={String(num(invoice, "reminder_fee"))} />
               )}
