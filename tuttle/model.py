@@ -668,6 +668,16 @@ class Contract(RpcMixin, VatCategoryMixin, SQLModel, table=True):
             # default
             return default
 
+    def validate_currency(self) -> None:
+        """Normalise the currency code in place and reject an unsupported one.
+
+        Explicit, like ``validate_pricing``, for the same reason: pydantic
+        validators do not run on ``SQLModel(table=True)`` classes.
+        """
+        from .fx import validate_currency_code
+
+        self.currency = validate_currency_code(self.currency)
+
     def validate_pricing(self) -> None:
         """Enforce that the contract's pricing matches its ``type``.
 

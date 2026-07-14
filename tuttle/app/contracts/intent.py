@@ -56,6 +56,14 @@ class ContractsIntent(CrudIntent):
                 log_message=f"ContractsIntent._validated_save: {e}",
             )
         try:
+            contract.validate_currency()
+        except ValueError as e:
+            return IntentResult(
+                was_intent_successful=False,
+                error_msg=str(e),
+                log_message=f"ContractsIntent._validated_save: {e}",
+            )
+        try:
             contract.validate_vat()
         except ValueError as e:
             return IntentResult(

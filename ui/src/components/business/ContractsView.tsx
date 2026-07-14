@@ -38,6 +38,7 @@ export function ContractsView() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [defaultCurrency, setDefaultCurrency] = useState("EUR");
+  const [currencies, setCurrencies] = useState<string[]>(["EUR", "USD", "GBP", "CHF"]);
   const [parsedContracts, setParsedContracts] = useState<ParsedContract[]>([]);
   const [parsing, setParsing] = useState(false);
   const [parseError, setParseError] = useState<string | null>(null);
@@ -48,10 +49,11 @@ export function ContractsView() {
 
   async function load() {
     setLoading(true);
-    const [res, clRes, curRes] = await Promise.all([
+    const [res, clRes, curRes, supRes] = await Promise.all([
       rpc<Entity[]>("contracts.get_all"),
       rpc<Record<string, Entity>>("contracts.get_all_clients"),
       rpc<string>("contracts.get_default_currency"),
+      rpc<{ supported: string[] }>("settings.get_currency"),
     ]);
     if (res.ok && res.data) {
       setContracts(res.data);
@@ -63,6 +65,7 @@ export function ContractsView() {
     }
     if (clRes.ok && clRes.data) setClients(clRes.data);
     if (curRes.ok && curRes.data) setDefaultCurrency(curRes.data);
+    if (supRes.ok && supRes.data?.supported?.length) setCurrencies(supRes.data.supported);
     setLoading(false);
   }
 
@@ -207,9 +210,9 @@ export function ContractsView() {
               onDiscard={discardContract} onUpdate={updateParsedContract} onClose={() => setMode("view")}
             />
           ) : mode === "create" ? (
-            <ContractForm clients={clients} defaultCurrency={defaultCurrency} onSave={handleSave} onCancel={() => setMode("view")} error={saveError} />
+            <ContractForm clients={clients} defaultCurrency={defaultCurrency} currencies={currencies} onSave={handleSave} onCancel={() => setMode("view")} error={saveError} />
           ) : mode === "edit" && selected ? (
-            <ContractForm contract={selected} clients={clients} defaultCurrency={defaultCurrency} onSave={handleSave} onCancel={() => setMode("view")} error={saveError} />
+            <ContractForm contract={selected} clients={clients} defaultCurrency={defaultCurrency} currencies={currencies} onSave={handleSave} onCancel={() => setMode("view")} error={saveError} />
           ) : selected ? (
             <ContractDetail contract={selected}
               onEdit={() => setMode("edit")}
@@ -423,10 +426,11 @@ interface ContractFormData {
 
 type PricingMode = "time_based" | "fixed_price";
 
-function ContractForm({ contract, clients, defaultCurrency, onSave, onCancel, error }: {
+function ContractForm({ contract, clients, defaultCurrency, currencies, onSave, onCancel, error }: {
   contract?: Entity;
   clients: Record<string, Entity>;
   defaultCurrency: string;
+  currencies: string[];
   onSave: (data: ContractFormData) => void;
   onCancel: () => void;
   error?: string | null;
@@ -473,6 +477,8 @@ function ContractForm({ contract, clients, defaultCurrency, onSave, onCancel, er
   const isFixed = pricingMode === "fixed_price";
 
   const clientList = Object.values(clients);
+  // Keep an existing contract's currency selectable even if it left the list.
+  const currencyOptions = currencies.includes(form.currency) ? currencies : [form.currency, ...currencies];
 
   function update<K extends keyof ContractFormData>(field: K, value: ContractFormData[K]) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -572,7 +578,7 @@ function ContractForm({ contract, clients, defaultCurrency, onSave, onCancel, er
             <div>
               <label className="block text-xs text-tertiary mb-1">Currency</label>
               <select value={form.currency} onChange={(e) => update("currency", e.target.value)} className={inputCls}>
-                {["EUR", "USD", "GBP", "CHF"].map((c) => <option key={c} value={c}>{c}</option>)}
+                {currencyOptions.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
             <div>
@@ -601,7 +607,7 @@ function ContractForm({ contract, clients, defaultCurrency, onSave, onCancel, er
             <div>
               <label className="block text-xs text-tertiary mb-1">Currency</label>
               <select value={form.currency} onChange={(e) => update("currency", e.target.value)} className={inputCls}>
-                {["EUR", "USD", "GBP", "CHF"].map((c) => <option key={c} value={c}>{c}</option>)}
+                {currencyOptions.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
             <div>

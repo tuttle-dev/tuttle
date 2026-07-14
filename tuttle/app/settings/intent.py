@@ -2,7 +2,7 @@
 
 from ..core.intent_result import IntentResult
 from ...app_db import AppDatabase
-from ...fx import SUPPORTED_CURRENCIES, fx_haircut, primary_currency
+from ...fx import fx_haircut, primary_currency, supported_currencies
 
 
 class SettingsIntent:
@@ -18,7 +18,7 @@ class SettingsIntent:
             data={
                 "primary": primary_currency(country),
                 "fx_haircut": str(fx_haircut()),
-                "supported": list(SUPPORTED_CURRENCIES),
+                "supported": list(supported_currencies()),
             },
         )
 

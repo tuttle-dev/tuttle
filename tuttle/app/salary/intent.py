@@ -3,7 +3,7 @@
 from ..core.abstractions import SQLModelDataSourceMixin, Intent
 from ..core.intent_result import IntentResult
 
-from ...fx import primary_currency
+from ...fx import primary_currency, validate_currency_code
 from ...model import Invoice, RecurringExpense, User
 from ...tax_reserves import compute_effective_salary
 
@@ -66,6 +66,14 @@ class SalaryIntent(SQLModelDataSourceMixin, Intent):
 
     def save_expense(self, expense: RecurringExpense) -> IntentResult:
         """Persist a new or updated recurring expense."""
+        try:
+            expense.currency = validate_currency_code(expense.currency)
+        except ValueError as e:
+            return IntentResult(
+                was_intent_successful=False,
+                error_msg=str(e),
+                log_message=f"SalaryIntent.save_expense: {e}",
+            )
         return self._data_source.save_expense(expense)
 
     def save_expense_from_dict(self, data: dict) -> IntentResult:

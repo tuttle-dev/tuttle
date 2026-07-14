@@ -13,6 +13,7 @@ from loguru import logger
 from ..core.abstractions import SQLModelDataSourceMixin
 from ..core.intent_result import IntentResult
 from ...data_dir import get_data_dir
+from ...fx import primary_currency
 from ...model import (
     Address,
     Contact,
@@ -370,6 +371,9 @@ def _finalize_contract(entity: Contract, provided: dict) -> None:
     becomes the single guard: it requires the value column for the chosen
     type and clears the other, so an ambiguous contract can never be
     committed regardless of what the LLM extracted.
+
+    A document that names no currency falls back to the primary one rather
+    than failing the import; a currency it does name must be one we can convert.
     """
     if "type" not in provided:
         entity.type = (
@@ -377,6 +381,9 @@ def _finalize_contract(entity: Contract, provided: dict) -> None:
             if entity.fixed_price and not entity.rate
             else ContractType.time_based
         )
+    if not entity.currency:
+        entity.currency = primary_currency()
+    entity.validate_currency()
     entity.validate_pricing()
 
 

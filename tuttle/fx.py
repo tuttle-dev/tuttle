@@ -24,13 +24,33 @@ from .tax import get_tax_system
 
 logger = logging.getLogger(__name__)
 
-SUPPORTED_CURRENCIES = ("EUR", "GBP", "USD")
+# The ECB reference set as published on 2026-07-14; used when the API is
+# unreachable. supported_currencies() prefers the live list.
+SUPPORTED_CURRENCIES = (
+    "AUD", "BRL", "CAD", "CHF", "CNY", "CZK", "DKK", "EUR", "GBP", "HKD",
+    "HUF", "IDR", "ILS", "INR", "ISK", "JPY", "KRW", "MXN", "MYR", "NOK",
+    "NZD", "PHP", "PLN", "RON", "SEK", "SGD", "THB", "TRY", "USD", "ZAR",
+)
 
 _API = "https://api.frankfurter.dev/v1"
 _TIMEOUT = 5.0
 
 
 # -- Settings -----------------------------------------------------------------
+
+
+@lru_cache(maxsize=1)
+def supported_currencies() -> tuple[str, ...]:
+    """Currencies the rate source publishes rates for."""
+    request = urllib.request.Request(
+        f"{_API}/currencies", headers={"User-Agent": "tuttle"}
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=_TIMEOUT) as resp:
+            return tuple(sorted(json.load(resp)))
+    except (urllib.error.URLError, OSError, ValueError, TimeoutError) as e:
+        logger.warning("Currency list unavailable (%s); using the built-in set.", e)
+        return SUPPORTED_CURRENCIES
 
 
 def primary_currency(country: str = "Germany") -> str:
@@ -46,6 +66,22 @@ def primary_currency(country: str = "Germany") -> str:
         return get_tax_system(country).currency
     except NotImplementedError:
         return "EUR"
+
+
+def validate_currency_code(code: str) -> str:
+    """Normalise an ISO 4217 code and reject one we cannot convert.
+
+    Aggregates convert foreign-currency amounts at the ECB monthly average, so
+    a code the rate source does not publish would never convert and would drop
+    out of every total. Rejecting it on write beats discovering it in a sum.
+    """
+    normalized = (code or "").strip().upper()
+    supported = supported_currencies()
+    if normalized not in supported:
+        raise ValueError(
+            f"Unsupported currency {code!r}. Supported: {', '.join(supported)}."
+        )
+    return normalized
 
 
 def fx_haircut() -> Decimal:
@@ -145,5 +181,6 @@ def convert(
 
 
 def clear_cache() -> None:
-    """Drop the in-process rate cache (tests, and after a settings change)."""
+    """Drop the in-process caches (tests, and after a settings change)."""
     _rate.cache_clear()
+    supported_currencies.cache_clear()

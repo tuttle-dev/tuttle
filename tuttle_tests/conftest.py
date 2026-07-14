@@ -3,9 +3,15 @@
 import pytest
 from pathlib import Path
 import datetime
+from decimal import Decimal
 
 import tuttle
+from tuttle import fx
 from tuttle.model import Project, Client, Address, Contact, User, BankAccount, Contract
+
+# Every non-EUR amount in the suite converts at this rate. A fixed number keeps
+# assertions stable; the real ECB average would make them depend on the day.
+STUB_FX_RATE = Decimal("0.9")
 
 
 @pytest.fixture(autouse=True)
@@ -13,6 +19,23 @@ def isolated_data_dir(tmp_path, monkeypatch):
     """Keep tests out of the real ~/.tuttle — they must not read the
     developer's settings or write fx rate caches into production app.db."""
     monkeypatch.setenv("TUTTLE_DATA_DIR", str(tmp_path / "tuttle-data"))
+
+
+@pytest.fixture(autouse=True)
+def offline_fx(monkeypatch):
+    """Cut the two paths in ``fx`` that reach the network.
+
+    The suite must not depend on frankfurter.dev being up, and a rate cached
+    against one test's app.db must not leak into the next, so the caches are
+    cleared before each test — while the real functions are still in place.
+    """
+    fx.clear_cache()
+    monkeypatch.setattr(fx, "supported_currencies", lambda: fx.SUPPORTED_CURRENCIES)
+    monkeypatch.setattr(
+        fx,
+        "_fetch_monthly_average",
+        lambda base, quote, month: STUB_FX_RATE,
+    )
 
 
 @pytest.fixture

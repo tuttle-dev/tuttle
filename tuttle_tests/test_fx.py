@@ -100,6 +100,33 @@ def test_conversion_fee_hits_salary_but_not_the_tax_base():
     )
 
 
+class TestCurrencyValidation:
+    """A currency we cannot convert must be refused on write, not in a sum."""
+
+    @pytest.fixture(autouse=True)
+    def stub_supported(self, monkeypatch):
+        monkeypatch.setattr(fx, "supported_currencies", lambda: ("EUR", "GBP", "USD"))
+
+    @pytest.mark.parametrize("code,expected", [("usd", "USD"), (" eur ", "EUR")])
+    def test_normalizes_case_and_whitespace(self, code, expected):
+        assert fx.validate_currency_code(code) == expected
+
+    @pytest.mark.parametrize("code", ["XYZ", "", None, "BTC"])
+    def test_rejects_a_currency_without_rates(self, code):
+        with pytest.raises(ValueError, match="Unsupported currency"):
+            fx.validate_currency_code(code)
+
+    def test_contract_validation_writes_the_normalized_code_back(self):
+        contract = Contract(title="c", currency="usd", start_date=datetime.date.today())
+        contract.validate_currency()
+        assert contract.currency == "USD"
+
+    def test_contract_rejects_an_unconvertible_currency(self):
+        contract = Contract(title="c", currency="XYZ", start_date=datetime.date.today())
+        with pytest.raises(ValueError, match="Unsupported currency"):
+            contract.validate_currency()
+
+
 def test_unresolvable_rate_leaves_the_invoice_out_rather_than_zeroing_it(monkeypatch):
     import tuttle.tax_reserves
 
