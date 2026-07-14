@@ -26,8 +26,32 @@ simultaneously. This is the salary confusion reported in #396/#400.
 A third, separate defect: `einvoice.py:187` sets the document currency from the
 contract but never emits BT-6 (tax currency code) or BT-111 (VAT amount in
 accounting currency). EN16931 requires both when the invoice currency differs from
-the VAT currency, so a USD invoice carrying German VAT currently produces
-non-conformant XML.
+the VAT currency, so a foreign-currency invoice currently produces non-conformant XML.
+
+## Scope decision: no VAT on foreign-currency invoices
+
+The model already distinguishes this case. `TaxCategory.outside_scope` (`model.py:431`)
+exists for exactly it: B2B services to a non-EU recipient, where the place of supply
+is the recipient's country under § 3a Abs. 2 UStG. Such a supply is not taxable in
+Germany, so a USD invoice to a US business **carries no German VAT at all**.
+
+| Case | VAT on the foreign-currency invoice | What conversion must do |
+| --- | --- | --- |
+| B2B, non-EU client — `outside_scope` | none | Convert totals for revenue, income tax, dashboard. VAT reserve is zero before and after conversion. |
+| B2B, EU client — reverse charge, `zero_rated` | 0% | Same. (ZM / UStVA reporting is a separate feature, unrelated to currency.) |
+| Place of supply is Germany (B2C etc.) | domestic VAT, e.g. 19% | Real VAT-in-two-currencies: convert the VAT amount, resolve rounding, emit a nonzero BT-111. |
+
+**Only the third row needs VAT conversion machinery, and it is out of scope.** For the
+first two — which is what freelance B2B work actually looks like — converted VAT is
+arithmetic on zeros. This is what makes the whole feature small: the fix in
+`tax_reserves.py` is not "convert VAT reserves", it is "stop skipping foreign
+invoices". They contribute converted revenue to the income-tax base and nothing to the
+VAT reserve.
+
+Rather than build for the third row, **guard against it**: a contract with a nonzero
+`VAT_rate` *and* a currency other than the tax currency would produce quietly wrong
+numbers. Detect that combination and warn instead of guessing. If someone hits the
+warning, we will know the case is real before spending a week on it.
 
 ## Design
 
@@ -106,8 +130,9 @@ marked as approximate (`≈` or a footnote), because they are.
 ## Plan
 
 1. **E-invoice conformance** (independent, ships alone). Emit BT-6 and BT-111 in
-   `einvoice.py` when contract currency ≠ tax currency. This is a correctness bug
-   today, regardless of the dashboard work.
+   `einvoice.py` when contract currency ≠ tax currency. With a zero-VAT category the
+   accounting-currency VAT amount is `0.00`, so this is small — but it is a
+   conformance bug today, regardless of the dashboard work.
 2. **Settings.** New "Currency conversion" fieldset with `currency.primary` (defaulted
    from the operating country's tax system) and `currency.fx_haircut`, plus the
    explainer.
@@ -115,19 +140,17 @@ marked as approximate (`≈` or a footnote), because they are.
    override. One small module, no new heavy dependency.
 4. **Migration + capture.** `Invoice.fx_rate`, populated at invoice creation;
    backfill existing invoices lazily on first read rather than in a batch job.
-5. **Convert the aggregates.** Replace the currency filters in `tuttle/kpi.py` and
-   `tuttle/tax_reserves.py` with conversion via `fx_rate`. Delete the skip branches.
+5. **Convert the aggregates.** Delete the skip branches in `tuttle/kpi.py` and
+   `tuttle/tax_reserves.py`; convert invoice totals via `fx_rate` instead. Converted
+   VAT is zero for every in-scope case, so no VAT rounding rules are needed.
 6. **Salary haircut.** `currency.fx_haircut` applied in `compute_spendable_income`.
-
-### Check before building step 5
-
-For a German freelancer with US B2B clients, the place of supply is the US: no German
-VAT, reverse charge, 0% rate. If that is the setup, the VAT-reserve path is mostly
-inert and the work collapses to income tax plus dashboard display. Confirm before
-building VAT-in-two-currencies machinery that never runs.
+7. **Guard the unsupported case.** Warn on a contract with nonzero `VAT_rate` and a
+   currency other than the tax currency.
 
 ## Out of scope
 
+- **Domestic VAT on a foreign-currency invoice** (third row above) — converted VAT
+  amounts, VAT rounding rules, nonzero BT-111. Guarded with a warning instead.
 - Currencies beyond EUR, GBP, USD.
 - Batch backfill of historical rates (lazy on first view instead).
 - Per-client or per-project currency defaults.
