@@ -126,8 +126,25 @@ no-op and the numbers are identical to today's.
 
 ### Display
 
-Individual invoices always render in their native currency. Converted aggregates are
-prefixed with `≈`, because they are approximate.
+Invoice amounts always render in their native currency — in the list, the timeline,
+the PDF, and the e-invoice. Converted aggregates are prefixed with `≈`, because they
+are approximate.
+
+The **invoice detail view** is the one place both currencies appear together. When the
+invoice currency differs from `currency.primary`, show three extra rows:
+
+| Row | Example |
+| --- | --- |
+| Invoice currency | `USD` |
+| Exchange rate | `1 USD = 0.9174 EUR` (ECB monthly average, Mar 2026) |
+| Amount in primary currency | `≈ €9,174.00` |
+
+Hidden entirely when the two currencies match, so single-currency users never see them.
+
+This is the "which rate was applied?" question, and it does **not** bring back
+`Invoice.fx_rate`: the detail view calls `rate(currency, invoice_month)` like every
+other consumer and gets the same deterministic answer. Showing the rate is a read, not
+a reason to store it.
 
 ## Plan
 
@@ -143,6 +160,8 @@ prefixed with `≈`, because they are approximate.
 4. **Convert the aggregates.** Delete the skip branches in `tuttle/kpi.py` and
    `tuttle/tax_reserves.py`; convert invoice totals through `rate()` instead.
    Converted VAT is zero for every in-scope case, so no VAT rounding rules are needed.
+   Same call adds the currency / rate / converted-amount rows to the invoice detail
+   view.
 5. **Salary haircut.** `currency.fx_haircut` applied in `compute_spendable_income`.
 6. **Guard the unsupported cases.** Warn on a contract with nonzero `VAT_rate` and a
    currency other than the tax currency, and on a month whose rate could not be
