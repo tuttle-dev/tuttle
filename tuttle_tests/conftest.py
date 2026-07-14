@@ -8,6 +8,13 @@ import tuttle
 from tuttle.model import Project, Client, Address, Contact, User, BankAccount, Contract
 
 
+@pytest.fixture(autouse=True)
+def isolated_data_dir(tmp_path, monkeypatch):
+    """Keep tests out of the real ~/.tuttle — they must not read the
+    developer's settings or write fx rate caches into production app.db."""
+    monkeypatch.setenv("TUTTLE_DATA_DIR", str(tmp_path / "tuttle-data"))
+
+
 @pytest.fixture
 def demo_contact():
     return Contact(

@@ -96,11 +96,20 @@ class AppDatabase:
             "connect",
             lambda dbapi_conn, _: dbapi_conn.execute("PRAGMA foreign_keys = ON"),
         )
+        self.ensure()
 
     def ensure(self):
-        """Create tables if they don't exist."""
-        RegisteredUser.metadata.create_all(self._engine)
-        AppSetting.metadata.create_all(self._engine)
+        """Create the app tables if they don't exist.
+
+        Called from __init__ so any reader (e.g. tuttle.fx asking for the
+        primary currency) works before the app has run its startup path.
+        Scoped to the two app tables: SQLModel's metadata is shared with
+        tuttle.model, and an unscoped create_all would mirror every
+        per-user business table into app.db.
+        """
+        _app_metadata.create_all(
+            self._engine, tables=[RegisteredUser.__table__, AppSetting.__table__]
+        )
 
     def _session(self) -> Session:
         return Session(self._engine, expire_on_commit=False)
