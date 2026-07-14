@@ -247,15 +247,14 @@ def render_invoice(
         tpl = labels.get("reminder_n", "{n}. Payment Reminder")
         reminder_title = tpl.format(n=n)
 
-    # EN16931 BR-O-02 keeps the VAT number off an outside-scope e-invoice, so the
-    # printed document must not contradict the embedded XML: show the tax number
-    # (Steuernummer) instead, and nothing at all when the user has not set one.
-    if invoice.is_outside_scope:
+    # Mirror the XML (einvoice.py): VAT number when it may appear and is set,
+    # else the tax number, else nothing.
+    if not invoice.is_outside_scope and user.VAT_number:
+        seller_tax_id_label = labels.get("vat_number", "VAT No.")
+        seller_tax_id = user.VAT_number
+    else:
         seller_tax_id_label = labels.get("tax_number", "Tax No.")
         seller_tax_id = user.tax_number or ""
-    else:
-        seller_tax_id_label = labels.get("vat_number", "VAT No.")
-        seller_tax_id = user.VAT_number or ""
 
     invoice_template = template_env.get_template("invoice.html")
     html = invoice_template.render(

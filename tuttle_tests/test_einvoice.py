@@ -175,6 +175,48 @@ class TestBuildZugferdDocument:
         assert "DE123456789" in xml_str
         assert "DE89370400440532013000" in xml_str
 
+    @staticmethod
+    def _seller_party(xml_str: str) -> str:
+        return re.search(
+            r"<ram:SellerTradeParty>.*?</ram:SellerTradeParty>", xml_str, re.S
+        ).group(0)
+
+    def test_seller_tax_number_falls_back_to_scheme_fc_without_vat_number(self):
+        """A freelancer awaiting the USt-IdNr still owes a §14 UStG identifier;
+        on a standard (in-scope) invoice CII carries it under scheme FC."""
+        user = _make_user()
+        user.VAT_number = None
+        user.tax_number = "21/815/08150"
+        invoice = _make_invoice()
+        xml_str = serialize_zugferd_xml(
+            invoice, user, profile="EN16931", validate=True
+        ).decode("utf-8")
+        seller = self._seller_party(xml_str)
+        assert '<ram:ID schemeID="FC">21/815/08150</ram:ID>' in seller
+        assert 'schemeID="VA"' not in seller
+
+    def test_seller_vat_number_wins_over_tax_number_when_both_set(self):
+        user = _make_user()
+        user.tax_number = "21/815/08150"
+        invoice = _make_invoice()
+        xml_str = serialize_zugferd_xml(invoice, user, profile="EN16931").decode(
+            "utf-8"
+        )
+        assert '<ram:ID schemeID="VA">DE123456789</ram:ID>' in xml_str
+        assert "21/815/08150" not in xml_str
+
+    def test_no_seller_tax_identifier_without_vat_or_tax_number(self):
+        user = _make_user()
+        user.VAT_number = None
+        user.tax_number = None
+        invoice = _make_invoice()
+        xml_str = serialize_zugferd_xml(invoice, user, profile="EN16931").decode(
+            "utf-8"
+        )
+        seller = self._seller_party(xml_str)
+        assert 'schemeID="VA"' not in seller
+        assert 'schemeID="FC"' not in seller
+
     def test_xml_contains_buyer_info(self):
         user = _make_user()
         invoice = _make_invoice()

@@ -2,6 +2,7 @@ name: PR Template Check
 on:
   pull_request:
     types: [opened, edited, synchronize]
+  merge_group:
 
 jobs:
   check-template:
@@ -11,6 +12,10 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
+            if (context.eventName === 'merge_group') {
+              core.info('Merge group event — template already checked on the PR');
+              return;
+            }
             const author = context.payload.pull_request.user.login;
             const { data: perm } = await github.rest.repos.getCollaboratorPermissionLevel({
               owner: context.repo.owner,

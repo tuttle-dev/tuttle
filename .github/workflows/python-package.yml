@@ -1,4 +1,4 @@
-name: Python package
+name: Test
 
 on:
   push:
@@ -24,11 +24,19 @@ jobs:
         version: "latest"
     - name: Set up Python ${{ matrix.python-version }}
       run: uv python install ${{ matrix.python-version }}
-    - name: Install dependencies
+    - name: Install Python dependencies
       run: uv sync --python ${{ matrix.python-version }}
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 22
+    - name: Install Node dependencies
+      run: cd ui && npm ci
     - name: Lint with flake8
       run: |
         uv run --with flake8 flake8 . --exclude=.venv --count --select=E9,F63,F7,F82 --show-source --statistics
         uv run --with flake8 flake8 . --exclude=.venv --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+    - name: TypeScript type-check
+      run: cd ui && npx tsc --noEmit
     - name: Test with pytest
       run: uv run pytest

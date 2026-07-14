@@ -8,6 +8,8 @@ on:
 permissions:
   pull-requests: write
   issues: write
+  checks: read
+  statuses: read
 
 jobs:
   stale-check:
@@ -58,25 +60,40 @@ jobs:
 
               const staleDays = labels.includes(HIGH_LABEL) ? HIGH_DAYS : DEFAULT_DAYS;
 
-              // Find the last review requesting changes or comment from a maintainer
+              // Find the last event requiring author action:
+              // either a "changes requested" review or a failing CI check
               const reviews = await github.rest.pulls.listReviews({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 pull_number: pr.number,
               });
 
-              let lastMaintainerAction = null;
+              let actionNeededSince = null;
               for (const review of reviews.data) {
                 if (review.state === 'CHANGES_REQUESTED') {
                   const t = new Date(review.submitted_at).getTime();
-                  if (!lastMaintainerAction || t > lastMaintainerAction) {
-                    lastMaintainerAction = t;
+                  if (!actionNeededSince || t > actionNeededSince) {
+                    actionNeededSince = t;
                   }
                 }
               }
 
-              if (!lastMaintainerAction) {
-                // No changes requested — not a candidate for stale
+              // Check for failing CI on the head commit
+              const { data: checkRuns } = await github.rest.checks.listForRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: pr.head.sha,
+              });
+              for (const run of checkRuns.check_runs) {
+                if (run.conclusion === 'failure' && run.completed_at) {
+                  const t = new Date(run.completed_at).getTime();
+                  if (!actionNeededSince || t > actionNeededSince) {
+                    actionNeededSince = t;
+                  }
+                }
+              }
+
+              if (!actionNeededSince) {
                 if (labels.includes(STALE_LABEL)) {
                   await github.rest.issues.removeLabel({
                     owner: context.repo.owner,
@@ -98,7 +115,7 @@ jobs:
 
               let authorRespondedAfter = false;
               for (const c of comments.data) {
-                if (c.user.login === authorLogin && new Date(c.created_at).getTime() > lastMaintainerAction) {
+                if (c.user.login === authorLogin && new Date(c.created_at).getTime() > actionNeededSince) {
                   authorRespondedAfter = true;
                   break;
                 }
@@ -113,7 +130,7 @@ jobs:
                 });
                 for (const c of commits.data) {
                   const commitTime = new Date(c.commit.committer.date).getTime();
-                  if (c.author?.login === authorLogin && commitTime > lastMaintainerAction) {
+                  if (c.author?.login === authorLogin && commitTime > actionNeededSince) {
                     authorRespondedAfter = true;
                     break;
                   }
@@ -133,7 +150,7 @@ jobs:
                 continue;
               }
 
-              const daysSince = Math.floor((now - lastMaintainerAction) / msPerDay);
+              const daysSince = Math.floor((now - actionNeededSince) / msPerDay);
               core.info(`PR #${pr.number}: ${daysSince}d since changes requested (SLA: ${staleDays}d)`);
 
               if (daysSince >= staleDays && !labels.includes(STALE_LABEL)) {

@@ -28,6 +28,7 @@ export interface WizardProfileData {
   city: string;
   country: string;
   vat_number: string;
+  tax_number: string;
   operating_country: string;
   bank_name: string;
   bank_IBAN: string;
@@ -66,7 +67,7 @@ type Props = {
 const EMPTY_PROFILE: WizardProfileData = {
   name: "", subtitle: "", email: "", phone: "", website: "",
   street: "", street_num: "", postal_code: "", city: "", country: "Germany",
-  vat_number: "", operating_country: "Germany",
+  vat_number: "", tax_number: "", operating_country: "Germany",
   bank_name: "", bank_IBAN: "", bank_BIC: "",
 };
 
@@ -155,7 +156,8 @@ export function OnboardingWizard({ open, onClose, onSubmit, onDemo, loading, ove
         profile.street.trim() &&
         profile.city.trim() &&
         profile.country.trim() &&
-        profile.vat_number.trim() &&
+        // Freelancers awaiting the USt-IdNr have only a Steuernummer.
+        (profile.vat_number.trim() || profile.tax_number.trim()) &&
         profile.operating_country.trim()
       );
     }
@@ -316,9 +318,17 @@ export function OnboardingWizard({ open, onClose, onSubmit, onDemo, loading, ove
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className={labelCls}>VAT number <span className="text-accent">*</span></label>
+            <label className={labelCls}>VAT number</label>
             <input className={inputCls} value={profile.vat_number} onChange={pset("vat_number")} placeholder="DE123456789" />
           </div>
+          <div>
+            <label className={labelCls}>Tax number</label>
+            <input className={inputCls} value={profile.tax_number} onChange={pset("tax_number")} placeholder="21/815/08150" />
+          </div>
+          <p className="col-span-2 text-xs text-muted">
+            Enter your VAT number (USt-IdNr.) or, until you receive one, your tax number
+            (Steuernummer) <span className="text-accent">*</span>. At least one appears on your invoices.
+          </p>
           <div>
             <label className={labelCls}>Operating country <span className="text-accent">*</span></label>
             <select className={inputCls} value={profile.operating_country} onChange={pset("operating_country")}>

@@ -532,13 +532,14 @@ export function SettingsView() {
             <legend className="text-xs font-medium text-secondary px-1">Tax &amp; Legal</legend>
             <div className="grid grid-cols-2 gap-3 mt-1">
               <div>
-                <label className={labelCls}>VAT number <span className="text-accent">*</span></label>
+                <label className={labelCls}>VAT number</label>
                 <input className={inputCls} value={profile.VAT_number} onChange={pset("VAT_number")} placeholder="DE123456789" />
+                <p className="text-xs text-secondary mt-1">USt-IdNr. Preferred identifier on invoices when available.</p>
               </div>
               <div>
                 <label className={labelCls}>Tax number</label>
                 <input className={inputCls} value={profile.tax_number} onChange={pset("tax_number")} placeholder="21/815/08150" />
-                <p className="text-xs text-secondary mt-1">Steuernummer. Used on invoices outside the scope of VAT, where the VAT number may not appear.</p>
+                <p className="text-xs text-secondary mt-1">Steuernummer. Shown when you have no VAT number yet, and on invoices outside the scope of VAT where the VAT number may not appear.</p>
               </div>
               <div>
                 <label className={labelCls}>Operating country <span className="text-accent">*</span></label>
