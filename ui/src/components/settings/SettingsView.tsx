@@ -1152,14 +1152,9 @@ function SystemTab() {
       <fieldset className="border border-border-subtle rounded-lg px-4 pb-3 pt-2">
         <legend className="text-xs font-medium text-secondary px-1">Currency conversion</legend>
         <p className="text-xs text-secondary mt-1">
-          These settings only matter if you invoice in a currency other than the one you are taxed in — for example
-          a USD invoice to a US client while being taxed in Germany. Invoices always stay in their own currency; this
-          is how those amounts are converted for your dashboard, tax reserves, and salary.
-        </p>
-        <p className="text-xs text-secondary mt-1">
-          The exchange rate is the ECB monthly average for the invoice's month, which is the rate German tax law
-          requires (§ 16 Abs. 6 UStG). The conversion fee is subtracted from the salary estimate only — it never
-          reduces your taxable revenue.
+          Only matters if you invoice in a currency other than the one you're taxed in. Invoices keep their own
+          currency; this converts them for your dashboard, tax, and salary at the ECB monthly average
+          (§ 16 Abs. 6 UStG). The conversion fee reduces the salary estimate only, never your taxable revenue.
         </p>
         <div className="grid grid-cols-2 gap-3 mt-3">
           <div>
