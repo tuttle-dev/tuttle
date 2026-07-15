@@ -161,9 +161,7 @@ export function SettingsView() {
   const [addingNote, setAddingNote] = useState(false);
   const invoicingLoadRef = useRef(0);
 
-  const [currency, setCurrency] = useState<CurrencySettings>({ ...DEFAULT_CURRENCY });
-
-  useEffect(() => { loadConfig(); loadProfile(); loadSupportedCountries(); loadSavedNotes(); loadCurrency(); }, []);
+  useEffect(() => { loadConfig(); loadProfile(); loadSupportedCountries(); loadSavedNotes(); }, []);
 
   useEffect(() => {
     if (tab === "invoicing") loadInvoicingPrefs();
@@ -287,18 +285,8 @@ export function SettingsView() {
       },
     };
     const res = await rpc("users.update_profile", payload);
-    if (res.ok) {
-      await rpc("settings.save_currency", { primary: currency.primary, fx_haircut: currency.fx_haircut });
-    }
     setProfileStatus(res.ok ? { type: "success", msg: "Profile saved." } : { type: "error", msg: res.error || "Failed to save profile." });
     setProfileSaving(false);
-  }
-
-  // -- Currency conversion --------------------------------------------------
-
-  async function loadCurrency() {
-    const res = await rpc<CurrencySettings>("settings.get_currency", { country: profile.operating_country });
-    if (res.ok && res.data) setCurrency({ ...DEFAULT_CURRENCY, ...res.data });
   }
 
   async function handleResetDemo() {
@@ -574,45 +562,6 @@ export function SettingsView() {
                     <option value={profile.operating_country}>{profile.operating_country}</option>
                   )}
                 </select>
-              </div>
-            </div>
-          </fieldset>
-
-          <fieldset className="border border-border-subtle rounded-lg px-4 pb-3 pt-2">
-            <legend className="text-xs font-medium text-secondary px-1">Currency conversion</legend>
-            <p className="text-xs text-secondary mt-1">
-              These settings only matter if you invoice in a currency other than the one you are taxed in — for example
-              a USD invoice to a US client while being taxed in Germany. Invoices always stay in their own currency; this
-              is how those amounts are converted for your dashboard, tax reserves, and salary.
-            </p>
-            <p className="text-xs text-secondary mt-1">
-              The exchange rate is the ECB monthly average for the invoice's month, which is the rate German tax law
-              requires (§ 16 Abs. 6 UStG). The conversion fee is subtracted from the salary estimate only — it never
-              reduces your taxable revenue.
-            </p>
-            <div className="grid grid-cols-2 gap-3 mt-3">
-              <div>
-                <label className={labelCls}>Primary currency</label>
-                <select
-                  className={inputCls}
-                  value={currency.primary}
-                  onChange={(e) => setCurrency((c) => ({ ...c, primary: e.target.value }))}
-                >
-                  {currency.supported.map((c) => <option key={c} value={c}>{c}</option>)}
-                </select>
-                <p className="text-xs text-secondary mt-1">Dashboard, tax, and salary figures are shown in this currency.</p>
-              </div>
-              <div>
-                <label className={labelCls}>Conversion fee (%)</label>
-                <input
-                  className={inputCls}
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  value={currency.fx_haircut}
-                  onChange={(e) => setCurrency((c) => ({ ...c, fx_haircut: e.target.value }))}
-                />
-                <p className="text-xs text-secondary mt-1">Bank/exchange spread, deducted from the salary estimate only.</p>
               </div>
             </div>
           </fieldset>
@@ -1135,6 +1084,25 @@ function SystemTab() {
   const { choice, setChoice } = useTheme();
   const [checking, setChecking] = useState(false);
 
+  const [currency, setCurrency] = useState<CurrencySettings>({ ...DEFAULT_CURRENCY });
+  const [currencySaving, setCurrencySaving] = useState(false);
+
+  useEffect(() => {
+    rpc<CurrencySettings>("settings.get_currency").then((res) => {
+      if (res.ok && res.data) setCurrency({ ...DEFAULT_CURRENCY, ...res.data });
+    });
+  }, []);
+
+  async function handleSaveCurrency() {
+    setCurrencySaving(true);
+    const res = await rpc("settings.save_currency", { primary: currency.primary, fx_haircut: currency.fx_haircut });
+    showMessage(res.ok ? "Currency settings saved." : res.error || "Failed to save currency settings.", { type: res.ok ? "success" : "error" });
+    setCurrencySaving(false);
+  }
+
+  const inputCls = "w-full px-3 py-2 rounded-md text-sm bg-bg-card text-primary border border-border-subtle outline-none focus:border-accent transition-colors placeholder:text-muted";
+  const labelCls = "block text-xs text-tertiary mb-1";
+
   useEffect(() => {
     const offs = [
       window.tuttle?.onUpdateNotAvailable?.(() => {
@@ -1180,6 +1148,53 @@ function SystemTab() {
           ))}
         </div>
       </div>
+
+      <fieldset className="border border-border-subtle rounded-lg px-4 pb-3 pt-2">
+        <legend className="text-xs font-medium text-secondary px-1">Currency conversion</legend>
+        <p className="text-xs text-secondary mt-1">
+          These settings only matter if you invoice in a currency other than the one you are taxed in — for example
+          a USD invoice to a US client while being taxed in Germany. Invoices always stay in their own currency; this
+          is how those amounts are converted for your dashboard, tax reserves, and salary.
+        </p>
+        <p className="text-xs text-secondary mt-1">
+          The exchange rate is the ECB monthly average for the invoice's month, which is the rate German tax law
+          requires (§ 16 Abs. 6 UStG). The conversion fee is subtracted from the salary estimate only — it never
+          reduces your taxable revenue.
+        </p>
+        <div className="grid grid-cols-2 gap-3 mt-3">
+          <div>
+            <label className={labelCls}>Primary currency</label>
+            <select
+              className={inputCls}
+              value={currency.primary}
+              onChange={(e) => setCurrency((c) => ({ ...c, primary: e.target.value }))}
+            >
+              {currency.supported.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <p className="text-xs text-secondary mt-1">Dashboard, tax, and salary figures are shown in this currency.</p>
+          </div>
+          <div>
+            <label className={labelCls}>Conversion fee (%)</label>
+            <input
+              className={inputCls}
+              type="number"
+              step="0.1"
+              min="0"
+              value={currency.fx_haircut}
+              onChange={(e) => setCurrency((c) => ({ ...c, fx_haircut: e.target.value }))}
+            />
+            <p className="text-xs text-secondary mt-1">Bank/exchange spread, deducted from the salary estimate only.</p>
+          </div>
+        </div>
+        <button
+          onClick={handleSaveCurrency}
+          disabled={currencySaving}
+          className="mt-3 flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium bg-accent/10 text-primary hover:bg-accent/20 border border-accent/30 transition-colors disabled:opacity-40"
+        >
+          <Save size={14} />
+          {currencySaving ? "Saving…" : "Save currency settings"}
+        </button>
+      </fieldset>
 
       <div className="space-y-1">
         <h3 className="text-sm font-semibold">About Tuttle</h3>
