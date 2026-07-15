@@ -11,16 +11,29 @@ class SettingsIntent:
 
     # -- Currency conversion ------------------------------------------------
 
-    def get_currency(self, country: str = "Germany") -> IntentResult:
-        """Currency-conversion settings, defaulted from the operating country."""
+    def get_currency(self, country: str | None = None) -> IntentResult:
+        """Currency-conversion settings.
+
+        The primary currency defaults to the active user's operating country
+        (only used until they save an explicit ``currency.primary``); callers
+        may still pass ``country`` to override.
+        """
         return IntentResult(
             was_intent_successful=True,
             data={
-                "primary": primary_currency(country),
+                "primary": primary_currency(country or self._active_operating_country()),
                 "fx_haircut": str(fx_haircut()),
                 "supported": list(supported_currencies()),
             },
         )
+
+    def _active_operating_country(self) -> str:
+        from ..auth.data_source import UserDataSource
+
+        try:
+            return UserDataSource().get_user().operating_country or "Germany"
+        except Exception:
+            return "Germany"
 
     def save_currency(self, primary: str, fx_haircut: str) -> IntentResult:
         self._app_db.set_setting("currency.primary", primary)
