@@ -11,7 +11,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { Settings, RefreshCw, Save, CheckCircle2, AlertCircle, User, Bot, FileText, RotateCcw, Trash2, AlertTriangle, Monitor, Info, Image as ImageIcon, X, Sun, Moon, Laptop, Palette, Terminal, Clipboard, Check } from "lucide-react";
+import { Settings, RefreshCw, Save, CheckCircle2, AlertCircle, User, Bot, FileText, RotateCcw, Trash2, AlertTriangle, Monitor, Globe, Info, Image as ImageIcon, X, Sun, Moon, Laptop, Palette, Terminal, Clipboard, Check } from "lucide-react";
 import { useTheme, type ThemeChoice } from "../../hooks/useTheme";
 import { rpc } from "../../api/rpc";
 import type { Entity } from "../../api/types";
@@ -111,13 +111,14 @@ const DEFAULT_CURRENCY: CurrencySettings = {
   supported: ["EUR", "GBP", "USD"],
 };
 
-type Tab = "profile" | "branding" | "invoicing" | "llm" | "system" | "debug";
+type Tab = "profile" | "branding" | "invoicing" | "llm" | "local" | "system" | "debug";
 
 const TABS: { id: Tab; label: string; icon: typeof User }[] = [
   { id: "profile", label: "Profile", icon: User },
   { id: "branding", label: "Branding", icon: Palette },
   { id: "invoicing", label: "Invoicing", icon: FileText },
   { id: "llm", label: "AI / LLM", icon: Bot },
+  { id: "local", label: "Local", icon: Globe },
   { id: "system", label: "System", icon: Monitor },
   { id: "debug", label: "Debug", icon: Terminal },
 ];
@@ -925,6 +926,10 @@ export function SettingsView() {
         </section>
       )}
 
+      {tab === "local" && (
+        <LocalTab />
+      )}
+
       {tab === "system" && (
         <SystemTab />
       )}
@@ -1079,11 +1084,12 @@ const THEME_OPTIONS: { id: ThemeChoice; label: string; icon: typeof Sun }[] = [
   { id: "system", label: "System", icon: Laptop },
 ];
 
-function SystemTab() {
-  const { log, showMessage } = useStatusBar();
-  const { choice, setChoice } = useTheme();
-  const [checking, setChecking] = useState(false);
+// ---------------------------------------------------------------------------
+// Local tab — machine-wide, region-specific settings (not tied to a user)
+// ---------------------------------------------------------------------------
 
+function LocalTab() {
+  const { showMessage } = useStatusBar();
   const [currency, setCurrency] = useState<CurrencySettings>({ ...DEFAULT_CURRENCY });
   const [currencySaving, setCurrencySaving] = useState(false);
 
@@ -1102,6 +1108,62 @@ function SystemTab() {
 
   const inputCls = "w-full px-3 py-2 rounded-md text-sm bg-bg-card text-primary border border-border-subtle outline-none focus:border-accent transition-colors placeholder:text-muted";
   const labelCls = "block text-xs text-tertiary mb-1";
+
+  return (
+    <section className="space-y-4">
+      <p className="text-sm text-muted">
+        Machine-wide settings shared across all users on this computer, not stored in any one profile.
+      </p>
+
+      <fieldset className="border border-border-subtle rounded-lg px-4 pb-3 pt-2">
+        <legend className="text-xs font-medium text-secondary px-1">Currency conversion</legend>
+        <p className="text-xs text-secondary mt-1">
+          Only matters if you invoice in a currency other than the one you're taxed in. Invoices keep their own
+          currency; this converts them for your dashboard, tax, and salary at the ECB monthly average
+          (§ 16 Abs. 6 UStG). The conversion fee reduces the salary estimate only, never your taxable revenue.
+        </p>
+        <div className="grid grid-cols-2 gap-3 mt-3">
+          <div>
+            <label className={labelCls}>Primary currency</label>
+            <select
+              className={inputCls}
+              value={currency.primary}
+              onChange={(e) => setCurrency((c) => ({ ...c, primary: e.target.value }))}
+            >
+              {currency.supported.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <p className="text-xs text-secondary mt-1">Dashboard, tax, and salary figures are shown in this currency.</p>
+          </div>
+          <div>
+            <label className={labelCls}>Conversion fee (%)</label>
+            <input
+              className={inputCls}
+              type="number"
+              step="0.1"
+              min="0"
+              value={currency.fx_haircut}
+              onChange={(e) => setCurrency((c) => ({ ...c, fx_haircut: e.target.value }))}
+            />
+            <p className="text-xs text-secondary mt-1">Bank/exchange spread, deducted from the salary estimate only.</p>
+          </div>
+        </div>
+        <button
+          onClick={handleSaveCurrency}
+          disabled={currencySaving}
+          className="mt-3 flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium bg-accent/10 text-primary hover:bg-accent/20 border border-accent/30 transition-colors disabled:opacity-40"
+        >
+          <Save size={14} />
+          {currencySaving ? "Saving…" : "Save currency settings"}
+        </button>
+      </fieldset>
+    </section>
+  );
+}
+
+function SystemTab() {
+  const { log, showMessage } = useStatusBar();
+  const { choice, setChoice } = useTheme();
+  const [checking, setChecking] = useState(false);
 
   useEffect(() => {
     const offs = [
@@ -1148,48 +1210,6 @@ function SystemTab() {
           ))}
         </div>
       </div>
-
-      <fieldset className="border border-border-subtle rounded-lg px-4 pb-3 pt-2">
-        <legend className="text-xs font-medium text-secondary px-1">Currency conversion</legend>
-        <p className="text-xs text-secondary mt-1">
-          Only matters if you invoice in a currency other than the one you're taxed in. Invoices keep their own
-          currency; this converts them for your dashboard, tax, and salary at the ECB monthly average
-          (§ 16 Abs. 6 UStG). The conversion fee reduces the salary estimate only, never your taxable revenue.
-        </p>
-        <div className="grid grid-cols-2 gap-3 mt-3">
-          <div>
-            <label className={labelCls}>Primary currency</label>
-            <select
-              className={inputCls}
-              value={currency.primary}
-              onChange={(e) => setCurrency((c) => ({ ...c, primary: e.target.value }))}
-            >
-              {currency.supported.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
-            <p className="text-xs text-secondary mt-1">Dashboard, tax, and salary figures are shown in this currency.</p>
-          </div>
-          <div>
-            <label className={labelCls}>Conversion fee (%)</label>
-            <input
-              className={inputCls}
-              type="number"
-              step="0.1"
-              min="0"
-              value={currency.fx_haircut}
-              onChange={(e) => setCurrency((c) => ({ ...c, fx_haircut: e.target.value }))}
-            />
-            <p className="text-xs text-secondary mt-1">Bank/exchange spread, deducted from the salary estimate only.</p>
-          </div>
-        </div>
-        <button
-          onClick={handleSaveCurrency}
-          disabled={currencySaving}
-          className="mt-3 flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium bg-accent/10 text-primary hover:bg-accent/20 border border-accent/30 transition-colors disabled:opacity-40"
-        >
-          <Save size={14} />
-          {currencySaving ? "Saving…" : "Save currency settings"}
-        </button>
-      </fieldset>
 
       <div className="space-y-1">
         <h3 className="text-sm font-semibold">About Tuttle</h3>
