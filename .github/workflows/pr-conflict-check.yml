@@ -5,6 +5,7 @@ on:
     branches: [main]
   schedule:
     - cron: "0 6 * * *"
+  workflow_dispatch:
 
 permissions:
   pull-requests: read
@@ -18,22 +19,22 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const prs = await github.rest.pulls.list({
+            const { data: prList } = await github.rest.pulls.list({
               owner: context.repo.owner,
               repo: context.repo.repo,
               state: 'open',
             });
 
-            for (const pr of prs.data) {
+            for (const pr of prList) {
               const { data: detail } = await github.rest.pulls.get({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 pull_number: pr.number,
               });
 
-              // GitHub may need a moment to compute mergeability
-              if (detail.mergeable === null) {
-                await new Promise(r => setTimeout(r, 3000));
+              // GitHub may need time to compute mergeability after a push
+              for (let attempt = 0; attempt < 5 && detail.mergeable === null; attempt++) {
+                await new Promise(r => setTimeout(r, 5000));
                 const { data: retry } = await github.rest.pulls.get({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
@@ -41,6 +42,11 @@ jobs:
                 });
                 detail.mergeable = retry.mergeable;
                 detail.mergeable_state = retry.mergeable_state;
+              }
+
+              if (detail.mergeable === null) {
+                core.info(`PR #${pr.number}: mergeability unknown, skipping`);
+                continue;
               }
 
               const state = detail.mergeable ? 'success' : 'failure';

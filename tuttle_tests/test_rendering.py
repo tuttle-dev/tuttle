@@ -270,6 +270,17 @@ class TestSellerTaxIdentifierInFooter:
         )
         assert "DE123456789" not in html
 
+    @pytest.mark.parametrize("template_name", ALL_INVOICE_TEMPLATES)
+    def test_standard_invoice_falls_back_to_tax_number_without_vat_number(
+        self, fake, template_name
+    ):
+        """A seller awaiting the USt-IdNr: the printed invoice shows the tax
+        number, mirroring the FC identifier embedded in the XML."""
+        user = self._user(fake, "21/815/08150")
+        user.VAT_number = None
+        html = _render(user, demo.create_fake_invoice(fake), template_name)
+        assert "21/815/08150" in html
+
     @pytest.mark.parametrize(
         "language,label",
         [("en", "VAT No."), ("de", "USt-IdNr."), ("es", "N.º IVA")],

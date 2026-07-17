@@ -161,6 +161,12 @@ def build_zugferd_document(
         doc.trade.agreement.seller.tax_registrations.add(
             TaxRegistration(id=("VA", user.VAT_number))
         )
+    elif user.tax_number:
+        # No USt-IdNr yet: §14 UStG still needs an identifier, and FC (Steuernummer)
+        # is legal on any invoice — unlike VA (BR-O-02).
+        doc.trade.agreement.seller.tax_registrations.add(
+            TaxRegistration(id=("FC", user.tax_number))
+        )
     if user.email and not is_minimum:
         doc.trade.agreement.seller.electronic_address.uri_ID = ("EM", user.email)
 
