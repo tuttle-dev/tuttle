@@ -542,22 +542,6 @@ export function SettingsView() {
           </fieldset>
 
           <fieldset className="border border-border-subtle rounded-lg px-4 pb-3 pt-2">
-            <legend className="text-xs font-medium text-secondary px-1">Tax &amp; Legal</legend>
-            <div className="grid grid-cols-2 gap-3 mt-1">
-              <div>
-                <label className={labelCls}>VAT number</label>
-                <input className={inputCls} value={profile.VAT_number} onChange={pset("VAT_number")} placeholder="DE123456789" />
-                <p className="text-xs text-secondary mt-1">Preferred identifier on invoices when available.</p>
-              </div>
-              <div>
-                <label className={labelCls}>Tax number</label>
-                <input className={inputCls} value={profile.tax_number} onChange={pset("tax_number")} placeholder="21/815/08150" />
-                <p className="text-xs text-secondary mt-1">Shown on invoices when no VAT number is available.</p>
-              </div>
-            </div>
-          </fieldset>
-
-          <fieldset className="border border-border-subtle rounded-lg px-4 pb-3 pt-2">
             <legend className="text-xs font-medium text-secondary px-1">Bank Account</legend>
             <div className="grid grid-cols-2 gap-3 mt-1">
               <div className="col-span-2">
@@ -921,7 +905,11 @@ export function SettingsView() {
           operatingCountry={profile.operating_country}
           supportedCountries={supportedCountries}
           onCountryChange={(c) => setProfile((p) => ({ ...p, operating_country: c }))}
-          onSaveCountry={handleSaveProfile}
+          vatNumber={profile.VAT_number}
+          onVatChange={(v) => setProfile((p) => ({ ...p, VAT_number: v }))}
+          taxNumber={profile.tax_number}
+          onTaxChange={(v) => setProfile((p) => ({ ...p, tax_number: v }))}
+          onSave={handleSaveProfile}
         />
       )}
 
@@ -1080,14 +1068,18 @@ const THEME_OPTIONS: { id: ThemeChoice; label: string; icon: typeof Sun }[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// Region tab — machine-wide, region-specific settings (not tied to a user)
+// Region tab — tax jurisdiction, tax identifiers, and currency settings
 // ---------------------------------------------------------------------------
 
-function RegionTab({ operatingCountry, supportedCountries, onCountryChange, onSaveCountry }: {
+function RegionTab({ operatingCountry, supportedCountries, onCountryChange, vatNumber, onVatChange, taxNumber, onTaxChange, onSave }: {
   operatingCountry: string;
   supportedCountries: string[];
   onCountryChange: (country: string) => void;
-  onSaveCountry: () => void;
+  vatNumber: string;
+  onVatChange: (value: string) => void;
+  taxNumber: string;
+  onTaxChange: (value: string) => void;
+  onSave: () => void;
 }) {
   const { showMessage } = useStatusBar();
   const [currency, setCurrency] = useState<CurrencySettings>({ ...DEFAULT_CURRENCY });
@@ -1114,27 +1106,40 @@ function RegionTab({ operatingCountry, supportedCountries, onCountryChange, onSa
 
       <fieldset className="border border-border-subtle rounded-lg px-4 pb-3 pt-2">
         <legend className="text-xs font-medium text-secondary px-1">Tax jurisdiction</legend>
-        <div className="mt-2">
-          <label className={labelCls}>Operating country</label>
-          <select
-            className={inputCls}
-            value={operatingCountry}
-            onChange={(e) => onCountryChange(e.target.value)}
-          >
-            {supportedCountries.length > 0 ? (
-              supportedCountries.map((c) => <option key={c} value={c}>{c}</option>)
-            ) : (
-              <option value={operatingCountry}>{operatingCountry}</option>
-            )}
-          </select>
-          <p className="text-xs text-secondary mt-1">Determines tax brackets, rates, and default currency.</p>
+        <div className="grid grid-cols-2 gap-3 mt-2">
+          <div>
+            <label className={labelCls}>Operating country</label>
+            <select
+              className={inputCls}
+              value={operatingCountry}
+              onChange={(e) => onCountryChange(e.target.value)}
+            >
+              {supportedCountries.length > 0 ? (
+                supportedCountries.map((c) => <option key={c} value={c}>{c}</option>)
+              ) : (
+                <option value={operatingCountry}>{operatingCountry}</option>
+              )}
+            </select>
+            <p className="text-xs text-secondary mt-1">Determines tax brackets, rates, and default currency.</p>
+          </div>
+          <div />
+          <div>
+            <label className={labelCls}>VAT number</label>
+            <input className={inputCls} value={vatNumber} onChange={(e) => onVatChange(e.target.value)} placeholder="e.g. DE123456789" />
+            <p className="text-xs text-secondary mt-1">Preferred identifier on invoices when available.</p>
+          </div>
+          <div>
+            <label className={labelCls}>Tax number</label>
+            <input className={inputCls} value={taxNumber} onChange={(e) => onTaxChange(e.target.value)} placeholder="e.g. 21/815/08150" />
+            <p className="text-xs text-secondary mt-1">Shown on invoices when no VAT number is available.</p>
+          </div>
         </div>
         <button
-          onClick={onSaveCountry}
+          onClick={onSave}
           className="mt-3 flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium bg-accent/10 text-primary hover:bg-accent/20 border border-accent/30 transition-colors disabled:opacity-40"
         >
           <Save size={14} />
-          Save jurisdiction
+          Save region settings
         </button>
       </fieldset>
 
