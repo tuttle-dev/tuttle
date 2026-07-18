@@ -1083,7 +1083,6 @@ function RegionTab({ operatingCountry, supportedCountries, onCountryChange, vatN
 }) {
   const { showMessage } = useStatusBar();
   const [currency, setCurrency] = useState<CurrencySettings>({ ...DEFAULT_CURRENCY });
-  const [currencySaving, setCurrencySaving] = useState(false);
 
   useEffect(() => {
     rpc<CurrencySettings>("settings.get_currency").then((res) => {
@@ -1091,11 +1090,16 @@ function RegionTab({ operatingCountry, supportedCountries, onCountryChange, vatN
     });
   }, []);
 
-  async function handleSaveCurrency() {
-    setCurrencySaving(true);
-    const res = await rpc("settings.save_currency", { primary: currency.primary, fx_haircut: currency.fx_haircut });
-    showMessage(res.ok ? "Currency settings saved." : res.error || "Failed to save currency settings.", { type: res.ok ? "success" : "error" });
-    setCurrencySaving(false);
+  const [saving, setSaving] = useState(false);
+
+  async function handleSaveAll() {
+    setSaving(true);
+    const [curRes] = await Promise.all([
+      rpc("settings.save_currency", { primary: currency.primary, fx_haircut: currency.fx_haircut }),
+      onSave(),
+    ]);
+    showMessage(curRes.ok ? "Region settings saved." : curRes.error || "Failed to save.", { type: curRes.ok ? "success" : "error" });
+    setSaving(false);
   }
 
   const inputCls = "w-full px-3 py-2 rounded-md text-sm bg-bg-card text-primary border border-border-subtle outline-none focus:border-accent transition-colors placeholder:text-muted";
@@ -1134,13 +1138,6 @@ function RegionTab({ operatingCountry, supportedCountries, onCountryChange, vatN
             <p className="text-xs text-secondary mt-1">Shown on invoices when no VAT number is available.</p>
           </div>
         </div>
-        <button
-          onClick={onSave}
-          className="mt-3 flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium bg-accent/10 text-primary hover:bg-accent/20 border border-accent/30 transition-colors disabled:opacity-40"
-        >
-          <Save size={14} />
-          Save region settings
-        </button>
       </fieldset>
 
       <fieldset className="border border-border-subtle rounded-lg px-4 pb-3 pt-2">
@@ -1174,15 +1171,16 @@ function RegionTab({ operatingCountry, supportedCountries, onCountryChange, vatN
             <p className="text-xs text-secondary mt-1">Bank/exchange spread, deducted from the salary estimate only.</p>
           </div>
         </div>
-        <button
-          onClick={handleSaveCurrency}
-          disabled={currencySaving}
-          className="mt-3 flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium bg-accent/10 text-primary hover:bg-accent/20 border border-accent/30 transition-colors disabled:opacity-40"
-        >
-          <Save size={14} />
-          {currencySaving ? "Saving…" : "Save currency settings"}
-        </button>
       </fieldset>
+
+      <button
+        onClick={handleSaveAll}
+        disabled={saving}
+        className="flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium bg-accent/10 text-primary hover:bg-accent/20 border border-accent/30 transition-colors disabled:opacity-40"
+      >
+        <Save size={14} />
+        {saving ? "Saving…" : "Save Region Settings"}
+      </button>
     </section>
   );
 }
