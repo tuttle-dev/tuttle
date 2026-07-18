@@ -21,7 +21,9 @@ class SettingsIntent:
         return IntentResult(
             was_intent_successful=True,
             data={
-                "primary": primary_currency(country or self._active_operating_country()),
+                "primary": primary_currency(
+                    country or self._active_operating_country()
+                ),
                 "fx_haircut": str(fx_haircut()),
                 "supported": list(supported_currencies()),
             },
@@ -31,9 +33,9 @@ class SettingsIntent:
         from ..auth.data_source import UserDataSource
 
         try:
-            return UserDataSource().get_user().operating_country or "Germany"
+            return UserDataSource().get_user().operating_country or ""
         except Exception:
-            return "Germany"
+            return ""
 
     def save_currency(self, primary: str, fx_haircut: str) -> IntentResult:
         self._app_db.set_setting("currency.primary", primary)

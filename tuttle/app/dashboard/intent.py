@@ -35,7 +35,7 @@ class DashboardIntent(SQLModelDataSourceMixin, Intent):
                 return users[0].operating_country
         except Exception:
             pass
-        return "Germany"
+        return ""
 
     def get_kpis(self) -> IntentResult:
         """Compute KPI summary from invoices, contracts, and calendar data."""

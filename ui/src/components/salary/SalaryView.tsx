@@ -147,7 +147,7 @@ function MonthlyBreakdown({ salary }: { salary: SalaryData }) {
   const items: { label: string; amount: number; color: string; bold?: boolean }[] = [
     { label: "Gross Revenue / month", amount: gross, color: "var(--color-status-info)" },
     { label: "VAT (to remit)", amount: vatReserve, color: "var(--color-status-warning)" },
-    { label: "Est. Income Tax + Soli", amount: incomeTaxReserve, color: "var(--color-status-warning)" },
+    { label: "Est. Income Tax", amount: incomeTaxReserve, color: "var(--color-status-warning)" },
     { label: "Recurring Expenses", amount: monthlyExpenses, color: "var(--color-status-warning)" },
     { label: "= Available Salary", amount: optimistic, color: optimistic >= 0 ? "var(--color-status-success)" : "var(--color-status-danger)", bold: true },
   ];

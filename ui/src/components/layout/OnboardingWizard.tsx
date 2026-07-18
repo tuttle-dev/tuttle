@@ -66,8 +66,8 @@ type Props = {
 
 const EMPTY_PROFILE: WizardProfileData = {
   name: "", subtitle: "", email: "", phone: "", website: "",
-  street: "", street_num: "", postal_code: "", city: "", country: "Germany",
-  vat_number: "", tax_number: "", operating_country: "Germany",
+  street: "", street_num: "", postal_code: "", city: "", country: "",
+  vat_number: "", tax_number: "", operating_country: "",
   bank_name: "", bank_IBAN: "", bank_BIC: "",
 };
 
@@ -156,7 +156,7 @@ export function OnboardingWizard({ open, onClose, onSubmit, onDemo, loading, ove
         profile.street.trim() &&
         profile.city.trim() &&
         profile.country.trim() &&
-        // Freelancers awaiting the USt-IdNr have only a Steuernummer.
+        // At least one tax identifier is required.
         (profile.vat_number.trim() || profile.tax_number.trim()) &&
         profile.operating_country.trim()
       );
@@ -326,8 +326,7 @@ export function OnboardingWizard({ open, onClose, onSubmit, onDemo, loading, ove
             <input className={inputCls} value={profile.tax_number} onChange={pset("tax_number")} placeholder="21/815/08150" />
           </div>
           <p className="col-span-2 text-xs text-muted">
-            Enter your VAT number (USt-IdNr.) or, until you receive one, your tax number
-            (Steuernummer) <span className="text-accent">*</span>. At least one appears on your invoices.
+            Enter your VAT number or tax number <span className="text-accent">*</span>. At least one is required and will appear on your invoices.
           </p>
           <div>
             <label className={labelCls}>Operating country <span className="text-accent">*</span></label>

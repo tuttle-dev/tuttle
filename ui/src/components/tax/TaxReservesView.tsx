@@ -115,7 +115,7 @@ export function TaxReservesView() {
                 <WaterfallBar label="Business Expenses" amount={bizExpenses} total={totalBase} color="var(--color-status-warning)" currency={currency} />
               )}
               <WaterfallBar label="= Taxable Profit" amount={taxableProfit} total={totalBase} color="var(--color-status-info)" currency={currency} />
-              <WaterfallBar label="Est. Income Tax + Soli" amount={tax} total={totalBase} color="var(--color-status-warning)" currency={currency} />
+              <WaterfallBar label="Est. Income Tax" amount={tax} total={totalBase} color="var(--color-status-warning)" currency={currency} />
               <WaterfallBar label="= Safe to Spend" amount={spendable} total={totalBase} color={spendable >= 0 ? "var(--color-status-success)" : "var(--color-status-danger)"} currency={currency} bold />
               {totalBase > 0 && (
                 <div className="border-t border-border-subtle mt-3 pt-3 flex justify-between text-xs text-muted">
@@ -211,9 +211,7 @@ function IncomeTaxSection({ data, currency }: { data: Entity; currency: string }
         )}
         {supported && tr && (
           <>
-            <SummaryRow label="Estimated Income Tax" value={fmt(num(tr, "estimated_annual_tax"), currency)} color="var(--color-status-warning)" />
-            <SummaryRow label="Solidarity Surcharge" value={fmt(num(tr, "solidarity_surcharge"), currency)} color="var(--color-status-warning)" />
-            <SummaryRow label="Total Annual Reserve" value={fmt(num(tr, "total_annual_reserve"), currency)} color="var(--color-status-warning)" bold />
+            <SummaryRow label="Estimated Income Tax" value={fmt(num(tr, "total_annual_reserve"), currency)} color="var(--color-status-warning)" bold />
             <SummaryRow label="Effective Tax Rate" value={fmtPct(num(tr, "effective_rate"))} />
           </>
         )}

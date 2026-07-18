@@ -26,7 +26,7 @@ export type UserFormData = {
 
 const EMPTY: UserFormData = {
   name: "", subtitle: "", email: "", phone: "", website: "",
-  street: "", street_num: "", postal_code: "", city: "", country: "Germany",
+  street: "", street_num: "", postal_code: "", city: "", country: "",
   vat_number: "", invoice_number_scheme: "daily",
 };
 

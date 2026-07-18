@@ -61,7 +61,7 @@ def compute_kpis(
     invoices: List[Invoice],
     contracts: List[Contract],
     projects: List[Project],
-    country: str = "Germany",
+    country: str = "",
     time_data: Optional[DataFrame] = None,
 ) -> KPISummary:
     """Compute business KPIs from invoices, contracts, and calendar data.
@@ -169,7 +169,7 @@ def compute_kpis(
 def monthly_revenue_breakdown(
     invoices: List[Invoice],
     n_months: int = 12,
-    country: str = "Germany",
+    country: str = "",
 ) -> list:
     """Revenue breakdown by month for the last n_months, in the primary currency.
 
@@ -212,7 +212,7 @@ def monthly_revenue_breakdown(
 
 def monthly_spendable_breakdown(
     invoices: List[Invoice],
-    country: str = "Germany",
+    country: str = "",
     n_months: int = 12,
     deductions: Decimal = Decimal(0),
 ) -> list:

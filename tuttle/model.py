@@ -189,7 +189,7 @@ class User(RpcMixin, SQLModel, table=True):
         sa_relationship_kwargs={"lazy": "subquery"},
     )
     operating_country: str = Field(
-        default="Germany",
+        default="",
         description="Country whose tax system and currency the freelancer operates under.",
     )
     VAT_number: Optional[str] = Field(
@@ -311,18 +311,22 @@ class Contact(RpcMixin, SQLModel, table=True):
             return ""
 
         if address_only:
-            return textwrap.dedent(f"""
+            return textwrap.dedent(
+                f"""
                 {self.address.street} {self.address.number}
                 {self.address.postal_code} {self.address.city}
-                {self.address.country}""")
+                {self.address.country}"""
+            )
 
-        return textwrap.dedent(f"""
+        return textwrap.dedent(
+            f"""
         {self.name}
         {self.company}
         {self.address.street} {self.address.number}
         {self.address.postal_code} {self.address.city}
         {self.address.country}
-        """)
+        """
+        )
 
 
 class ClientContact(SQLModel, table=True):

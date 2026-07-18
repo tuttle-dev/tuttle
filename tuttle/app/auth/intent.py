@@ -26,7 +26,7 @@ class AuthIntent(Intent):
         city: str,
         country: str,
         website: str,
-        operating_country: str = "Germany",
+        operating_country: str = "",
     ) -> IntentResult[Union[Type[User], None]]:
         """
         Creates a user with the given details.

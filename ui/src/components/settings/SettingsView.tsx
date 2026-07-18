@@ -64,8 +64,8 @@ const EMPTY_PROFILE: ProfileForm = {
   name: "", subtitle: "", email: "", phone_number: "", website: "", logo: "",
   signature: "",
   accent_color: "#2563eb",
-  VAT_number: "", tax_number: "", operating_country: "Germany",
-  street: "", number: "", postal_code: "", city: "", country: "Germany",
+  VAT_number: "", tax_number: "", operating_country: "",
+  street: "", number: "", postal_code: "", city: "", country: "",
   bank_name: "", bank_IBAN: "", bank_BIC: "",
 };
 
@@ -111,14 +111,14 @@ const DEFAULT_CURRENCY: CurrencySettings = {
   supported: ["EUR", "GBP", "USD"],
 };
 
-type Tab = "profile" | "branding" | "invoicing" | "llm" | "local" | "system" | "debug";
+type Tab = "profile" | "branding" | "invoicing" | "llm" | "region" | "system" | "debug";
 
 const TABS: { id: Tab; label: string; icon: typeof User }[] = [
   { id: "profile", label: "Profile", icon: User },
   { id: "branding", label: "Branding", icon: Palette },
+  { id: "region", label: "Region", icon: Globe },
   { id: "invoicing", label: "Invoicing", icon: FileText },
   { id: "llm", label: "AI / LLM", icon: Bot },
-  { id: "local", label: "Local", icon: Globe },
   { id: "system", label: "System", icon: Monitor },
   { id: "debug", label: "Debug", icon: Terminal },
 ];
@@ -240,7 +240,7 @@ export function SettingsView() {
           accent_color: str(p, "accent_color") || "#2563eb",
           VAT_number: str(p, "VAT_number"),
           tax_number: str(p, "tax_number"),
-          operating_country: str(p, "operating_country") || "Germany",
+          operating_country: str(p, "operating_country"),
           street: addr ? str(addr, "street") : "",
           number: addr ? str(addr, "number") : "",
           postal_code: addr ? str(addr, "postal_code") : "",
@@ -547,22 +547,12 @@ export function SettingsView() {
               <div>
                 <label className={labelCls}>VAT number</label>
                 <input className={inputCls} value={profile.VAT_number} onChange={pset("VAT_number")} placeholder="DE123456789" />
-                <p className="text-xs text-secondary mt-1">USt-IdNr. Preferred identifier on invoices when available.</p>
+                <p className="text-xs text-secondary mt-1">Preferred identifier on invoices when available.</p>
               </div>
               <div>
                 <label className={labelCls}>Tax number</label>
                 <input className={inputCls} value={profile.tax_number} onChange={pset("tax_number")} placeholder="21/815/08150" />
-                <p className="text-xs text-secondary mt-1">Steuernummer. Shown when you have no VAT number yet, and on invoices outside the scope of VAT where the VAT number may not appear.</p>
-              </div>
-              <div>
-                <label className={labelCls}>Operating country <span className="text-accent">*</span></label>
-                <select className={inputCls} value={profile.operating_country} onChange={pset("operating_country")}>
-                  {supportedCountries.length > 0 ? (
-                    supportedCountries.map((c) => <option key={c} value={c}>{c}</option>)
-                  ) : (
-                    <option value={profile.operating_country}>{profile.operating_country}</option>
-                  )}
-                </select>
+                <p className="text-xs text-secondary mt-1">Shown on invoices when no VAT number is available.</p>
               </div>
             </div>
           </fieldset>
@@ -926,8 +916,13 @@ export function SettingsView() {
         </section>
       )}
 
-      {tab === "local" && (
-        <LocalTab />
+      {tab === "region" && (
+        <RegionTab
+          operatingCountry={profile.operating_country}
+          supportedCountries={supportedCountries}
+          onCountryChange={(c) => setProfile((p) => ({ ...p, operating_country: c }))}
+          onSaveCountry={handleSaveProfile}
+        />
       )}
 
       {tab === "system" && (
@@ -1085,10 +1080,15 @@ const THEME_OPTIONS: { id: ThemeChoice; label: string; icon: typeof Sun }[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// Local tab — machine-wide, region-specific settings (not tied to a user)
+// Region tab — machine-wide, region-specific settings (not tied to a user)
 // ---------------------------------------------------------------------------
 
-function LocalTab() {
+function RegionTab({ operatingCountry, supportedCountries, onCountryChange, onSaveCountry }: {
+  operatingCountry: string;
+  supportedCountries: string[];
+  onCountryChange: (country: string) => void;
+  onSaveCountry: () => void;
+}) {
   const { showMessage } = useStatusBar();
   const [currency, setCurrency] = useState<CurrencySettings>({ ...DEFAULT_CURRENCY });
   const [currencySaving, setCurrencySaving] = useState(false);
@@ -1111,16 +1111,38 @@ function LocalTab() {
 
   return (
     <section className="space-y-4">
-      <p className="text-sm text-muted">
-        Machine-wide settings shared across all users on this computer, not stored in any one profile.
-      </p>
+
+      <fieldset className="border border-border-subtle rounded-lg px-4 pb-3 pt-2">
+        <legend className="text-xs font-medium text-secondary px-1">Tax jurisdiction</legend>
+        <div className="mt-2">
+          <label className={labelCls}>Operating country</label>
+          <select
+            className={inputCls}
+            value={operatingCountry}
+            onChange={(e) => onCountryChange(e.target.value)}
+          >
+            {supportedCountries.length > 0 ? (
+              supportedCountries.map((c) => <option key={c} value={c}>{c}</option>)
+            ) : (
+              <option value={operatingCountry}>{operatingCountry}</option>
+            )}
+          </select>
+          <p className="text-xs text-secondary mt-1">Determines tax brackets, rates, and default currency.</p>
+        </div>
+        <button
+          onClick={onSaveCountry}
+          className="mt-3 flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium bg-accent/10 text-primary hover:bg-accent/20 border border-accent/30 transition-colors disabled:opacity-40"
+        >
+          <Save size={14} />
+          Save jurisdiction
+        </button>
+      </fieldset>
 
       <fieldset className="border border-border-subtle rounded-lg px-4 pb-3 pt-2">
         <legend className="text-xs font-medium text-secondary px-1">Currency conversion</legend>
         <p className="text-xs text-secondary mt-1">
-          Only matters if you invoice in a currency other than the one you're taxed in. Invoices keep their own
-          currency; this converts them for your dashboard, tax, and salary at the ECB monthly average
-          (§ 16 Abs. 6 UStG). The conversion fee reduces the salary estimate only, never your taxable revenue.
+          Only matters if you invoice in a currency other than the one you're taxed in.
+          Amounts are converted at the ECB monthly average for dashboards, tax, and salary estimates.
         </p>
         <div className="grid grid-cols-2 gap-3 mt-3">
           <div>

@@ -32,7 +32,7 @@ class TaxIntent(SQLModelDataSourceMixin, Intent):
                 return users[0].operating_country
         except Exception:
             pass
-        return "Germany"
+        return ""
 
     def _get_tax_currency(self, country: str) -> str:
         """The currency aggregates are shown in (settings, default: tax system)."""
