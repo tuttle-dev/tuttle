@@ -126,8 +126,10 @@ export function DashboardView() {
         <KPICard title="Active Contracts" value={String(int(kpis, "active_contracts"))} icon={FileSignature} tooltip="Number of contracts that are currently active and generating work or invoices."/>
         <KPICard title="Unpaid Invoices" value={String(int(kpis, "unpaid_invoices"))} icon={FileText}
           valueColor={int(kpis, "unpaid_invoices") > 0 ? "var(--color-status-warning)" : undefined} tooltip="Number of invoices that have been issued but have not yet been paid." />
-        <KPICard title="Spendable Income" value={str(kpis, "spendable_income_formatted")} icon={Wallet}
-          valueColor={num(kpis, "spendable_income") > 0 ? "var(--color-status-success)" : "var(--color-status-danger)"} tooltip="Estimated income remaining after setting aside VAT and income tax reserves."/>
+        <div className={kpis.country_supported === false ? "opacity-40" : ""}>
+          <KPICard title="Spendable Income" value={kpis.country_supported === false ? "—" : str(kpis, "spendable_income_formatted")} icon={Wallet}
+            valueColor={num(kpis, "spendable_income") > 0 ? "var(--color-status-success)" : "var(--color-status-danger)"} tooltip="Estimated income remaining after setting aside VAT and income tax reserves."/>
+        </div>
       </div>
 
       {revenueBars.length > 0 && (

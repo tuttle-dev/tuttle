@@ -110,9 +110,88 @@ def _get_params(country: str, year: int) -> TaxParams:
 
 
 def supported_countries() -> list[str]:
-    """Return list of supported country names."""
+    """Return list of country names that have tax data packages."""
     _load_all()
     return sorted(_REGISTRY.keys())
+
+
+def has_tax_model(country: str) -> bool:
+    """Check whether a country has a tax data package."""
+    _load_all()
+    return country in _ALIAS_MAP
+
+
+# Comprehensive list of major countries for the operating-country dropdown.
+# Countries with tax models appear here too; the UI distinguishes them via
+# has_tax_model() / supported_countries().
+ALL_COUNTRIES = sorted(
+    [
+        "Argentina",
+        "Australia",
+        "Austria",
+        "Belgium",
+        "Brazil",
+        "Canada",
+        "Chile",
+        "China",
+        "Colombia",
+        "Croatia",
+        "Czech Republic",
+        "Denmark",
+        "Egypt",
+        "Estonia",
+        "Finland",
+        "France",
+        "Germany",
+        "Greece",
+        "Hungary",
+        "Iceland",
+        "India",
+        "Indonesia",
+        "Ireland",
+        "Israel",
+        "Italy",
+        "Japan",
+        "Latvia",
+        "Lithuania",
+        "Luxembourg",
+        "Malaysia",
+        "Mexico",
+        "Morocco",
+        "Netherlands",
+        "New Zealand",
+        "Nigeria",
+        "Norway",
+        "Pakistan",
+        "Peru",
+        "Philippines",
+        "Poland",
+        "Portugal",
+        "Romania",
+        "Saudi Arabia",
+        "Singapore",
+        "Slovakia",
+        "Slovenia",
+        "South Africa",
+        "South Korea",
+        "Spain",
+        "Sweden",
+        "Switzerland",
+        "Taiwan",
+        "Thailand",
+        "Turkey",
+        "Ukraine",
+        "United Arab Emirates",
+        "United Kingdom",
+        "United States",
+        "Vietnam",
+    ]
+)
+
+
+def all_operating_countries() -> list[str]:
+    """All countries available for the operating-country dropdown."""
+    return ALL_COUNTRIES
 
 
 def available_years(country: str) -> list[int]:

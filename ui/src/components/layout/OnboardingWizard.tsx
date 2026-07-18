@@ -108,6 +108,7 @@ export function OnboardingWizard({ open, onClose, onSubmit, onDemo, loading, ove
   const [availableLanguages, setAvailableLanguages] = useState<Record<string, string>>({});
   const [availableSchemes, setAvailableSchemes] = useState<Record<string, string>>({});
   const [supportedCountries, setSupportedCountries] = useState<string[]>([]);
+  const [taxModelCountries, setTaxModelCountries] = useState<Set<string>>(new Set());
   const [models, setModels] = useState<string[]>([]);
   const [fetchingModels, setFetchingModels] = useState(false);
 
@@ -123,12 +124,14 @@ export function OnboardingWizard({ open, onClose, onSubmit, onDemo, loading, ove
       rpc<Record<string, string>>("invoicing.available_templates"),
       rpc<Record<string, string>>("invoicing.available_languages"),
       rpc<Record<string, string>>("invoicing.available_number_schemes"),
+      rpc<string[]>("tax.all_operating_countries"),
       rpc<string[]>("tax.supported_countries"),
-    ]).then(([tmpl, lang, scheme, countries]) => {
+    ]).then(([tmpl, lang, scheme, allCountries, taxCountries]) => {
       if (tmpl.ok && tmpl.data) setAvailableTemplates(tmpl.data);
       if (lang.ok && lang.data) setAvailableLanguages(lang.data);
       if (scheme.ok && scheme.data) setAvailableSchemes(scheme.data);
-      if (countries.ok && countries.data) setSupportedCountries(countries.data);
+      if (allCountries.ok && allCountries.data) setSupportedCountries(allCountries.data);
+      if (taxCountries.ok && taxCountries.data) setTaxModelCountries(new Set(taxCountries.data));
     });
   }, [open]);
 
@@ -347,6 +350,15 @@ export function OnboardingWizard({ open, onClose, onSubmit, onDemo, loading, ove
           </select>
           <p className="mt-1 text-xs text-muted">Determines tax brackets, rates, and default currency.</p>
         </div>
+
+        {profile.operating_country && !taxModelCountries.has(profile.operating_country) && (
+          <div className="px-3 py-2 rounded-md bg-status-warning/10 border border-status-warning/20 text-xs text-secondary">
+            Income tax estimation is not yet available for {profile.operating_country}. VAT and invoicing still work.{" "}
+            <a href="https://github.com/tuttle-dev/tuttle/issues" target="_blank" rel="noopener noreferrer" className="underline text-accent hover:text-primary">
+              Request this tax model on GitHub
+            </a>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-3">
           <div>

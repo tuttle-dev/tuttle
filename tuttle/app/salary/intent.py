@@ -5,6 +5,7 @@ from ..core.intent_result import IntentResult
 
 from ...fx import primary_currency, validate_currency_code
 from ...model import Invoice, RecurringExpense, User
+from ...tax import has_tax_model
 from ...tax_reserves import compute_effective_salary
 
 from .data_source import SalaryDataSource
@@ -24,7 +25,7 @@ class SalaryIntent(SQLModelDataSourceMixin, Intent):
                 return users[0].operating_country
         except Exception:
             pass
-        return "Germany"
+        return ""
 
     def _get_tax_currency(self, country: str) -> str:
         """The currency aggregates are shown in (settings, default: tax system)."""
@@ -50,7 +51,12 @@ class SalaryIntent(SQLModelDataSourceMixin, Intent):
             )
             return IntentResult(
                 was_intent_successful=True,
-                data={"salary": salary, "currency": currency},
+                data={
+                    "salary": salary,
+                    "currency": currency,
+                    "country": country,
+                    "country_supported": has_tax_model(country) if country else False,
+                },
             )
         except Exception as e:
             return IntentResult(

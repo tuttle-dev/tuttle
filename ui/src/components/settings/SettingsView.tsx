@@ -144,6 +144,7 @@ export function SettingsView() {
   const [isDemoUser, setIsDemoUser] = useState(false);
   const [resettingDemo, setResettingDemo] = useState(false);
   const [supportedCountries, setSupportedCountries] = useState<string[]>([]);
+  const [taxModelCountries, setTaxModelCountries] = useState<Set<string>>(new Set());
   const [activeDbFile, setActiveDbFile] = useState<string | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
@@ -214,8 +215,12 @@ export function SettingsView() {
   // -- Profile -------------------------------------------------------------
 
   async function loadSupportedCountries() {
-    const res = await rpc<string[]>("tax.supported_countries");
-    if (res.ok && res.data) setSupportedCountries(res.data);
+    const [all, tax] = await Promise.all([
+      rpc<string[]>("tax.all_operating_countries"),
+      rpc<string[]>("tax.supported_countries"),
+    ]);
+    if (all.ok && all.data) setSupportedCountries(all.data);
+    if (tax.ok && tax.data) setTaxModelCountries(new Set(tax.data));
   }
 
   async function loadProfile() {
@@ -909,6 +914,7 @@ export function SettingsView() {
           onVatChange={(v) => setProfile((p) => ({ ...p, VAT_number: v }))}
           taxNumber={profile.tax_number}
           onTaxChange={(v) => setProfile((p) => ({ ...p, tax_number: v }))}
+          taxModelCountries={taxModelCountries}
           onSave={handleSaveProfile}
         />
       )}
@@ -1071,7 +1077,7 @@ const THEME_OPTIONS: { id: ThemeChoice; label: string; icon: typeof Sun }[] = [
 // Region tab — tax jurisdiction, tax identifiers, and currency settings
 // ---------------------------------------------------------------------------
 
-function RegionTab({ operatingCountry, supportedCountries, onCountryChange, vatNumber, onVatChange, taxNumber, onTaxChange, onSave }: {
+function RegionTab({ operatingCountry, supportedCountries, onCountryChange, vatNumber, onVatChange, taxNumber, onTaxChange, taxModelCountries, onSave }: {
   operatingCountry: string;
   supportedCountries: string[];
   onCountryChange: (country: string) => void;
@@ -1079,6 +1085,7 @@ function RegionTab({ operatingCountry, supportedCountries, onCountryChange, vatN
   onVatChange: (value: string) => void;
   taxNumber: string;
   onTaxChange: (value: string) => void;
+  taxModelCountries: Set<string>;
   onSave: () => void;
 }) {
   const { showMessage } = useStatusBar();
@@ -1138,6 +1145,14 @@ function RegionTab({ operatingCountry, supportedCountries, onCountryChange, vatN
             <p className="text-xs text-secondary mt-1">Shown on invoices when no VAT number is available.</p>
           </div>
         </div>
+        {operatingCountry && !taxModelCountries.has(operatingCountry) && (
+          <div className="mt-3 px-3 py-2 rounded-md bg-status-warning/10 border border-status-warning/20 text-xs text-secondary">
+            Income tax estimation is not yet available for {operatingCountry}. VAT and invoicing still work.{" "}
+            <a href="https://github.com/tuttle-dev/tuttle/issues" target="_blank" rel="noopener noreferrer" className="underline text-accent hover:text-primary">
+              Request this tax model on GitHub
+            </a>
+          </div>
+        )}
       </fieldset>
 
       <fieldset className="border border-border-subtle rounded-lg px-4 pb-3 pt-2">
