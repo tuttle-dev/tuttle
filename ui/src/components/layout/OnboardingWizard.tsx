@@ -91,7 +91,7 @@ const SCHEME_EXAMPLES: Record<string, string> = {
   plain: "01",
 };
 
-const STEP_LABELS = ["Welcome", "Profile", "Region", "Invoicing", "AI / LLM", "Finish"];
+const STEP_LABELS = ["Welcome", "Profile", "Address", "Region", "Invoicing", "AI / LLM", "Finish"];
 const TOTAL_STEPS = STEP_LABELS.length;
 
 // ---------------------------------------------------------------------------
@@ -149,15 +149,16 @@ export function OnboardingWizard({ open, onClose, onSubmit, onDemo, loading, ove
 
   function canAdvance(): boolean {
     if (step === 1) {
+      return !!(profile.name.trim() && profile.email.trim());
+    }
+    if (step === 2) {
       return !!(
-        profile.name.trim() &&
-        profile.email.trim() &&
         profile.street.trim() &&
         profile.city.trim() &&
         profile.country.trim()
       );
     }
-    if (step === 2) {
+    if (step === 3) {
       return !!(
         profile.operating_country.trim() &&
         (profile.vat_number.trim() || profile.tax_number.trim())
@@ -183,7 +184,7 @@ export function OnboardingWizard({ open, onClose, onSubmit, onDemo, loading, ove
     setStep((s) => Math.min(s + 1, TOTAL_STEPS - 1));
   }
 
-  const isSkippable = step === 3 || step === 4;
+  const isSkippable = step === 4 || step === 5;
 
   const inputCls =
     "w-full rounded-md border border-border-subtle bg-bg-content px-3 py-1.5 text-sm text-primary placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-accent";
@@ -266,13 +267,25 @@ export function OnboardingWizard({ open, onClose, onSubmit, onDemo, loading, ove
             <input className={inputCls} value={profile.phone} onChange={pset("phone")} />
           </div>
         </div>
+      </div>
+    );
+  }
+
+  function renderAddress() {
+    return (
+      <div className="space-y-4">
+        <p className="text-secondary text-sm leading-relaxed">
+          Address and payment details shown on your invoices.
+        </p>
+
+        <p className="text-xs text-muted"><span className="text-accent">*</span> Required</p>
 
         <fieldset className="border border-border-subtle rounded-lg px-4 pb-3 pt-2">
           <legend className="text-xs font-medium text-secondary px-1">Address <span className="text-accent">*</span></legend>
           <div className="grid grid-cols-4 gap-3 mt-1">
             <div className="col-span-3">
               <label className={labelCls}>Street</label>
-              <input className={inputCls} value={profile.street} onChange={pset("street")} />
+              <input className={inputCls} value={profile.street} onChange={pset("street")} autoFocus />
             </div>
             <div>
               <label className={labelCls}>Nr.</label>
@@ -555,7 +568,7 @@ export function OnboardingWizard({ open, onClose, onSubmit, onDemo, loading, ove
 
   // -- Layout ---------------------------------------------------------------
 
-  const stepContent = [renderWelcome, renderProfile, renderRegion, renderInvoicing, renderLLM, renderFinish][step];
+  const stepContent = [renderWelcome, renderProfile, renderAddress, renderRegion, renderInvoicing, renderLLM, renderFinish][step];
   const showNav = step > 0;
 
   const content = (
