@@ -91,7 +91,7 @@ const SCHEME_EXAMPLES: Record<string, string> = {
   plain: "01",
 };
 
-const STEP_LABELS = ["Welcome", "Profile", "Business", "Invoicing", "AI / LLM", "Finish"];
+const STEP_LABELS = ["Welcome", "Profile", "Region", "Invoicing", "AI / LLM", "Finish"];
 const TOTAL_STEPS = STEP_LABELS.length;
 
 // ---------------------------------------------------------------------------
@@ -149,16 +149,18 @@ export function OnboardingWizard({ open, onClose, onSubmit, onDemo, loading, ove
 
   function canAdvance(): boolean {
     if (step === 1) {
-      return !!(profile.name.trim() && profile.email.trim());
+      return !!(
+        profile.name.trim() &&
+        profile.email.trim() &&
+        profile.street.trim() &&
+        profile.city.trim() &&
+        profile.country.trim()
+      );
     }
     if (step === 2) {
       return !!(
-        profile.street.trim() &&
-        profile.city.trim() &&
-        profile.country.trim() &&
-        // At least one tax identifier is required.
-        (profile.vat_number.trim() || profile.tax_number.trim()) &&
-        profile.operating_country.trim()
+        profile.operating_country.trim() &&
+        (profile.vat_number.trim() || profile.tax_number.trim())
       );
     }
     return true;
@@ -245,8 +247,7 @@ export function OnboardingWizard({ open, onClose, onSubmit, onDemo, loading, ove
     return (
       <div className="space-y-4">
         <p className="text-secondary text-sm leading-relaxed">
-          Tell us about yourself. This information appears on your invoices
-          and documents.
+          Your identity — this appears on invoices and documents.
         </p>
 
         <p className="text-xs text-muted"><span className="text-accent">*</span> Required</p>
@@ -256,46 +257,22 @@ export function OnboardingWizard({ open, onClose, onSubmit, onDemo, loading, ove
             <label className={labelCls}>Full name <span className="text-accent">*</span></label>
             <input className={inputCls} value={profile.name} onChange={pset("name")} placeholder="Jane Doe" autoFocus required />
           </div>
-          <div className="col-span-2">
-            <label className={labelCls}>Subtitle / profession</label>
-            <input className={inputCls} value={profile.subtitle} onChange={pset("subtitle")} placeholder="Freelance consultant" />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
           <div>
             <label className={labelCls}>Email <span className="text-accent">*</span></label>
             <input className={inputCls} type="email" value={profile.email} onChange={pset("email")} placeholder="mail@example.com" />
           </div>
           <div>
             <label className={labelCls}>Phone</label>
-            <input className={inputCls} value={profile.phone} onChange={pset("phone")} placeholder="+49 …" />
+            <input className={inputCls} value={profile.phone} onChange={pset("phone")} />
           </div>
         </div>
-
-        <div>
-          <label className={labelCls}>Website</label>
-          <input className={inputCls} value={profile.website} onChange={pset("website")} placeholder="https://…" />
-        </div>
-      </div>
-    );
-  }
-
-  function renderBusiness() {
-    return (
-      <div className="space-y-4">
-        <p className="text-secondary text-sm leading-relaxed">
-          Your business address, tax info, and payment details for invoices.
-        </p>
-
-        <p className="text-xs text-muted"><span className="text-accent">*</span> Required</p>
 
         <fieldset className="border border-border-subtle rounded-lg px-4 pb-3 pt-2">
           <legend className="text-xs font-medium text-secondary px-1">Address <span className="text-accent">*</span></legend>
           <div className="grid grid-cols-4 gap-3 mt-1">
             <div className="col-span-3">
               <label className={labelCls}>Street</label>
-              <input className={inputCls} value={profile.street} onChange={pset("street")} autoFocus />
+              <input className={inputCls} value={profile.street} onChange={pset("street")} />
             </div>
             <div>
               <label className={labelCls}>Nr.</label>
@@ -316,49 +293,61 @@ export function OnboardingWizard({ open, onClose, onSubmit, onDemo, loading, ove
           </div>
         </fieldset>
 
+        <fieldset className="border border-border-subtle rounded-lg px-4 pb-3 pt-2">
+          <legend className="text-xs font-medium text-secondary px-1">Bank Account</legend>
+          <div className="grid grid-cols-2 gap-3 mt-1">
+            <div className="col-span-2">
+              <label className={labelCls}>Account holder / Bank name</label>
+              <input className={inputCls} value={profile.bank_name} onChange={pset("bank_name")} />
+            </div>
+            <div>
+              <label className={labelCls}>IBAN</label>
+              <input className={inputCls} value={profile.bank_IBAN} onChange={pset("bank_IBAN")} />
+            </div>
+            <div>
+              <label className={labelCls}>BIC</label>
+              <input className={inputCls} value={profile.bank_BIC} onChange={pset("bank_BIC")} />
+            </div>
+          </div>
+        </fieldset>
+      </div>
+    );
+  }
+
+  function renderRegion() {
+    return (
+      <div className="space-y-4">
+        <p className="text-secondary text-sm leading-relaxed">
+          Your tax jurisdiction — determines tax rates, brackets, and currency.
+        </p>
+
+        <p className="text-xs text-muted"><span className="text-accent">*</span> Required</p>
+
+        <div>
+          <label className={labelCls}>Operating country <span className="text-accent">*</span></label>
+          <select className={inputCls} value={profile.operating_country} onChange={pset("operating_country")} autoFocus>
+            {supportedCountries.length > 0 ? (
+              supportedCountries.map((c) => <option key={c} value={c}>{c}</option>)
+            ) : (
+              <option value={profile.operating_country}>{profile.operating_country}</option>
+            )}
+          </select>
+          <p className="mt-1 text-xs text-muted">Determines tax brackets, rates, and default currency.</p>
+        </div>
+
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className={labelCls}>VAT number</label>
-            <input className={inputCls} value={profile.vat_number} onChange={pset("vat_number")} placeholder="DE123456789" />
+            <input className={inputCls} value={profile.vat_number} onChange={pset("vat_number")} placeholder="e.g. DE123456789" />
           </div>
           <div>
             <label className={labelCls}>Tax number</label>
-            <input className={inputCls} value={profile.tax_number} onChange={pset("tax_number")} placeholder="21/815/08150" />
+            <input className={inputCls} value={profile.tax_number} onChange={pset("tax_number")} placeholder="e.g. 21/815/08150" />
           </div>
           <p className="col-span-2 text-xs text-muted">
             Enter your VAT number or tax number <span className="text-accent">*</span>. At least one is required and will appear on your invoices.
           </p>
-          <div>
-            <label className={labelCls}>Operating country <span className="text-accent">*</span></label>
-            <select className={inputCls} value={profile.operating_country} onChange={pset("operating_country")}>
-              {supportedCountries.length > 0 ? (
-                supportedCountries.map((c) => <option key={c} value={c}>{c}</option>)
-              ) : (
-                <option value={profile.operating_country}>{profile.operating_country}</option>
-              )}
-            </select>
-            <p className="mt-1 text-xs text-muted">Determines tax rules and default currency.</p>
-          </div>
         </div>
-
-        <fieldset className="border border-border-subtle rounded-lg px-4 pb-3 pt-2">
-          <legend className="text-xs font-medium text-secondary px-1">Bank Account</legend>
-          <p className="text-xs text-muted mb-2">Payment details shown on your invoices.</p>
-          <div className="grid grid-cols-2 gap-3 mt-1">
-            <div className="col-span-2">
-              <label className={labelCls}>Account holder / Bank name</label>
-              <input className={inputCls} value={profile.bank_name} onChange={pset("bank_name")} placeholder="Your Name or Bank Name" />
-            </div>
-            <div>
-              <label className={labelCls}>IBAN</label>
-              <input className={inputCls} value={profile.bank_IBAN} onChange={pset("bank_IBAN")} placeholder="DE89 3704 0044 0532 0130 00" />
-            </div>
-            <div>
-              <label className={labelCls}>BIC</label>
-              <input className={inputCls} value={profile.bank_BIC} onChange={pset("bank_BIC")} placeholder="COBADEFFXXX" />
-            </div>
-          </div>
-        </fieldset>
       </div>
     );
   }
@@ -566,7 +555,7 @@ export function OnboardingWizard({ open, onClose, onSubmit, onDemo, loading, ove
 
   // -- Layout ---------------------------------------------------------------
 
-  const stepContent = [renderWelcome, renderProfile, renderBusiness, renderInvoicing, renderLLM, renderFinish][step];
+  const stepContent = [renderWelcome, renderProfile, renderRegion, renderInvoicing, renderLLM, renderFinish][step];
   const showNav = step > 0;
 
   const content = (
