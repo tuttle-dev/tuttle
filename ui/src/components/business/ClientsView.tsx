@@ -483,7 +483,7 @@ function ClientForm({ client, contacts, onSave, onCancel, error }: {
       <Section title="Client">
         <FormField label="Name" value={name} onChange={setName} autoFocus required={isRequired("name")} />
         <div className="mt-3">
-          <FormField label="VAT Number" value={vatNumber} onChange={setVatNumber} placeholder="e.g. DE123456789" />
+          <FormField label="VAT Number" value={vatNumber} onChange={setVatNumber} />
         </div>
       </Section>
 

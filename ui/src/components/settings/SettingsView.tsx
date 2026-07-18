@@ -550,11 +550,11 @@ export function SettingsView() {
               </div>
               <div>
                 <label className={labelCls}>IBAN</label>
-                <input className={inputCls} value={profile.bank_IBAN} onChange={pset("bank_IBAN")} placeholder="DE89 3704 0044 0532 0130 00" />
+                <input className={inputCls} value={profile.bank_IBAN} onChange={pset("bank_IBAN")} />
               </div>
               <div>
                 <label className={labelCls}>BIC</label>
-                <input className={inputCls} value={profile.bank_BIC} onChange={pset("bank_BIC")} placeholder="COBADEFFXXX" />
+                <input className={inputCls} value={profile.bank_BIC} onChange={pset("bank_BIC")} />
               </div>
             </div>
           </fieldset>
@@ -1129,12 +1129,12 @@ function RegionTab({ operatingCountry, supportedCountries, onCountryChange, vatN
           <div />
           <div>
             <label className={labelCls}>VAT number</label>
-            <input className={inputCls} value={vatNumber} onChange={(e) => onVatChange(e.target.value)} placeholder="e.g. DE123456789" />
+            <input className={inputCls} value={vatNumber} onChange={(e) => onVatChange(e.target.value)} />
             <p className="text-xs text-secondary mt-1">Preferred identifier on invoices when available.</p>
           </div>
           <div>
             <label className={labelCls}>Tax number</label>
-            <input className={inputCls} value={taxNumber} onChange={(e) => onTaxChange(e.target.value)} placeholder="e.g. 21/815/08150" />
+            <input className={inputCls} value={taxNumber} onChange={(e) => onTaxChange(e.target.value)} />
             <p className="text-xs text-secondary mt-1">Shown on invoices when no VAT number is available.</p>
           </div>
         </div>

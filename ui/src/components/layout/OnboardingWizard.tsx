@@ -351,11 +351,11 @@ export function OnboardingWizard({ open, onClose, onSubmit, onDemo, loading, ove
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className={labelCls}>VAT number</label>
-            <input className={inputCls} value={profile.vat_number} onChange={pset("vat_number")} placeholder="e.g. DE123456789" />
+            <input className={inputCls} value={profile.vat_number} onChange={pset("vat_number")} />
           </div>
           <div>
             <label className={labelCls}>Tax number</label>
-            <input className={inputCls} value={profile.tax_number} onChange={pset("tax_number")} placeholder="e.g. 21/815/08150" />
+            <input className={inputCls} value={profile.tax_number} onChange={pset("tax_number")} />
           </div>
           <p className="col-span-2 text-xs text-muted">
             Enter your VAT number or tax number <span className="text-accent">*</span>. At least one is required and will appear on your invoices.

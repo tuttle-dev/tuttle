@@ -131,7 +131,7 @@ export function UserRegistrationDialog({ open, onClose, onSubmit, loading }: Pro
 
           <div>
             <label className={labelCls}>VAT number</label>
-            <input className={inputCls} value={form.vat_number} onChange={set("vat_number")} placeholder="DE123456789" />
+            <input className={inputCls} value={form.vat_number} onChange={set("vat_number")} />
           </div>
 
           <fieldset className="border border-border-subtle rounded-lg px-4 pb-3 pt-2">
