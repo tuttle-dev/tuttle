@@ -4,8 +4,6 @@ set dotenv-load := false
 
 repo     := justfile_directory()
 electron := repo / "ui"
-venv     := repo / ".venv"
-python   := venv / "bin/python"
 app      := electron / "release/mac-arm64/Tuttle.app"
 
 # ── Development ─────────────────────────────────────────────────────────────
@@ -24,15 +22,15 @@ dev:
 
 # Build the Python RPC core with PyInstaller
 build-core:
-    {{python}} -m PyInstaller --clean --noconfirm {{repo}}/tuttle-rpc.spec
+    uv run --no-sync python -m PyInstaller --clean --noconfirm "{{repo}}/tuttle-rpc.spec"
 
 # Smoke-test the frozen core: verify every RPC domain is bundled
 smoke-core:
-    {{python}} {{repo}}/scripts/smoke_core.py
+    uv run --no-sync python "{{repo}}/scripts/smoke_core.py"
 
 # Build the Electron renderer (Vite + TypeScript)
 build-renderer:
-    cd {{electron}} && npm run build
+    cd "{{electron}}" && npm run build
 
 # Remove previous packaged app to avoid launching stale builds
 clean-app:
@@ -40,7 +38,7 @@ clean-app:
 
 # Package the Electron .app (requires build-core + build-renderer first)
 pack target="dir":
-    cd {{electron}} && CSC_IDENTITY_AUTO_DISCOVERY=false npx electron-builder --mac {{target}}
+    cd "{{electron}}" && CSC_IDENTITY_AUTO_DISCOVERY=false npx electron-builder --mac {{target}}
     @echo "Ad-hoc signing all binaries…"
     find "{{app}}" -type f \( -name '*.dylib' -o -name '*.so' -o -perm +111 \) -exec codesign --force --sign - {} \; 2>/dev/null || true
     codesign --force --deep --sign - "{{app}}"
@@ -91,7 +89,7 @@ br: build run
 
 # Build the TuttleCalendar.app helper and request calendar access
 calendar-setup:
-    {{python}} -c "from tuttle.eventkit_bridge import _ensure_helper; _ensure_helper()"
+    uv run --no-sync python -c "from tuttle.eventkit_bridge import _ensure_helper; _ensure_helper()"
     open --wait-apps ~/.tuttle/TuttleCalendar.app --args request-access
     @echo "Check System Settings → Privacy → Calendars for 'Tuttle Calendar'"
 
@@ -99,8 +97,8 @@ calendar-setup:
 
 # Run the full test suite (Python unit tests + TypeScript type-check)
 test *args="":
-    cd {{electron}} && npx tsc --noEmit
-    {{python}} -m pytest {{args}}
+    cd "{{electron}}" && npx tsc --noEmit
+    uv run --no-sync python -m pytest {{args}}
 
 
 # Create a new Alembic migration from the current SQLModel diff.
@@ -113,8 +111,8 @@ migrate message:
     set -euo pipefail
     tmp=$(mktemp -t tuttle_migrate.XXXXXX.db)
     trap 'rm -f "$tmp"' EXIT
-    TUTTLE_DB_URL="sqlite:///$tmp" {{venv}}/bin/alembic upgrade head
-    TUTTLE_DB_URL="sqlite:///$tmp" {{venv}}/bin/alembic revision --autogenerate -m "{{message}}"
+    TUTTLE_DB_URL="sqlite:///$tmp" uv run --no-sync alembic upgrade head
+    TUTTLE_DB_URL="sqlite:///$tmp" uv run --no-sync alembic revision --autogenerate -m "{{message}}"
     echo ""
     echo "✓ Revision written. REVIEW it before committing:"
     echo "  - any op.drop_column + op.add_column pair is a rename → use op.alter_column(new_column_name=...)"
@@ -129,8 +127,8 @@ check-migrations:
     set -euo pipefail
     tmp=$(mktemp -t tuttle_check.XXXXXX.db)
     trap 'rm -f "$tmp"' EXIT
-    TUTTLE_DB_URL="sqlite:///$tmp" {{venv}}/bin/alembic upgrade head
-    TUTTLE_DB_URL="sqlite:///$tmp" {{venv}}/bin/alembic check
+    TUTTLE_DB_URL="sqlite:///$tmp" uv run --no-sync alembic upgrade head
+    TUTTLE_DB_URL="sqlite:///$tmp" uv run --no-sync alembic check
 
 # Capture a single view screenshot: just screenshot <sidebar-id> <output-path>
 screenshot view out="": build-renderer
@@ -147,18 +145,18 @@ deps:
 
 # Install Node dependencies
 deps-node:
-    cd {{electron}} && npm ci
+    cd "{{electron}}" && npm ci
 
 # Install all dependencies
 deps-all: deps deps-node
 
 # Install the pre-commit hooks (run once after cloning)
 precommit:
-    {{venv}}/bin/pre-commit install
+    uv run --no-sync pre-commit install
 
 # Reset the demo user data
 demo-reset:
-    {{python}} -c "from tuttle.app.demo.intent import DemoIntent; DemoIntent().reset(); print('Demo user reset')"
+    uv run --no-sync python -c "from tuttle.app.demo.intent import DemoIntent; DemoIntent().reset(); print('Demo user reset')"
 
 # Wipe the dev data directory and start fresh
 reset:
@@ -206,12 +204,12 @@ release part *flags="":
         bump_flags+=("$arg")
     done
     if [[ -n "$pre" && "$pre" != "next" ]]; then
-        base=$({{python}} -m bumpversion show new_version --increment {{part}})
+        base=$(uv run --no-sync python -m bumpversion show new_version --increment {{part}})
         bump_flags+=(--new-version "${base}${pre}1")
     fi
     uv sync
     git add uv.lock
-    {{python}} -m bumpversion bump {{part}} ${bump_flags[@]+"${bump_flags[@]}"}
+    uv run --no-sync python -m bumpversion bump {{part}} ${bump_flags[@]+"${bump_flags[@]}"}
     if [[ "$dry_run" -eq 1 ]]; then exit 0; fi
     tag=$(git describe --tags --abbrev=0)
     version="${tag#v}"
