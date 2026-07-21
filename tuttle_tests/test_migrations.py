@@ -197,9 +197,35 @@ def test_versions_are_append_only_in_git() -> None:
     or any subsequent commits must only modify docstrings/comments —
     never op.* calls.
 
+    The comparison is done on the parsed op.* calls rather than on the raw
+    diff, so a reformat (line joining, import sorting) does not count as an
+    edit — only a change to what the call actually does.
+
     Skipped outside a git checkout (e.g. wheel installs).
     """
+    import ast
     import subprocess
+
+    def op_calls(source: str) -> list[str]:
+        """Every op.* call in upgrade(), normalized so formatting is invisible.
+
+        Only upgrade() is compared: that is the code every already-migrated
+        database has executed. downgrade() bodies were legitimately replaced
+        by `raise NotImplementedError` after the fact — see
+        test_downgrades_are_not_supported.
+        """
+        upgrade = next(
+            (node for node in ast.parse(source).body if isinstance(node, ast.FunctionDef) and node.name == "upgrade"),
+            ast.Module(body=[], type_ignores=[]),  # no upgrade() -> no op.* calls
+        )
+        return [
+            ast.unparse(node)
+            for node in ast.walk(upgrade)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and isinstance(node.func.value, ast.Name)
+            and node.func.value.id == "op"
+        ]
 
     versions = Path(__file__).resolve().parent.parent / "tuttle" / "migrations" / "versions"
     try:
@@ -212,8 +238,17 @@ def test_versions_are_append_only_in_git() -> None:
     except (FileNotFoundError, subprocess.CalledProcessError):
         pytest.skip("Not a git checkout; cannot enforce append-only.")
 
+    # Known pre-existing violation, grandfathered so the guard can go live for
+    # everything else: commit 9cec3e0 changed this revision's NULL backfill from
+    # "" to "Unknown" after it had shipped. Databases that migrated before that
+    # commit hold "", ones after hold "Unknown". Tracked in #429 — do not extend
+    # this set, add a new revision instead.
+    grandfathered = {"c3d70beffa72_make_contact_first_name_and_last_name_.py"}
+
     offenders: list[str] = []
     for script in versions.glob("*.py"):
+        if script.name in grandfathered:
+            continue
         result = subprocess.run(
             ["git", "log", "--pretty=format:%H", "--", script.name],
             cwd=versions,
@@ -223,18 +258,15 @@ def test_versions_are_append_only_in_git() -> None:
         commits = [c for c in result.stdout.strip().splitlines() if c]
         if len(commits) <= 1:
             continue
-        # Diff only post-creation commits (exclude oldest = creation commit)
-        oldest = commits[-1]
-        diff = subprocess.run(
-            ["git", "diff", f"{oldest}..HEAD", "--", script.name],
+        # Oldest commit created the file; compare its op.* calls with today's
+        original = subprocess.run(
+            ["git", "show", f"{commits[-1]}:./{script.name}"],
             cwd=versions,
             capture_output=True,
             text=True,
         )
-        for line in diff.stdout.splitlines():
-            if line.startswith("+    op."):
-                offenders.append(script.name)
-                break
+        if op_calls(original.stdout) != op_calls(script.read_text()):
+            offenders.append(script.name)
 
     assert not offenders, (
         f"These migration scripts have post-commit edits to op.* calls: {offenders}. "
