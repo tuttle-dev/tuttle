@@ -12,7 +12,6 @@ from sqlmodel import Session, select
 
 from ...model import Client, Contact, Contract, Invoice, Project, Task
 
-
 # ---------------------------------------------------------------------------
 # Tutorial rule definitions
 # ---------------------------------------------------------------------------

@@ -1,14 +1,12 @@
+import datetime
 from typing import List, Optional
 
-import datetime
-
-from loguru import logger
 import sqlmodel
-
-from ..core.abstractions import SQLModelDataSourceMixin
-from ..core.intent_result import IntentResult
+from loguru import logger
 
 from ...model import Invoice, Timesheet
+from ..core.abstractions import SQLModelDataSourceMixin
+from ..core.intent_result import IntentResult
 
 
 class InvoicingDataSource(SQLModelDataSourceMixin):
@@ -105,13 +103,9 @@ class InvoicingDataSource(SQLModelDataSourceMixin):
             Optional[Timesheet]: the timesheet associated with the invoice
         """
         if not len(invoice.timesheets) > 0:
-            raise ValueError(
-                f"invoice {invoice.id} has no timesheets associated with it"
-            )
+            raise ValueError(f"invoice {invoice.id} has no timesheets associated with it")
         if len(invoice.timesheets) > 1:
-            raise ValueError(
-                f"invoice {invoice.id} has more than one timesheet associated with it: {invoice.timesheets}"
-            )
+            raise ValueError(f"invoice {invoice.id} has more than one timesheet associated with it: {invoice.timesheets}")
         timesheet = invoice.timesheets[0]
         return timesheet
 
@@ -166,17 +160,9 @@ class InvoicingDataSource(SQLModelDataSourceMixin):
     def get_all_reminders_for_invoice(self, invoice_id: int) -> List[Invoice]:
         """Return only the reminders (not the root) for a given root invoice id."""
         with self.create_session() as session:
-            return list(
-                session.exec(
-                    sqlmodel.select(Invoice).where(
-                        Invoice.reminder_for_id == invoice_id
-                    )
-                ).all()
-            )
+            return list(session.exec(sqlmodel.select(Invoice).where(Invoice.reminder_for_id == invoice_id)).all())
 
-    def generate_invoice_number(
-        self, date: datetime.date, scheme: str = "daily"
-    ) -> str:
+    def generate_invoice_number(self, date: datetime.date, scheme: str = "daily") -> str:
         """Generate a sequential invoice number using the given scheme.
 
         Schemes:
@@ -211,11 +197,7 @@ class InvoicingDataSource(SQLModelDataSourceMixin):
                 if not inv.number:
                     continue
                 try:
-                    seq = (
-                        int(inv.number.rsplit("-", 1)[-1])
-                        if prefix
-                        else int(inv.number)
-                    )
+                    seq = int(inv.number.rsplit("-", 1)[-1]) if prefix else int(inv.number)
                     max_seq = max(max_seq, seq)
                 except (ValueError, IndexError):
                     continue

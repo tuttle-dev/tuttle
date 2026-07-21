@@ -3,10 +3,10 @@
 from typing import List, Optional
 
 import altair
+import pandas
 
 # from pandera.typing import DataFrame
 from pandas import DataFrame
-import pandas
 
 # ALTAIR THEMES
 
@@ -40,11 +40,7 @@ def plot_eval_time_planning(
     by,
 ):
     if by == "project":
-        plot_data = (
-            planning_data.reset_index()
-            .filter(["tag", "revenue"])
-            .rename(columns={"tag": "project"})
-        )
+        plot_data = planning_data.reset_index().filter(["tag", "revenue"]).rename(columns={"tag": "project"})
         plot = (
             altair.Chart(plot_data)
             .mark_bar()
@@ -95,9 +91,7 @@ def plot_revenue_curve(
     """
     revenue_data = revenue_data.copy()
     revenue_data["month"] = pandas.to_datetime(revenue_data["month"])
-    revenue_data["type"] = revenue_data["is_forecast"].map(
-        {True: "Forecast", False: "Actual"}
-    )
+    revenue_data["type"] = revenue_data["is_forecast"].map({True: "Forecast", False: "Actual"})
 
     # Monthly revenue bars
     bars = (

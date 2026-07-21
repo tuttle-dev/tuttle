@@ -177,9 +177,7 @@ class TestBuildZugferdDocument:
 
     @staticmethod
     def _seller_party(xml_str: str) -> str:
-        return re.search(
-            r"<ram:SellerTradeParty>.*?</ram:SellerTradeParty>", xml_str, re.S
-        ).group(0)
+        return re.search(r"<ram:SellerTradeParty>.*?</ram:SellerTradeParty>", xml_str, re.S).group(0)
 
     def test_seller_tax_number_falls_back_to_scheme_fc_without_vat_number(self):
         """A freelancer awaiting the USt-IdNr still owes a §14 UStG identifier;
@@ -188,9 +186,7 @@ class TestBuildZugferdDocument:
         user.VAT_number = None
         user.tax_number = "21/815/08150"
         invoice = _make_invoice()
-        xml_str = serialize_zugferd_xml(
-            invoice, user, profile="EN16931", validate=True
-        ).decode("utf-8")
+        xml_str = serialize_zugferd_xml(invoice, user, profile="EN16931", validate=True).decode("utf-8")
         seller = self._seller_party(xml_str)
         assert '<ram:ID schemeID="FC">21/815/08150</ram:ID>' in seller
         assert 'schemeID="VA"' not in seller
@@ -199,9 +195,7 @@ class TestBuildZugferdDocument:
         user = _make_user()
         user.tax_number = "21/815/08150"
         invoice = _make_invoice()
-        xml_str = serialize_zugferd_xml(invoice, user, profile="EN16931").decode(
-            "utf-8"
-        )
+        xml_str = serialize_zugferd_xml(invoice, user, profile="EN16931").decode("utf-8")
         assert '<ram:ID schemeID="VA">DE123456789</ram:ID>' in xml_str
         assert "21/815/08150" not in xml_str
 
@@ -210,9 +204,7 @@ class TestBuildZugferdDocument:
         user.VAT_number = None
         user.tax_number = None
         invoice = _make_invoice()
-        xml_str = serialize_zugferd_xml(invoice, user, profile="EN16931").decode(
-            "utf-8"
-        )
+        xml_str = serialize_zugferd_xml(invoice, user, profile="EN16931").decode("utf-8")
         seller = self._seller_party(xml_str)
         assert 'schemeID="VA"' not in seller
         assert 'schemeID="FC"' not in seller
@@ -250,9 +242,7 @@ class TestBuildZugferdDocument:
         """serialize with schema validation enabled should not raise."""
         user = _make_user()
         invoice = _make_invoice()
-        xml_bytes = serialize_zugferd_xml(
-            invoice, user, profile="EN16931", validate=True
-        )
+        xml_bytes = serialize_zugferd_xml(invoice, user, profile="EN16931", validate=True)
         assert len(xml_bytes) > 0
 
     def test_zero_vat_schema_validation_passes(self):
@@ -261,9 +251,7 @@ class TestBuildZugferdDocument:
         invoice = _make_invoice()
         for item in invoice.items:
             item.VAT_rate = Decimal("0E-10")  # simulate what the DB can return
-        xml_bytes = serialize_zugferd_xml(
-            invoice, user, profile="EN16931", validate=True
-        )
+        xml_bytes = serialize_zugferd_xml(invoice, user, profile="EN16931", validate=True)
         assert len(xml_bytes) > 0
         assert b"0E-10" not in xml_bytes
 
@@ -282,9 +270,7 @@ class TestBuildZugferdDocument:
         """XRECHNUNG has no bundled schema; verify it serializes without error."""
         user = _make_user()
         invoice = _make_invoice()
-        xml_bytes = serialize_zugferd_xml(
-            invoice, user, profile="XRECHNUNG", validate=False
-        )
+        xml_bytes = serialize_zugferd_xml(invoice, user, profile="XRECHNUNG", validate=False)
         assert len(xml_bytes) > 0
         assert b"XRechnung" in xml_bytes
 
@@ -300,9 +286,7 @@ class TestBuildZugferdDocument:
         """MINIMUM profile must not include line items or payment means."""
         user = _make_user()
         invoice = _make_invoice()
-        xml_bytes = serialize_zugferd_xml(
-            invoice, user, profile="MINIMUM", validate=True
-        )
+        xml_bytes = serialize_zugferd_xml(invoice, user, profile="MINIMUM", validate=True)
         xml_str = xml_bytes.decode("utf-8")
         assert "IncludedSupplyChainTradeLineItem" not in xml_str
         assert "PayeePartyCreditorFinancialAccount" not in xml_str
@@ -355,9 +339,7 @@ class TestOutsideScopeOfTax:
     def _xml(user=None, invoice=None, profile="EN16931") -> str:
         user = user if user is not None else _make_user()
         invoice = invoice if invoice is not None else _make_outside_scope_invoice()
-        return serialize_zugferd_xml(
-            invoice, user, profile=profile, validate=True
-        ).decode("utf-8")
+        return serialize_zugferd_xml(invoice, user, profile=profile, validate=True).decode("utf-8")
 
     @staticmethod
     def _breakdowns(xml_str: str) -> list[str]:
@@ -368,9 +350,7 @@ class TestOutsideScopeOfTax:
             xml_str,
             re.S,
         ).group(0)
-        return re.findall(
-            r"<ram:ApplicableTradeTax>.*?</ram:ApplicableTradeTax>", settlement, re.S
-        )
+        return re.findall(r"<ram:ApplicableTradeTax>.*?</ram:ApplicableTradeTax>", settlement, re.S)
 
     def test_invoice_reports_outside_scope(self):
         assert _make_outside_scope_invoice().is_outside_scope is True
@@ -407,9 +387,7 @@ class TestOutsideScopeOfTax:
     def test_br_o_05_line_items_carry_no_vat_rate(self):
         xml_str = self._xml()
         assert "RateApplicablePercent" not in xml_str
-        assert (
-            xml_str.count("<ram:CategoryCode>O</ram:CategoryCode>") == 3
-        )  # 2 lines + 1 breakdown
+        assert xml_str.count("<ram:CategoryCode>O</ram:CategoryCode>") == 3  # 2 lines + 1 breakdown
 
     def test_br_o_09_breakdown_tax_amount_is_zero(self):
         breakdown = self._breakdowns(self._xml())[0]
@@ -417,19 +395,13 @@ class TestOutsideScopeOfTax:
 
     def test_br_o_10_breakdown_carries_exemption_reason(self):
         breakdown = self._breakdowns(self._xml())[0]
-        assert (
-            "<ram:ExemptionReasonCode>VATEX-EU-O</ram:ExemptionReasonCode>" in breakdown
-        )
-        assert (
-            "<ram:ExemptionReason>Not subject to VAT</ram:ExemptionReason>" in breakdown
-        )
+        assert "<ram:ExemptionReasonCode>VATEX-EU-O</ram:ExemptionReasonCode>" in breakdown
+        assert "<ram:ExemptionReason>Not subject to VAT</ram:ExemptionReason>" in breakdown
 
     def test_totals_carry_no_tax(self):
         """Net 7200 with nothing added, against 8568 on the standard invoice."""
         xml_str = self._xml()
-        assert (
-            '<ram:TaxTotalAmount currencyID="EUR">0.00</ram:TaxTotalAmount>' in xml_str
-        )
+        assert '<ram:TaxTotalAmount currencyID="EUR">0.00</ram:TaxTotalAmount>' in xml_str
         assert "<ram:GrandTotalAmount>7200.000</ram:GrandTotalAmount>" in xml_str
         assert "8568" not in xml_str
 
@@ -455,9 +427,7 @@ class TestOutsideScopeOfTax:
         xml_str = self._xml(invoice=_make_invoice())
         breakdown = self._breakdowns(xml_str)[0]
         assert "<ram:CategoryCode>S</ram:CategoryCode>" in breakdown
-        assert (
-            "<ram:RateApplicablePercent>19.00</ram:RateApplicablePercent>" in breakdown
-        )
+        assert "<ram:RateApplicablePercent>19.00</ram:RateApplicablePercent>" in breakdown
         assert "<ram:CalculatedAmount>1368.00</ram:CalculatedAmount>" in breakdown
         assert 'schemeID="VA"' in xml_str
 
@@ -465,24 +435,17 @@ class TestOutsideScopeOfTax:
         """Both sit at 0%; keying the aggregate by rate alone would merge them."""
         invoice = _make_invoice()
         invoice.contract.VAT_rate = Decimal("0")
-        for item, category in zip(
-            invoice.items, [TaxCategory.zero_rated, TaxCategory.outside_scope]
-        ):
+        for item, category in zip(invoice.items, [TaxCategory.zero_rated, TaxCategory.outside_scope]):
             item.VAT_rate = Decimal("0")
             item.VAT_category = category
 
         user = _make_user()
         user.VAT_number = None  # BR-O-02, so the document still validates
-        xml_str = serialize_zugferd_xml(
-            invoice, user, profile="EN16931", validate=True
-        ).decode("utf-8")
+        xml_str = serialize_zugferd_xml(invoice, user, profile="EN16931", validate=True).decode("utf-8")
 
         breakdowns = self._breakdowns(xml_str)
         assert len(breakdowns) == 2
-        categories = {
-            re.search(r"<ram:CategoryCode>(\w)</ram:CategoryCode>", b).group(1)
-            for b in breakdowns
-        }
+        categories = {re.search(r"<ram:CategoryCode>(\w)</ram:CategoryCode>", b).group(1) for b in breakdowns}
         assert categories == {"Z", "O"}
 
 
@@ -500,22 +463,16 @@ class TestForeignCurrency:
         return invoice
 
     def test_euro_invoice_emits_neither_bt6_nor_a_second_tax_total(self):
-        xml_str = serialize_zugferd_xml(
-            _make_invoice(), _make_user(), profile="EN16931", validate=True
-        ).decode("utf-8")
+        xml_str = serialize_zugferd_xml(_make_invoice(), _make_user(), profile="EN16931", validate=True).decode("utf-8")
         assert "TaxCurrencyCode" not in xml_str
         assert len(re.findall(r"<ram:TaxTotalAmount", xml_str)) == 1
 
     def test_usd_invoice_emits_bt6_and_bt111_in_the_tax_currency(self):
         user = _make_user()
         user.operating_country = "Germany"
-        xml_str = serialize_zugferd_xml(
-            self._usd_invoice(), user, profile="EN16931", validate=True
-        ).decode("utf-8")
+        xml_str = serialize_zugferd_xml(self._usd_invoice(), user, profile="EN16931", validate=True).decode("utf-8")
 
         assert "<ram:InvoiceCurrencyCode>USD</ram:InvoiceCurrencyCode>" in xml_str
         assert "<ram:TaxCurrencyCode>EUR</ram:TaxCurrencyCode>" in xml_str
         # Outside the scope of VAT: zero VAT, so BT-111 is 0.00 and needs no rate.
-        assert (
-            '<ram:TaxTotalAmount currencyID="EUR">0.00</ram:TaxTotalAmount>' in xml_str
-        )
+        assert '<ram:TaxTotalAmount currencyID="EUR">0.00</ram:TaxTotalAmount>' in xml_str

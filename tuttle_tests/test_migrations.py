@@ -80,8 +80,7 @@ def test_single_head_no_branch_conflicts() -> None:
     script = ScriptDirectory.from_config(cfg)
     heads = script.get_heads()
     assert len(heads) == 1, (
-        f"Migration chain has {len(heads)} heads: {heads}. "
-        f"Expected exactly 1. Rebase one migration to depend on the other."
+        f"Migration chain has {len(heads)} heads: {heads}. Expected exactly 1. Rebase one migration to depend on the other."
     )
 
 
@@ -102,8 +101,7 @@ def test_upgrade_from_empty_creates_full_schema(tmp_db: tuple[Path, str]) -> Non
         live_tables = set(inspect(engine).get_table_names()) - {"alembic_version"}
         expected = set(SQLModel.metadata.tables.keys()) - excluded
         assert live_tables == expected, (
-            f"Schema diverged from model. "
-            f"Missing: {expected - live_tables}, extra: {live_tables - expected}"
+            f"Schema diverged from model. Missing: {expected - live_tables}, extra: {live_tables - expected}"
         )
     finally:
         engine.dispose()
@@ -143,9 +141,7 @@ def test_upgrade_chain_is_non_destructive(tmp_db: tuple[Path, str]) -> None:
                 placeholders = ", ".join(f":{k}" for k in values)
                 cols_str = ", ".join(values)
                 conn.execute(
-                    text(
-                        f"INSERT INTO {table_name} ({cols_str}) VALUES ({placeholders})"
-                    ),
+                    text(f"INSERT INTO {table_name} ({cols_str}) VALUES ({placeholders})"),
                     values,
                 )
         with engine.begin() as conn:
@@ -182,8 +178,7 @@ def test_foreign_key_check_clean_after_upgrade(tmp_db: tuple[Path, str]) -> None
     try:
         violations = conn.execute("PRAGMA foreign_key_check").fetchall()
         assert violations == [], (
-            f"Foreign key violations after upgrade: {violations}. "
-            f"Likely a batch-mode op forgot to re-attach an FK."
+            f"Foreign key violations after upgrade: {violations}. Likely a batch-mode op forgot to re-attach an FK."
         )
     finally:
         conn.close()
@@ -206,9 +201,7 @@ def test_versions_are_append_only_in_git() -> None:
     """
     import subprocess
 
-    versions = (
-        Path(__file__).resolve().parent.parent / "tuttle" / "migrations" / "versions"
-    )
+    versions = Path(__file__).resolve().parent.parent / "tuttle" / "migrations" / "versions"
     try:
         subprocess.run(
             ["git", "rev-parse", "--git-dir"],
@@ -260,9 +253,7 @@ def test_downgrades_are_not_supported() -> None:
     """
     import ast
 
-    versions = (
-        Path(__file__).resolve().parent.parent / "tuttle" / "migrations" / "versions"
-    )
+    versions = Path(__file__).resolve().parent.parent / "tuttle" / "migrations" / "versions"
     offenders: list[str] = []
     for script in versions.glob("*.py"):
         tree = ast.parse(script.read_text(), filename=str(script))
@@ -292,21 +283,15 @@ def test_no_model_imports_in_versions() -> None:
     """
     import ast
 
-    versions = (
-        Path(__file__).resolve().parent.parent / "tuttle" / "migrations" / "versions"
-    )
+    versions = Path(__file__).resolve().parent.parent / "tuttle" / "migrations" / "versions"
     offenders: list[str] = []
     for script in versions.glob("*.py"):
         tree = ast.parse(script.read_text(), filename=str(script))
         for node in ast.walk(tree):
-            if isinstance(node, ast.ImportFrom) and (node.module or "").startswith(
-                "tuttle.model"
-            ):
+            if isinstance(node, ast.ImportFrom) and (node.module or "").startswith("tuttle.model"):
                 offenders.append(script.name)
                 break
-            if isinstance(node, ast.Import) and any(
-                n.name.startswith("tuttle.model") for n in node.names
-            ):
+            if isinstance(node, ast.Import) and any(n.name.startswith("tuttle.model") for n in node.names):
                 offenders.append(script.name)
                 break
     assert not offenders, (
@@ -438,9 +423,7 @@ def backfilled_db(tmp_db: tuple[Path, str]):
     ],
 )
 def test_contract_tax_category_backfill(backfilled_db, title, expected):
-    row = backfilled_db.execute(
-        'SELECT "VAT_category" FROM contract WHERE title = ?', (title,)
-    ).fetchone()
+    row = backfilled_db.execute('SELECT "VAT_category" FROM contract WHERE title = ?', (title,)).fetchone()
     assert row[0] == expected
 
 
@@ -455,15 +438,11 @@ def test_invoice_item_inherits_contract_category(backfilled_db):
 
 def test_zero_rate_line_under_taxed_contract_is_zero_rated(backfilled_db):
     """Must not become O — that would mix categories and violate BR-O-11/12."""
-    row = backfilled_db.execute(
-        'SELECT "VAT_category" FROM invoiceitem WHERE description = ?', ("freebie",)
-    ).fetchone()
+    row = backfilled_db.execute('SELECT "VAT_category" FROM invoiceitem WHERE description = ?', ("freebie",)).fetchone()
     assert row[0] == "zero_rated"
 
 
 def test_backfill_leaves_no_null_categories(backfilled_db):
     for table in ("contract", "invoiceitem"):
-        count = backfilled_db.execute(
-            f'SELECT COUNT(*) FROM {table} WHERE "VAT_category" IS NULL'
-        ).fetchone()[0]
+        count = backfilled_db.execute(f'SELECT COUNT(*) FROM {table} WHERE "VAT_category" IS NULL').fetchone()[0]
         assert count == 0, f"{table} has NULL VAT_category rows"

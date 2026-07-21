@@ -3,9 +3,20 @@
 import datetime
 from decimal import Decimal
 
-import pytest
 import pandas
+import pytest
 
+from tuttle.forecasting import (
+    monthly_revenue_from_contracts,
+    revenue_curve,
+    revenue_history,
+)
+from tuttle.kpi import (
+    compute_kpis,
+    monthly_revenue_breakdown,
+    monthly_spendable_breakdown,
+    project_budget_status,
+)
 from tuttle.model import (
     Address,
     Client,
@@ -18,18 +29,6 @@ from tuttle.model import (
     TimeTrackingItem,
 )
 from tuttle.time import Cycle, TimeUnit
-from tuttle.forecasting import (
-    monthly_revenue_from_contracts,
-    revenue_history,
-    revenue_curve,
-)
-from tuttle.kpi import (
-    compute_kpis,
-    monthly_revenue_breakdown,
-    monthly_spendable_breakdown,
-    project_budget_status,
-)
-
 
 # ── Fixtures ──────────────────────────────────────────────────
 
@@ -110,14 +109,10 @@ def timesheet_with_items(project):
     for i in range(5):
         item = TimeTrackingItem(
             timesheet=ts,
-            begin=datetime.datetime(
-                today.year, today.month, max(today.day - 5 + i, 1), 9, 0
-            ),
-            end=datetime.datetime(
-                today.year, today.month, max(today.day - 5 + i, 1), 17, 0
-            ),
+            begin=datetime.datetime(today.year, today.month, max(today.day - 5 + i, 1), 9, 0),
+            end=datetime.datetime(today.year, today.month, max(today.day - 5 + i, 1), 17, 0),
             duration=datetime.timedelta(hours=8),
-            title=f"Work day {i+1}",
+            title=f"Work day {i + 1}",
             tag="#TestProject",
         )
         ts.items.append(item)
@@ -185,9 +180,7 @@ def unpaid_invoice(active_contract, project):
 class TestMonthlyRevenueFromContracts:
     def test_empty_contracts(self):
         today = datetime.date.today()
-        result = monthly_revenue_from_contracts(
-            [], today, today + datetime.timedelta(days=60)
-        )
+        result = monthly_revenue_from_contracts([], today, today + datetime.timedelta(days=60))
         assert result.empty
 
     def test_active_contract_produces_rows(self, active_contract, project):
@@ -245,9 +238,7 @@ class TestRevenueHistory:
 
 
 class TestRevenueCurve:
-    def test_combined_history_and_forecast(
-        self, paid_invoice, active_contract, project
-    ):
+    def test_combined_history_and_forecast(self, paid_invoice, active_contract, project):
         active_contract.projects = [project]
         result = revenue_curve([paid_invoice], [active_contract], forecast_months=3)
         assert not result.empty
@@ -363,16 +354,12 @@ class TestMonthlyRevenueBreakdown:
 
 class TestMonthlySpendableBreakdown:
     def test_with_invoices(self, paid_invoice):
-        result = monthly_spendable_breakdown(
-            [paid_invoice], country="Germany", n_months=3
-        )
+        result = monthly_spendable_breakdown([paid_invoice], country="Germany", n_months=3)
         assert isinstance(result, list)
         assert len(result) > 0
         for month in result:
             assert month["net_revenue"] == month["gross_revenue"] - month["vat_due"]
-            assert (
-                month["spendable"] == month["net_revenue"] - month["income_tax_true_up"]
-            )
+            assert month["spendable"] == month["net_revenue"] - month["income_tax_true_up"]
 
     def test_empty_invoices(self):
         result = monthly_spendable_breakdown([], country="Germany", n_months=3)
@@ -386,26 +373,18 @@ class TestMonthlySpendableBreakdown:
     def test_true_up_deltas_reconcile(self, paid_invoice, unpaid_invoice):
         today = datetime.date.today()
         paid_invoice.date = today.replace(day=1)
-        unpaid_invoice.date = (
-            today.replace(day=1) - datetime.timedelta(days=32)
-        ).replace(day=1)
+        unpaid_invoice.date = (today.replace(day=1) - datetime.timedelta(days=32)).replace(day=1)
         result = monthly_spendable_breakdown(
             [paid_invoice, unpaid_invoice],
             country="Germany",
             n_months=4,
         )
-        total_true_up = sum(
-            month["income_tax_true_up"]
-            for month in result
-            if month["month"].startswith(str(today.year))
-        )
+        total_true_up = sum(month["income_tax_true_up"] for month in result if month["month"].startswith(str(today.year)))
         assert total_true_up >= 0
 
     def test_cancelled_invoices_excluded(self, paid_invoice):
         paid_invoice.cancelled = True
-        result = monthly_spendable_breakdown(
-            [paid_invoice], country="Germany", n_months=3
-        )
+        result = monthly_spendable_breakdown([paid_invoice], country="Germany", n_months=3)
         for month in result:
             assert month["gross_revenue"] == 0
             assert month["vat_due"] == 0
@@ -414,18 +393,14 @@ class TestMonthlySpendableBreakdown:
         """Spendable should be <= net after income tax is subtracted."""
         today = datetime.date.today()
         paid_invoice.date = today.replace(day=1)
-        result = monthly_spendable_breakdown(
-            [paid_invoice], country="Germany", n_months=3
-        )
+        result = monthly_spendable_breakdown([paid_invoice], country="Germany", n_months=3)
         this_month = [m for m in result if m["month"] == today.strftime("%Y-%m")]
         if this_month and this_month[0]["net_revenue"] > 0:
             assert this_month[0]["spendable"] <= this_month[0]["net_revenue"]
 
     def test_spain(self, paid_invoice):
         """Spendable breakdown works with a non-Germany country."""
-        result = monthly_spendable_breakdown(
-            [paid_invoice], country="Spain", n_months=3
-        )
+        result = monthly_spendable_breakdown([paid_invoice], country="Spain", n_months=3)
         assert isinstance(result, list)
         assert len(result) > 0
         for month in result:
@@ -435,17 +410,13 @@ class TestMonthlySpendableBreakdown:
         """Months in previous years should have zero income_tax_true_up."""
         today = datetime.date.today()
         paid_invoice.date = datetime.date(today.year - 1, 6, 15)
-        result = monthly_spendable_breakdown(
-            [paid_invoice], country="Germany", n_months=18
-        )
+        result = monthly_spendable_breakdown([paid_invoice], country="Germany", n_months=18)
         for month in result:
             if not month["month"].startswith(str(today.year)):
                 assert month["income_tax_true_up"] == 0
 
     def test_months_sorted(self, paid_invoice):
-        result = monthly_spendable_breakdown(
-            [paid_invoice], country="Germany", n_months=6
-        )
+        result = monthly_spendable_breakdown([paid_invoice], country="Germany", n_months=6)
         keys = [m["month"] for m in result]
         assert keys == sorted(keys)
 

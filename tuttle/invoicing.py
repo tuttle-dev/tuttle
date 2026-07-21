@@ -1,10 +1,10 @@
 """Invoicing."""
 
-from typing import List, Optional, Dict
 import datetime
 from decimal import Decimal
+from typing import Dict, List, Optional
 
-from .model import InvoiceItem, Invoice, Contract, User, Project
+from .model import Contract, Invoice, InvoiceItem, Project, User
 from .timetracking import Timesheet
 
 

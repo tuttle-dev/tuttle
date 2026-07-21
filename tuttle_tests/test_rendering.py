@@ -1,10 +1,10 @@
 import tempfile
-import pytest
 from pathlib import Path
 
 import faker
+import pytest
 
-from tuttle import rendering, demo
+from tuttle import demo, rendering
 
 
 @pytest.fixture
@@ -62,7 +62,6 @@ class TestRenderInvoice:
     """Tests for render_invoice"""
 
     def test_returns_html_when_out_dir_is_none(self, fake):
-
         user = demo.create_fake_user(fake)
         invoice = demo.create_fake_invoice(fake)
         document_format = "html"
@@ -176,16 +175,12 @@ class TestRenderOutsideScopeInvoice:
 
     @pytest.mark.parametrize("template_name", ALL_INVOICE_TEMPLATES)
     def test_shows_legal_note(self, fake, template_name):
-        html = _render(
-            demo.create_fake_user(fake), _outside_scope_invoice(fake), template_name
-        )
+        html = _render(demo.create_fake_user(fake), _outside_scope_invoice(fake), template_name)
         assert "Not subject to German VAT" in html
 
     @pytest.mark.parametrize("template_name", ALL_INVOICE_TEMPLATES)
     def test_vat_rate_is_replaced_by_a_dash(self, fake, template_name):
-        html = _render(
-            demo.create_fake_user(fake), _outside_scope_invoice(fake), template_name
-        )
+        html = _render(demo.create_fake_user(fake), _outside_scope_invoice(fake), template_name)
         assert "0.0 %" not in html
         assert "0 %" not in html
         assert "(0%)" not in html
@@ -265,15 +260,11 @@ class TestSellerTaxIdentifierInFooter:
 
     @pytest.mark.parametrize("template_name", ALL_INVOICE_TEMPLATES)
     def test_outside_scope_without_tax_number_shows_neither(self, fake, template_name):
-        html = _render(
-            self._user(fake, None), _outside_scope_invoice(fake), template_name
-        )
+        html = _render(self._user(fake, None), _outside_scope_invoice(fake), template_name)
         assert "DE123456789" not in html
 
     @pytest.mark.parametrize("template_name", ALL_INVOICE_TEMPLATES)
-    def test_standard_invoice_falls_back_to_tax_number_without_vat_number(
-        self, fake, template_name
-    ):
+    def test_standard_invoice_falls_back_to_tax_number_without_vat_number(self, fake, template_name):
         """A seller awaiting the USt-IdNr: the printed invoice shows the tax
         number, mirroring the FC identifier embedded in the XML."""
         user = self._user(fake, "21/815/08150")

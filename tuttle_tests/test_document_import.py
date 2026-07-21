@@ -6,6 +6,8 @@ from decimal import Decimal
 import pytest
 from sqlmodel import Session, SQLModel, create_engine, select
 
+from tuttle.app.core.abstractions import SQLModelDataSourceMixin
+from tuttle.app.imports.intent import ImportsIntent, _model_fields
 from tuttle.model import (
     Address,
     Client,
@@ -14,8 +16,6 @@ from tuttle.model import (
     InvoiceItem,
     Project,
 )
-from tuttle.app.imports.intent import ImportsIntent, _model_fields
-from tuttle.app.core.abstractions import SQLModelDataSourceMixin
 from tuttle.time import ContractType
 
 
@@ -486,9 +486,7 @@ class TestContractPricingInvariant:
         data = {
             "contacts": [],
             "clients": [],
-            "contracts": [
-                self._base_contract(type="fixed_price", fixed_price=2000.0, rate=1000.0)
-            ],
+            "contracts": [self._base_contract(type="fixed_price", fixed_price=2000.0, rate=1000.0)],
             "projects": [],
             "invoices": [],
         }

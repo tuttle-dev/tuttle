@@ -1,17 +1,16 @@
 """Electronic invoice generation via ZUGFeRD / Factur-X (python-drafthorse)."""
 
-from datetime import timedelta, timezone, datetime
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 import pycountry
-from loguru import logger
-
 from drafthorse.models.accounting import ApplicableTradeTax
 from drafthorse.models.document import Document
 from drafthorse.models.party import TaxRegistration
 from drafthorse.models.payment import PaymentMeans, PaymentTerms
 from drafthorse.models.tradelines import LineItem
 from drafthorse.pdf import attach_xml
+from loguru import logger
 
 from .fx import convert
 from .model import Invoice, TaxCategory, User, normalize_tax_category
@@ -60,9 +59,7 @@ def country_to_iso(name: str) -> str:
                 return results[0].alpha_2
         except LookupError:
             pass
-    logger.warning(
-        f"Could not resolve country '{name}' to ISO code, defaulting to 'DE'"
-    )
+    logger.warning(f"Could not resolve country '{name}' to ISO code, defaulting to 'DE'")
     return "DE"
 
 
@@ -89,9 +86,7 @@ def _tax_currency(user: User) -> str:
         return "EUR"
 
 
-def _vat_in_tax_currency(
-    invoice: Invoice, total_tax: Decimal, currency: str, tax_currency: str
-) -> Decimal:
+def _vat_in_tax_currency(invoice: Invoice, total_tax: Decimal, currency: str, tax_currency: str) -> Decimal:
     """BT-111 — the invoice's VAT total expressed in the accounting currency.
 
     For the cases Tuttle supports (reverse charge, outside scope) a foreign-
@@ -166,37 +161,27 @@ def build_zugferd_document(
     doc.trade.agreement.seller.name = user.name
     if user.address:
         if not is_minimum:
-            doc.trade.agreement.seller.address.line_one = (
-                f"{user.address.street} {user.address.number}".strip()
-            )
+            doc.trade.agreement.seller.address.line_one = f"{user.address.street} {user.address.number}".strip()
             doc.trade.agreement.seller.address.city_name = user.address.city
             doc.trade.agreement.seller.address.postcode = user.address.postal_code
-        doc.trade.agreement.seller.address.country_id = country_to_iso(
-            user.address.country
-        )
+        doc.trade.agreement.seller.address.country_id = country_to_iso(user.address.country)
     # BR-O-02 forbids the seller VAT identifier on invoices outside the scope of
     # tax. §14 UStG still wants an identifier, so fall back to the tax number,
     # which CII carries under a different scheme ("FC", Steuernummer).
     if outside_scope:
         if user.tax_number:
-            doc.trade.agreement.seller.tax_registrations.add(
-                TaxRegistration(id=("FC", user.tax_number))
-            )
+            doc.trade.agreement.seller.tax_registrations.add(TaxRegistration(id=("FC", user.tax_number)))
         else:
             logger.warning(
                 "Invoice is outside the scope of VAT but the user has no tax "
                 "number; the e-invoice will carry no seller tax identifier."
             )
     elif user.VAT_number:
-        doc.trade.agreement.seller.tax_registrations.add(
-            TaxRegistration(id=("VA", user.VAT_number))
-        )
+        doc.trade.agreement.seller.tax_registrations.add(TaxRegistration(id=("VA", user.VAT_number)))
     elif user.tax_number:
         # No USt-IdNr yet: §14 UStG still needs an identifier, and FC (Steuernummer)
         # is legal on any invoice — unlike VA (BR-O-02).
-        doc.trade.agreement.seller.tax_registrations.add(
-            TaxRegistration(id=("FC", user.tax_number))
-        )
+        doc.trade.agreement.seller.tax_registrations.add(TaxRegistration(id=("FC", user.tax_number)))
     if user.email and not is_minimum:
         doc.trade.agreement.seller.electronic_address.uri_ID = ("EM", user.email)
 
@@ -205,19 +190,13 @@ def build_zugferd_document(
     buyer_address = client.address
     if buyer_address:
         if not is_minimum:
-            doc.trade.agreement.buyer.address.line_one = (
-                f"{buyer_address.street} {buyer_address.number}".strip()
-            )
+            doc.trade.agreement.buyer.address.line_one = f"{buyer_address.street} {buyer_address.number}".strip()
             doc.trade.agreement.buyer.address.city_name = buyer_address.city
             doc.trade.agreement.buyer.address.postcode = buyer_address.postal_code
-        doc.trade.agreement.buyer.address.country_id = country_to_iso(
-            buyer_address.country
-        )
+        doc.trade.agreement.buyer.address.country_id = country_to_iso(buyer_address.country)
     buyer_vat = getattr(client, "vat_number", None)
     if buyer_vat and not outside_scope:  # BR-O-02
-        doc.trade.agreement.buyer.tax_registrations.add(
-            TaxRegistration(id=("VA", buyer_vat))
-        )
+        doc.trade.agreement.buyer.tax_registrations.add(TaxRegistration(id=("VA", buyer_vat)))
 
     # -- Currency -------------------------------------------------------------
     currency = contract.currency or "EUR"
@@ -287,9 +266,7 @@ def build_zugferd_document(
         rate_bases: dict[Decimal, Decimal] = {}
         for item in invoice.items:
             pct = _rate_to_percent(item.VAT_rate)
-            rate_bases[pct] = rate_bases.get(pct, Decimal("0")) + Decimal(
-                str(item.subtotal)
-            )
+            rate_bases[pct] = rate_bases.get(pct, Decimal("0")) + Decimal(str(item.subtotal))
         for rate_pct, basis in rate_bases.items():
             total_tax += (basis * rate_pct / Decimal("100")).quantize(Decimal("0.01"))
 
@@ -324,9 +301,7 @@ def build_zugferd_document(
     if not is_minimum and contract.term_of_payment:
         terms = PaymentTerms()
         due_date = invoice.date + timedelta(days=contract.term_of_payment)
-        terms.due = datetime(
-            due_date.year, due_date.month, due_date.day, tzinfo=timezone.utc
-        )
+        terms.due = datetime(due_date.year, due_date.month, due_date.day, tzinfo=timezone.utc)
         terms.description = f"Net {contract.term_of_payment} days"
         doc.trade.settlement.terms.add(terms)
 

@@ -2,18 +2,17 @@
 
 import datetime
 from decimal import Decimal
-from typing import List, Optional, NamedTuple
+from typing import List, NamedTuple, Optional
 
 from pandas import DataFrame
 
+from .app.core.formatting import fmt_currency
 from .fx import primary_currency
 from .model import Contract, Invoice, Project
-from .time import TimeUnit
-from .timetracking import sum_hours_by_tag
 from .tax import get_tax_system
 from .tax_reserves import compute_spendable_income, convert_invoice
-
-from .app.core.formatting import fmt_currency
+from .time import TimeUnit
+from .timetracking import sum_hours_by_tag
 
 
 class KPISummary(NamedTuple):
@@ -45,15 +44,9 @@ class KPISummary(NamedTuple):
         d["income_tax_reserve_formatted"] = fmt_currency(self.income_tax_reserve, tc)
         d["spendable_income_formatted"] = fmt_currency(self.spendable_income, tc)
         d["effective_hourly_rate_formatted"] = (
-            fmt_currency(self.effective_hourly_rate, tc)
-            if self.effective_hourly_rate is not None
-            else "—"
+            fmt_currency(self.effective_hourly_rate, tc) if self.effective_hourly_rate is not None else "—"
         )
-        d["utilization_rate_formatted"] = (
-            f"{self.utilization_rate * 100:.0f}%"
-            if self.utilization_rate is not None
-            else "—"
-        )
+        d["utilization_rate_formatted"] = f"{self.utilization_rate * 100:.0f}%" if self.utilization_rate is not None else "—"
         return d
 
 
@@ -109,11 +102,7 @@ def compute_kpis(
     if time_data is not None and not time_data.empty:
         past = time_data[time_data.index.date < today]
         if not past.empty:
-            tag_to_workday = {
-                p.tag: p.contract.units_per_workday
-                for p in projects
-                if p.tag and p.contract
-            }
+            tag_to_workday = {p.tag: p.contract.units_per_workday for p in projects if p.tag and p.contract}
             tracked = sum(sum_hours_by_tag(past, tag_to_workday).values())
             total_hours = Decimal(str(tracked))
 
@@ -131,9 +120,7 @@ def compute_kpis(
     if active_contracts:
         days_elapsed = (today - year_start).days or 1
         workdays_elapsed = int(days_elapsed * 5 / 7)
-        available_hours_per_day = sum(
-            c.units_per_workday for c in contracts if c.is_active()
-        )
+        available_hours_per_day = sum(c.units_per_workday for c in contracts if c.is_active())
         available_hours = Decimal(str(workdays_elapsed * available_hours_per_day))
         if available_hours > 0:
             utilization_rate = float(total_hours / available_hours)
@@ -275,16 +262,12 @@ def monthly_spendable_breakdown(
                 cumulative_reserve = Decimal(0)
             else:
                 try:
-                    month_end = (month_start + datetime.timedelta(days=32)).replace(
-                        day=1
-                    ) - datetime.timedelta(days=1)
+                    month_end = (month_start + datetime.timedelta(days=32)).replace(day=1) - datetime.timedelta(days=1)
                     as_of = min(month_end, today)
                     tax_system = get_tax_system(country, date=as_of)
                     annual_tax = tax_system.income_tax(taxable)
                     annual_soli = tax_system.solidarity_surcharge(annual_tax)
-                    cumulative_reserve = (annual_tax + annual_soli).quantize(
-                        Decimal("0.01")
-                    )
+                    cumulative_reserve = (annual_tax + annual_soli).quantize(Decimal("0.01"))
                 except NotImplementedError:
                     cumulative_reserve = Decimal(0)
 
@@ -318,11 +301,7 @@ def project_budget_status(
     planned_by_tag: dict = {}
 
     if time_data is not None and not time_data.empty:
-        tag_to_workday = {
-            p.tag: p.contract.units_per_workday
-            for p in projects
-            if p.tag and p.contract
-        }
+        tag_to_workday = {p.tag: p.contract.units_per_workday for p in projects if p.tag and p.contract}
         past = time_data[time_data.index < now]
         if not past.empty:
             tracked_by_tag = sum_hours_by_tag(past, tag_to_workday)
@@ -352,19 +331,11 @@ def project_budget_status(
                 hours_budget *= contract.units_per_workday
 
         total_used = hours_tracked + hours_planned
-        progress = (
-            1.0
-            if open_ended
-            else (float(total_used / hours_budget) if hours_budget > 0 else 0.0)
-        )
+        progress = 1.0 if open_ended else (float(total_used / hours_budget) if hours_budget > 0 else 0.0)
         hours_remaining = 0.0 if open_ended else float(hours_budget - total_used)
 
         unit_hours = contract.units_per_workday if contract.unit == TimeUnit.day else 1
-        planned_revenue = (
-            float(Decimal(str(float(hours_planned) / unit_hours)) * contract.rate)
-            if contract.rate
-            else 0.0
-        )
+        planned_revenue = float(Decimal(str(float(hours_planned) / unit_hours)) * contract.rate) if contract.rate else 0.0
 
         budget_exceeded = not open_ended and total_used > hours_budget
 

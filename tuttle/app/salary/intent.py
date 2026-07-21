@@ -1,12 +1,10 @@
 """Business logic for the Salary feature."""
 
-from ..core.abstractions import SQLModelDataSourceMixin, Intent
-from ..core.intent_result import IntentResult
-
 from ...fx import primary_currency, validate_currency_code
 from ...model import Invoice, RecurringExpense, User
 from ...tax_reserves import compute_effective_salary
-
+from ..core.abstractions import Intent, SQLModelDataSourceMixin
+from ..core.intent_result import IntentResult
 from .data_source import SalaryDataSource
 
 
@@ -35,9 +33,7 @@ class SalaryIntent(SQLModelDataSourceMixin, Intent):
         try:
             invoices = self.query(Invoice)
             expenses_result = self._data_source.get_all_expenses()
-            expenses = (
-                expenses_result.data if expenses_result.was_intent_successful else []
-            )
+            expenses = expenses_result.data if expenses_result.was_intent_successful else []
 
             country = self._get_country()
             currency = self._get_tax_currency(country)

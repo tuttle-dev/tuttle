@@ -36,16 +36,16 @@ MANDATORY REVIEW CHECKLIST before committing this file:
 See tuttle/migrations/README.md.
 ----------------------------------------------------------------------
 """
+
 # pyright: reportAttributeAccessIssue=false
 # sqlmodel.sql.sqltypes is a submodule resolved at runtime; basedpyright
 # does not statically expose `sql` as an attribute of `sqlmodel`.
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
 import sqlmodel
 import sqlmodel.sql.sqltypes  # noqa: F401 — ensures runtime resolution of AutoString
-
+from alembic import op
 
 revision: str = "0001"
 down_revision: Union[str, Sequence[str], None] = None
@@ -152,13 +152,9 @@ def upgrade() -> None:
         sa.Column("website", sqlmodel.sql.sqltypes.AutoString(), nullable=True),
         sa.Column("email", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
         sa.Column("phone_number", sqlmodel.sql.sqltypes.AutoString(), nullable=True),
-        sa.Column(
-            "profile_photo_path", sqlmodel.sql.sqltypes.AutoString(), nullable=True
-        ),
+        sa.Column("profile_photo_path", sqlmodel.sql.sqltypes.AutoString(), nullable=True),
         sa.Column("address_id", sa.Integer(), nullable=True),
-        sa.Column(
-            "operating_country", sqlmodel.sql.sqltypes.AutoString(), nullable=False
-        ),
+        sa.Column("operating_country", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
         sa.Column("VAT_number", sqlmodel.sql.sqltypes.AutoString(), nullable=True),
         sa.Column("icloud_account_id", sa.Integer(), nullable=True),
         sa.Column("bank_account_id", sa.Integer(), nullable=True),
@@ -187,9 +183,7 @@ def upgrade() -> None:
             ["address_id"],
             ["address.id"],
         ),
-        sa.ForeignKeyConstraint(
-            ["invoicing_contact_id"], ["contact.id"], ondelete="RESTRICT"
-        ),
+        sa.ForeignKeyConstraint(["invoicing_contact_id"], ["contact.id"], ondelete="RESTRICT"),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("name"),
     )
@@ -313,6 +307,4 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Downgrades are not supported. See script.py.mako for rationale."""
-    raise NotImplementedError(
-        "Downgrades are not supported. Restore from a .bak-<ts> snapshot instead."
-    )
+    raise NotImplementedError("Downgrades are not supported. Restore from a .bak-<ts> snapshot instead.")

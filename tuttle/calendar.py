@@ -1,16 +1,15 @@
 """Calendar integration."""
-from typing import Optional
 
+import calendar
+import datetime
 import io
 import re
-import calendar
+from typing import Optional
 
 import ics
 import pandas
-import datetime
-
-from pandera import check_io
 from pandas import DataFrame
+from pandera import check_io
 
 from . import schema
 
@@ -58,9 +57,7 @@ class ICSCalendar(Calendar):
         elif ics_calendar is not None:
             self.ical = ics_calendar
         else:
-            raise ValueError(
-                "Either a path to or the content of an .ics file must be passed."
-            )
+            raise ValueError("Either a path to or the content of an .ics file must be passed.")
 
     def to_raw_data(self) -> DataFrame:
         """Convert .ics calendar events to DataFrame"""

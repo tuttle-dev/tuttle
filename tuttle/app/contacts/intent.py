@@ -1,6 +1,6 @@
+from ...model import Address, ClientContact, Contact
 from ..core.abstractions import CrudIntent
 from ..core.intent_result import IntentResult
-from ...model import Address, Contact, ClientContact
 
 
 class ContactsIntent(CrudIntent):
@@ -43,9 +43,7 @@ class ContactsIntent(CrudIntent):
                 exception=e,
             )
 
-    def add_client_to_contact(
-        self, contact_id: int, client_id: int, role: str | None = None
-    ) -> IntentResult:
+    def add_client_to_contact(self, contact_id: int, client_id: int, role: str | None = None) -> IntentResult:
         """Create a ClientContact association from the contact side."""
         try:
             assoc = ClientContact(client_id=client_id, contact_id=contact_id, role=role)
@@ -72,9 +70,7 @@ class ContactsIntent(CrudIntent):
                 exception=e,
             )
 
-    def update_client_contact_role(
-        self, association_id: int, role: str | None
-    ) -> IntentResult:
+    def update_client_contact_role(self, association_id: int, role: str | None) -> IntentResult:
         """Update the role on a ClientContact association."""
         try:
             assoc = self.query_by_id(ClientContact, association_id)

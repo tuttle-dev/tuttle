@@ -12,9 +12,7 @@ bg_surface_hovered = "#48484A"  # hovered cards (Apple systemGray3)
 bg_titlebar = "#1C1C1E"  # title bar (seamless with bg)
 bg_statusbar = "#2C2C2E"  # status bar (matches sidebar for native feel)
 bg_statusbar_warning = "#3A3A3C"  # status bar with warnings (items use warning color)
-bg_statusbar_danger = (
-    "#3A3A3C"  # status bar with overdue items (items use danger color)
-)
+bg_statusbar_danger = "#3A3A3C"  # status bar with overdue items (items use danger color)
 bg_toolbar = "#2C2C2E"  # toolbar matches sidebar for cohesive chrome
 bg_input = "#3A3A3C"  # text field fill
 

@@ -1,7 +1,9 @@
 """Test timetracking module"""
-import pandas
+
 import datetime
 from decimal import Decimal
+
+import pandas
 
 from tuttle import timetracking
 from tuttle.calendar import get_month_start_end
@@ -55,15 +57,9 @@ def test_create_timesheet(
         "all_day": [False, False],
     }
     timetracking_data = pandas.DataFrame(data)
-    timetracking_data["begin"] = pandas.to_datetime(
-        timetracking_data["begin"], format="%m-%d-%Y %H:%M:%S"
-    )
-    timetracking_data["end"] = pandas.to_datetime(
-        timetracking_data["end"], format="%m-%d-%Y %H:%M:%S"
-    )
-    timetracking_data["duration"] = (
-        timetracking_data["end"] - timetracking_data["begin"]
-    )
+    timetracking_data["begin"] = pandas.to_datetime(timetracking_data["begin"], format="%m-%d-%Y %H:%M:%S")
+    timetracking_data["end"] = pandas.to_datetime(timetracking_data["end"], format="%m-%d-%Y %H:%M:%S")
+    timetracking_data["duration"] = timetracking_data["end"] - timetracking_data["begin"]
     timetracking_data = timetracking_data.set_index("begin")
 
     assert timetracking_data["duration"].sum() == pandas.Timedelta("8 hours")
@@ -73,9 +69,7 @@ def test_create_timesheet(
     # create a timesheet
     period_start = datetime.date(2022, 1, 1)
     period_end = datetime.date(2022, 12, 31)
-    timesheet = timetracking.generate_timesheet(
-        timetracking_data, project, period_start, period_end
-    )
+    timesheet = timetracking.generate_timesheet(timetracking_data, project, period_start, period_end)
 
     # test timesheet properties
     assert timesheet.project.title == "Heating Engineering"
@@ -271,12 +265,8 @@ def test_df_to_records_with_tz_aware_data():
     """
     from tuttle.app.timetracking.aggregation import df_to_records
 
-    begin = pandas.to_datetime(
-        ["2026-07-01 09:00:00", "2026-12-01 09:00:00"], utc=True
-    ).tz_convert("CET")
-    end = pandas.to_datetime(
-        ["2026-07-01 11:00:00", "2026-12-01 11:00:00"], utc=True
-    ).tz_convert("CET")
+    begin = pandas.to_datetime(["2026-07-01 09:00:00", "2026-12-01 09:00:00"], utc=True).tz_convert("CET")
+    end = pandas.to_datetime(["2026-07-01 11:00:00", "2026-12-01 11:00:00"], utc=True).tz_convert("CET")
 
     df = pandas.DataFrame(
         {
@@ -300,12 +290,8 @@ def test_build_calendar_data_with_tz_aware_data():
     """Regression: build_calendar_data must handle tz-aware DataFrames."""
     from tuttle.app.timetracking.aggregation import build_calendar_data
 
-    begin = pandas.to_datetime(
-        ["2026-07-03 09:00:00", "2026-07-04 14:00:00"], utc=True
-    ).tz_convert("CET")
-    end = pandas.to_datetime(
-        ["2026-07-03 11:00:00", "2026-07-04 16:00:00"], utc=True
-    ).tz_convert("CET")
+    begin = pandas.to_datetime(["2026-07-03 09:00:00", "2026-07-04 14:00:00"], utc=True).tz_convert("CET")
+    end = pandas.to_datetime(["2026-07-03 11:00:00", "2026-07-04 16:00:00"], utc=True).tz_convert("CET")
 
     df = pandas.DataFrame(
         {

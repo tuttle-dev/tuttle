@@ -1,11 +1,10 @@
 from typing import Optional
 
+from ...model import Project
 from ..clients.intent import ClientsIntent
 from ..contracts.intent import ContractsIntent
-from ..core.intent_result import IntentResult
 from ..core.abstractions import CrudIntent
-
-from ...model import Project
+from ..core.intent_result import IntentResult
 
 
 class ProjectsIntent(CrudIntent):
@@ -65,9 +64,7 @@ class ProjectsIntent(CrudIntent):
         """Toggle is_completed and clear the stage override so the board re-derives position."""
         result = self.get_by_id(id)
         if not result.was_intent_successful or not result.data:
-            return IntentResult(
-                was_intent_successful=False, error_msg="Project not found"
-            )
+            return IntentResult(was_intent_successful=False, error_msg="Project not found")
         project: Project = result.data
         project.is_completed = not project.is_completed
         project.stage = "Completed" if project.is_completed else None
@@ -82,9 +79,7 @@ class ProjectsIntent(CrudIntent):
         """
         result = self.get_by_id(id)
         if not result.was_intent_successful or not result.data:
-            return IntentResult(
-                was_intent_successful=False, error_msg="Project not found"
-            )
+            return IntentResult(was_intent_successful=False, error_msg="Project not found")
         project: Project = result.data
         project.stage = stage or None
         if stage == "Completed":

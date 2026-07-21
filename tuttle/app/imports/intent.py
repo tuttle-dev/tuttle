@@ -4,28 +4,26 @@ import base64
 import datetime
 import enum
 from decimal import Decimal
-from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import sqlmodel
 from loguru import logger
 
-from ..core.abstractions import SQLModelDataSourceMixin
-from ..core.intent_result import IntentResult
 from ...data_dir import get_data_dir
 from ...fx import primary_currency
 from ...model import (
     Address,
-    Contact,
     Client,
+    Contact,
     Contract,
-    Project,
     Invoice,
     InvoiceItem,
+    Project,
     normalize_vat_rate,
 )
 from ...time import ContractType
-
+from ..core.abstractions import SQLModelDataSourceMixin
+from ..core.intent_result import IntentResult
 
 # Fields that are internal to the import workflow, not part of the model
 _IMPORT_META = {
@@ -215,13 +213,7 @@ def _validate_import_data(data: dict) -> List[str]:
                     missing.append(field_label)
 
             if missing:
-                label = (
-                    item.get("title")
-                    or item.get("name")
-                    or item.get("number")
-                    or item.get("ref")
-                    or "(untitled)"
-                )
+                label = item.get("title") or item.get("name") or item.get("number") or item.get("ref") or "(untitled)"
                 type_name = entity_type.capitalize().rstrip("s")
                 errors.append(f'{type_name} "{label}": missing {", ".join(missing)}')
 
@@ -239,9 +231,7 @@ def _validate_import_data(data: dict) -> List[str]:
                 if val is None:
                     missing.append(field_label)
             if missing:
-                errors.append(
-                    f'Invoice "{inv_label}" item #{idx}: missing {", ".join(missing)}'
-                )
+                errors.append(f'Invoice "{inv_label}" item #{idx}: missing {", ".join(missing)}')
 
             # Plausibility: VAT rate must be a valid fraction
             vat = fields.get("VAT_rate")
@@ -250,25 +240,18 @@ def _validate_import_data(data: dict) -> List[str]:
                     normalized = normalize_vat_rate(vat)
                     if normalized > Decimal("0.30"):
                         errors.append(
-                            f'Invoice "{inv_label}" item #{idx}: '
-                            f"VAT rate {float(normalized):.0%} seems implausibly high"
+                            f'Invoice "{inv_label}" item #{idx}: VAT rate {float(normalized):.0%} seems implausibly high'
                         )
                 except ValueError as e:
-                    errors.append(
-                        f'Invoice "{inv_label}" item #{idx}: invalid VAT rate — {e}'
-                    )
+                    errors.append(f'Invoice "{inv_label}" item #{idx}: invalid VAT rate — {e}')
 
             # Plausibility: unit_price and quantity must be positive
             unit_price = fields.get("unit_price")
             if unit_price is not None and Decimal(str(unit_price)) < 0:
-                errors.append(
-                    f'Invoice "{inv_label}" item #{idx}: unit price is negative'
-                )
+                errors.append(f'Invoice "{inv_label}" item #{idx}: unit price is negative')
             qty = fields.get("quantity")
             if qty is not None and float(qty) <= 0:
-                errors.append(
-                    f'Invoice "{inv_label}" item #{idx}: quantity must be positive'
-                )
+                errors.append(f'Invoice "{inv_label}" item #{idx}: quantity must be positive')
 
     return errors
 
@@ -376,11 +359,7 @@ def _finalize_contract(entity: Contract, provided: dict) -> None:
     than failing the import; a currency it does name must be one we can convert.
     """
     if "type" not in provided:
-        entity.type = (
-            ContractType.fixed_price
-            if entity.fixed_price and not entity.rate
-            else ContractType.time_based
-        )
+        entity.type = ContractType.fixed_price if entity.fixed_price and not entity.rate else ContractType.time_based
     if not entity.currency:
         entity.currency = primary_currency()
     entity.validate_currency()
@@ -401,8 +380,7 @@ def _coerce_value(value: Any, annotation: Any) -> Any:
         if isinstance(value, str):
             return datetime.date.fromisoformat(value)
     if annotation is Decimal or (
-        hasattr(annotation, "__supertype__")
-        and issubclass(getattr(annotation, "__supertype__", type), Decimal)
+        hasattr(annotation, "__supertype__") and issubclass(getattr(annotation, "__supertype__", type), Decimal)
     ):
         if isinstance(value, (int, float, str)):
             return Decimal(str(value))

@@ -100,9 +100,7 @@ def build_electron():
 
 
 def main(
-    skip_python: bool = typer.Option(
-        False, "--skip-python", help="Skip PyInstaller build, only rebuild Electron"
-    ),
+    skip_python: bool = typer.Option(False, "--skip-python", help="Skip PyInstaller build, only rebuild Electron"),
 ):
     if not skip_python:
         build_python_core()
@@ -110,9 +108,7 @@ def main(
         logger.info("Skipping Python core build (--skip-python)")
         dist = REPO_ROOT / "dist" / "tuttle-rpc"
         if not dist.exists():
-            logger.warning(
-                f"No existing core build at {dist} -- electron-builder will fail"
-            )
+            logger.warning(f"No existing core build at {dist} -- electron-builder will fail")
 
     build_electron()
     logger.info("Build complete!")

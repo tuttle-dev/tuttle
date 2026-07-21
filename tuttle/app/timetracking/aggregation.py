@@ -42,11 +42,7 @@ def df_to_records(df: DataFrame, tag_to_workday: Optional[dict] = None) -> list:
         workday = tag_to_workday.get(tag, DEFAULT_WORKDAY_HOURS)
         dur_hours = event_hours(row, workday)
         if begin_dt is not None:
-            cmp_dt = (
-                begin_dt
-                if begin_dt.tzinfo
-                else begin_dt.replace(tzinfo=datetime.timezone.utc)
-            )
+            cmp_dt = begin_dt if begin_dt.tzinfo else begin_dt.replace(tzinfo=datetime.timezone.utc)
             is_future = cmp_dt >= now
         else:
             is_future = False
@@ -92,9 +88,7 @@ def build_calendar_data(
 
     events = df_to_records(month_df, tag_to_workday)
 
-    by_tag = {
-        t: round(h, 1) for t, h in sum_hours_by_tag(month_df, tag_to_workday).items()
-    }
+    by_tag = {t: round(h, 1) for t, h in sum_hours_by_tag(month_df, tag_to_workday).items()}
     count_by_tag = month_df.groupby("tag").size().to_dict()
     projects = [
         {
@@ -137,9 +131,7 @@ def build_calendar_data(
     else:
         future_mask = month_df.index >= now.replace(tzinfo=None)
     future_df = month_df[future_mask]
-    planned_hours = (
-        total_event_hours(future_df, tag_to_workday) if len(future_df) else 0
-    )
+    planned_hours = total_event_hours(future_df, tag_to_workday) if len(future_df) else 0
 
     return {
         "year": year,

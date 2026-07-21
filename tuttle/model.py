@@ -20,27 +20,22 @@ See tuttle/migrations/README.md and .cursor/rules/schema-migrations.mdc
 for the full rationale.
 """
 
-from typing import Literal, Optional, List, Type
-
+import datetime
 import enum
 import re
-import datetime
 import textwrap
 from decimal import Decimal
+from typing import List, Literal, Optional, Type
 
 import pandas
 import sqlalchemy
-
 from pydantic import BaseModel, condecimal, validator
-from sqlmodel import SQLModel, Field, Relationship
-
-
-from pathlib import Path
+from sqlmodel import Field, Relationship, SQLModel
 
 from .app.core.formatting import fmt_currency
-from .fx import convert, primary_currency, rate
 from .data_dir import get_data_dir
 from .dev import deprecated
+from .fx import convert, primary_currency, rate
 from .time import ContractType, Cycle, TimeUnit
 
 DocumentType = Literal["invoice", "reminder"]
@@ -90,10 +85,7 @@ def _project(obj, projection, depth: int):
 
 def help(model_class: Type[BaseModel]):
     return pandas.DataFrame(
-        (
-            (field_name, field.field_info.description)
-            for field_name, field in Contract.__fields__.items()
-        ),
+        ((field_name, field.field_info.description) for field_name, field in Contract.__fields__.items()),
         columns=["field name", "field description"],
     )
 
@@ -134,20 +126,12 @@ class Address(RpcMixin, SQLModel, table=True):
     @property
     def printed(self):
         """Print address in common format."""
-        return (
-            f"{self.street} {self.number}\n"
-            f"{self.postal_code} {self.city}\n"
-            f"{self.country}"
-        )
+        return f"{self.street} {self.number}\n{self.postal_code} {self.city}\n{self.country}"
 
     @property
     def html(self):
         """Print address in common format."""
-        return (
-            f"{self.street} {self.number}<br>"
-            f"{self.postal_code} {self.city}<br>"
-            f"{self.country}"
-        )
+        return f"{self.street} {self.number}<br>{self.postal_code} {self.city}<br>{self.country}"
 
     @property
     def is_empty(self) -> bool:
@@ -170,9 +154,7 @@ class User(RpcMixin, SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
-    subtitle: str = Field(
-        description="Role or job title of the user, e.g. 'Freelance web developer'."
-    )
+    subtitle: str = Field(description="Role or job title of the user, e.g. 'Freelance web developer'.")
     website: Optional[str] = Field(
         default=None,
         description="URL of the user's website.",
@@ -225,11 +207,7 @@ class User(RpcMixin, SQLModel, table=True):
         """True if bank account is not set."""
         if not self.bank_account:
             return True
-        if (
-            not self.bank_account.BIC
-            or not self.bank_account.IBAN
-            or not self.bank_account.name
-        ):
+        if not self.bank_account.BIC or not self.bank_account.IBAN or not self.bank_account.name:
             return True
         return False
 
@@ -258,14 +236,10 @@ class Contact(RpcMixin, SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     first_name: str = Field(description="First / given name")
     last_name: str = Field(description="Last / family name")
-    company: Optional[str] = Field(
-        default=None, description="Company or organisation name"
-    )
+    company: Optional[str] = Field(default=None, description="Company or organisation name")
     email: Optional[str] = Field(default=None, description="Email address")
     address_id: Optional[int] = Field(default=None, foreign_key="address.id")
-    address: Optional[Address] = Relationship(
-        back_populates="contacts", sa_relationship_kwargs={"lazy": "subquery"}
-    )
+    address: Optional[Address] = Relationship(back_populates="contacts", sa_relationship_kwargs={"lazy": "subquery"})
     invoicing_contact_of: List["Client"] = Relationship(
         back_populates="invoicing_contact",
         sa_relationship_kwargs={"lazy": "subquery", "passive_deletes": "all"},
@@ -383,9 +357,7 @@ class Client(RpcMixin, SQLModel, table=True):
         sa_relationship_kwargs={"lazy": "subquery"},
     )
     # Client n:1 invoicing Contact (kept for backward compat)
-    invoicing_contact_id: Optional[int] = Field(
-        default=None, foreign_key="contact.id", ondelete="RESTRICT"
-    )
+    invoicing_contact_id: Optional[int] = Field(default=None, foreign_key="contact.id", ondelete="RESTRICT")
     invoicing_contact: Optional[Contact] = Relationship(
         back_populates="invoicing_contact_of",
         sa_relationship_kwargs={"lazy": "subquery"},
@@ -451,9 +423,7 @@ def normalize_vat_rate(value) -> Decimal:
     if d < 0:
         raise ValueError(f"VAT rate must be non-negative, got {d}")
     if d > Decimal("100"):
-        raise ValueError(
-            f"VAT rate {d} is out of range (expected fraction 0–1 or percent 0–100)"
-        )
+        raise ValueError(f"VAT rate {d} is out of range (expected fraction 0–1 or percent 0–100)")
     if d > Decimal("1"):
         d = d / Decimal("100")
     return d
@@ -500,10 +470,7 @@ class VatCategoryMixin:
         self.VAT_rate = normalize_vat_rate(self.VAT_rate)
         self.VAT_category = normalize_tax_category(self.VAT_category)
         if self.VAT_category is not TaxCategory.standard and self.VAT_rate != 0:
-            raise ValueError(
-                f"VAT rate must be 0 for tax category "
-                f"'{self.VAT_category.value}', got {self.VAT_rate}"
-            )
+            raise ValueError(f"VAT rate must be 0 for tax category '{self.VAT_category.value}', got {self.VAT_rate}")
 
 
 class Contract(RpcMixin, VatCategoryMixin, SQLModel, table=True):
@@ -521,9 +488,7 @@ class Contract(RpcMixin, VatCategoryMixin, SQLModel, table=True):
         description="Short description of the contract.",
         sa_column_kwargs={"unique": True},
     )
-    client: Client = Relationship(
-        back_populates="contracts", sa_relationship_kwargs={"lazy": "subquery"}
-    )
+    client: Client = Relationship(back_populates="contracts", sa_relationship_kwargs={"lazy": "subquery"})
     signature_date: Optional[datetime.date] = Field(
         default=None,
         description="Date on which the contract was signed",
@@ -560,9 +525,7 @@ class Contract(RpcMixin, VatCategoryMixin, SQLModel, table=True):
         sa_column=sqlalchemy.Column(sqlalchemy.Numeric(12, 2), nullable=True),
         description="Total agreed price. Set iff type is fixed_price.",
     )
-    is_completed: bool = Field(
-        default=False, description="flag marking if contract has been completed"
-    )
+    is_completed: bool = Field(default=False, description="flag marking if contract has been completed")
     currency: str = Field(description="Currency code, e.g. EUR or USD")
     VAT_rate: Decimal = Field(
         description="VAT rate applied to the contractual rate.",
@@ -723,21 +686,15 @@ class Project(RpcMixin, SQLModel, table=True):
         sa_column_kwargs={"unique": True},
     )
     start_date: datetime.date = Field(description="Project start date")
-    end_date: Optional[datetime.date] = Field(
-        default=None, description="Project end date (None = open-ended)"
-    )
-    is_completed: bool = Field(
-        default=False, description="marks if the project is completed"
-    )
+    end_date: Optional[datetime.date] = Field(default=None, description="Project end date (None = open-ended)")
+    is_completed: bool = Field(default=False, description="marks if the project is completed")
     stage: Optional[str] = Field(
         default=None,
         description="Explicit pipeline stage override: Lead, Offer, Upcoming, Active, or Completed. "
         "When set, takes precedence over the date-derived status.",
     )
     # Project m:n Contract
-    contract_id: Optional[int] = Field(
-        default=None, foreign_key="contract.id", ondelete="RESTRICT"
-    )
+    contract_id: Optional[int] = Field(default=None, foreign_key="contract.id", ondelete="RESTRICT")
     contract: Contract = Relationship(
         back_populates="projects",
         sa_relationship_kwargs={"lazy": "subquery"},
@@ -772,9 +729,7 @@ class Project(RpcMixin, SQLModel, table=True):
     @validator("tag")
     def validate_tag(cls, v):
         if not re.match(r"^#\S+$", v):
-            raise ValueError(
-                "Tag must start with a # symbol and not contain any punctuation or whitespace."
-            )
+            raise ValueError("Tag must start with a # symbol and not contain any punctuation or whitespace.")
         return v
 
     @deprecated
@@ -816,38 +771,26 @@ class Project(RpcMixin, SQLModel, table=True):
 class TimeTrackingItem(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     # TimeTrackingItem n : 1 TimeSheet
-    timesheet_id: Optional[int] = Field(
-        default=None, foreign_key="timesheet.id", ondelete="CASCADE"
-    )
+    timesheet_id: Optional[int] = Field(default=None, foreign_key="timesheet.id", ondelete="CASCADE")
     timesheet: Optional["Timesheet"] = Relationship(back_populates="items")
     #
     begin: datetime.datetime = Field(description="Start time of the time interval.")
     end: datetime.datetime = Field(description="End time of the time interval.")
     duration: datetime.timedelta = Field(description="Duration of the time interval.")
     title: str = Field(description="A short description of the time interval.")
-    tag: str = Field(
-        description="A short tag to identify the project the time interval belongs to."
-    )
-    description: Optional[str] = Field(
-        description="A longer description of the time interval."
-    )
+    tag: str = Field(description="A short tag to identify the project the time interval belongs to.")
+    description: Optional[str] = Field(description="A longer description of the time interval.")
 
 
 class Timesheet(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     title: str
     date: datetime.date = Field(description="The date of creation of the timesheet")
-    period_start: datetime.date = Field(
-        description="The start date of the period covered by the timesheet."
-    )
-    period_end: datetime.date = Field(
-        description="The end date of the period covered by the timesheet."
-    )
+    period_start: datetime.date = Field(description="The start date of the period covered by the timesheet.")
+    period_end: datetime.date = Field(description="The end date of the period covered by the timesheet.")
 
     # Timesheet n:1 Project
-    project_id: Optional[int] = Field(
-        default=None, foreign_key="project.id", ondelete="RESTRICT"
-    )
+    project_id: Optional[int] = Field(default=None, foreign_key="project.id", ondelete="RESTRICT")
     project: Project = Relationship(
         back_populates="timesheets",
         sa_relationship_kwargs={"lazy": "subquery"},
@@ -869,9 +812,7 @@ class Timesheet(SQLModel, table=True):
     )
 
     # Timesheet n:1 Invoice
-    invoice_id: Optional[int] = Field(
-        default=None, foreign_key="invoice.id", ondelete="CASCADE"
-    )
+    invoice_id: Optional[int] = Field(default=None, foreign_key="invoice.id", ondelete="CASCADE")
     invoice: Optional["Invoice"] = Relationship(
         back_populates="timesheets",
         sa_relationship_kwargs={"lazy": "subquery"},
@@ -882,8 +823,7 @@ class Timesheet(SQLModel, table=True):
 
     def __repr__(self):
         return (
-            f"Timesheet(id={self.id}, tag={self.project.tag}, "
-            f"period_start={self.period_start}, period_end={self.period_end})"
+            f"Timesheet(id={self.id}, tag={self.project.tag}, period_start={self.period_start}, period_end={self.period_end})"
         )
 
     @property
@@ -976,17 +916,13 @@ class Invoice(RpcMixin, SQLModel, table=True):
     # -- Relationships -----------------------------------------------------
 
     # Invoice n:1 Contract
-    contract_id: Optional[int] = Field(
-        default=None, foreign_key="contract.id", ondelete="RESTRICT"
-    )
+    contract_id: Optional[int] = Field(default=None, foreign_key="contract.id", ondelete="RESTRICT")
     contract: Contract = Relationship(
         back_populates="invoices",
         sa_relationship_kwargs={"lazy": "subquery"},
     )
     # Invoice n:1 Project
-    project_id: Optional[int] = Field(
-        default=None, foreign_key="project.id", ondelete="RESTRICT"
-    )
+    project_id: Optional[int] = Field(default=None, foreign_key="project.id", ondelete="RESTRICT")
     project: Project = Relationship(
         back_populates="invoices",
         sa_relationship_kwargs={"lazy": "subquery"},
@@ -1073,10 +1009,7 @@ class Invoice(RpcMixin, SQLModel, table=True):
         EN16931 BR-O-11/12 forbid mixing category O with any other category, so
         a single item is enough to characterise the whole invoice.
         """
-        return any(
-            normalize_tax_category(item.VAT_category) is TaxCategory.outside_scope
-            for item in self.items
-        )
+        return any(normalize_tax_category(item.VAT_category) is TaxCategory.outside_scope for item in self.items)
 
     @property
     def total(self) -> Decimal:
@@ -1189,10 +1122,7 @@ class Invoice(RpcMixin, SQLModel, table=True):
         r = rate(self.currency, primary, self.date)
         if r is None:
             return None
-        return (
-            f"1 {self.currency} = {r:.4f} {primary} "
-            f"(ECB monthly average, {self.date:%b %Y})"
-        )
+        return f"1 {self.currency} = {r:.4f} {primary} (ECB monthly average, {self.date:%b %Y})"
 
     @property
     def total_primary_formatted(self) -> Optional[str]:
@@ -1234,12 +1164,8 @@ class InvoiceItem(RpcMixin, VatCategoryMixin, SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     # date and time
-    start_date: Optional[datetime.date] = Field(
-        default=None, description="Start date of the invoice item."
-    )
-    end_date: Optional[datetime.date] = Field(
-        default=None, description="End date of the invoice item."
-    )
+    start_date: Optional[datetime.date] = Field(default=None, description="Start date of the invoice item.")
+    end_date: Optional[datetime.date] = Field(default=None, description="End date of the invoice item.")
     #
     quantity: float
     unit: str
@@ -1257,9 +1183,7 @@ class InvoiceItem(RpcMixin, VatCategoryMixin, SQLModel, table=True):
         default=TaxCategory.standard,
     )
     # invoice
-    invoice_id: Optional[int] = Field(
-        default=None, foreign_key="invoice.id", ondelete="CASCADE"
-    )
+    invoice_id: Optional[int] = Field(default=None, foreign_key="invoice.id", ondelete="CASCADE")
     invoice: Invoice = Relationship(
         back_populates="items",
         sa_relationship_kwargs={"lazy": "subquery"},
@@ -1316,9 +1240,7 @@ class FinancialGoal(SQLModel, table=True):
     """A financial target the freelancer wants to reach."""
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    title: str = Field(
-        description="Short description of the goal, e.g. 'Yearly revenue'."
-    )
+    title: str = Field(description="Short description of the goal, e.g. 'Yearly revenue'.")
     target_amount: Decimal = Field(
         description="Target amount in the user's currency.",
         sa_column=sqlalchemy.Column(sqlalchemy.Numeric(12, 2), nullable=False),

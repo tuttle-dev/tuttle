@@ -1,10 +1,9 @@
-from typing import Optional, List
-
-from pathlib import Path
 import platform
 import subprocess
-import webbrowser
 import urllib.parse
+import webbrowser
+from pathlib import Path
+from typing import List, Optional
 
 from loguru import logger
 
@@ -36,9 +35,7 @@ def compose_email(
         if system == "Windows":
             if _compose_windows(to, subject, body, files):
                 return
-            logger.warning(
-                "Outlook COM failed; falling back to mailto: and opening attachment folder"
-            )
+            logger.warning("Outlook COM failed; falling back to mailto: and opening attachment folder")
             _open_folder_windows(files[0].parent)
 
     _compose_mailto(to, subject, body)
@@ -50,9 +47,7 @@ def compose_email(
 
 
 def _compose_mailto(to: str, subject: str, body: str):
-    params = urllib.parse.urlencode(
-        {"subject": subject, "body": body}, quote_via=urllib.parse.quote
-    )
+    params = urllib.parse.urlencode({"subject": subject, "body": body}, quote_via=urllib.parse.quote)
     webbrowser.open(f"mailto:{urllib.parse.quote(to)}?{params}")
 
 
@@ -66,8 +61,7 @@ def _compose_macos(to: str, subject: str, body: str, files: List[Path]):
         return s.replace("\\", "\\\\").replace('"', '\\"')
 
     attach = "\n".join(
-        f"        make new attachment with properties "
-        f'{{file name:POSIX file "{path}"}} at after the last paragraph'
+        f'        make new attachment with properties {{file name:POSIX file "{path}"}} at after the last paragraph'
         for path in files
     )
     script = f"""
@@ -113,9 +107,7 @@ def _compose_windows(to: str, subject: str, body: str, files: List[Path]) -> boo
     def _ps_escape(s: str) -> str:
         return s.replace("'", "''")
 
-    attach_lines = "\n".join(
-        f"$mail.Attachments.Add('{_ps_escape(str(path))}')" for path in files
-    )
+    attach_lines = "\n".join(f"$mail.Attachments.Add('{_ps_escape(str(path))}')" for path in files)
     ps_script = f"""\
 $ol = New-Object -ComObject Outlook.Application
 $mail = $ol.CreateItem(0)

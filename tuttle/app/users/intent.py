@@ -5,17 +5,18 @@ from pathlib import Path
 from typing import Any, Dict
 
 from loguru import logger
-from sqlmodel import Session as SqlSession, create_engine as sql_create_engine, select
+from sqlmodel import Session as SqlSession
+from sqlmodel import create_engine as sql_create_engine
+from sqlmodel import select
 
 from ...app_db import AppDatabase
 from ...data_dir import get_data_dir
+from ...db_schema import ensure_schema
 from ...model import Address, BankAccount, Invoice, Timesheet, User
 from ..auth.data_source import UserDataSource
 from ..core.abstractions import get_active_db, set_active_db
 from ..core.intent_result import IntentResult
 from ..core.rpc_utils import reset_all
-from ...db_schema import ensure_schema
-
 
 #: Logos are downscaled so the longest edge is at most this many pixels before
 #: being stored as a base64 data URI in the per-user database.
@@ -114,9 +115,7 @@ def _normalize_signature(data_uri: str) -> str:
         arr = arr[rmin : rmax + 1, cmin : cmax + 1]
 
     result = PIL.Image.fromarray(arr.astype(np.uint8), "RGBA")
-    result.thumbnail(
-        (SIGNATURE_MAX_DIMENSION, SIGNATURE_MAX_DIMENSION), PIL.Image.LANCZOS
-    )
+    result.thumbnail((SIGNATURE_MAX_DIMENSION, SIGNATURE_MAX_DIMENSION), PIL.Image.LANCZOS)
     buf = io.BytesIO()
     result.save(buf, format="PNG")
 
@@ -157,9 +156,10 @@ class UsersIntent:
             return
         try:
             from sqlmodel import Session, create_engine, select
-            from ...model import Project
-            from ...demo import create_fake_calendar
+
             from ...calendar import ICSCalendar
+            from ...demo import create_fake_calendar
+            from ...model import Project
 
             if db_path is None:
                 db_path = get_active_db()
@@ -367,13 +367,7 @@ class UsersIntent:
                     if k in addr:
                         setattr(profile.address, k, addr[k])
             else:
-                profile.address = Address(
-                    **{
-                        k: v
-                        for k, v in addr.items()
-                        if k != "id" and not k.startswith("_")
-                    }
-                )
+                profile.address = Address(**{k: v for k, v in addr.items() if k != "id" and not k.startswith("_")})
 
         bank = profile_data.get("bank_account")
         if bank is not None:
@@ -396,9 +390,7 @@ class UsersIntent:
         # Sync name/subtitle back to the app.db registration record.
         active_file = get_active_db().name
         reg = self._app_db.get_user_by_db_file(active_file)
-        if reg and (
-            reg.name != profile.name or reg.subtitle != (profile.subtitle or "")
-        ):
+        if reg and (reg.name != profile.name or reg.subtitle != (profile.subtitle or "")):
             with self._app_db._session() as s:
                 db_reg = s.get(type(reg), reg.id)
                 if db_reg:

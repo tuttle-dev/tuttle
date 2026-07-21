@@ -41,10 +41,10 @@ See tuttle/migrations/README.md.
 # does not statically expose `sql` as an attribute of `sqlmodel`.
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
 import sqlmodel
 import sqlmodel.sql.sqltypes  # noqa: F401 — ensures runtime resolution of AutoString
+from alembic import op
 
 revision: str = "5f919b074635"
 down_revision: Union[str, Sequence[str], None] = "8ec5efc5316d"
@@ -92,9 +92,7 @@ def _zero_rate_category(country: str, cache: dict) -> str:
     """
     if country not in cache:
         iso = _resolve_iso(country)
-        cache[country] = (
-            "zero_rated" if iso is None or iso in _EU_VAT_COUNTRIES else "outside_scope"
-        )
+        cache[country] = "zero_rated" if iso is None or iso in _EU_VAT_COUNTRIES else "outside_scope"
     return cache[country]
 
 
@@ -160,9 +158,7 @@ def upgrade() -> None:
         )
 
     with op.batch_alter_table("user", schema=None) as batch_op:
-        batch_op.add_column(
-            sa.Column("tax_number", sqlmodel.sql.sqltypes.AutoString(), nullable=True)
-        )
+        batch_op.add_column(sa.Column("tax_number", sqlmodel.sql.sqltypes.AutoString(), nullable=True))
 
     # ### end Alembic commands ###
 
@@ -182,6 +178,4 @@ def downgrade() -> None:
     2. Run `just reset` to wipe ~/.tuttle
     3. Edit model.py, run `just migrate` again
     """
-    raise NotImplementedError(
-        "Downgrades are not supported. Restore from a .bak-<ts> snapshot instead."
-    )
+    raise NotImplementedError("Downgrades are not supported. Restore from a .bak-<ts> snapshot instead.")

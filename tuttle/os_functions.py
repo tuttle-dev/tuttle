@@ -1,10 +1,11 @@
 """OS-level function"""
-from typing import Optional, List
-from pathlib import Path
+
 import base64
-import subprocess
-import platform
 import os
+import platform
+import subprocess
+from pathlib import Path
+from typing import List, Optional
 
 import pymupdf
 
@@ -54,8 +55,7 @@ def preview_pdf(file_path):
             [
                 "osascript",
                 "-e",
-                'tell application "System Events" to set frontmost of '
-                'every process whose name is "qlmanage" to true',
+                'tell application "System Events" to set frontmost of every process whose name is "qlmanage" to true',
             ],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,

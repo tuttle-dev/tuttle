@@ -35,16 +35,16 @@ MANDATORY REVIEW CHECKLIST before committing this file:
 See tuttle/migrations/README.md.
 ----------------------------------------------------------------------
 """
+
 # pyright: reportAttributeAccessIssue=false
 # sqlmodel.sql.sqltypes is a submodule resolved at runtime; basedpyright
 # does not statically expose `sql` as an attribute of `sqlmodel`.
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
 import sqlmodel
 import sqlmodel.sql.sqltypes  # noqa: F401 — ensures runtime resolution of AutoString
-
+from alembic import op
 
 revision: str = "fbfa8c0c36e4"
 down_revision: Union[str, Sequence[str], None] = "a64c27722470"
@@ -79,17 +79,12 @@ def upgrade() -> None:
     )
     conn = op.get_bind()
     rows = conn.execute(
-        sa.select(client.c.id, client.c.invoicing_contact_id).where(
-            client.c.invoicing_contact_id.isnot(None)
-        )
+        sa.select(client.c.id, client.c.invoicing_contact_id).where(client.c.invoicing_contact_id.isnot(None))
     ).fetchall()
     if rows:
         op.bulk_insert(
             clientcontact,
-            [
-                {"client_id": r[0], "contact_id": r[1], "role": "invoicing"}
-                for r in rows
-            ],
+            [{"client_id": r[0], "contact_id": r[1], "role": "invoicing"} for r in rows],
         )
 
 
@@ -105,6 +100,4 @@ def downgrade() -> None:
     2. Run `just reset` to wipe ~/.tuttle
     3. Edit model.py, run `just migrate` again
     """
-    raise NotImplementedError(
-        "Downgrades are not supported. Restore from a .bak-<ts> snapshot instead."
-    )
+    raise NotImplementedError("Downgrades are not supported. Restore from a .bak-<ts> snapshot instead.")

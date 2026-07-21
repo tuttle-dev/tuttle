@@ -1,7 +1,7 @@
 """System diagnostics exposed to the UI."""
 
 from ..core.intent_result import IntentResult
-from .log_sink import get_recent, clear
+from .log_sink import clear, get_recent
 
 
 class SystemIntent:

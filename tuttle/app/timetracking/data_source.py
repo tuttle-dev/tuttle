@@ -1,17 +1,15 @@
+from pathlib import Path
 from typing import Optional
 
-from pathlib import Path
-
 from loguru import logger
-
-from ..core.rpc_utils import register_reset
 from pandas import DataFrame
 
+from ... import timetracking
+from ...app_db import AppDatabase
 from ...calendar import ICSCalendar
 from ...data_dir import get_data_dir
 from ...dev import singleton
-from ... import timetracking
-from ...app_db import AppDatabase
+from ..core.rpc_utils import register_reset
 
 _SETTING_SOURCE_TYPE = "timetracking.source_type"
 _SETTING_CALENDAR_ID = "timetracking.calendar_id"
@@ -78,9 +76,7 @@ class TimeTrackingDataFrameSource:
             path.unlink()
 
     @staticmethod
-    def save_source_config(
-        source_type: str, calendar_id: str = "", calendar_name: str = ""
-    ):
+    def save_source_config(source_type: str, calendar_id: str = "", calendar_name: str = ""):
         db = AppDatabase()
         db.set_setting(_SETTING_SOURCE_TYPE, source_type)
         db.set_setting(_SETTING_CALENDAR_ID, calendar_id)

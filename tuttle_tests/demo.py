@@ -1,15 +1,15 @@
 import datetime
 
+from tuttle import controller, time
 from tuttle.model import (
-    Contact,
     Address,
-    User,
     BankAccount,
     Client,
+    Contact,
     Contract,
     Project,
+    User,
 )
-from tuttle import time, controller
 
 # USERS
 

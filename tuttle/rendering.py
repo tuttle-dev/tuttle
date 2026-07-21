@@ -1,20 +1,20 @@
 """Document rendering."""
 
+import base64
+import glob
+import io
+import shutil
 from pathlib import Path
 from typing import Optional
-import shutil
-import glob
+
 import jinja2
-from babel.numbers import format_currency
-from babel.dates import format_date
 import pandas
-from loguru import logger
-import base64
-import io
 import PyPDF2
+from babel.dates import format_date
+from babel.numbers import format_currency
+from loguru import logger
 
-
-from .model import User, Invoice, Timesheet
+from .model import Invoice, Timesheet, User
 
 LANGUAGE_TO_LOCALE = {
     "en": "en_US",
@@ -81,8 +81,7 @@ INVOICE_LABELS = {
         "description": "Beschreibung",
         "closing": "Vielen Dank für Ihren Auftrag.",
         "outside_scope_note": (
-            "Nicht steuerbare sonstige Leistung — Leistungsort im Ausland "
-            "gemäß § 3a Abs. 2 UStG / Art. 44 MwStSystRL."
+            "Nicht steuerbare sonstige Leistung — Leistungsort im Ausland gemäß § 3a Abs. 2 UStG / Art. 44 MwStSystRL."
         ),
         "reminder": "Zahlungserinnerung",
         "reminder_n": "{n}. Mahnung",
@@ -117,8 +116,7 @@ INVOICE_LABELS = {
         "description": "Descripción",
         "closing": "Gracias por su confianza.",
         "outside_scope_note": (
-            "No sujeto al IVA alemán — el lugar de prestación es el país del "
-            "destinatario (art. 44 de la Directiva del IVA)."
+            "No sujeto al IVA alemán — el lugar de prestación es el país del destinatario (art. 44 de la Directiva del IVA)."
         ),
         "reminder": "Recordatorio de pago",
         "reminder_n": "{n}.º recordatorio de pago",
@@ -194,9 +192,7 @@ def render_invoice(
     labels = INVOICE_LABELS.get(language, INVOICE_LABELS["en"])
 
     def as_currency(number):
-        return format_currency(
-            number, currency=invoice.contract.currency, locale=babel_locale
-        )
+        return format_currency(number, currency=invoice.contract.currency, locale=babel_locale)
 
     def as_date(d):
         if d is None:
@@ -289,9 +285,7 @@ def render_invoice(
             shutil.copytree(item, dest, dirs_exist_ok=True)
 
     if document_format == "pdf":
-        css_paths = [
-            path for path in glob.glob(f"{invoice_dir}/**/*.css", recursive=True)
-        ]
+        css_paths = [path for path in glob.glob(f"{invoice_dir}/**/*.css", recursive=True)]
         pdf_out = invoice_dir / Path(f"{invoice.prefix}.pdf")
         convert_html_to_pdf(
             in_path=str(invoice_path),
@@ -342,13 +336,9 @@ def render_timesheet(
     template_env.filters["as_hours"] = lambda td: td / pandas.Timedelta("1 hour")
     template_env.filters["date"] = lambda dt: dt.strftime("%Y-%m-%d") if dt else ""
     template_env.filters["time"] = lambda dt: dt.strftime("%H:%M") if dt else ""
-    template_env.filters["datetime"] = lambda dt: (
-        dt.strftime("%Y-%m-%d %H:%M") if dt else ""
-    )
+    template_env.filters["datetime"] = lambda dt: dt.strftime("%Y-%m-%d %H:%M") if dt else ""
     template_env.filters["hours_minutes"] = lambda td: (
-        f"{int(td.total_seconds() // 3600)}:{int((td.total_seconds() % 3600) // 60):02d}"
-        if td
-        else ""
+        f"{int(td.total_seconds() // 3600)}:{int((td.total_seconds() % 3600) // 60):02d}" if td else ""
     )
 
     def _is_all_day(item) -> bool:
@@ -420,9 +410,7 @@ def render_timesheet(
                     dirs_exist_ok=True,
                 )
         if document_format == "pdf":
-            css_paths = [
-                path for path in glob.glob(f"{timesheet_dir}/**/*.css", recursive=True)
-            ]
+            css_paths = [path for path in glob.glob(f"{timesheet_dir}/**/*.css", recursive=True)]
             convert_html_to_pdf(
                 in_path=str(timesheet_path),
                 css_paths=css_paths,

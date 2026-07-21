@@ -85,8 +85,7 @@ def _resolve_country(country: str) -> str:
     canonical = _ALIAS_MAP.get(country)
     if canonical is None:
         raise NotImplementedError(
-            f"Tax system for '{country}' not yet implemented. "
-            f"Supported: {', '.join(sorted(_ALIAS_MAP.keys()))}"
+            f"Tax system for '{country}' not yet implemented. Supported: {', '.join(sorted(_ALIAS_MAP.keys()))}"
         )
     return canonical
 

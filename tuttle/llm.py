@@ -11,9 +11,8 @@ from decimal import Decimal
 from typing import Any, Dict, List, Optional
 
 import httpx
-from pydantic import BaseModel, Field
 from loguru import logger
-
+from pydantic import BaseModel, Field
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -28,20 +27,14 @@ class LLMConfig(BaseModel):
     vLLM, etc.).
     """
 
-    provider: str = Field(
-        default="ollama", description="LLM provider: ollama or openai"
-    )
+    provider: str = Field(default="ollama", description="LLM provider: ollama or openai")
     base_url: str = Field(
         default="http://localhost:11434",
         description="Base URL (Ollama server or OpenAI-compatible endpoint)",
     )
     model: str = Field(default="", description="Selected model name")
-    api_key: str = Field(
-        default="", description="API key (required for OpenAI-compatible providers)"
-    )
-    request_timeout: float = Field(
-        default=600.0, description="LLM request timeout in seconds"
-    )
+    api_key: str = Field(default="", description="API key (required for OpenAI-compatible providers)")
+    request_timeout: float = Field(default=600.0, description="LLM request timeout in seconds")
 
 
 def load_config() -> LLMConfig:
@@ -70,9 +63,7 @@ def save_config(config: LLMConfig) -> LLMConfig:
 # ---------------------------------------------------------------------------
 
 
-def get_available_models(
-    base_url: str, provider: str = "ollama", api_key: str = ""
-) -> List[str]:
+def get_available_models(base_url: str, provider: str = "ollama", api_key: str = "") -> List[str]:
     """Fetch available model names from the configured provider.
 
     For Ollama uses ``/api/tags``; for OpenAI-compatible endpoints uses
@@ -131,13 +122,13 @@ def _extract_text(file_bytes: bytes, file_name: str) -> str:
 from pydantic import create_model as _create_model  # noqa: E402
 
 from tuttle.model import (  # noqa: E402
-    Contact,
     Address,
     Client,
+    Contact,
     Contract,
-    Project,
     Invoice,
     InvoiceItem,
+    Project,
     normalize_vat_rate,
 )
 
@@ -162,13 +153,9 @@ def _flat_schema(model_cls: type, *, include: Optional[List[str]] = None) -> typ
         # Decimal/condecimal emit regex patterns that crash Ollama's
         # SchemaToGrammar; use plain float for LLM extraction instead.
         origin = getattr(annotation, "__origin__", None)
-        if annotation is Decimal or (
-            origin is not None and Decimal in getattr(annotation, "__args__", ())
-        ):
+        if annotation is Decimal or (origin is not None and Decimal in getattr(annotation, "__args__", ())):
             annotation = float
-        elif hasattr(annotation, "__supertype__") and issubclass(
-            annotation.__supertype__, Decimal
-        ):
+        elif hasattr(annotation, "__supertype__") and issubclass(annotation.__supertype__, Decimal):
             annotation = float
         fields[name] = (
             Optional[annotation],
@@ -182,9 +169,7 @@ def _flat_schema(model_cls: type, *, include: Optional[List[str]] = None) -> typ
 
 
 _AddressExtract = _flat_schema(Address)
-_ContactScalarExtract = _flat_schema(
-    Contact, include=["first_name", "last_name", "company", "email"]
-)
+_ContactScalarExtract = _flat_schema(Contact, include=["first_name", "last_name", "company", "email"])
 
 
 # Contact needs a nested address object (not an FK), so extend the flat schema
@@ -380,12 +365,7 @@ def parse_document(
     output_cls = _OUTPUT_CLASSES[entity_type]
     sllm = llm.as_structured_llm(output_cls=output_cls)
 
-    prompt = (
-        _PROMPTS[entity_type]
-        + "--- DOCUMENT START ---\n"
-        + text
-        + "\n--- DOCUMENT END ---"
-    )
+    prompt = _PROMPTS[entity_type] + "--- DOCUMENT START ---\n" + text + "\n--- DOCUMENT END ---"
 
     response = _structured_complete(sllm, prompt, config)
     extracted = response.raw
@@ -529,23 +509,17 @@ class _RefContact(_ContactExtract):
 
 class _RefClient(_ClientExtract):  # type: ignore[valid-type]
     ref: str = Field(description="Internal reference ID, e.g. 'client_1'")
-    contact_ref: Optional[str] = Field(
-        default=None, description="ref of the contact person for this client"
-    )
+    contact_ref: Optional[str] = Field(default=None, description="ref of the contact person for this client")
 
 
 class _RefContract(_ContractExtract):  # type: ignore[valid-type]
     ref: str = Field(description="Internal reference ID, e.g. 'contract_1'")
-    client_ref: Optional[str] = Field(
-        default=None, description="ref of the client this contract belongs to"
-    )
+    client_ref: Optional[str] = Field(default=None, description="ref of the client this contract belongs to")
 
 
 class _RefProject(_ProjectExtract):  # type: ignore[valid-type]
     ref: str = Field(description="Internal reference ID, e.g. 'project_1'")
-    contract_ref: Optional[str] = Field(
-        default=None, description="ref of the contract this project belongs to"
-    )
+    contract_ref: Optional[str] = Field(default=None, description="ref of the contract this project belongs to")
 
 
 class _RefInvoiceItem(_InvoiceItemExtract):  # type: ignore[valid-type]
@@ -556,12 +530,8 @@ class _RefInvoiceItem(_InvoiceItemExtract):  # type: ignore[valid-type]
 
 class _RefInvoice(_InvoiceExtract):  # type: ignore[valid-type]
     ref: str = Field(description="Internal reference ID, e.g. 'invoice_1'")
-    contract_ref: Optional[str] = Field(
-        default=None, description="ref of the contract this invoice belongs to"
-    )
-    project_ref: Optional[str] = Field(
-        default=None, description="ref of the project this invoice belongs to"
-    )
+    contract_ref: Optional[str] = Field(default=None, description="ref of the contract this invoice belongs to")
+    project_ref: Optional[str] = Field(default=None, description="ref of the project this invoice belongs to")
     items: List[_RefInvoiceItem] = Field(
         default_factory=list,
         description="Line items on this invoice",
@@ -571,16 +541,10 @@ class _RefInvoice(_InvoiceExtract):  # type: ignore[valid-type]
 class DocumentExtractionResult(BaseModel):
     """All entities extracted from a document, with cross-refs."""
 
-    contacts: List[_RefContact] = Field(
-        description="People mentioned, e.g. signatories or contact persons"
-    )
-    clients: List[_RefClient] = Field(
-        description="Companies or organisations that are the contracting party"
-    )
+    contacts: List[_RefContact] = Field(description="People mentioned, e.g. signatories or contact persons")
+    clients: List[_RefClient] = Field(description="Companies or organisations that are the contracting party")
     contracts: List[_RefContract] = Field(description="Contractual agreements")
-    projects: List[_RefProject] = Field(
-        description="Project descriptions or work packages"
-    )
+    projects: List[_RefProject] = Field(description="Project descriptions or work packages")
     invoices: List[_RefInvoice] = Field(
         default_factory=list,
         description="Invoices found in the document, each with line items (number, date, amounts)",
@@ -609,9 +573,7 @@ def _build_summary_prompt() -> str:
         annotation = field_info.annotation
         item_type = getattr(annotation, "__args__", (None,))[0]  # type: ignore[index]
         fields = _describe_entity_fields(item_type)
-        sections.append(
-            f"{label.upper()} — {entity_desc}:\n  For each, extract: {fields}"
-        )
+        sections.append(f"{label.upper()} — {entity_desc}:\n  For each, extract: {fields}")
 
     return (
         "You are analysing a business document (contract, invoice, or other) for a freelancer.\n"
@@ -721,14 +683,9 @@ def parse_document_for_import(
         low = msg.lower()
         if "timed out" in low or "timeout" in low:
             msg = (
-                f"LLM request timed out after {elapsed:.0f}s. "
-                f"Try a faster model or increase the timeout in Settings. ({msg})"
+                f"LLM request timed out after {elapsed:.0f}s. Try a faster model or increase the timeout in Settings. ({msg})"
             )
-        elif (
-            "disconnected" in low
-            or "remoteprotocolerror" in low
-            or "connection reset" in low
-        ):
+        elif "disconnected" in low or "remoteprotocolerror" in low or "connection reset" in low:
             msg = (
                 f"The LLM server disconnected after {elapsed:.0f}s. "
                 f"This usually means the model crashed (out of memory). "
@@ -745,19 +702,11 @@ def parse_document_for_import(
     logger.info(f"Pass 1 — summarise starting: {diag}")
     t0 = time.monotonic()
     try:
-        summary_prompt = (
-            _DOC_SUMMARY_PROMPT
-            + "--- DOCUMENT START ---\n"
-            + text
-            + "\n--- DOCUMENT END ---"
-        )
+        summary_prompt = _DOC_SUMMARY_PROMPT + "--- DOCUMENT START ---\n" + text + "\n--- DOCUMENT END ---"
         summary_response = llm.complete(summary_prompt)
         summary_text = str(summary_response)
         elapsed = time.monotonic() - t0
-        logger.info(
-            f"Pass 1 — summarise completed in {elapsed:.1f}s "
-            f"({len(summary_text)} chars)"
-        )
+        logger.info(f"Pass 1 — summarise completed in {elapsed:.1f}s ({len(summary_text)} chars)")
         logger.info(f"Summary:\n{summary_text[:3000]}")
         _mark("summarize_document", "done")
     except Exception as e:
@@ -771,19 +720,11 @@ def parse_document_for_import(
     t1 = time.monotonic()
     try:
         sllm = llm.as_structured_llm(output_cls=DocumentExtractionResult)
-        extract_prompt = (
-            _DOC_EXTRACT_PROMPT
-            + "--- SUMMARY START ---\n"
-            + summary_text
-            + "\n--- SUMMARY END ---"
-        )
+        extract_prompt = _DOC_EXTRACT_PROMPT + "--- SUMMARY START ---\n" + summary_text + "\n--- SUMMARY END ---"
         response = _structured_complete(sllm, extract_prompt, config)
         elapsed = time.monotonic() - t1
         raw_text = response.text
-        logger.info(
-            f"Pass 2 — extraction completed in {elapsed:.1f}s "
-            f"({len(raw_text)} chars)"
-        )
+        logger.info(f"Pass 2 — extraction completed in {elapsed:.1f}s ({len(raw_text)} chars)")
         logger.info(f"LLM raw response: {raw_text[:2000]}")
         extracted: DocumentExtractionResult = response.raw
         logger.info(
@@ -855,9 +796,7 @@ def _map_document_extraction(
         "projects": _dump_extracted(result.projects),
         "invoices": _map_invoices(result.invoices),
     }
-    logger.info(
-        "Mapped result counts: " + ", ".join(f"{k}={len(v)}" for k, v in mapped.items())
-    )
+    logger.info("Mapped result counts: " + ", ".join(f"{k}={len(v)}" for k, v in mapped.items()))
     return mapped
 
 
@@ -881,9 +820,7 @@ def _map_invoices(invoices: list) -> List[Dict[str, Any]]:
                 try:
                     item["VAT_rate"] = float(normalize_vat_rate(vat))
                 except ValueError as e:
-                    logger.warning(
-                        f"LLM extraction returned invalid invoice item VAT rate {vat!r}: {e}"
-                    )
+                    logger.warning(f"LLM extraction returned invalid invoice item VAT rate {vat!r}: {e}")
                     item["VAT_rate"] = None
         if _has_content(d, ignore={"ref", "items"}):
             results.append(d)
