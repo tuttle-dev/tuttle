@@ -66,6 +66,8 @@ export function TaxReservesView() {
   const hasAnyIncome = sp && (num(sp, "gross_revenue_ytd") > 0 || num(sp, "planned_revenue") > 0);
   const isCurrentYear = selectedYear === new Date().getFullYear();
   const periodLabel = isCurrentYear ? "YTD" : `${selectedYear}`;
+  const countrySupported = taxEstimate ? taxEstimate.country_supported !== false : true;
+  const taxCountry = taxEstimate ? str(taxEstimate, "country") : "";
 
   if (!hasAnyIncome && months.length === 0) {
     return <EmptyStateIntro icon={Calculator} description="Tax reserves help you set aside money for income tax and VAT throughout the year, so nothing comes as a surprise." />;
@@ -115,7 +117,15 @@ export function TaxReservesView() {
                 <WaterfallBar label="Business Expenses" amount={bizExpenses} total={totalBase} color="var(--color-status-warning)" currency={currency} />
               )}
               <WaterfallBar label="= Taxable Profit" amount={taxableProfit} total={totalBase} color="var(--color-status-info)" currency={currency} />
-              <WaterfallBar label="Est. Income Tax + Soli" amount={tax} total={totalBase} color="var(--color-status-warning)" currency={currency} />
+              <div className={countrySupported ? "" : "opacity-40"}>
+                <WaterfallBar label="Est. Income Tax" amount={tax} total={totalBase} color="var(--color-status-warning)" currency={currency} />
+              </div>
+              {!countrySupported && (
+                <p className="text-xs text-muted italic">
+                  Tax model for {taxCountry} is not yet available.{" "}
+                  <a href="https://github.com/tuttle-dev/tuttle/issues" target="_blank" rel="noopener noreferrer" className="underline text-accent">Request it on GitHub</a>
+                </p>
+              )}
               <WaterfallBar label="= Safe to Spend" amount={spendable} total={totalBase} color={spendable >= 0 ? "var(--color-status-success)" : "var(--color-status-danger)"} currency={currency} bold />
               {totalBase > 0 && (
                 <div className="border-t border-border-subtle mt-3 pt-3 flex justify-between text-xs text-muted">
@@ -209,13 +219,11 @@ function IncomeTaxSection({ data, currency }: { data: Entity; currency: string }
             {parts.join(" + ")}
           </div>
         )}
-        {supported && tr && (
-          <>
-            <SummaryRow label="Estimated Income Tax" value={fmt(num(tr, "estimated_annual_tax"), currency)} color="var(--color-status-warning)" />
-            <SummaryRow label="Solidarity Surcharge" value={fmt(num(tr, "solidarity_surcharge"), currency)} color="var(--color-status-warning)" />
-            <SummaryRow label="Total Annual Reserve" value={fmt(num(tr, "total_annual_reserve"), currency)} color="var(--color-status-warning)" bold />
+        {tr && (
+          <div className={supported ? "" : "opacity-30 pointer-events-none"}>
+            <SummaryRow label="Estimated Income Tax" value={fmt(num(tr, "total_annual_reserve"), currency)} color="var(--color-status-warning)" bold />
             <SummaryRow label="Effective Tax Rate" value={fmtPct(num(tr, "effective_rate"))} />
-          </>
+          </div>
         )}
         {brackets.length > 0 && (
           <div className="mt-4">
@@ -241,7 +249,8 @@ function IncomeTaxSection({ data, currency }: { data: Entity; currency: string }
         )}
         {!supported && (
           <p className="text-xs text-muted italic mt-3">
-            Income tax estimation is not yet available for {country}. VAT reserves are still tracked above.
+            Tax model for {country} is not yet available. VAT reserves are still tracked above.{" "}
+            <a href="https://github.com/tuttle-dev/tuttle/issues" target="_blank" rel="noopener noreferrer" className="underline text-accent">Request it on GitHub</a>
           </p>
         )}
       </div>

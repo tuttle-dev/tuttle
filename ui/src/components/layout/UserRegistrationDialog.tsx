@@ -26,7 +26,7 @@ export type UserFormData = {
 
 const EMPTY: UserFormData = {
   name: "", subtitle: "", email: "", phone: "", website: "",
-  street: "", street_num: "", postal_code: "", city: "", country: "Germany",
+  street: "", street_num: "", postal_code: "", city: "", country: "",
   vat_number: "", invoice_number_scheme: "daily",
 };
 
@@ -131,7 +131,7 @@ export function UserRegistrationDialog({ open, onClose, onSubmit, loading }: Pro
 
           <div>
             <label className={labelCls}>VAT number</label>
-            <input className={inputCls} value={form.vat_number} onChange={set("vat_number")} placeholder="DE123456789" />
+            <input className={inputCls} value={form.vat_number} onChange={set("vat_number")} />
           </div>
 
           <fieldset className="border border-border-subtle rounded-lg px-4 pb-3 pt-2">

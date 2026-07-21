@@ -24,6 +24,8 @@ export function SalaryView() {
   const [salary, setSalary] = useState<SalaryData | null>(null);
   const [target, setTarget] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  const [countrySupported, setCountrySupported] = useState(true);
+  const [taxCountry, setTaxCountry] = useState("");
 
   useEffect(() => { load(); }, []);
 
@@ -34,6 +36,8 @@ export function SalaryView() {
       const d = res.data as Entity;
       const sal = d.salary as Entity | undefined;
       const cur = (d.currency as string) || "EUR";
+      setCountrySupported(d.country_supported !== false);
+      setTaxCountry((d.country as string) || "");
       if (sal) {
         const con = num(sal, "conservative_monthly");
         const opt = num(sal, "optimistic_monthly");
@@ -67,7 +71,7 @@ export function SalaryView() {
       </div>
 
       <SalaryDial salary={salary} target={target!} onTargetChange={setTarget} />
-      <MonthlyBreakdown salary={salary} />
+      <MonthlyBreakdown salary={salary} countrySupported={countrySupported} taxCountry={taxCountry} />
     </div>
   );
 }
@@ -139,15 +143,15 @@ function SalaryDial({ salary, target, onTargetChange }: {
   );
 }
 
-function MonthlyBreakdown({ salary }: { salary: SalaryData }) {
+function MonthlyBreakdown({ salary, countrySupported, taxCountry }: { salary: SalaryData; countrySupported: boolean; taxCountry: string }) {
   const { optimistic, vatReserve, incomeTaxReserve, monthlyExpenses, currency } = salary;
   const gross = optimistic + incomeTaxReserve + vatReserve + monthlyExpenses;
   if (gross <= 0) return null;
 
-  const items: { label: string; amount: number; color: string; bold?: boolean }[] = [
+  const items: { label: string; amount: number; color: string; bold?: boolean; muted?: boolean }[] = [
     { label: "Gross Revenue / month", amount: gross, color: "var(--color-status-info)" },
     { label: "VAT (to remit)", amount: vatReserve, color: "var(--color-status-warning)" },
-    { label: "Est. Income Tax + Soli", amount: incomeTaxReserve, color: "var(--color-status-warning)" },
+    { label: "Est. Income Tax", amount: incomeTaxReserve, color: "var(--color-status-warning)", muted: !countrySupported },
     { label: "Recurring Expenses", amount: monthlyExpenses, color: "var(--color-status-warning)" },
     { label: "= Available Salary", amount: optimistic, color: optimistic >= 0 ? "var(--color-status-success)" : "var(--color-status-danger)", bold: true },
   ];

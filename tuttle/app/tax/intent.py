@@ -5,7 +5,12 @@ from decimal import Decimal
 
 from ...fx import primary_currency
 from ...model import Invoice, Project, RecurringExpense, User
-from ...tax import get_tax_system, supported_countries
+from ...tax import (
+    all_operating_countries,
+    get_tax_system,
+    has_tax_model,
+    supported_countries,
+)
 from ...tax_reserves import (
     compute_income_tax_reserve,
     compute_spendable_income,
@@ -31,7 +36,7 @@ class TaxIntent(SQLModelDataSourceMixin, Intent):
                 return users[0].operating_country
         except Exception:
             pass
-        return "Germany"
+        return ""
 
     def _get_tax_currency(self, country: str) -> str:
         """The currency aggregates are shown in (settings, default: tax system)."""
@@ -170,6 +175,14 @@ class TaxIntent(SQLModelDataSourceMixin, Intent):
     def supported_countries(self) -> IntentResult:
         """Return list of countries with tax system support."""
         return IntentResult(was_intent_successful=True, data=supported_countries())
+
+    def all_operating_countries(self) -> IntentResult:
+        """Return full list of countries for the operating-country dropdown."""
+        return IntentResult(was_intent_successful=True, data=all_operating_countries())
+
+    def has_tax_model(self, country: str) -> IntentResult:
+        """Check whether a country has a tax data package."""
+        return IntentResult(was_intent_successful=True, data=has_tax_model(country))
 
     def get_monthly_vat(self, year: int | None = None) -> IntentResult:
         """Get monthly VAT breakdown."""

@@ -171,7 +171,7 @@ class User(RpcMixin, SQLModel, table=True):
         sa_relationship_kwargs={"lazy": "subquery"},
     )
     operating_country: str = Field(
-        default="Germany",
+        default="",
         description="Country whose tax system and currency the freelancer operates under.",
     )
     VAT_number: Optional[str] = Field(
