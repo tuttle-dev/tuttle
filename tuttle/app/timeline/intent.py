@@ -162,6 +162,21 @@ class TimelineIntent(SQLModelDataSourceMixin, Intent):
                 )
                 continue
 
+            if inv.sent and not inv.is_reminder:
+                sent_date = inv.sent_date or inv.date
+                events.append(
+                    TimelineEvent(
+                        date=sent_date,
+                        title=f"{label} sent",
+                        description=desc,
+                        category=cat,
+                        icon=CATEGORY_ICONS[cat],
+                        color=color,
+                        is_future=sent_date > today,
+                        entity_id=inv.id,
+                    )
+                )
+
             if inv.paid:
                 events.append(
                     TimelineEvent(

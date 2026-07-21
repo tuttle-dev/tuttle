@@ -923,6 +923,9 @@ function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid, onTog
             <div className="grid grid-cols-2 gap-3">
               <DRow icon={<Calendar size={14} />} label="Date" value={formatDate(str(invoice, "date"))} />
               <DRow icon={<Calendar size={14} />} label="Due" value={formatDate(str(invoice, "effective_due_date"))} />
+              {str(invoice, "sent_date") && (
+                <DRow icon={<Send size={14} />} label="Sent" value={formatDate(str(invoice, "sent_date"))} />
+              )}
               <DRow icon={<FolderKanban size={14} />} label="Project" value={deepStr(invoice, "project.title") || "—"} />
               <DRow icon={<FileText size={14} />} label="Contract" value={deepStr(invoice, "contract.title") || "—"} />
               <DRow icon={<Banknote size={14} />} label="Currency" value={str(invoice, "currency") || "EUR"} />

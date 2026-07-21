@@ -695,6 +695,10 @@ Best regards,
                 body=email_body,
                 attachment_paths=[invoice_path],
             )
+            if not invoice.sent:
+                invoice.sent = True
+                invoice.sent_date = date.today()
+                self._invoicing_data_source.save_invoice(invoice)
 
             return IntentResult(
                 was_intent_successful=True,
@@ -725,6 +729,7 @@ Best regards,
         """
         try:
             invoice.sent = not invoice.sent
+            invoice.sent_date = date.today() if invoice.sent else None
             self._invoicing_data_source.save_invoice(invoice)
             return IntentResult(
                 was_intent_successful=True,

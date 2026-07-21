@@ -1020,6 +1020,10 @@ class Invoice(RpcMixin, SQLModel, table=True):
     # -- Status flags ------------------------------------------------------
 
     sent: Optional[bool] = Field(default=False)
+    sent_date: Optional[datetime.date] = Field(
+        default=None,
+        description="The date the invoice was sent to the client.",
+    )
     paid: Optional[bool] = Field(default=False)
     cancelled: Optional[bool] = Field(
         default=False,
