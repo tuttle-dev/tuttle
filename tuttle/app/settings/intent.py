@@ -21,9 +21,7 @@ class SettingsIntent:
         return IntentResult(
             was_intent_successful=True,
             data={
-                "primary": primary_currency(
-                    country or self._active_operating_country()
-                ),
+                "primary": primary_currency(country or self._active_operating_country()),
                 "fx_haircut": str(fx_haircut()),
                 "supported": list(supported_currencies()),
             },
