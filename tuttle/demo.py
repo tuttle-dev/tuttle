@@ -1,10 +1,9 @@
-from typing import Callable, List, Optional
-
 import datetime
 import random
 from datetime import date, timedelta
-from pathlib import Path
 from decimal import Decimal
+from pathlib import Path
+from typing import Callable, List, Optional
 
 import faker
 import ics
@@ -16,7 +15,6 @@ from tuttle import rendering
 from tuttle.calendar import Calendar, ICSCalendar
 from tuttle.data_dir import get_data_dir
 from tuttle.db_schema import ensure_schema
-
 from tuttle.model import (
     Address,
     BankAccount,
@@ -28,10 +26,10 @@ from tuttle.model import (
     FinancialGoal,
     Invoice,
     InvoiceItem,
+    Project,
     TaxCategory,
     Timesheet,
     TimeTrackingItem,
-    Project,
     TimeUnit,
     User,
 )
@@ -564,17 +562,13 @@ def create_heating_data(
 
     # Many-to-many: contacts ↔ clients with roles
     client_contacts = [
-        ClientContact(
-            client=central_services, contact=sam_lowry_contact, role="project lead"
-        ),
+        ClientContact(client=central_services, contact=sam_lowry_contact, role="project lead"),
         ClientContact(
             client=central_services,
             contact=central_services_accountant,
             role="accountant",
         ),
-        ClientContact(
-            client=central_services, contact=archibald_buttle, role="shoe repair"
-        ),
+        ClientContact(client=central_services, contact=archibald_buttle, role="shoe repair"),
         ClientContact(client=sam_lowry, contact=sam_lowry_contact, role="invoicing"),
     ]
 
@@ -588,9 +582,7 @@ def create_heating_data(
         vat_number = f"DE{fake.unique.random_number(digits=9, fix_len=True)}"
         client = Client(name=name, vat_number=vat_number, invoicing_contact=contact)
         clients.append(client)
-        client_contacts.append(
-            ClientContact(client=client, contact=contact, role="invoicing")
-        )
+        client_contacts.append(ClientContact(client=client, contact=contact, role="invoicing"))
 
     # -- contracts (one per client) --------------------------------------------
 
@@ -697,9 +689,7 @@ def create_historical_invoices(
         # First day of that month
         inv_date = (today - timedelta(days=30 * months_ago)).replace(day=15)
         # Pick 1-2 random projects to invoice each month
-        month_projects = random.sample(
-            projects, k=min(random.randint(1, 2), len(projects))
-        )
+        month_projects = random.sample(projects, k=min(random.randint(1, 2), len(projects)))
         for project in month_projects:
             inv = create_fake_invoice(
                 fake,
@@ -850,8 +840,8 @@ def install_demo_data(
 
     # add fake invoices
     logger.info("Adding fake invoices...")
+
     from .rendering import render_invoice
-    from pathlib import Path
 
     out_dir = get_data_dir() / "Invoices"
 
@@ -864,9 +854,7 @@ def install_demo_data(
         logger.info("Adding historical invoices...")
         locales = ["de_DE", "en_US", "en_GB", "fr_FR"]
         fake = faker.Faker(locale=locales)
-        historical_invoices = create_historical_invoices(
-            fake, projects, user, n_months=24
-        )
+        historical_invoices = create_historical_invoices(fake, projects, user, n_months=24)
         for invoice in historical_invoices:
             session.add(invoice)
         session.commit()

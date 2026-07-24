@@ -1,13 +1,14 @@
 """Test fixtures."""
 
-import pytest
-from pathlib import Path
 import datetime
 from decimal import Decimal
+from pathlib import Path
+
+import pytest
 
 import tuttle
 from tuttle import fx
-from tuttle.model import Project, Client, Address, Contact, User, BankAccount, Contract
+from tuttle.model import Address, BankAccount, Client, Contact, Contract, Project, User
 
 # Every non-EUR amount in the suite converts at this rate. A fixed number keeps
 # assertions stable; the real ECB average would make them depend on the day.
@@ -173,7 +174,5 @@ def demo_projects(demo_contracts):
 @pytest.fixture
 def demo_calendar_timetracking():
     timetracking_calendar_path = Path("tuttle_tests/data/TuttleDemo-TimeTracking.ics")
-    cal = tuttle.calendar.ICSCalendar(
-        path=timetracking_calendar_path, name="TimeTracking"
-    )
+    cal = tuttle.calendar.ICSCalendar(path=timetracking_calendar_path, name="TimeTracking")
     return cal

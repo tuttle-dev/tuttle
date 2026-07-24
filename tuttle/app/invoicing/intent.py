@@ -8,12 +8,15 @@ from typing import Mapping, Optional
 from loguru import logger
 from pandas import DataFrame
 
+from ... import invoicing, mail, rendering, timetracking
+from ...app_db import AppDatabase
+from ...data_dir import get_data_dir
+from ...model import Invoice, InvoiceItem, Project, Timesheet, User
 from ..auth.data_source import UserDataSource
 from ..auth.intent import AuthIntent
 from ..core.abstractions import Intent
 from ..core.intent_result import IntentResult
 from ..preferences.intent import PreferencesIntent
-from ...data_dir import get_data_dir
 from ..preferences.model import (
     DEFAULT_E_INVOICE_PROFILE,
     DEFAULT_INVOICE_NUMBER_SCHEME,
@@ -21,16 +24,12 @@ from ..preferences.model import (
     E_INVOICE_PROFILES,
     INVOICE_NUMBER_SCHEMES,
     INVOICE_TEMPLATES,
-    PreferencesStorageKeys,
     SUPPORTED_INVOICE_LANGUAGES,
+    PreferencesStorageKeys,
 )
 from ..projects.intent import ProjectsIntent
 from ..timetracking.data_source import TimeTrackingDataFrameSource
 from ..timetracking.intent import TimeTrackingIntent
-from ...app_db import AppDatabase
-from ... import invoicing, mail, rendering, timetracking
-from ...model import Invoice, InvoiceItem, Project, Timesheet, User
-
 from .data_source import InvoicingDataSource
 
 
@@ -72,18 +71,11 @@ class InvoicingIntent(Intent):
             return proj_result
         app_db = AppDatabase()
         language = app_db.get_setting(PreferencesStorageKeys.language_key.value) or "en"
-        template_name = (
-            app_db.get_setting(PreferencesStorageKeys.invoice_template_key.value)
-            or DEFAULT_INVOICE_TEMPLATE
-        )
+        template_name = app_db.get_setting(PreferencesStorageKeys.invoice_template_key.value) or DEFAULT_INVOICE_TEMPLATE
         number_scheme = (
-            app_db.get_setting(PreferencesStorageKeys.invoice_number_scheme_key.value)
-            or DEFAULT_INVOICE_NUMBER_SCHEME
+            app_db.get_setting(PreferencesStorageKeys.invoice_number_scheme_key.value) or DEFAULT_INVOICE_NUMBER_SCHEME
         )
-        e_invoice_profile = (
-            app_db.get_setting(PreferencesStorageKeys.e_invoice_profile_key.value)
-            or DEFAULT_E_INVOICE_PROFILE
-        )
+        e_invoice_profile = app_db.get_setting(PreferencesStorageKeys.e_invoice_profile_key.value) or DEFAULT_E_INVOICE_PROFILE
 
         def _to_date(v):
             return v if isinstance(v, date) else _dt.date.fromisoformat(v)
@@ -109,17 +101,13 @@ class InvoicingIntent(Intent):
     def _toggle(self, field: str, invoice_id: int) -> IntentResult:
         result = self._invoicing_data_source.get_invoice_by_id(invoice_id)
         if not result.was_intent_successful or not result.data:
-            return IntentResult(
-                was_intent_successful=False, error_msg="Invoice not found"
-            )
+            return IntentResult(was_intent_successful=False, error_msg="Invoice not found")
         return getattr(self, f"toggle_invoice_{field}_status")(result.data)
 
     def send_mail(self, id) -> IntentResult:
         result = self._invoicing_data_source.get_invoice_by_id(id)
         if not result.was_intent_successful or not result.data:
-            return IntentResult(
-                was_intent_successful=False, error_msg="Invoice not found"
-            )
+            return IntentResult(was_intent_successful=False, error_msg="Invoice not found")
         invoice = result.data
         if invoice.is_reminder:
             return self.send_reminder_by_mail(invoice)
@@ -139,10 +127,7 @@ class InvoicingIntent(Intent):
 
         app_db = AppDatabase()
         language = app_db.get_setting(PreferencesStorageKeys.language_key.value) or "en"
-        template_name = (
-            app_db.get_setting(PreferencesStorageKeys.invoice_template_key.value)
-            or DEFAULT_INVOICE_TEMPLATE
-        )
+        template_name = app_db.get_setting(PreferencesStorageKeys.invoice_template_key.value) or DEFAULT_INVOICE_TEMPLATE
         fee = Decimal(str(reminder_fee)) if reminder_fee else None
         return self._create_reminder(
             invoice_id=int(invoice_id),
@@ -168,9 +153,7 @@ class InvoicingIntent(Intent):
         return IntentResult(was_intent_successful=True, data=INVOICE_TEMPLATES)
 
     def available_languages(self) -> IntentResult:
-        return IntentResult(
-            was_intent_successful=True, data=SUPPORTED_INVOICE_LANGUAGES
-        )
+        return IntentResult(was_intent_successful=True, data=SUPPORTED_INVOICE_LANGUAGES)
 
     def available_number_schemes(self) -> IntentResult:
         return IntentResult(was_intent_successful=True, data=INVOICE_NUMBER_SCHEMES)
@@ -249,9 +232,7 @@ class InvoicingIntent(Intent):
         logger.info(f"Creating invoice for {project.title}...")
         user = self._user_data_source.get_user()
         try:
-            invoice_number = self._invoicing_data_source.generate_invoice_number(
-                invoice_date, scheme=number_scheme
-            )
+            invoice_number = self._invoicing_data_source.generate_invoice_number(invoice_date, scheme=number_scheme)
 
             if manual_items is not None:
                 contract = project.contract
@@ -260,9 +241,7 @@ class InvoicingIntent(Intent):
                         start_date=from_date,
                         end_date=to_date,
                         quantity=float(it["quantity"]),
-                        unit=it.get(
-                            "unit", contract.unit.value if contract.unit else "hour"
-                        ),
+                        unit=it.get("unit", contract.unit.value if contract.unit else "hour"),
                         unit_price=it["unit_price"],
                         description=it.get("description", project.title),
                         VAT_rate=contract.VAT_rate,
@@ -333,26 +312,16 @@ class InvoicingIntent(Intent):
                 # EN16931 BR-O-11/12: category O may not be mixed with any other
                 # category. Guarding all mixtures keeps the tax breakdown honest.
                 names = ", ".join(sorted(c.value for c in categories))
-                error_message = (
-                    f"Invoice mixes tax categories ({names}); every item must "
-                    "share one category."
-                )
+                error_message = f"Invoice mixes tax categories ({names}); every item must share one category."
                 logger.error(error_message)
-                return IntentResult(
-                    was_intent_successful=False, error_msg=error_message
-                )
+                return IntentResult(was_intent_successful=False, error_msg=error_message)
 
             if notes:
                 invoice.notes = notes.strip() or None
 
             render_warnings: list[str] = []
             if render:
-                if (
-                    manual_quantity is None
-                    and manual_items is None
-                    and with_timesheet
-                    and "timesheet" in locals()
-                ):
+                if manual_quantity is None and manual_items is None and with_timesheet and "timesheet" in locals():
                     try:
                         rendering.render_timesheet(
                             user=user,
@@ -361,43 +330,31 @@ class InvoicingIntent(Intent):
                             only_final=True,
                         )
                     except Exception as ex:
-                        logger.error(
-                            f"Error rendering timesheet for {project.title}: {ex}"
-                        )
+                        logger.error(f"Error rendering timesheet for {project.title}: {ex}")
                         logger.exception(ex)
-                        render_warnings.append(
-                            f"Timesheet PDF could not be generated: {ex}"
-                        )
+                        render_warnings.append(f"Timesheet PDF could not be generated: {ex}")
 
                 resolved_template = template_name or DEFAULT_INVOICE_TEMPLATE
                 if not template_name:
-                    tmpl_result = (
-                        self._preferences_intent.get_preferred_invoice_template()
-                    )
+                    tmpl_result = self._preferences_intent.get_preferred_invoice_template()
                     if tmpl_result.was_intent_successful and tmpl_result.data:
                         resolved_template = tmpl_result.data
 
                 logo_result = self._preferences_intent.get_include_logo()
                 resolved_include_logo = (
-                    logo_result.data
-                    if logo_result.was_intent_successful
-                    and logo_result.data is not None
-                    else True
+                    logo_result.data if logo_result.was_intent_successful and logo_result.data is not None else True
                 )
 
                 due_date_result = self._preferences_intent.get_include_due_date()
                 resolved_include_due_date = (
                     due_date_result.data
-                    if due_date_result.was_intent_successful
-                    and due_date_result.data is not None
+                    if due_date_result.was_intent_successful and due_date_result.data is not None
                     else True
                 )
 
                 sig_result = self._preferences_intent.get_include_signature()
                 resolved_include_signature = (
-                    sig_result.data
-                    if sig_result.was_intent_successful and sig_result.data is not None
-                    else True
+                    sig_result.data if sig_result.was_intent_successful and sig_result.data is not None else True
                 )
 
                 try:
@@ -427,10 +384,7 @@ class InvoicingIntent(Intent):
                 warning=warning_msg,
             )
         except ValueError:
-            error_message = (
-                f"No time tracking data found for project "
-                f"'{project.title}' between {from_date} and {to_date}."
-            )
+            error_message = f"No time tracking data found for project '{project.title}' between {from_date} and {to_date}."
             logger.error(error_message)
             return IntentResult(
                 was_intent_successful=False,
@@ -457,9 +411,7 @@ class InvoicingIntent(Intent):
         """Create a payment reminder for an overdue invoice or previous reminder."""
         result = self._invoicing_data_source.get_invoice_by_id(invoice_id)
         if not result.was_intent_successful or not result.data:
-            return IntentResult(
-                was_intent_successful=False, error_msg="Invoice not found."
-            )
+            return IntentResult(was_intent_successful=False, error_msg="Invoice not found.")
         predecessor = result.data
 
         if predecessor.paid:
@@ -480,9 +432,7 @@ class InvoicingIntent(Intent):
             # Walk to root via explicit queries to avoid DetachedInstanceError
             root = predecessor
             while root.reminder_for_id is not None:
-                parent_result = self._invoicing_data_source.get_invoice_by_id(
-                    root.reminder_for_id
-                )
+                parent_result = self._invoicing_data_source.get_invoice_by_id(root.reminder_for_id)
                 if not parent_result.was_intent_successful or not parent_result.data:
                     break
                 root = parent_result.data
@@ -526,33 +476,25 @@ class InvoicingIntent(Intent):
             if render:
                 resolved_template = template_name or DEFAULT_INVOICE_TEMPLATE
                 if not template_name:
-                    tmpl_result = (
-                        self._preferences_intent.get_preferred_invoice_template()
-                    )
+                    tmpl_result = self._preferences_intent.get_preferred_invoice_template()
                     if tmpl_result.was_intent_successful and tmpl_result.data:
                         resolved_template = tmpl_result.data
 
                 logo_result = self._preferences_intent.get_include_logo()
                 resolved_include_logo = (
-                    logo_result.data
-                    if logo_result.was_intent_successful
-                    and logo_result.data is not None
-                    else True
+                    logo_result.data if logo_result.was_intent_successful and logo_result.data is not None else True
                 )
 
                 due_date_result = self._preferences_intent.get_include_due_date()
                 resolved_include_due_date = (
                     due_date_result.data
-                    if due_date_result.was_intent_successful
-                    and due_date_result.data is not None
+                    if due_date_result.was_intent_successful and due_date_result.data is not None
                     else True
                 )
 
                 sig_result = self._preferences_intent.get_include_signature()
                 resolved_include_signature = (
-                    sig_result.data
-                    if sig_result.was_intent_successful and sig_result.data is not None
-                    else True
+                    sig_result.data if sig_result.was_intent_successful and sig_result.data is not None else True
                 )
 
                 try:
@@ -772,9 +714,7 @@ Best regards,
                 error_msg=f"Failed to toggle the invoice paid status: {ex}",
             )
 
-    def toggle_invoice_cancelled_status(
-        self, invoice: Invoice
-    ) -> IntentResult[Invoice]:
+    def toggle_invoice_cancelled_status(self, invoice: Invoice) -> IntentResult[Invoice]:
         """
         Toggles the "cancelled" status of an invoice and updates it in the data source.
 
@@ -829,9 +769,7 @@ Best regards,
         """Resolve the PDF path for the timesheet belonging to an invoice."""
         result = self._invoicing_data_source.get_invoice_by_id(int(id))
         if not result.was_intent_successful or not result.data:
-            return IntentResult(
-                was_intent_successful=False, error_msg="Invoice not found"
-            )
+            return IntentResult(was_intent_successful=False, error_msg="Invoice not found")
         invoice = result.data
         try:
             timesheet = self._invoicing_data_source.get_timesheet_for_invoice(invoice)
@@ -864,9 +802,7 @@ Best regards,
         """
         result = self._invoicing_data_source.get_invoice_by_id(int(id))
         if not result.was_intent_successful or not result.data:
-            return IntentResult(
-                was_intent_successful=False, error_msg="Invoice not found"
-            )
+            return IntentResult(was_intent_successful=False, error_msg="Invoice not found")
         invoice = result.data
         if invoice.is_reminder:
             return IntentResult(
@@ -915,6 +851,5 @@ Best regards,
             )
 
     def get_time_tracking_data_as_dataframe(self) -> Optional[DataFrame]:
-
         result = self._timetracking_intent.get_timetracking_data()
         return result.data

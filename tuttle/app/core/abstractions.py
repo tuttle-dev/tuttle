@@ -1,21 +1,19 @@
 from __future__ import annotations
 
 import datetime
-from typing import Any, List, Mapping, Optional, Type
-
+import functools
 from abc import ABC, abstractmethod
 from pathlib import Path
-import functools
+from typing import Any, List, Mapping, Optional, Type
 
 import sqlalchemy
 import sqlmodel
+from loguru import logger
 from pydantic import ValidationError
 from sqlmodel import pool
 
-from loguru import logger
-
-from .intent_result import IntentResult
 from ...data_dir import get_data_dir
+from .intent_result import IntentResult
 
 
 def _coerce_dates(data: dict) -> dict:
@@ -183,9 +181,7 @@ class SQLModelDataSourceMixin:
         """Queries the database for an instance of the given entity type with the given id."""
         logger.debug(f"querying {entity_type} by id={entity_id}")
         with self.create_session() as session:
-            entity = session.exec(
-                sqlmodel.select(entity_type).where(entity_type.id == entity_id)
-            ).one()
+            entity = session.exec(sqlmodel.select(entity_type).where(entity_type.id == entity_id)).one()
             self._hydrate([entity])
         if entity is None:
             logger.warning(f"No instance of {entity_type} found with id={entity_id}")
@@ -226,11 +222,7 @@ class SQLModelDataSourceMixin:
         """Queries the database for all instances of the given entity type that have the given field value"""
         logger.debug(f"querying {entity_type} by {field_name}={field_value}")
         with self.create_session() as session:
-            entities = session.exec(
-                sqlmodel.select(entity_type).where(
-                    getattr(entity_type, field_name) == field_value
-                )
-            ).all()
+            entities = session.exec(sqlmodel.select(entity_type).where(getattr(entity_type, field_name) == field_value)).all()
         if len(entities) == 0:
             logger.warning(f"No instances of {entity_type} found")
         else:
@@ -273,9 +265,7 @@ class SQLModelDataSourceMixin:
         with self.create_session() as session:
             entity = session.get(entity_type, entity_id)
             if entity is None:
-                raise ValueError(
-                    f"{entity_type.__name__} with id={entity_id} not found"
-                )
+                raise ValueError(f"{entity_type.__name__} with id={entity_id} not found")
             session.delete(entity)
             session.commit()
 
@@ -292,9 +282,7 @@ class Intent(ABC):
             def wrapped(*args, **kwargs):
                 class_name = self.__class__.__name__
                 # Mask password argument if exists
-                kwargs = {
-                    k: "******" if k == "password" else v for k, v in kwargs.items()
-                }
+                kwargs = {k: "******" if k == "password" else v for k, v in kwargs.items()}
                 logger.debug(f"Intent: {class_name}:{name} called with: {kwargs}")
                 return attr(*args, **kwargs)
 
@@ -395,15 +383,11 @@ class CrudIntent(SQLModelDataSourceMixin, Intent):
                 related = getattr(entity, attr, None) or []
                 if related:
                     names = ", ".join(display_fn(r) for r in related)
-                    entity_desc = getattr(entity, "name", None) or getattr(
-                        entity, "title", f"#{entity_id}"
-                    )
+                    entity_desc = getattr(entity, "name", None) or getattr(entity, "title", f"#{entity_id}")
                     return IntentResult(
                         was_intent_successful=False,
                         error_msg=(
-                            f"Cannot delete {self.entity_name} "
-                            f"'{entity_desc}' because it is "
-                            f"referenced by {label}: {names}"
+                            f"Cannot delete {self.entity_name} '{entity_desc}' because it is referenced by {label}: {names}"
                         ),
                     )
         try:
@@ -412,10 +396,7 @@ class CrudIntent(SQLModelDataSourceMixin, Intent):
         except sqlalchemy.exc.IntegrityError as e:
             return IntentResult(
                 was_intent_successful=False,
-                error_msg=(
-                    f"Cannot delete this {self.entity_name} because it is "
-                    f"still referenced by other records."
-                ),
+                error_msg=(f"Cannot delete this {self.entity_name} because it is still referenced by other records."),
                 log_message=f"{self.__class__.__name__}.delete({entity_id}): {e}",
                 exception=e,
             )
@@ -444,9 +425,7 @@ class CrudIntent(SQLModelDataSourceMixin, Intent):
         """Toggle is_completed and save. Accepts entity or id."""
         if entity is None:
             if id is None:
-                return IntentResult(
-                    was_intent_successful=False, error_msg="No entity or id provided"
-                )
+                return IntentResult(was_intent_successful=False, error_msg="No entity or id provided")
             result = self.get_by_id(id)
             if not result.was_intent_successful or not result.data:
                 return result
@@ -489,9 +468,7 @@ class CrudIntent(SQLModelDataSourceMixin, Intent):
             data.pop(f"{field}_id", None)
 
         skip = self.__save_skip__ | set(self.__save_nested__)
-        clean = {
-            k: v for k, v in data.items() if not k.startswith("_") and k not in skip
-        }
+        clean = {k: v for k, v in data.items() if not k.startswith("_") and k not in skip}
 
         if entity_id:
             result = self.get_by_id(entity_id)
@@ -567,9 +544,7 @@ class CrudIntent(SQLModelDataSourceMixin, Intent):
                     if k != "id" and not k.startswith("_"):
                         setattr(existing, k, v)
             else:
-                clean = {
-                    k: v for k, v in raw.items() if k != "id" and not k.startswith("_")
-                }
+                clean = {k: v for k, v in raw.items() if k != "id" and not k.startswith("_")}
                 setattr(entity, field, model_cls(**clean))
 
     def _build_nested(self, nested_raw: dict) -> dict:
@@ -579,8 +554,6 @@ class CrudIntent(SQLModelDataSourceMixin, Intent):
             if not raw:
                 continue
             model_cls = self.__save_nested__[field]
-            clean = {
-                k: v for k, v in raw.items() if k != "id" and not k.startswith("_")
-            }
+            clean = {k: v for k, v in raw.items() if k != "id" and not k.startswith("_")}
             result[field] = model_cls(**clean)
         return result

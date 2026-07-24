@@ -4,9 +4,9 @@ from typing import List
 
 import sqlmodel
 
+from ...model import RecurringExpense
 from ..core.abstractions import SQLModelDataSourceMixin
 from ..core.intent_result import IntentResult
-from ...model import RecurringExpense
 
 
 class SalaryDataSource(SQLModelDataSourceMixin):
@@ -46,9 +46,7 @@ class SalaryDataSource(SQLModelDataSourceMixin):
         try:
             with self.create_session() as session:
                 expense = session.exec(
-                    sqlmodel.select(RecurringExpense).where(
-                        RecurringExpense.id == expense_id
-                    )
+                    sqlmodel.select(RecurringExpense).where(RecurringExpense.id == expense_id)
                 ).one_or_none()
                 if expense is None:
                     return IntentResult(

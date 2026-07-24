@@ -6,8 +6,8 @@ other intents (``get_preference_by_key``, ``get_preferred_invoice_template``)
 read from the same ``AppDatabase`` backend.
 """
 
-from ..core.intent_result import IntentResult
 from ...app_db import AppDatabase
+from ..core.intent_result import IntentResult
 from .model import (
     DEFAULT_E_INVOICE_PROFILE,
     DEFAULT_INCLUDE_DUE_DATE,

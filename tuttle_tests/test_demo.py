@@ -1,8 +1,8 @@
 import faker
 import pytest
 
-from tuttle.model import Contact, Client, Contract, Project
 from tuttle import demo
+from tuttle.model import Client, Contact, Contract, Project
 
 
 @pytest.fixture

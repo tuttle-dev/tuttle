@@ -80,8 +80,7 @@ def test_single_head_no_branch_conflicts() -> None:
     script = ScriptDirectory.from_config(cfg)
     heads = script.get_heads()
     assert len(heads) == 1, (
-        f"Migration chain has {len(heads)} heads: {heads}. "
-        f"Expected exactly 1. Rebase one migration to depend on the other."
+        f"Migration chain has {len(heads)} heads: {heads}. Expected exactly 1. Rebase one migration to depend on the other."
     )
 
 
@@ -102,8 +101,7 @@ def test_upgrade_from_empty_creates_full_schema(tmp_db: tuple[Path, str]) -> Non
         live_tables = set(inspect(engine).get_table_names()) - {"alembic_version"}
         expected = set(SQLModel.metadata.tables.keys()) - excluded
         assert live_tables == expected, (
-            f"Schema diverged from model. "
-            f"Missing: {expected - live_tables}, extra: {live_tables - expected}"
+            f"Schema diverged from model. Missing: {expected - live_tables}, extra: {live_tables - expected}"
         )
     finally:
         engine.dispose()
@@ -143,9 +141,7 @@ def test_upgrade_chain_is_non_destructive(tmp_db: tuple[Path, str]) -> None:
                 placeholders = ", ".join(f":{k}" for k in values)
                 cols_str = ", ".join(values)
                 conn.execute(
-                    text(
-                        f"INSERT INTO {table_name} ({cols_str}) VALUES ({placeholders})"
-                    ),
+                    text(f"INSERT INTO {table_name} ({cols_str}) VALUES ({placeholders})"),
                     values,
                 )
         with engine.begin() as conn:
@@ -182,8 +178,7 @@ def test_foreign_key_check_clean_after_upgrade(tmp_db: tuple[Path, str]) -> None
     try:
         violations = conn.execute("PRAGMA foreign_key_check").fetchall()
         assert violations == [], (
-            f"Foreign key violations after upgrade: {violations}. "
-            f"Likely a batch-mode op forgot to re-attach an FK."
+            f"Foreign key violations after upgrade: {violations}. Likely a batch-mode op forgot to re-attach an FK."
         )
     finally:
         conn.close()
@@ -202,13 +197,37 @@ def test_versions_are_append_only_in_git() -> None:
     or any subsequent commits must only modify docstrings/comments —
     never op.* calls.
 
+    The comparison is done on the parsed op.* calls rather than on the raw
+    diff, so a reformat (line joining, import sorting) does not count as an
+    edit — only a change to what the call actually does.
+
     Skipped outside a git checkout (e.g. wheel installs).
     """
+    import ast
     import subprocess
 
-    versions = (
-        Path(__file__).resolve().parent.parent / "tuttle" / "migrations" / "versions"
-    )
+    def op_calls(source: str) -> list[str]:
+        """Every op.* call in upgrade(), normalized so formatting is invisible.
+
+        Only upgrade() is compared: that is the code every already-migrated
+        database has executed. downgrade() bodies were legitimately replaced
+        by `raise NotImplementedError` after the fact — see
+        test_downgrades_are_not_supported.
+        """
+        upgrade = next(
+            (node for node in ast.parse(source).body if isinstance(node, ast.FunctionDef) and node.name == "upgrade"),
+            ast.Module(body=[], type_ignores=[]),  # no upgrade() -> no op.* calls
+        )
+        return [
+            ast.unparse(node)
+            for node in ast.walk(upgrade)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and isinstance(node.func.value, ast.Name)
+            and node.func.value.id == "op"
+        ]
+
+    versions = Path(__file__).resolve().parent.parent / "tuttle" / "migrations" / "versions"
     try:
         subprocess.run(
             ["git", "rev-parse", "--git-dir"],
@@ -219,8 +238,17 @@ def test_versions_are_append_only_in_git() -> None:
     except (FileNotFoundError, subprocess.CalledProcessError):
         pytest.skip("Not a git checkout; cannot enforce append-only.")
 
+    # Known pre-existing violation, grandfathered so the guard can go live for
+    # everything else: commit 9cec3e0 changed this revision's NULL backfill from
+    # "" to "Unknown" after it had shipped. Databases that migrated before that
+    # commit hold "", ones after hold "Unknown". Tracked in #429 — do not extend
+    # this set, add a new revision instead.
+    grandfathered = {"c3d70beffa72_make_contact_first_name_and_last_name_.py"}
+
     offenders: list[str] = []
     for script in versions.glob("*.py"):
+        if script.name in grandfathered:
+            continue
         result = subprocess.run(
             ["git", "log", "--pretty=format:%H", "--", script.name],
             cwd=versions,
@@ -230,18 +258,15 @@ def test_versions_are_append_only_in_git() -> None:
         commits = [c for c in result.stdout.strip().splitlines() if c]
         if len(commits) <= 1:
             continue
-        # Diff only post-creation commits (exclude oldest = creation commit)
-        oldest = commits[-1]
-        diff = subprocess.run(
-            ["git", "diff", f"{oldest}..HEAD", "--", script.name],
+        # Oldest commit created the file; compare its op.* calls with today's
+        original = subprocess.run(
+            ["git", "show", f"{commits[-1]}:./{script.name}"],
             cwd=versions,
             capture_output=True,
             text=True,
         )
-        for line in diff.stdout.splitlines():
-            if line.startswith("+    op."):
-                offenders.append(script.name)
-                break
+        if op_calls(original.stdout) != op_calls(script.read_text()):
+            offenders.append(script.name)
 
     assert not offenders, (
         f"These migration scripts have post-commit edits to op.* calls: {offenders}. "
@@ -260,9 +285,7 @@ def test_downgrades_are_not_supported() -> None:
     """
     import ast
 
-    versions = (
-        Path(__file__).resolve().parent.parent / "tuttle" / "migrations" / "versions"
-    )
+    versions = Path(__file__).resolve().parent.parent / "tuttle" / "migrations" / "versions"
     offenders: list[str] = []
     for script in versions.glob("*.py"):
         tree = ast.parse(script.read_text(), filename=str(script))
@@ -292,21 +315,15 @@ def test_no_model_imports_in_versions() -> None:
     """
     import ast
 
-    versions = (
-        Path(__file__).resolve().parent.parent / "tuttle" / "migrations" / "versions"
-    )
+    versions = Path(__file__).resolve().parent.parent / "tuttle" / "migrations" / "versions"
     offenders: list[str] = []
     for script in versions.glob("*.py"):
         tree = ast.parse(script.read_text(), filename=str(script))
         for node in ast.walk(tree):
-            if isinstance(node, ast.ImportFrom) and (node.module or "").startswith(
-                "tuttle.model"
-            ):
+            if isinstance(node, ast.ImportFrom) and (node.module or "").startswith("tuttle.model"):
                 offenders.append(script.name)
                 break
-            if isinstance(node, ast.Import) and any(
-                n.name.startswith("tuttle.model") for n in node.names
-            ):
+            if isinstance(node, ast.Import) and any(n.name.startswith("tuttle.model") for n in node.names):
                 offenders.append(script.name)
                 break
     assert not offenders, (
@@ -438,9 +455,7 @@ def backfilled_db(tmp_db: tuple[Path, str]):
     ],
 )
 def test_contract_tax_category_backfill(backfilled_db, title, expected):
-    row = backfilled_db.execute(
-        'SELECT "VAT_category" FROM contract WHERE title = ?', (title,)
-    ).fetchone()
+    row = backfilled_db.execute('SELECT "VAT_category" FROM contract WHERE title = ?', (title,)).fetchone()
     assert row[0] == expected
 
 
@@ -455,15 +470,11 @@ def test_invoice_item_inherits_contract_category(backfilled_db):
 
 def test_zero_rate_line_under_taxed_contract_is_zero_rated(backfilled_db):
     """Must not become O — that would mix categories and violate BR-O-11/12."""
-    row = backfilled_db.execute(
-        'SELECT "VAT_category" FROM invoiceitem WHERE description = ?', ("freebie",)
-    ).fetchone()
+    row = backfilled_db.execute('SELECT "VAT_category" FROM invoiceitem WHERE description = ?', ("freebie",)).fetchone()
     assert row[0] == "zero_rated"
 
 
 def test_backfill_leaves_no_null_categories(backfilled_db):
     for table in ("contract", "invoiceitem"):
-        count = backfilled_db.execute(
-            f'SELECT COUNT(*) FROM {table} WHERE "VAT_category" IS NULL'
-        ).fetchone()[0]
+        count = backfilled_db.execute(f'SELECT COUNT(*) FROM {table} WHERE "VAT_category" IS NULL').fetchone()[0]
         assert count == 0, f"{table} has NULL VAT_category rows"

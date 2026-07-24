@@ -6,13 +6,6 @@ from decimal import Decimal
 import pytest
 
 from tuttle import tax
-from tuttle.tax import TaxSystem, get_tax_system, supported_countries, available_years
-from tuttle.tax_reserves import (
-    compute_income_tax_reserve,
-    compute_spendable_income,
-    compute_vat_reserves,
-    monthly_vat_breakdown,
-)
 from tuttle.kpi import monthly_spendable_breakdown
 from tuttle.model import (
     Address,
@@ -23,8 +16,14 @@ from tuttle.model import (
     Project,
     RecurringExpense,
 )
+from tuttle.tax import TaxSystem, available_years, get_tax_system, supported_countries
+from tuttle.tax_reserves import (
+    compute_income_tax_reserve,
+    compute_spendable_income,
+    compute_vat_reserves,
+    monthly_vat_breakdown,
+)
 from tuttle.time import Cycle
-
 
 # ── Fixtures ──────────────────────────────────────────────────
 
@@ -83,9 +82,7 @@ def _invoice_items_for_net(net: Decimal, unit_price: int = 100) -> list:
     return [(qty, unit_price, 0)]
 
 
-def _expected_income_tax_reserve(
-    income: Decimal, country: str, deductions: Decimal = Decimal(0)
-):
+def _expected_income_tax_reserve(income: Decimal, country: str, deductions: Decimal = Decimal(0)):
     """Mirror compute_income_tax_reserve using the loaded tax system."""
     tax_system = get_tax_system(country)
     taxable = income - deductions
@@ -250,12 +247,8 @@ class TestGermanIncomeTax:
     def test_different_years_different_tax(self):
         """Tax for same income should differ between years due to allowance changes."""
         income = Decimal("40000")
-        tax_2024 = get_tax_system("Germany", datetime.date(2024, 1, 1)).income_tax(
-            income
-        )
-        tax_2026 = get_tax_system("Germany", datetime.date(2026, 1, 1)).income_tax(
-            income
-        )
+        tax_2024 = get_tax_system("Germany", datetime.date(2024, 1, 1)).income_tax(income)
+        tax_2026 = get_tax_system("Germany", datetime.date(2026, 1, 1)).income_tax(income)
         # Higher basic allowance in 2026 means slightly less tax
         assert tax_2026 < tax_2024
 
@@ -334,9 +327,7 @@ class TestVATReserves:
         assert result.invoice_count == 1
 
     def test_empty_invoices(self):
-        result = compute_vat_reserves(
-            [], datetime.date(2026, 1, 1), datetime.date(2026, 3, 31)
-        )
+        result = compute_vat_reserves([], datetime.date(2026, 1, 1), datetime.date(2026, 3, 31))
         assert result.vat_collected == Decimal(0)
         assert result.invoice_count == 0
 
@@ -357,9 +348,7 @@ class TestIncomeTaxReserve:
         assert result.total_annual_reserve == exp_tax + exp_soli
         assert result.ytd_reserve == exp_total
         if income > 0 and exp_total > 0:
-            assert result.effective_rate == (exp_total / income).quantize(
-                Decimal("0.0001")
-            )
+            assert result.effective_rate == (exp_total / income).quantize(Decimal("0.0001"))
 
     def test_zero_revenue(self):
         country = _sample_country()
@@ -475,15 +464,8 @@ class TestSpendableIncome:
         this_month = [m for m in monthly if m["month"] == today.strftime("%Y-%m")][0]
         assert this_month["gross_revenue"] > 0
         assert this_month["vat_due"] > 0
-        assert (
-            this_month["net_revenue"]
-            == this_month["gross_revenue"] - this_month["vat_due"]
-        )
-        assert (
-            this_month["spendable"]
-            == this_month["net_revenue"] - this_month["income_tax_true_up"]
-        )
-
+        assert this_month["net_revenue"] == this_month["gross_revenue"] - this_month["vat_due"]
+        assert this_month["spendable"] == this_month["net_revenue"] - this_month["income_tax_true_up"]
 
     def test_spendable_with_expenses(self):
         """Business expenses reduce taxable profit and therefore tax."""
@@ -501,24 +483,16 @@ class TestSpendableIncome:
             ),
         ]
         result_no_exp = compute_spendable_income(invoices, "Germany")
-        result_with_exp = compute_spendable_income(
-            invoices, "Germany", expenses=expenses
-        )
+        result_with_exp = compute_spendable_income(invoices, "Germany", expenses=expenses)
 
         # Expenses should be positive
         assert result_with_exp.business_expenses > 0
         # Taxable profit = net_revenue - business_expenses
-        assert (
-            result_with_exp.taxable_profit
-            == result_with_exp.net_revenue_ytd - result_with_exp.business_expenses
-        )
+        assert result_with_exp.taxable_profit == result_with_exp.net_revenue_ytd - result_with_exp.business_expenses
         # Tax should be lower with expenses (smaller tax base)
         assert result_with_exp.income_tax_reserve <= result_no_exp.income_tax_reserve
         # Spendable = taxable_profit - income_tax_reserve
-        assert (
-            result_with_exp.spendable
-            == result_with_exp.taxable_profit - result_with_exp.income_tax_reserve
-        )
+        assert result_with_exp.spendable == result_with_exp.taxable_profit - result_with_exp.income_tax_reserve
         # Net revenue unchanged (expenses don't affect gross/vat)
         assert result_with_exp.net_revenue_ytd == result_no_exp.net_revenue_ytd
 
@@ -544,12 +518,8 @@ class TestSpendableIncome:
                 period=Cycle.yearly,
             ),
         ]
-        r_monthly = compute_spendable_income(
-            invoices, "Germany", expenses=monthly_exp
-        )
-        r_yearly = compute_spendable_income(
-            invoices, "Germany", expenses=yearly_exp
-        )
+        r_monthly = compute_spendable_income(invoices, "Germany", expenses=monthly_exp)
+        r_yearly = compute_spendable_income(invoices, "Germany", expenses=yearly_exp)
         # €1200/year normalizes to €100/month — same result
         assert r_monthly.business_expenses == r_yearly.business_expenses
         assert r_monthly.taxable_profit == r_yearly.taxable_profit
@@ -704,9 +674,7 @@ class TestSpanishReserves:
         assert result.solidarity_surcharge == exp_soli
         assert result.total_annual_reserve == exp_total
         if income > 0 and exp_total > 0:
-            assert result.effective_rate == (exp_total / income).quantize(
-                Decimal("0.0001")
-            )
+            assert result.effective_rate == (exp_total / income).quantize(Decimal("0.0001"))
 
     def test_spendable_income_spain(self):
         country = "Spain"
@@ -737,9 +705,7 @@ class TestSpanishReserves:
 class TestCrossCountryComparison:
     def test_different_tax_for_same_income(self):
         """Each supported country can compute tax on the same income."""
-        eur_countries = [
-            c for c in supported_countries() if get_tax_system(c).currency == "EUR"
-        ]
+        eur_countries = [c for c in supported_countries() if get_tax_system(c).currency == "EUR"]
         assert len(eur_countries) >= 2
         income = _income_above_allowance(_tax_system(eur_countries[0]))
         for country in eur_countries[:2]:

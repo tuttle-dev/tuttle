@@ -16,12 +16,12 @@ from tuttle.model import (
     ClientContact,
     Contact,
     Contract,
+    Cycle,
     InvoiceItem,
     Project,
     TaxCategory,
-    User,
     TimeUnit,
-    Cycle,
+    User,
     normalize_tax_category,
 )
 
@@ -151,12 +151,8 @@ class TestClient:
             assert retrieved.address is not None
 
     def test_invoice_recipient_properties(self):
-        addr = Address(
-            street="A St", number="1", city="C", postal_code="0", country="X"
-        )
-        contact_addr = Address(
-            street="B St", number="2", city="D", postal_code="1", country="Y"
-        )
+        addr = Address(street="A St", number="1", city="C", postal_code="0", country="X")
+        contact_addr = Address(street="B St", number="2", city="D", postal_code="1", country="Y")
         contact = Contact(
             first_name="Sam",
             last_name="Lowry",
@@ -168,9 +164,7 @@ class TestClient:
         assert client_no_contact.invoice_recipient_name == "Acme Corp"
         assert client_no_contact.invoice_recipient_address is addr
 
-        client_with_contact = Client(
-            name="Acme Corp", address=addr, invoicing_contact=contact
-        )
+        client_with_contact = Client(name="Acme Corp", address=addr, invoicing_contact=contact)
         assert client_with_contact.invoice_recipient_name == "Sam Lowry"
         assert client_with_contact.invoice_recipient_address is contact_addr
 
@@ -392,9 +386,7 @@ def _make_engine_with_fk(tmp_path):
 
     db_path = tmp_path / "integrity_test.db"
     engine = create_engine(f"sqlite:///{db_path}")
-    sa.event.listen(
-        engine, "connect", lambda c, _: c.execute("PRAGMA foreign_keys = ON")
-    )
+    sa.event.listen(engine, "connect", lambda c, _: c.execute("PRAGMA foreign_keys = ON"))
     SQLModel.metadata.create_all(engine)
     return engine
 
@@ -403,12 +395,8 @@ def _seed(session):
     """Insert a minimal entity chain: Address -> Contact -> Client -> Contract -> Project."""
     from tuttle.model import Cycle, TimeUnit
 
-    addr = Address(
-        street="1st St", number="1", city="C", postal_code="00000", country="US"
-    )
-    contact = Contact(
-        first_name="Jane", last_name="Doe", email="jane@example.com", address=addr
-    )
+    addr = Address(street="1st St", number="1", city="C", postal_code="00000", country="US")
+    contact = Contact(first_name="Jane", last_name="Doe", email="jane@example.com", address=addr)
     client = Client(name="Acme", invoicing_contact=contact)
     contract = Contract(
         title="Support",
@@ -577,8 +565,12 @@ class TestTaxCategory:
 
     def test_invoice_item_carries_its_own_category(self):
         item = InvoiceItem(
-            quantity=1, unit="hour", unit_price=Decimal("100"),
-            description="work", VAT_rate=Decimal("0"), VAT_category="O",
+            quantity=1,
+            unit="hour",
+            unit_price=Decimal("100"),
+            description="work",
+            VAT_rate=Decimal("0"),
+            VAT_category="O",
         )
         item.validate_vat()
         assert item.VAT_category is TaxCategory.outside_scope

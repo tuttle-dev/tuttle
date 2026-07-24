@@ -35,16 +35,16 @@ MANDATORY REVIEW CHECKLIST before committing this file:
 See tuttle/migrations/README.md.
 ----------------------------------------------------------------------
 """
+
 # pyright: reportAttributeAccessIssue=false
 # sqlmodel.sql.sqltypes is a submodule resolved at runtime; basedpyright
 # does not statically expose `sql` as an attribute of `sqlmodel`.
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
 import sqlmodel
 import sqlmodel.sql.sqltypes  # noqa: F401 — ensures runtime resolution of AutoString
-
+from alembic import op
 
 revision: str = "04a4df6c20c8"
 down_revision: Union[str, Sequence[str], None] = "0001"
@@ -63,9 +63,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     with op.batch_alter_table("invoice", schema=None) as batch_op:
-        batch_op.add_column(
-            sa.Column("notes", sqlmodel.sql.sqltypes.AutoString(), nullable=True)
-        )
+        batch_op.add_column(sa.Column("notes", sqlmodel.sql.sqltypes.AutoString(), nullable=True))
 
     # ### end Alembic commands ###
 
@@ -82,6 +80,4 @@ def downgrade() -> None:
     2. Run `just reset` to wipe ~/.tuttle
     3. Edit model.py, run `just migrate` again
     """
-    raise NotImplementedError(
-        "Downgrades are not supported. Restore from a .bak-<ts> snapshot instead."
-    )
+    raise NotImplementedError("Downgrades are not supported. Restore from a .bak-<ts> snapshot instead.")

@@ -2,10 +2,9 @@ from typing import List
 
 from loguru import logger
 
+from ...model import InvoiceNote
 from ..core.abstractions import Intent
 from ..core.intent_result import IntentResult
-from ...model import InvoiceNote
-
 from .data_source import InvoiceNotesDataSource
 
 

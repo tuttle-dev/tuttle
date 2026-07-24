@@ -14,10 +14,9 @@ See tuttle/migrations/README.md for the full workflow.
 import os
 from logging.config import fileConfig
 
+from alembic import context
 from sqlalchemy import engine_from_config, pool
 from sqlmodel import SQLModel
-
-from alembic import context
 
 import tuttle.model  # noqa: F401 — registers every SQLModel table on SQLModel.metadata
 

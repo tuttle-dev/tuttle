@@ -167,9 +167,7 @@ _INFO_PLIST = {
     "CFBundlePackageType": "APPL",
     "CFBundleExecutable": "TuttleCalendar",
     "LSUIElement": False,
-    "NSCalendarsFullAccessUsageDescription": (
-        "Tuttle needs access to your calendars to import events for time tracking."
-    ),
+    "NSCalendarsFullAccessUsageDescription": ("Tuttle needs access to your calendars to import events for time tracking."),
 }
 
 
@@ -390,9 +388,7 @@ def fetch_events(
             day = begin_dt.date()
             end_date = end_dt.date()
             while day < end_date:
-                day_start = datetime.datetime.combine(
-                    day, datetime.time.min, tzinfo=begin_dt.tzinfo
-                )
+                day_start = datetime.datetime.combine(day, datetime.time.min, tzinfo=begin_dt.tzinfo)
                 day_end = day_start + datetime.timedelta(days=1)
                 rows.append(
                     {
@@ -433,8 +429,6 @@ def fetch_events(
 
 
 def _empty_df() -> pandas.DataFrame:
-    df = pandas.DataFrame(
-        columns=["title", "description", "end", "all_day", "duration", "tag"]
-    )
+    df = pandas.DataFrame(columns=["title", "description", "end", "all_day", "duration", "tag"])
     df.index.name = "begin"
     return df

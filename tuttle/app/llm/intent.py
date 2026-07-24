@@ -24,9 +24,7 @@ class LlmIntent:
     ) -> IntentResult:
         return IntentResult(
             was_intent_successful=True,
-            data=_llm.get_available_models(
-                base_url, provider=provider, api_key=api_key
-            ),
+            data=_llm.get_available_models(base_url, provider=provider, api_key=api_key),
         )
 
     def parse_document(

@@ -162,10 +162,7 @@ def ensure_schema(db_url: str) -> None:
         schema_was_modified = revision_before != revision_after
 
         if not schema_was_modified:
-            logger.warning(
-                "Migration error was transient (schema unchanged) — "
-                "database NOT marked as broken."
-            )
+            logger.warning("Migration error was transient (schema unchanged) — database NOT marked as broken.")
             raise SchemaMigrationError(
                 f"Schema migration failed (transient): {exc}",
                 broken_db=None,

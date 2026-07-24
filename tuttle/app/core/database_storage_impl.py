@@ -1,6 +1,5 @@
-from typing import Callable
-
 from pathlib import Path
+from typing import Callable
 
 import sqlmodel
 from loguru import logger
@@ -8,7 +7,6 @@ from loguru import logger
 from ... import demo
 from ...data_dir import get_data_dir
 from ...db_schema import ensure_schema
-
 from .abstractions import DatabaseStorage
 
 

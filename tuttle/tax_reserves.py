@@ -66,9 +66,7 @@ def _invoice_currency(inv: Invoice) -> Optional[str]:
     return None
 
 
-def convert_invoice(
-    inv: Invoice, currency: Optional[str]
-) -> Optional[tuple[Decimal, Decimal]]:
+def convert_invoice(inv: Invoice, currency: Optional[str]) -> Optional[tuple[Decimal, Decimal]]:
     """Invoice (total, VAT) expressed in *currency*.
 
     Returns ``None`` when the invoice is in another currency and the ECB rate
@@ -120,9 +118,7 @@ def compute_planned_revenue(
     if not tag_to_project:
         return Decimal(0)
 
-    tag_to_workday = {
-        tag: p.contract.units_per_workday for tag, p in tag_to_project.items()
-    }
+    tag_to_workday = {tag: p.contract.units_per_workday for tag, p in tag_to_project.items()}
 
     idx_dates = time_data.index.date
     mask = (idx_dates >= today) & (idx_dates <= year_end)
@@ -220,9 +216,7 @@ def compute_income_tax_reserve(
     total_annual = annual_tax + annual_soli
     reserve = total_annual.quantize(Decimal("0.01"))
 
-    effective_rate = (
-        (total_annual / taxable_income) if taxable_income > 0 else Decimal(0)
-    )
+    effective_rate = (total_annual / taxable_income) if taxable_income > 0 else Decimal(0)
 
     return IncomeTaxReserve(
         estimated_annual_tax=annual_tax,
@@ -323,10 +317,7 @@ def compute_spendable_income(
             biz_expenses_ytd = (monthly_exp * 12).quantize(Decimal("0.01"))
         else:
             months_elapsed = max(
-                (today.year - year_start.year) * 12
-                + today.month
-                - year_start.month
-                + 1,
+                (today.year - year_start.year) * 12 + today.month - year_start.month + 1,
                 1,
             )
             biz_expenses_ytd = (monthly_exp * months_elapsed).quantize(Decimal("0.01"))
@@ -335,9 +326,7 @@ def compute_spendable_income(
 
     taxable_profit = net_ytd + planned - biz_expenses_ytd
 
-    tax_reserve = compute_income_tax_reserve(
-        taxable_profit, country, deductions, year=year
-    )
+    tax_reserve = compute_income_tax_reserve(taxable_profit, country, deductions, year=year)
 
     # The bank/Wise spread never reduces taxable revenue — only what lands in
     # the account, so it is subtracted after the tax reserve, not before.
@@ -423,9 +412,7 @@ def compute_effective_salary(
         except NotImplementedError:
             currency = "EUR"
 
-    months_elapsed = max(
-        (today.year - year_start.year) * 12 + today.month - year_start.month + 1, 1
-    )
+    months_elapsed = max((today.year - year_start.year) * 12 + today.month - year_start.month + 1, 1)
 
     gross_paid = Decimal(0)
     vat_paid = Decimal(0)
@@ -456,34 +443,20 @@ def compute_effective_salary(
     tax_optimistic = compute_income_tax_reserve(net_all, country)
 
     monthly_vat_conservative = (vat_paid / months_elapsed).quantize(Decimal("0.01"))
-    monthly_vat_optimistic = ((vat_paid + vat_outstanding) / months_elapsed).quantize(
-        Decimal("0.01")
-    )
+    monthly_vat_optimistic = ((vat_paid + vat_outstanding) / months_elapsed).quantize(Decimal("0.01"))
 
-    monthly_tax_conservative = (tax_conservative.ytd_reserve / months_elapsed).quantize(
-        Decimal("0.01")
-    )
-    monthly_tax_optimistic = (tax_optimistic.ytd_reserve / months_elapsed).quantize(
-        Decimal("0.01")
-    )
+    monthly_tax_conservative = (tax_conservative.ytd_reserve / months_elapsed).quantize(Decimal("0.01"))
+    monthly_tax_optimistic = (tax_optimistic.ytd_reserve / months_elapsed).quantize(Decimal("0.01"))
 
     monthly_exp = _monthly_expenses_total(expenses)
 
-    conservative = (
-        net_paid / months_elapsed - monthly_tax_conservative - monthly_exp
-    ).quantize(Decimal("0.01"))
+    conservative = (net_paid / months_elapsed - monthly_tax_conservative - monthly_exp).quantize(Decimal("0.01"))
 
-    optimistic = (
-        net_all / months_elapsed - monthly_tax_optimistic - monthly_exp
-    ).quantize(Decimal("0.01"))
+    optimistic = (net_all / months_elapsed - monthly_tax_optimistic - monthly_exp).quantize(Decimal("0.01"))
 
     # Use the average monthly figures for display breakdown
-    avg_monthly_vat = (
-        (monthly_vat_conservative + monthly_vat_optimistic) / 2
-    ).quantize(Decimal("0.01"))
-    avg_monthly_tax = (
-        (monthly_tax_conservative + monthly_tax_optimistic) / 2
-    ).quantize(Decimal("0.01"))
+    avg_monthly_vat = ((monthly_vat_conservative + monthly_vat_optimistic) / 2).quantize(Decimal("0.01"))
+    avg_monthly_tax = ((monthly_tax_conservative + monthly_tax_optimistic) / 2).quantize(Decimal("0.01"))
 
     return EffectiveSalary(
         conservative_monthly=conservative,
@@ -516,9 +489,7 @@ def monthly_vat_breakdown(
         else:
             period_end = datetime.date(year, m + 1, 1) - datetime.timedelta(days=1)
 
-        reserve = compute_vat_reserves(
-            invoices, period_start, period_end, currency=currency
-        )
+        reserve = compute_vat_reserves(invoices, period_start, period_end, currency=currency)
         months.append(
             {
                 "month": month_names[m - 1],

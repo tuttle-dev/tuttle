@@ -1,7 +1,6 @@
-from typing import Union, Optional, List, Type
-
 import datetime
 from dataclasses import dataclass
+from typing import List, Optional, Type, Union
 
 import pandas
 from pandera import check_io
@@ -67,8 +66,7 @@ def generate_timesheet(
         ts_table = timetracking_data[mask].query(tag_query).sort_index()
         if ts_table.empty:
             raise ValueError(
-                f"No time tracking data found for project {project.title} "
-                f"in period {period_start} - {period_end}"
+                f"No time tracking data found for project {project.title} in period {period_start} - {period_end}"
             )
     else:
         mask = index_dates == period_start
@@ -246,12 +244,7 @@ def progress(
     time_tracking_data: DataFrame,
 ):
     tag = project.tag
-    total_time = (
-        time_tracking_data.filter(["tag", "duration"])
-        .query("tag == @tag")
-        .groupby("tag")
-        .sum()
-    )
+    total_time = time_tracking_data.filter(["tag", "duration"]).query("tag == @tag").groupby("tag").sum()
     # TODO: work with project.unit
     budget = project.contract.volume * datetime.timedelta(hours=1)
     return total_time.loc[tag]["duration"] / budget
@@ -308,9 +301,7 @@ def get_planning_summary(
         return []
 
     tag_to_project = {p.tag: p for p in projects if p.tag}
-    tag_to_workday = {
-        p.tag: p.contract.units_per_workday for p in projects if p.tag and p.contract
-    }
+    tag_to_workday = {p.tag: p.contract.units_per_workday for p in projects if p.tag and p.contract}
     planned_by_tag = sum_hours_by_tag(planning_data, tag_to_workday)
 
     results = []
@@ -322,9 +313,7 @@ def get_planning_summary(
         currency = "EUR"
         if contract:
             currency = contract.currency or "EUR"
-            unit_hours = (
-                contract.units_per_workday if contract.unit == TimeUnit.day else 1
-            )
+            unit_hours = contract.units_per_workday if contract.unit == TimeUnit.day else 1
             billable_units = hours / unit_hours
             planned_revenue = float(billable_units * float(contract.rate))
             if contract.volume:

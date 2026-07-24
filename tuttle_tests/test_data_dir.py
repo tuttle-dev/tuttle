@@ -1,9 +1,6 @@
 """Tests for tuttle.data_dir — env-var override and default behaviour."""
 
-import os
 from pathlib import Path
-
-import pytest
 
 from tuttle.data_dir import get_data_dir
 
@@ -16,7 +13,6 @@ def test_default_is_dot_tuttle(monkeypatch, tmp_path):
     monkeypatch.setattr(Path, "home", staticmethod(lambda: fake_home))
 
     # Re-import to pick up patched home
-    import importlib
     import tuttle.data_dir as mod
 
     monkeypatch.setattr(mod, "_DEFAULT", fake_home / ".tuttle")

@@ -17,7 +17,7 @@ import pytest
 import tuttle.app
 import tuttle.app.core.abstractions as abstractions
 import tuttle.app_db as app_db_mod
-from tuttle.app.core.dispatch import dispatch, _intents
+from tuttle.app.core.dispatch import _intents, dispatch
 from tuttle.app.core.rpc_utils import reset_all
 
 # ---------------------------------------------------------------------------
@@ -29,9 +29,7 @@ _APP_DIR = Path(tuttle.app.__file__).parent
 
 def _discover_domains() -> list[str]:
     """Return the names of every directory under tuttle/app that has intent.py."""
-    return sorted(
-        p.parent.name for p in _APP_DIR.glob("*/intent.py") if p.parent.name != "core"
-    )
+    return sorted(p.parent.name for p in _APP_DIR.glob("*/intent.py") if p.parent.name != "core")
 
 
 DOMAINS = _discover_domains()
@@ -396,13 +394,9 @@ class TestDomainPackaging:
         candidates = [
             name
             for name in dir(mod)
-            if name.endswith("Intent")
-            and getattr(getattr(mod, name), "__module__", None) == mod.__name__
+            if name.endswith("Intent") and getattr(getattr(mod, name), "__module__", None) == mod.__name__
         ]
-        assert len(candidates) == 1, (
-            f"tuttle.app.{domain}.intent must define exactly one *Intent class, "
-            f"found {candidates}"
-        )
+        assert len(candidates) == 1, f"tuttle.app.{domain}.intent must define exactly one *Intent class, found {candidates}"
 
     def test_frozen_build_bundles_every_domain(self):
         """The PyInstaller spec must bundle every dynamically-imported domain.
@@ -415,11 +409,7 @@ class TestDomainPackaging:
         from PyInstaller.utils.hooks import collect_submodules
 
         bundled = set(collect_submodules("tuttle.app"))
-        missing = [
-            f"tuttle.app.{d}.intent"
-            for d in DOMAINS
-            if f"tuttle.app.{d}.intent" not in bundled
-        ]
+        missing = [f"tuttle.app.{d}.intent" for d in DOMAINS if f"tuttle.app.{d}.intent" not in bundled]
         assert not missing, (
             f"These domains are reachable via the dispatcher but would NOT be "
             f"bundled into the frozen tuttle-rpc binary: {missing}. "

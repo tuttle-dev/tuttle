@@ -27,9 +27,36 @@ logger = logging.getLogger(__name__)
 # The ECB reference set as published on 2026-07-14; used when the API is
 # unreachable. supported_currencies() prefers the live list.
 SUPPORTED_CURRENCIES = (
-    "AUD", "BRL", "CAD", "CHF", "CNY", "CZK", "DKK", "EUR", "GBP", "HKD",
-    "HUF", "IDR", "ILS", "INR", "ISK", "JPY", "KRW", "MXN", "MYR", "NOK",
-    "NZD", "PHP", "PLN", "RON", "SEK", "SGD", "THB", "TRY", "USD", "ZAR",
+    "AUD",
+    "BRL",
+    "CAD",
+    "CHF",
+    "CNY",
+    "CZK",
+    "DKK",
+    "EUR",
+    "GBP",
+    "HKD",
+    "HUF",
+    "IDR",
+    "ILS",
+    "INR",
+    "ISK",
+    "JPY",
+    "KRW",
+    "MXN",
+    "MYR",
+    "NOK",
+    "NZD",
+    "PHP",
+    "PLN",
+    "RON",
+    "SEK",
+    "SGD",
+    "THB",
+    "TRY",
+    "USD",
+    "ZAR",
 )
 
 _API = "https://api.frankfurter.dev/v1"
@@ -42,9 +69,7 @@ _TIMEOUT = 5.0
 @lru_cache(maxsize=1)
 def supported_currencies() -> tuple[str, ...]:
     """Currencies the rate source publishes rates for."""
-    request = urllib.request.Request(
-        f"{_API}/currencies", headers={"User-Agent": "tuttle"}
-    )
+    request = urllib.request.Request(f"{_API}/currencies", headers={"User-Agent": "tuttle"})
     try:
         with urllib.request.urlopen(request, timeout=_TIMEOUT) as resp:
             return tuple(sorted(json.load(resp)))
@@ -78,9 +103,7 @@ def validate_currency_code(code: str) -> str:
     normalized = (code or "").strip().upper()
     supported = supported_currencies()
     if normalized not in supported:
-        raise ValueError(
-            f"Unsupported currency {code!r}. Supported: {', '.join(supported)}."
-        )
+        raise ValueError(f"Unsupported currency {code!r}. Supported: {', '.join(supported)}.")
     return normalized
 
 
@@ -116,9 +139,7 @@ def _fetch_monthly_average(base: str, quote: str, month: datetime.date) -> Decim
     # When the range starts on a non-trading day the API backfills the previous
     # business day, which can belong to the previous month — drop those.
     daily = [
-        Decimal(str(day[quote]))
-        for iso, day in payload["rates"].items()
-        if quote in day and iso.startswith(f"{start:%Y-%m}")
+        Decimal(str(day[quote])) for iso, day in payload["rates"].items() if quote in day and iso.startswith(f"{start:%Y-%m}")
     ]
     if not daily:
         raise ValueError(f"no {base}/{quote} rates published for {start:%Y-%m}")
@@ -141,8 +162,7 @@ def _rate(base: str, quote: str, month_key: str) -> Optional[Decimal]:
         avg = _fetch_monthly_average(base, quote, month)
     except (urllib.error.URLError, OSError, ValueError, KeyError, TimeoutError) as e:
         logger.warning(
-            "No exchange rate for %s/%s in %s (%s); amounts in %s are left "
-            "unconverted rather than counted as zero.",
+            "No exchange rate for %s/%s in %s (%s); amounts in %s are left unconverted rather than counted as zero.",
             base,
             quote,
             month_key,
@@ -168,9 +188,7 @@ def rate(base: str, quote: str, month: datetime.date) -> Optional[Decimal]:
     return _rate(base, quote, f"{month:%Y-%m}")
 
 
-def convert(
-    amount: Decimal, base: str, quote: str, on: datetime.date
-) -> Optional[Decimal]:
+def convert(amount: Decimal, base: str, quote: str, on: datetime.date) -> Optional[Decimal]:
     """Convert *amount* from *base* to *quote* at the rate for the month of *on*."""
     if base == quote:
         return amount

@@ -1,10 +1,8 @@
-from typing import Type, Union, Optional
+from typing import Optional, Type, Union
 
-from ..core.intent_result import IntentResult
+from ...model import Address, User
 from ..core.abstractions import Intent
-
-from ...model import User, Address
-
+from ..core.intent_result import IntentResult
 from .data_source import UserDataSource
 
 

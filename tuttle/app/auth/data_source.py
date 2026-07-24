@@ -1,10 +1,9 @@
 from typing import Optional, Type, Union
 
-from ..core.abstractions import SQLModelDataSourceMixin
-from ..core.intent_result import IntentResult
-
 from ...dev import deprecated
 from ...model import User
+from ..core.abstractions import SQLModelDataSourceMixin
+from ..core.intent_result import IntentResult
 
 
 class UserDataSource(SQLModelDataSourceMixin):
@@ -70,9 +69,7 @@ class UserDataSource(SQLModelDataSourceMixin):
                 exception=e,
             )
 
-    def update_user_photo_path(
-        self, user: User, photo_path: str
-    ) -> IntentResult[Optional[User]]:
+    def update_user_photo_path(self, user: User, photo_path: str) -> IntentResult[Optional[User]]:
         """
         Update the photo path of an user in the database
 

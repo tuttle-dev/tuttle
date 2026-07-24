@@ -11,13 +11,13 @@ Usage:
 
 import argparse
 import json
-import subprocess
 import re
+import subprocess
 from collections import defaultdict
 
+from rich import box
 from rich.console import Console
 from rich.table import Table
-from rich import box
 
 PLATFORMS = ["macOS", "Linux", "Windows"]
 # Skip update-check manifests (.yml), binary delta patches, and build metadata
@@ -80,7 +80,7 @@ PLATFORM_COLORS = {"macOS": "cyan", "Linux": "yellow", "Windows": "blue"}
 
 
 def _fmt(n: int) -> str:
-    return f"[dim]-[/dim]" if n == 0 else str(n)
+    return "[dim]-[/dim]" if n == 0 else str(n)
 
 
 def print_table(rows: list[dict], totals_only: bool = False) -> None:
@@ -131,15 +131,9 @@ def print_table(rows: list[dict], totals_only: bool = False) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="GitHub release download stats by platform"
-    )
-    parser.add_argument(
-        "--repo", default="tuttle-dev/tuttle", help="GitHub repo (owner/name)"
-    )
-    parser.add_argument(
-        "--totals-only", action="store_true", help="Print only the summary row"
-    )
+    parser = argparse.ArgumentParser(description="GitHub release download stats by platform")
+    parser.add_argument("--repo", default="tuttle-dev/tuttle", help="GitHub repo (owner/name)")
+    parser.add_argument("--totals-only", action="store_true", help="Print only the summary row")
     args = parser.parse_args()
 
     releases = fetch_releases(args.repo)

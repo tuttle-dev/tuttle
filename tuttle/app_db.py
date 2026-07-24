@@ -14,12 +14,11 @@ import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from .data_dir import get_data_dir
-
 from loguru import logger
 from sqlalchemy import event
 from sqlmodel import Field, Session, SQLModel, create_engine, select
 
+from .data_dir import get_data_dir
 
 # ---------------------------------------------------------------------------
 # Models (use a dedicated MetaData so they never collide with per-user tables)
@@ -107,9 +106,7 @@ class AppDatabase:
         tuttle.model, and an unscoped create_all would mirror every
         per-user business table into app.db.
         """
-        _app_metadata.create_all(
-            self._engine, tables=[RegisteredUser.__table__, AppSetting.__table__]
-        )
+        _app_metadata.create_all(self._engine, tables=[RegisteredUser.__table__, AppSetting.__table__])
 
     def _session(self) -> Session:
         return Session(self._engine, expire_on_commit=False)
@@ -118,15 +115,11 @@ class AppDatabase:
 
     def list_users(self) -> List[RegisteredUser]:
         with self._session() as s:
-            return list(
-                s.exec(select(RegisteredUser).order_by(RegisteredUser.name)).all()
-            )
+            return list(s.exec(select(RegisteredUser).order_by(RegisteredUser.name)).all())
 
     def get_user_by_db_file(self, db_file: str) -> Optional[RegisteredUser]:
         with self._session() as s:
-            return s.exec(
-                select(RegisteredUser).where(RegisteredUser.db_file == db_file)
-            ).first()
+            return s.exec(select(RegisteredUser).where(RegisteredUser.db_file == db_file)).first()
 
     def add_user(
         self,
@@ -151,9 +144,7 @@ class AppDatabase:
 
     def remove_user(self, db_file: str) -> bool:
         with self._session() as s:
-            user = s.exec(
-                select(RegisteredUser).where(RegisteredUser.db_file == db_file)
-            ).first()
+            user = s.exec(select(RegisteredUser).where(RegisteredUser.db_file == db_file)).first()
             if not user:
                 return False
             s.delete(user)
@@ -166,9 +157,7 @@ class AppDatabase:
 
     def set_active(self, db_file: str):
         with self._session() as s:
-            user = s.exec(
-                select(RegisteredUser).where(RegisteredUser.db_file == db_file)
-            ).first()
+            user = s.exec(select(RegisteredUser).where(RegisteredUser.db_file == db_file)).first()
             if user:
                 user.last_active_at = datetime.datetime.now()
                 s.add(user)

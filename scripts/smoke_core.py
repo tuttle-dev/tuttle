@@ -38,9 +38,7 @@ TIMEOUT_SECONDS = 180
 
 def discover_domains() -> list[str]:
     """Names of every directory under tuttle/app that has intent.py (except core)."""
-    return sorted(
-        p.parent.name for p in APP_DIR.glob("*/intent.py") if p.parent.name != "core"
-    )
+    return sorted(p.parent.name for p in APP_DIR.glob("*/intent.py") if p.parent.name != "core")
 
 
 def core_binary() -> Path:

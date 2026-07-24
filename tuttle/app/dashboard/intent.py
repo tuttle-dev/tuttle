@@ -2,22 +2,21 @@
 
 import datetime
 
-from ..core.abstractions import SQLModelDataSourceMixin, Intent
-from ..core.intent_result import IntentResult
-from ..timetracking.data_source import TimeTrackingDataFrameSource
-
-from ...model import Contract, Invoice, Project, FinancialGoal, User
+from ...forecasting import (
+    cash_flow_projection,
+    monthly_revenue_from_calendar,
+    revenue_curve_with_calendar,
+)
 from ...kpi import (
     compute_kpis,
     monthly_revenue_breakdown,
     monthly_spendable_breakdown,
     project_budget_status,
 )
-from ...forecasting import (
-    revenue_curve_with_calendar,
-    cash_flow_projection,
-    monthly_revenue_from_calendar,
-)
+from ...model import Contract, FinancialGoal, Invoice, Project, User
+from ..core.abstractions import Intent, SQLModelDataSourceMixin
+from ..core.intent_result import IntentResult
+from ..timetracking.data_source import TimeTrackingDataFrameSource
 
 
 class DashboardIntent(SQLModelDataSourceMixin, Intent):
@@ -45,9 +44,7 @@ class DashboardIntent(SQLModelDataSourceMixin, Intent):
             projects = self.query(Project)
             country = self._get_country()
             time_data = self._time_data_source.get_data_frame()
-            kpis = compute_kpis(
-                invoices, contracts, projects, country=country, time_data=time_data
-            )
+            kpis = compute_kpis(invoices, contracts, projects, country=country, time_data=time_data)
             return IntentResult(was_intent_successful=True, data=kpis)
         except Exception as e:
             return IntentResult(
@@ -61,9 +58,7 @@ class DashboardIntent(SQLModelDataSourceMixin, Intent):
         """Get monthly revenue breakdown for the last n months."""
         try:
             invoices = self.query(Invoice)
-            data = monthly_revenue_breakdown(
-                invoices, n_months=n_months, country=self._get_country()
-            )
+            data = monthly_revenue_breakdown(invoices, n_months=n_months, country=self._get_country())
             return IntentResult(was_intent_successful=True, data=data)
         except Exception as e:
             return IntentResult(
@@ -97,12 +92,8 @@ class DashboardIntent(SQLModelDataSourceMixin, Intent):
         try:
             invoices = self.query(Invoice)
             country = self._get_country()
-            revenue = monthly_revenue_breakdown(
-                invoices, n_months=n_months, country=country
-            )
-            spendable = monthly_spendable_breakdown(
-                invoices, country=country, n_months=n_months
-            )
+            revenue = monthly_revenue_breakdown(invoices, n_months=n_months, country=country)
+            spendable = monthly_spendable_breakdown(invoices, country=country, n_months=n_months)
             return IntentResult(
                 was_intent_successful=True,
                 data={"revenue": revenue, "spendable": spendable},
@@ -147,13 +138,9 @@ class DashboardIntent(SQLModelDataSourceMixin, Intent):
 
             today = datetime.date.today()
             forecast_start = today.replace(day=1)
-            forecast_end = (
-                forecast_start + datetime.timedelta(days=30 * forecast_months)
-            ).replace(day=1)
+            forecast_end = (forecast_start + datetime.timedelta(days=30 * forecast_months)).replace(day=1)
 
-            rev_forecast = monthly_revenue_from_calendar(
-                time_data, projects, forecast_start, forecast_end
-            )
+            rev_forecast = monthly_revenue_from_calendar(time_data, projects, forecast_start, forecast_end)
 
             data = cash_flow_projection(rev_forecast, contracts)
             return IntentResult(was_intent_successful=True, data=data)

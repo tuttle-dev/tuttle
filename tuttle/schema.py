@@ -1,15 +1,15 @@
 """Pandera schemata."""
+
 from pandera.pandas import (
+    Bool,
+    Column,
     # SchemaModel,
     DataFrameSchema,
-    Column,
     DateTime,
-    Timedelta,
-    String,
     Decimal,
-    Bool,
+    String,
+    Timedelta,
 )
-
 
 time_tracking = DataFrameSchema(
     # TODO: fix datetime type

@@ -27,9 +27,7 @@ def monthly_revenue_from_contracts(
     records = []
     current = start_date.replace(day=1)
     while current <= end_date:
-        month_end = (current + datetime.timedelta(days=32)).replace(
-            day=1
-        ) - datetime.timedelta(days=1)
+        month_end = (current + datetime.timedelta(days=32)).replace(day=1) - datetime.timedelta(days=1)
         for contract in contracts:
             if contract.start_date > month_end:
                 continue
@@ -50,9 +48,7 @@ def monthly_revenue_from_contracts(
                 billable_units = workdays_in_month * contract.units_per_workday
 
             monthly_revenue = Decimal(str(billable_units)) * contract.rate
-            project_title = (
-                contract.projects[0].title if contract.projects else contract.title
-            )
+            project_title = contract.projects[0].title if contract.projects else contract.title
 
             records.append(
                 {
@@ -125,14 +121,10 @@ def revenue_curve(
     # Forecast
     today = datetime.date.today()
     forecast_start = today.replace(day=1)
-    forecast_end = (
-        forecast_start + datetime.timedelta(days=30 * forecast_months)
-    ).replace(day=1)
+    forecast_end = (forecast_start + datetime.timedelta(days=30 * forecast_months)).replace(day=1)
     forecast = monthly_revenue_from_contracts(contracts, forecast_start, forecast_end)
     if not forecast.empty:
-        forecast_monthly = (
-            forecast.groupby("month").agg(revenue=("revenue", "sum")).reset_index()
-        )
+        forecast_monthly = forecast.groupby("month").agg(revenue=("revenue", "sum")).reset_index()
         forecast_monthly["is_forecast"] = True
     else:
         forecast_monthly = DataFrame(columns=["month", "revenue", "is_forecast"])
@@ -163,9 +155,7 @@ def monthly_revenue_from_calendar(
     Returns a DataFrame with columns: month, project, revenue, contract_id, hours.
     """
     if time_data is None or time_data.empty:
-        return DataFrame(
-            columns=["month", "project", "revenue", "contract_id", "hours"]
-        )
+        return DataFrame(columns=["month", "project", "revenue", "contract_id", "hours"])
 
     tag_to_project = {p.tag: p for p in projects if p.tag and p.contract}
 
@@ -173,9 +163,7 @@ def monthly_revenue_from_calendar(
     mask = (index_dates >= start_date) & (index_dates <= end_date)
     filtered = time_data[mask]
     if filtered.empty:
-        return DataFrame(
-            columns=["month", "project", "revenue", "contract_id", "hours"]
-        )
+        return DataFrame(columns=["month", "project", "revenue", "contract_id", "hours"])
 
     records = []
     df = filtered.copy()
@@ -183,9 +171,7 @@ def monthly_revenue_from_calendar(
     df["_hours"] = df.apply(
         lambda row: event_hours(
             row,
-            tag_to_project[row["tag"]].contract.units_per_workday
-            if row["tag"] in tag_to_project
-            else 8,
+            tag_to_project[row["tag"]].contract.units_per_workday if row["tag"] in tag_to_project else 8,
         ),
         axis=1,
     )
@@ -211,9 +197,7 @@ def monthly_revenue_from_calendar(
         )
 
     if not records:
-        return DataFrame(
-            columns=["month", "project", "revenue", "contract_id", "hours"]
-        )
+        return DataFrame(columns=["month", "project", "revenue", "contract_id", "hours"])
     return DataFrame(records)
 
 
@@ -286,25 +270,15 @@ def revenue_curve_with_calendar(
         history = DataFrame(columns=["month", "revenue", "is_forecast", "source"])
 
     today = datetime.date.today()
-    forecast_end = (
-        today.replace(day=1) + datetime.timedelta(days=30 * forecast_months)
-    ).replace(day=1)
+    forecast_end = (today.replace(day=1) + datetime.timedelta(days=30 * forecast_months)).replace(day=1)
 
     cal_monthly = DataFrame(columns=["month", "revenue", "is_forecast", "source"])
     if time_data is not None and not time_data.empty:
         cal_start = time_data.index.min().date().replace(day=1)
-        cal_revenue = monthly_revenue_from_calendar(
-            time_data, projects, cal_start, forecast_end
-        )
+        cal_revenue = monthly_revenue_from_calendar(time_data, projects, cal_start, forecast_end)
         if not cal_revenue.empty:
-            cal_monthly = (
-                cal_revenue.groupby("month")
-                .agg(revenue=("revenue", "sum"))
-                .reset_index()
-            )
-            cal_monthly["is_forecast"] = cal_monthly["month"] >= pandas.Timestamp(
-                today.replace(day=1)
-            )
+            cal_monthly = cal_revenue.groupby("month").agg(revenue=("revenue", "sum")).reset_index()
+            cal_monthly["is_forecast"] = cal_monthly["month"] >= pandas.Timestamp(today.replace(day=1))
             cal_monthly["source"] = "calendar"
 
     combined = pandas.concat([history, cal_monthly], ignore_index=True)

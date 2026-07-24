@@ -59,9 +59,7 @@ def test_transient_error_does_not_destroy_database(
             ensure_schema(url)
 
     assert db.exists(), "Database file should still exist after transient error"
-    assert not list(
-        db.parent.glob("*.broken-*")
-    ), "No .broken-* file should be created for transient errors"
+    assert not list(db.parent.glob("*.broken-*")), "No .broken-* file should be created for transient errors"
 
     engine = create_engine(url)
     with engine.begin() as conn:
@@ -106,9 +104,7 @@ def test_partial_migration_marks_db_broken(tmp_path: Path) -> None:
         engine = create_engine(url)
         with engine.begin() as conn:
             conn.execute(text("DELETE FROM alembic_version"))
-            conn.execute(
-                text("INSERT INTO alembic_version (version_num) VALUES ('CORRUPTED')")
-            )
+            conn.execute(text("INSERT INTO alembic_version (version_num) VALUES ('CORRUPTED')"))
         engine.dispose()
         raise RuntimeError("Migration crashed mid-way")
 
@@ -121,9 +117,7 @@ def test_partial_migration_marks_db_broken(tmp_path: Path) -> None:
 
     assert db.exists(), "Main DB path should be restored from backup"
     restored_rev = _get_current_revision(url)
-    assert (
-        restored_rev == original_revision
-    ), "Restored DB should be at the original revision"
+    assert restored_rev == original_revision, "Restored DB should be at the original revision"
 
 
 def test_noop_upgrade_preserves_data(seeded_db: tuple[Path, str]) -> None:
@@ -146,16 +140,12 @@ def test_multiple_transient_errors_never_destroy_db(
     db, url = seeded_db
 
     for _ in range(5):
-        with patch.object(
-            command, "upgrade", side_effect=OSError("database is locked")
-        ):
+        with patch.object(command, "upgrade", side_effect=OSError("database is locked")):
             with pytest.raises(SchemaMigrationError):
                 ensure_schema(url)
 
     broken_files = list(db.parent.glob("*.broken-*"))
-    assert (
-        len(broken_files) == 0
-    ), f"Repeated transient errors created {len(broken_files)} broken files"
+    assert len(broken_files) == 0, f"Repeated transient errors created {len(broken_files)} broken files"
 
     engine = create_engine(url)
     with engine.begin() as conn:

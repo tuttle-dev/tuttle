@@ -1,8 +1,8 @@
 """App-level key/value settings backed by AppDatabase."""
 
-from ..core.intent_result import IntentResult
 from ...app_db import AppDatabase
 from ...fx import fx_haircut, primary_currency, supported_currencies
+from ..core.intent_result import IntentResult
 
 
 class SettingsIntent:
@@ -21,9 +21,7 @@ class SettingsIntent:
         return IntentResult(
             was_intent_successful=True,
             data={
-                "primary": primary_currency(
-                    country or self._active_operating_country()
-                ),
+                "primary": primary_currency(country or self._active_operating_country()),
                 "fx_haircut": str(fx_haircut()),
                 "supported": list(supported_currencies()),
             },

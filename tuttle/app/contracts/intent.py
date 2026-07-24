@@ -1,10 +1,9 @@
+from ...model import Client, Contract, User
+from ...tax import get_tax_system
 from ..clients.intent import ClientsIntent
 from ..contacts.intent import ContactsIntent
 from ..core.abstractions import CrudIntent
 from ..core.intent_result import IntentResult
-
-from ...model import Client, Contract, User
-from ...tax import get_tax_system
 
 
 class ContractsIntent(CrudIntent):

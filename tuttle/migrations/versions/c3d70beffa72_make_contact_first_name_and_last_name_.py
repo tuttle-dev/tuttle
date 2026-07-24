@@ -35,16 +35,16 @@ MANDATORY REVIEW CHECKLIST before committing this file:
 See tuttle/migrations/README.md.
 ----------------------------------------------------------------------
 """
+
 # pyright: reportAttributeAccessIssue=false
 # sqlmodel.sql.sqltypes is a submodule resolved at runtime; basedpyright
 # does not statically expose `sql` as an attribute of `sqlmodel`.
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
 import sqlmodel
 import sqlmodel.sql.sqltypes  # noqa: F401 — ensures runtime resolution of AutoString
-
+from alembic import op
 
 revision: str = "c3d70beffa72"
 down_revision: Union[str, Sequence[str], None] = "f8a4403a2ecd"
@@ -62,16 +62,8 @@ def upgrade() -> None:
     )
     # Backfill NULLs with "Unknown" rather than "" so existing contacts remain
     # editable; the new validator rejects empty strings.
-    op.execute(
-        contact.update()
-        .where(contact.c.first_name.is_(None))
-        .values(first_name="Unknown")
-    )
-    op.execute(
-        contact.update()
-        .where(contact.c.last_name.is_(None))
-        .values(last_name="Unknown")
-    )
+    op.execute(contact.update().where(contact.c.first_name.is_(None)).values(first_name="Unknown"))
+    op.execute(contact.update().where(contact.c.last_name.is_(None)).values(last_name="Unknown"))
 
     with op.batch_alter_table("contact", schema=None) as batch_op:
         batch_op.alter_column("first_name", existing_type=sa.VARCHAR(), nullable=False)
@@ -92,6 +84,4 @@ def downgrade() -> None:
     2. Run `just reset` to wipe ~/.tuttle
     3. Edit model.py, run `just migrate` again
     """
-    raise NotImplementedError(
-        "Downgrades are not supported. Restore from a .bak-<ts> snapshot instead."
-    )
+    raise NotImplementedError("Downgrades are not supported. Restore from a .bak-<ts> snapshot instead.")

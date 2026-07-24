@@ -6,9 +6,6 @@ from typing import Optional
 from loguru import logger
 from pandas import DataFrame
 
-from ..core.abstractions import Intent
-from ..core.intent_result import IntentResult
-from ..projects.intent import ProjectsIntent
 from ...calendar import ICSCalendar
 from ...eventkit_bridge import (
     fetch_events,
@@ -16,7 +13,10 @@ from ...eventkit_bridge import (
     list_calendars_with_status,
     open_calendar_privacy_settings,
 )
-
+from ...timetracking import get_planning_summary
+from ..core.abstractions import Intent
+from ..core.intent_result import IntentResult
+from ..projects.intent import ProjectsIntent
 from .aggregation import (
     build_calendar_data,
     build_summary,
@@ -28,7 +28,6 @@ from .data_source import (
     TimeTrackingFileCalendarSource,
     TimeTrackingSpreadsheetSource,
 )
-from ...timetracking import get_planning_summary
 
 
 def _project_tag_maps(projects) -> tuple[dict, dict]:
@@ -60,9 +59,7 @@ class TimeTrackingIntent(Intent):
             df = df[df["tag"] == project_tag]
         return IntentResult(was_intent_successful=True, data=df_to_records(df))
 
-    def get_calendar_data(
-        self, year=None, month=None, project_tag=None
-    ) -> IntentResult:
+    def get_calendar_data(self, year=None, month=None, project_tag=None) -> IntentResult:
         df = self._timetracking_data_frame_source.get_data_frame()
         if df is None or df.empty:
             return IntentResult(
@@ -78,17 +75,11 @@ class TimeTrackingIntent(Intent):
         if month is None:
             month = datetime.date.today().month
         proj_result = ProjectsIntent().get_all()
-        projects = (
-            proj_result.data
-            if proj_result.was_intent_successful and proj_result.data
-            else []
-        )
+        projects = proj_result.data if proj_result.was_intent_successful and proj_result.data else []
         tag_to_title, tag_to_workday = _project_tag_maps(projects)
         return IntentResult(
             was_intent_successful=True,
-            data=build_calendar_data(
-                df, year, month, project_tag, tag_to_title, tag_to_workday
-            ),
+            data=build_calendar_data(df, year, month, project_tag, tag_to_title, tag_to_workday),
         )
 
     def import_ics(self, content: str, name: str = "imported.ics") -> IntentResult:
@@ -221,9 +212,7 @@ class TimeTrackingIntent(Intent):
                     if not new_df.empty:
                         ds.store_data_frame(new_df)
                         ds.save_to_cache()
-                        logger.info(
-                            f"Restored {len(new_df)} events from system calendar {calendar_id}"
-                        )
+                        logger.info(f"Restored {len(new_df)} events from system calendar {calendar_id}")
                         return IntentResult(
                             was_intent_successful=True,
                             data={
@@ -290,11 +279,7 @@ class TimeTrackingIntent(Intent):
         if df is None or df.empty:
             return IntentResult(was_intent_successful=True, data=[])
         proj_result = ProjectsIntent().get_all()
-        projects = (
-            proj_result.data
-            if proj_result.was_intent_successful and proj_result.data
-            else []
-        )
+        projects = proj_result.data if proj_result.was_intent_successful and proj_result.data else []
         return IntentResult(
             was_intent_successful=True,
             data=get_planning_summary(df, projects),
@@ -312,11 +297,7 @@ class TimeTrackingIntent(Intent):
                 },
             )
         proj_result = ProjectsIntent().get_all()
-        projects = (
-            proj_result.data
-            if proj_result.was_intent_successful and proj_result.data
-            else []
-        )
+        projects = proj_result.data if proj_result.was_intent_successful and proj_result.data else []
         tag_to_title, tag_to_workday = _project_tag_maps(projects)
         return IntentResult(
             was_intent_successful=True,

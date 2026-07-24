@@ -1,7 +1,7 @@
 """Database lifecycle — ensure, existence check."""
 
-from ..core.intent_result import IntentResult
 from ..core.abstractions import get_active_db
+from ..core.intent_result import IntentResult
 from ..users.intent import UsersIntent
 
 

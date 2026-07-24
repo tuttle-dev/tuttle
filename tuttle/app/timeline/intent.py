@@ -11,13 +11,11 @@ import datetime
 from dataclasses import dataclass
 from typing import List, Optional
 
-from ..core.abstractions import SQLModelDataSourceMixin, Intent
-from ..core.intent_result import IntentResult
+from ...model import Contract, FinancialGoal, Invoice, Project
+from ..core.abstractions import Intent, SQLModelDataSourceMixin
 from ..core.formatting import fmt_currency
+from ..core.intent_result import IntentResult
 from ..res import colors
-
-from ...model import Contract, Invoice, Project, FinancialGoal
-
 
 # ── Category constants ────────────────────────────────────────
 
@@ -215,9 +213,7 @@ class TimelineIntent(SQLModelDataSourceMixin, Intent):
                         title=f"{label} {'overdue' if is_overdue else 'due'}",
                         description=desc,
                         category=cat,
-                        icon=ICON_WARNING_AMBER_ROUNDED
-                        if is_overdue
-                        else ICON_SCHEDULE,
+                        icon=ICON_WARNING_AMBER_ROUNDED if is_overdue else ICON_SCHEDULE,
                         color=colors.danger if is_overdue else color,
                         is_future=due > today,
                         entity_id=inv.id,

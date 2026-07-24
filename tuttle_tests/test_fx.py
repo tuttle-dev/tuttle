@@ -20,17 +20,13 @@ def stub_rates(monkeypatch):
     monkeypatch.setattr(
         fx,
         "rate",
-        lambda base, quote, month: (
-            Decimal(1) if base == quote else Decimal("0.9") if base == "USD" else None
-        ),
+        lambda base, quote, month: Decimal(1) if base == quote else Decimal("0.9") if base == "USD" else None,
     )
     monkeypatch.setattr(
         fx,
         "convert",
         lambda amount, base, quote, on: (
-            Decimal(amount)
-            if base == quote
-            else (Decimal(amount) * Decimal("0.9")).quantize(Decimal("0.01"))
+            Decimal(amount) if base == quote else (Decimal(amount) * Decimal("0.9")).quantize(Decimal("0.01"))
         ),
     )
     # kpi/tax_reserves bound these at import time.
@@ -43,9 +39,7 @@ def stub_rates(monkeypatch):
 
 
 def _invoice(currency: str, amount: str, vat_rate="0") -> Invoice:
-    category = (
-        TaxCategory.outside_scope if Decimal(vat_rate) == 0 else TaxCategory.standard
-    )
+    category = TaxCategory.outside_scope if Decimal(vat_rate) == 0 else TaxCategory.standard
     contract = Contract(
         title=f"{currency} contract",
         client=Client(name="US Client"),
@@ -59,9 +53,7 @@ def _invoice(currency: str, amount: str, vat_rate="0") -> Invoice:
         billing_cycle=Cycle.monthly,
     )
     today = datetime.date.today()
-    invoice = Invoice(
-        number="1", date=today.replace(month=1, day=15), contract=contract
-    )
+    invoice = Invoice(number="1", date=today.replace(month=1, day=15), contract=contract)
     invoice.items = [
         InvoiceItem(
             quantity=1,
@@ -87,17 +79,12 @@ def test_foreign_invoice_is_converted_not_dropped_or_mixed():
 
 
 def test_conversion_fee_hits_salary_but_not_the_tax_base():
-    spending = compute_spendable_income(
-        [_invoice("USD", "10000")], "Germany", currency="EUR"
-    )
+    spending = compute_spendable_income([_invoice("USD", "10000")], "Germany", currency="EUR")
 
     assert spending.gross_revenue_ytd == Decimal("9000.00")  # ECB rate, no haircut
     assert spending.taxable_profit == Decimal("9000.00")
     assert spending.conversion_fee == Decimal("90.00")  # 1% of the converted net
-    assert (
-        spending.spendable
-        == spending.taxable_profit - spending.income_tax_reserve - Decimal("90.00")
-    )
+    assert spending.spendable == spending.taxable_profit - spending.income_tax_reserve - Decimal("90.00")
 
 
 class TestCurrencyValidation:
@@ -130,12 +117,8 @@ class TestCurrencyValidation:
 def test_unresolvable_rate_leaves_the_invoice_out_rather_than_zeroing_it(monkeypatch):
     import tuttle.tax_reserves
 
-    monkeypatch.setattr(
-        tuttle.tax_reserves, "convert", lambda amount, base, quote, on: None
-    )
-    spending = compute_spendable_income(
-        [_invoice("EUR", "1000"), _invoice("USD", "10000")], "Germany", currency="EUR"
-    )
+    monkeypatch.setattr(tuttle.tax_reserves, "convert", lambda amount, base, quote, on: None)
+    spending = compute_spendable_income([_invoice("EUR", "1000"), _invoice("USD", "10000")], "Germany", currency="EUR")
 
     assert spending.gross_revenue_ytd == Decimal("1000")
 

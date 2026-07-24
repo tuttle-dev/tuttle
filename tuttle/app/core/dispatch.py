@@ -13,8 +13,7 @@ import importlib
 import inspect
 from typing import Any, Callable, Dict
 
-from .rpc_utils import dump, unwrap, register_reset
-
+from .rpc_utils import dump, register_reset, unwrap
 
 # ---------------------------------------------------------------------------
 # Intent singleton cache
@@ -41,10 +40,7 @@ def _get_intent(domain: str):
             if name.endswith("Intent") and obj.__module__ == mod.__name__
         ]
         if len(candidates) != 1:
-            raise AttributeError(
-                f"Expected exactly 1 *Intent class in {mod_path}, "
-                f"found {[c.__name__ for c in candidates]}"
-            )
+            raise AttributeError(f"Expected exactly 1 *Intent class in {mod_path}, found {[c.__name__ for c in candidates]}")
         _intents[domain] = candidates[0]()
     return _intents[domain]
 

@@ -3,10 +3,6 @@
 import datetime
 from decimal import Decimal
 
-from ..core.abstractions import SQLModelDataSourceMixin, Intent
-from ..core.intent_result import IntentResult
-from ..timetracking.data_source import TimeTrackingDataFrameSource
-
 from ...fx import primary_currency
 from ...model import Invoice, Project, RecurringExpense, User
 from ...tax import (
@@ -16,10 +12,13 @@ from ...tax import (
     supported_countries,
 )
 from ...tax_reserves import (
-    compute_spendable_income,
     compute_income_tax_reserve,
+    compute_spendable_income,
     monthly_vat_breakdown,
 )
+from ..core.abstractions import Intent, SQLModelDataSourceMixin
+from ..core.intent_result import IntentResult
+from ..timetracking.data_source import TimeTrackingDataFrameSource
 
 
 class TaxIntent(SQLModelDataSourceMixin, Intent):
@@ -150,9 +149,7 @@ class TaxIntent(SQLModelDataSourceMixin, Intent):
                     "label": zone["label"],
                     "start": start,
                     "end": end,
-                    "is_current": start
-                    <= income_f
-                    < (end if up_to is not None else float("inf")),
+                    "is_current": start <= income_f < (end if up_to is not None else float("inf")),
                 }
             )
             prev_end = end

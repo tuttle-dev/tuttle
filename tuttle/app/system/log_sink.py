@@ -1,7 +1,7 @@
 """In-memory ring buffer sink for loguru — exposes recent logs to the UI."""
 
 from collections import deque
-from datetime import datetime, timezone
+from datetime import timezone
 from threading import Lock
 from typing import List
 

@@ -9,6 +9,7 @@ import pytest
 from sqlmodel import Session, SQLModel, create_engine, select
 
 from tuttle import demo, invoicing, rendering, timetracking
+from tuttle.calendar import get_month_start_end
 from tuttle.model import (
     Address,
     Client,
@@ -20,7 +21,6 @@ from tuttle.model import (
     TaxCategory,
 )
 from tuttle.time import ContractType, Cycle, TimeUnit
-from tuttle.calendar import get_month_start_end
 
 
 def test_invoice():
@@ -518,9 +518,7 @@ class TestTaxCategoryPropagation:
             number="FP-O-001",
             date=datetime.date(2022, 2, 1),
         )
-        assert all(
-            item.VAT_category is TaxCategory.outside_scope for item in invoice.items
-        )
+        assert all(item.VAT_category is TaxCategory.outside_scope for item in invoice.items)
         assert invoice.is_outside_scope is True
         assert invoice.total == Decimal("5000")  # no VAT added
 

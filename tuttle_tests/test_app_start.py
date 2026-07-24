@@ -12,7 +12,6 @@ import sqlite3
 import pytest
 from sqlmodel import SQLModel, create_engine
 
-
 # ---------------------------------------------------------------------------
 # 1. Import smoke tests
 # ---------------------------------------------------------------------------
@@ -159,12 +158,7 @@ def test_database_schema_creation(tmp_path):
     SQLModel.metadata.create_all(engine)
 
     conn = sqlite3.connect(db_path)
-    tables = {
-        row[0]
-        for row in conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table'"
-        ).fetchall()
-    }
+    tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
     conn.close()
 
     expected_tables = {"user", "contact", "address", "client", "contract", "project"}

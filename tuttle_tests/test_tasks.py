@@ -6,6 +6,7 @@ from decimal import Decimal
 import pytest
 import sqlmodel
 
+from tuttle.app.tasks.generator import generate_tasks
 from tuttle.model import (
     Address,
     Client,
@@ -17,7 +18,6 @@ from tuttle.model import (
     Task,
 )
 from tuttle.time import Cycle, TimeUnit
-from tuttle.app.tasks.generator import generate_tasks
 
 
 @pytest.fixture
@@ -49,18 +49,14 @@ class TestTutorialTasks:
         session.add(Contact(first_name="Alice", last_name="Test", email="a@b.com"))
         session.commit()
         generate_tasks(session)
-        task = session.exec(
-            sqlmodel.select(Task).where(Task.key == "tutorial:first_contact")
-        ).first()
+        task = session.exec(sqlmodel.select(Task).where(Task.key == "tutorial:first_contact")).first()
         assert task.status == "done"
 
     def test_auto_resolves_when_client_exists(self, session):
         session.add(Client(name="Acme Corp"))
         session.commit()
         generate_tasks(session)
-        task = session.exec(
-            sqlmodel.select(Task).where(Task.key == "tutorial:first_client")
-        ).first()
+        task = session.exec(sqlmodel.select(Task).where(Task.key == "tutorial:first_client")).first()
         assert task.status == "done"
 
     def test_reopens_if_data_deleted(self, session):
@@ -69,9 +65,7 @@ class TestTutorialTasks:
         session.add(contact)
         session.commit()
         generate_tasks(session)
-        task = session.exec(
-            sqlmodel.select(Task).where(Task.key == "tutorial:first_contact")
-        ).first()
+        task = session.exec(sqlmodel.select(Task).where(Task.key == "tutorial:first_contact")).first()
         assert task.status == "done"
 
         # Now delete contact → task should reopen
@@ -102,9 +96,7 @@ class TestTutorialTasks:
         session.add(Contact(first_name="X", last_name="Y", email="x@y.com"))
         session.commit()
         generate_tasks(session)
-        ai_task = session.exec(
-            sqlmodel.select(Task).where(Task.key == "tutorial:configure_ai")
-        ).first()
+        ai_task = session.exec(sqlmodel.select(Task).where(Task.key == "tutorial:configure_ai")).first()
         assert ai_task.status == "pending"
 
 
@@ -120,9 +112,7 @@ class TestOverdueTasks:
             first_name="C",
             last_name="D",
             email="c@d.com",
-            address=Address(
-                street="S", number="1", postal_code="12345", city="Berlin", country="DE"
-            ),
+            address=Address(street="S", number="1", postal_code="12345", city="Berlin", country="DE"),
         )
         client = Client(name="OverdueCorp", invoicing_contact=contact)
         contract = Contract(
@@ -169,9 +159,7 @@ class TestOverdueTasks:
     def test_creates_overdue_task(self, session, overdue_invoice):
         assert overdue_invoice.status == "overdue"
         generate_tasks(session)
-        task = session.exec(
-            sqlmodel.select(Task).where(Task.key == f"overdue:{overdue_invoice.id}")
-        ).first()
+        task = session.exec(sqlmodel.select(Task).where(Task.key == f"overdue:{overdue_invoice.id}")).first()
         assert task is not None
         assert task.status == "pending"
         assert "2025-001" in task.title
@@ -192,9 +180,7 @@ class TestOverdueTasks:
         session.add(reminder)
         session.commit()
         generate_tasks(session)
-        task = session.exec(
-            sqlmodel.select(Task).where(Task.key == f"overdue:{overdue_invoice.id}")
-        ).first()
+        task = session.exec(sqlmodel.select(Task).where(Task.key == f"overdue:{overdue_invoice.id}")).first()
         assert task is None
 
     def test_does_not_create_for_paid_invoice(self, session, overdue_invoice):
@@ -203,7 +189,5 @@ class TestOverdueTasks:
         session.commit()
         assert overdue_invoice.status == "paid"
         generate_tasks(session)
-        task = session.exec(
-            sqlmodel.select(Task).where(Task.key == f"overdue:{overdue_invoice.id}")
-        ).first()
+        task = session.exec(sqlmodel.select(Task).where(Task.key == f"overdue:{overdue_invoice.id}")).first()
         assert task is None
