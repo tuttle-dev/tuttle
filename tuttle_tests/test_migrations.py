@@ -219,6 +219,20 @@ def test_versions_are_append_only_in_git() -> None:
     except (FileNotFoundError, subprocess.CalledProcessError):
         pytest.skip("Not a git checkout; cannot enforce append-only.")
 
+    # Unshallow if running under shallow checkout (e.g. actions/checkout default fetch-depth: 1)
+    is_shallow = subprocess.run(
+        ["git", "rev-parse", "--is-shallow-repository"],
+        cwd=versions,
+        capture_output=True,
+        text=True,
+    )
+    if is_shallow.stdout.strip() == "true":
+        subprocess.run(
+            ["git", "fetch", "--unshallow"],
+            cwd=versions,
+            capture_output=True,
+        )
+
     offenders: list[str] = []
     for script in versions.glob("*.py"):
         result = subprocess.run(
