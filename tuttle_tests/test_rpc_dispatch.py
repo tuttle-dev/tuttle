@@ -282,7 +282,7 @@ class TestFieldRequirements:
     @pytest.mark.parametrize(
         "domain,required_fields",
         [
-            ("contacts", {"first_name", "last_name"}),
+            ("contacts", set()),
             ("clients", {"name"}),
             ("projects", {"title", "description", "tag", "start_date"}),
             ("contracts", {"title", "start_date", "currency"}),
@@ -324,13 +324,14 @@ class TestCrudSaveBehavior:
         assert saved["last_name"] == "Tuttle"
         assert saved.get("address") is None or saved.get("address") == {}
 
-    def test_contact_save_rejects_missing_name(self, rpc_env):
+    def test_contact_save_accepts_partial_name(self, rpc_env):
         result = dispatch(
             "contacts.save",
             {"contact": {"first_name": "Solo", "last_name": ""}},
         )
-        assert result["ok"] is False
-        assert result["error"]
+        assert_ok(result)
+        assert result["data"]["first_name"] == "Solo"
+        assert result["data"]["last_name"] == ""
 
     def test_project_save_without_end_date(self, rpc_env):
         contracts = assert_ok(dispatch("contracts.get_all", {}))["data"]
