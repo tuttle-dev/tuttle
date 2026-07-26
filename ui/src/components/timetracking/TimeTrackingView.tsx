@@ -76,6 +76,7 @@ export function TimeTrackingView() {
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [filterTag, setFilterTag] = useState<string | null>(null);
+  const [availableTags, setAvailableTags] = useState<string[]>([]);
   const [importing, setImporting] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [calendarSource, setCalendarSource] = useState<CalendarSource>(null);
@@ -112,6 +113,12 @@ export function TimeTrackingView() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { if (!restoringSource) loadData(); }, [loadData]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Keep full tag list for filter pills — calData.projects is filtered when a tag is active.
+  useEffect(() => {
+    if (!calData || filterTag) return;
+    setAvailableTags(calData.projects.map((p) => p.tag));
+  }, [calData, filterTag]);
 
   // ── Navigation ──────────────────────────────────────────────────────────
 
@@ -198,6 +205,8 @@ export function TimeTrackingView() {
     await rpc("timetracking.clear");
     setCalendarSource(null);
     setSelectedDay(null);
+    setFilterTag(null);
+    setAvailableTags([]);
     setSystemCals(null);
     loadData();
   }
@@ -205,9 +214,10 @@ export function TimeTrackingView() {
   // ── Derived data ────────────────────────────────────────────────────────
 
   const allTags = useMemo(() => {
-    if (!calData) return [];
+    if (filterTag && availableTags.length > 0) return availableTags;
+    if (!calData) return availableTags;
     return calData.projects.map((p) => p.tag);
-  }, [calData]);
+  }, [calData, filterTag, availableTags]);
 
   const dayEvents = useMemo(() => {
     if (!selectedDay || !calData) return [];
@@ -287,7 +297,7 @@ export function TimeTrackingView() {
                   <button onClick={goToday} className="text-xs font-medium text-secondary hover:text-primary hover:underline">Today</button>
                   <div className="flex-1" />
                   {/* Tag filter */}
-                  {allTags.length > 1 && (
+                  {(availableTags.length > 1 || filterTag) && (
                     <div className="flex items-center gap-1">
                       <button
                         onClick={() => setFilterTag(null)}
