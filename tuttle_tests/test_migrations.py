@@ -238,11 +238,9 @@ def test_versions_are_append_only_in_git() -> None:
     except (FileNotFoundError, subprocess.CalledProcessError):
         pytest.skip("Not a git checkout; cannot enforce append-only.")
 
-    # Known pre-existing violation, grandfathered so the guard can go live for
-    # everything else: commit 9cec3e0 changed this revision's NULL backfill from
-    # "" to "Unknown" after it had shipped. Databases that migrated before that
-    # commit hold "", ones after hold "Unknown". Tracked in #429 — do not extend
-    # this set, add a new revision instead.
+    # c3d70beffa72 was edited after shipping (commit 9cec3e0 changed its
+    # backfill from "" to "Unknown"). Reconciled by bac018e35ce6, but the
+    # git history still shows the edit. See #429.
     grandfathered = {"c3d70beffa72_make_contact_first_name_and_last_name_.py"}
 
     offenders: list[str] = []

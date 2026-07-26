@@ -773,8 +773,8 @@ function DocumentImportPanel({ parsing, parseError, parsedContacts, onFileSelect
 
 function contactIsValid(c: ParsedContact): { valid: boolean; missing: string[] } {
   const missing: string[] = [];
-  if (!c.first_name.trim()) missing.push("First Name");
-  if (!c.last_name.trim()) missing.push("Last Name");
+  const hasName = c.first_name.trim() || c.last_name.trim() || c.company.trim();
+  if (!hasName) missing.push("Name or Company");
   const addr = c.address;
   const hasAddress = !!(addr.street || addr.number || addr.city || addr.postal_code || addr.country);
   if (!hasAddress) missing.push("Address (at least one field)");
@@ -796,7 +796,7 @@ function ParsedContactCard({ contact, onAccept, onDiscard, onUpdate }: {
   }
 
   const { valid, missing } = contactIsValid(contact);
-  const name = [contact.first_name, contact.last_name].filter(Boolean).join(" ") || contact.company || "Unknown";
+  const name = [contact.first_name, contact.last_name].filter(Boolean).join(" ") || contact.company || "(unnamed)";
 
   return (
     <div className="rounded-xl border-2 border-fuchsia-400/40 bg-fuchsia-500/5 p-4 space-y-3">
@@ -831,8 +831,8 @@ function ParsedContactCard({ contact, onAccept, onDiscard, onUpdate }: {
       )}
 
       <div className="grid grid-cols-2 gap-2">
-        <AiField label="First Name" value={contact.first_name} onChange={(v) => updateField("first_name", v)} required missing={!contact.first_name.trim()} />
-        <AiField label="Last Name" value={contact.last_name} onChange={(v) => updateField("last_name", v)} required missing={!contact.last_name.trim()} />
+        <AiField label="First Name" value={contact.first_name} onChange={(v) => updateField("first_name", v)} />
+        <AiField label="Last Name" value={contact.last_name} onChange={(v) => updateField("last_name", v)} />
         <AiField label="Company" value={contact.company} onChange={(v) => updateField("company", v)} />
         <AiField label="Email" value={contact.email} onChange={(v) => updateField("email", v)} />
       </div>

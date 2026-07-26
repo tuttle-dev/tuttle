@@ -234,8 +234,8 @@ class Contact(RpcMixin, SQLModel, table=True):
     __rpc_relationships__ = ("address",)
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    first_name: str = Field(description="First / given name")
-    last_name: str = Field(description="Last / family name")
+    first_name: str = Field(default="", description="First / given name")
+    last_name: str = Field(default="", description="Last / family name")
     company: Optional[str] = Field(default=None, description="Company or organisation name")
     email: Optional[str] = Field(default=None, description="Email address")
     address_id: Optional[int] = Field(default=None, foreign_key="address.id")
@@ -251,10 +251,10 @@ class Contact(RpcMixin, SQLModel, table=True):
     )
 
     # VALIDATORS
-    @validator("first_name", "last_name")
-    def name_not_empty(cls, v):
-        if not v or not str(v).strip():
-            raise ValueError("Name is required")
+    @validator("first_name", "last_name", pre=True)
+    def strip_name(cls, v):
+        if v is None:
+            return ""
         return str(v).strip()
 
     @validator("email")
