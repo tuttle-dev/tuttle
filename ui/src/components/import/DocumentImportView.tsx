@@ -779,8 +779,13 @@ function InvoiceCard({ item, onUpdate, importedContracts, importedProjects, exis
                 <label className="block text-[10px] text-tertiary mb-0.5">
                   Unit{ireq("unit") && <span className="text-red-400 ml-0.5">*</span>}
                 </label>
-                <input value={li.unit} onChange={(e) => updateItem(idx, "unit", e.target.value)}
-                  className={`w-full px-2 py-1 rounded text-xs bg-bg-card text-primary border ${borderCls("unit", li.unit)} outline-none focus:border-fuchsia-400`} />
+                <select value={li.unit || ""} onChange={(e) => updateItem(idx, "unit", e.target.value)}
+                  className={`w-full px-1.5 py-1 rounded text-xs bg-bg-card text-primary border ${borderCls("unit", li.unit)} outline-none focus:border-fuchsia-400`}>
+                  <option value="">--</option>
+                  <option value="hour">hour</option>
+                  <option value="day">day</option>
+                  <option value="fixed_price">fixed price</option>
+                </select>
               </div>
               <div>
                 <label className="block text-[10px] text-tertiary mb-0.5">
