@@ -92,7 +92,15 @@ export function TimeTrackingView() {
   const loadData = useCallback(async () => {
     setLoading(true);
     const calRes = await rpc<CalendarData>("timetracking.get_calendar_data", { year, month, project_tag: filterTag });
-    if (calRes.ok && calRes.data) setCalData(calRes.data);
+    if (calRes.ok && calRes.data) {
+      setCalData(calRes.data);
+      if (!filterTag) {
+        const tags = calRes.data.projects.map((p) => p.tag);
+        setAvailableTags((prev) =>
+          prev.length === tags.length && prev.every((t, i) => t === tags[i]) ? prev : tags,
+        );
+      }
+    }
     setLoading(false);
   }, [year, month, filterTag]);
 
@@ -113,12 +121,6 @@ export function TimeTrackingView() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { if (!restoringSource) loadData(); }, [loadData]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Keep full tag list for filter pills — calData.projects is filtered when a tag is active.
-  useEffect(() => {
-    if (!calData || filterTag) return;
-    setAvailableTags(calData.projects.map((p) => p.tag));
-  }, [calData, filterTag]);
 
   // ── Navigation ──────────────────────────────────────────────────────────
 
@@ -214,10 +216,9 @@ export function TimeTrackingView() {
   // ── Derived data ────────────────────────────────────────────────────────
 
   const allTags = useMemo(() => {
-    if (filterTag && availableTags.length > 0) return availableTags;
-    if (!calData) return availableTags;
-    return calData.projects.map((p) => p.tag);
-  }, [calData, filterTag, availableTags]);
+    if (availableTags.length > 0) return availableTags;
+    return calData?.projects.map((p) => p.tag) ?? [];
+  }, [calData, availableTags]);
 
   const dayEvents = useMemo(() => {
     if (!selectedDay || !calData) return [];
