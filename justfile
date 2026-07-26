@@ -137,6 +137,20 @@ screenshot view out="": build-renderer
     cd "{{electron}}"
     npx --yes tsx scripts/capture-view.ts {{view}} {{out}}
 
+# Capture all README screenshots with macOS-style framing
+screenshots: build-renderer
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{electron}}"
+    pairs="dashboard:screenshot-dashboard timetracking:screenshot-timetracking invoicing:screenshot-invoices tax:screenshot-tax salary:screenshot-salary import:screenshot-import"
+    for pair in $pairs; do
+        view="${pair%%:*}"
+        file="${pair##*:}"
+        echo "── Capturing $view ──"
+        npx --yes tsx scripts/capture-view.ts "$view" "../assets/images/${file}.png"
+    done
+    echo "✓ All screenshots captured"
+
 # ── Utilities ───────────────────────────────────────────────────────────────
 
 # Install/sync Python dependencies
