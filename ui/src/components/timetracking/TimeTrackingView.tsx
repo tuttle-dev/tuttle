@@ -76,6 +76,7 @@ export function TimeTrackingView() {
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [filterTag, setFilterTag] = useState<string | null>(null);
+  const [availableTags, setAvailableTags] = useState<string[]>([]);
   const [importing, setImporting] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [calendarSource, setCalendarSource] = useState<CalendarSource>(null);
@@ -91,7 +92,15 @@ export function TimeTrackingView() {
   const loadData = useCallback(async () => {
     setLoading(true);
     const calRes = await rpc<CalendarData>("timetracking.get_calendar_data", { year, month, project_tag: filterTag });
-    if (calRes.ok && calRes.data) setCalData(calRes.data);
+    if (calRes.ok && calRes.data) {
+      setCalData(calRes.data);
+      if (!filterTag) {
+        const tags = calRes.data.projects.map((p) => p.tag);
+        setAvailableTags((prev) =>
+          prev.length === tags.length && prev.every((t, i) => t === tags[i]) ? prev : tags,
+        );
+      }
+    }
     setLoading(false);
   }, [year, month, filterTag]);
 
@@ -198,6 +207,8 @@ export function TimeTrackingView() {
     await rpc("timetracking.clear");
     setCalendarSource(null);
     setSelectedDay(null);
+    setFilterTag(null);
+    setAvailableTags([]);
     setSystemCals(null);
     loadData();
   }
@@ -205,9 +216,9 @@ export function TimeTrackingView() {
   // ── Derived data ────────────────────────────────────────────────────────
 
   const allTags = useMemo(() => {
-    if (!calData) return [];
-    return calData.projects.map((p) => p.tag);
-  }, [calData]);
+    if (availableTags.length > 0) return availableTags;
+    return calData?.projects.map((p) => p.tag) ?? [];
+  }, [calData, availableTags]);
 
   const dayEvents = useMemo(() => {
     if (!selectedDay || !calData) return [];
@@ -287,7 +298,7 @@ export function TimeTrackingView() {
                   <button onClick={goToday} className="text-xs font-medium text-secondary hover:text-primary hover:underline">Today</button>
                   <div className="flex-1" />
                   {/* Tag filter */}
-                  {allTags.length > 1 && (
+                  {(availableTags.length > 1 || filterTag) && (
                     <div className="flex items-center gap-1">
                       <button
                         onClick={() => setFilterTag(null)}
