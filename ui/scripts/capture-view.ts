@@ -11,6 +11,7 @@ import { _electron as electron } from "playwright";
 import * as fs from "fs";
 import * as path from "path";
 import { fileURLToPath } from "url";
+import { frameScreenshot } from "./frame-screenshot";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -108,7 +109,12 @@ async function main() {
   await navButton.click();
   await window.waitForTimeout(2500);
 
-  await window.screenshot({ path: outPath, type: "png" });
+  const rawPath = outPath.replace(/\.png$/, ".raw.png");
+  await window.screenshot({ path: rawPath, type: "png" });
+
+  console.log("Applying macOS window frame...");
+  await frameScreenshot(rawPath, outPath);
+  fs.unlinkSync(rawPath);
   console.log(`✓ ${outPath}`);
 
   await app.close();
