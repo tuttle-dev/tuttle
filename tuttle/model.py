@@ -1167,11 +1167,21 @@ class InvoiceItem(RpcMixin, VatCategoryMixin, SQLModel, table=True):
     start_date: Optional[datetime.date] = Field(default=None, description="Start date of the invoice item.")
     end_date: Optional[datetime.date] = Field(default=None, description="End date of the invoice item.")
     #
-    quantity: float
-    unit: str
-    unit_price: Decimal
-    description: str
-    VAT_rate: Decimal
+    quantity: float = Field(
+        description="Number of units billed. For fixed-price / lump-sum items, use 1.",
+    )
+    unit: str = Field(
+        description="Billing unit: 'hour', 'day', or 'fixed_price'. Use 'fixed_price' for lump-sum / flat-rate items.",
+    )
+    unit_price: Decimal = Field(
+        description="Price per unit. For fixed-price items this equals the total amount.",
+    )
+    description: str = Field(
+        description="Description of the service or deliverable.",
+    )
+    VAT_rate: Decimal = Field(
+        description="VAT rate as a decimal fraction, e.g. 0.19 for 19%%.",
+    )
     VAT_category: TaxCategory = Field(
         description="Tax category, snapshotted from the contract at invoice "
         "creation so that later contract edits cannot alter an issued invoice.",

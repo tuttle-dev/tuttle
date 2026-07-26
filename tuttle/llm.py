@@ -138,8 +138,9 @@ def _flat_schema(model_cls: type, *, include: Optional[List[str]] = None) -> typ
 
     Uses model_fields (which already excludes relationships) and keeps only
     scalar columns. All fields made Optional for partial extraction.
-    Field descriptions are preserved so llama_index structured output
-    can communicate field semantics to the LLM via the JSON Schema.
+    Field descriptions are preserved so the JSON Schema communicates domain
+    semantics to the LLM — extraction quality depends on these descriptions,
+    not on post-processing or keyword matching.
     """
     fields: Dict[str, Any] = {}
     for name, field_info in model_cls.model_fields.items():
@@ -565,7 +566,13 @@ def _describe_entity_fields(model_cls: type, skip: set = {"ref"}) -> str:  # noq
 
 
 def _build_summary_prompt() -> str:
-    """Generate the Pass-1 summary prompt from the extraction model definitions."""
+    """Generate the Pass-1 summary prompt from the extraction model definitions.
+
+    Pass 1 asks the LLM for a free-text summary of document facts.
+    It relies on the LLM's semantic understanding of the document — no
+    canonical field values are prescribed here (that happens in Pass 2
+    via the structured schema).
+    """
     sections = []
     for label, model_cls in DocumentExtractionResult.model_fields.items():
         field_info = DocumentExtractionResult.model_fields[label]
@@ -579,9 +586,9 @@ def _build_summary_prompt() -> str:
         "You are analysing a business document (contract, invoice, or other) for a freelancer.\n"
         "Read the document carefully and list ALL facts relevant to the following categories.\n"
         "Be thorough — include every detail you can find, even if approximate.\n"
-        "If the document is an invoice, extract all line items with their quantities and amounts.\n\n"
-        + "\n\n".join(sections)
-        + "\n\nFormat all dates as YYYY-MM-DD. "
+        "If the document is an invoice, extract all line items with their quantities and amounts.\n"
+        "Note whether the invoice uses time-based billing (hourly/daily rates) "
+        "or fixed-price / lump-sum pricing.\n\n" + "\n\n".join(sections) + "\n\nFormat all dates as YYYY-MM-DD. "
         "Write one fact per line. Do not omit any details.\n\n"
     )
 
@@ -592,7 +599,10 @@ _DOC_EXTRACT_PROMPT = (
     "Convert the following entity summary into structured JSON.\n"
     "Use ref strings (contact_1, client_1, contract_1, project_1) to cross-link entities.\n"
     "Populate EVERY field you can; only use null for truly unknown values.\n"
-    "Dates must be YYYY-MM-DD.\n\n"
+    "Dates must be YYYY-MM-DD.\n"
+    "For invoice line items: use unit='hour' or 'day' for time-based billing. "
+    "For fixed-price / lump-sum items use unit='fixed_price', quantity=1, "
+    "and unit_price=total amount.\n\n"
 )
 
 
@@ -800,6 +810,26 @@ def _map_document_extraction(
     return mapped
 
 
+_CANONICAL_UNITS = {"hour", "day", "fixed_price"}
+
+
+def _normalize_unit(raw: str | None) -> str | None:
+    """Fix trivial formatting variations in LLM-extracted unit values.
+
+    The LLM performs semantic extraction — it understands whether an
+    invoice uses time-based or fixed-price billing from context, guided
+    by the JSON Schema field descriptions.  This function only cleans up
+    minor formatting differences (whitespace, trailing plural 's') that
+    can occur despite correct semantic understanding.
+    """
+    if raw is None:
+        return None
+    cleaned = raw.strip().lower().replace(" ", "_").rstrip("s")
+    if cleaned in _CANONICAL_UNITS:
+        return cleaned
+    return raw
+
+
 def _map_invoices(invoices: list) -> List[Dict[str, Any]]:
     """Map extracted invoice objects to dicts for the frontend."""
     from .model import normalize_vat_rate
@@ -815,6 +845,7 @@ def _map_invoices(invoices: list) -> List[Dict[str, Any]]:
             for k in list(item):
                 if k.endswith("_date"):
                     item[k] = _serialise_date(item[k])
+            item["unit"] = _normalize_unit(item.get("unit"))
             vat = item.get("VAT_rate")
             if vat is not None:
                 try:

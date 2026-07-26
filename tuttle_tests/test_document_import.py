@@ -634,3 +634,64 @@ class TestLlmInvoiceSchema:
         from tuttle.llm import _DOC_SUMMARY_PROMPT
 
         assert "INVOICES" in _DOC_SUMMARY_PROMPT
+
+    def test_summary_prompt_mentions_fixed_price(self):
+        """The summary prompt must guide the LLM on fixed-price invoices."""
+        from tuttle.llm import _DOC_SUMMARY_PROMPT
+
+        assert "fixed_price" in _DOC_SUMMARY_PROMPT or "fixed-price" in _DOC_SUMMARY_PROMPT
+
+    def test_extract_prompt_mentions_fixed_price(self):
+        """The extraction prompt must guide the LLM on fixed-price line items."""
+        from tuttle.llm import _DOC_EXTRACT_PROMPT
+
+        assert "fixed_price" in _DOC_EXTRACT_PROMPT
+
+    def test_invoice_item_schema_has_unit_description(self):
+        """The LLM schema for invoice items must describe the unit field."""
+        from tuttle.llm import _RefInvoiceItem
+
+        unit_info = _RefInvoiceItem.model_fields["unit"]
+        assert unit_info.description is not None
+        assert "fixed_price" in unit_info.description
+
+    @pytest.mark.parametrize(
+        "raw,expected",
+        [
+            ("hour", "hour"),
+            ("hours", "hour"),
+            ("day", "day"),
+            ("days", "day"),
+            ("fixed_price", "fixed_price"),
+            ("fixed price", "fixed_price"),
+            ("Fixed_Price", "fixed_price"),
+            (None, None),
+            ("widget", "widget"),
+        ],
+    )
+    def test_normalize_unit(self, raw, expected):
+        from tuttle.llm import _normalize_unit
+
+        assert _normalize_unit(raw) == expected
+
+    def test_map_invoices_normalizes_unit(self):
+        """_map_invoices must normalise trivial unit variations."""
+        from tuttle.llm import _map_invoices, _RefInvoice, _RefInvoiceItem
+
+        inv = _RefInvoice(
+            ref="inv_fp",
+            number="FP-001",
+            date=datetime.date(2024, 1, 1),
+            items=[
+                _RefInvoiceItem(
+                    quantity=1.0,
+                    unit="fixed price",
+                    unit_price=5000.0,
+                    description="Project delivery",
+                    VAT_rate=0.19,
+                )
+            ],
+        )
+
+        result = _map_invoices([inv])
+        assert result[0]["items"][0]["unit"] == "fixed_price"
