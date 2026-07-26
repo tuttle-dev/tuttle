@@ -20,6 +20,18 @@
     </blockquote>
     <br />
   </p>
+
+  <p align="center">
+    <a href="https://github.com/tuttle-dev/tuttle/releases/latest">
+      <img src="https://img.shields.io/badge/Download-macOS-black?style=for-the-badge&logo=apple&logoColor=white" alt="Download for macOS" />
+    </a>
+    <a href="https://github.com/tuttle-dev/tuttle/releases/latest">
+      <img src="https://img.shields.io/badge/Download-Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Download for Windows" />
+    </a>
+    <a href="https://github.com/tuttle-dev/tuttle/releases/latest">
+      <img src="https://img.shields.io/badge/Download-Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black" alt="Download for Linux" />
+    </a>
+  </p>
   <p>
     </p>
 </div>
