@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import {
-  FileText, Plus, Trash2, Save, X, DollarSign, Calendar,
+  FileText, FileSignature, Plus, Trash2, Save, X, DollarSign, Calendar,
   FileUp, Sparkles, Check, CheckCheck, Loader2, CheckCircle2,
   FolderKanban, ReceiptText, ArrowRight,
 } from "lucide-react";
@@ -250,16 +250,21 @@ function ContractRow({ contract, isSelected, onSelect }: {
 
   return (
     <button onClick={onSelect}
-      className={`w-full text-left ${LIST_ROW_PADDING} border-b border-border-subtle transition-colors
+      className={`w-full text-left ${LIST_ROW_PADDING} border-b border-border-subtle transition-colors flex items-center gap-3
         ${isSelected ? "bg-bg-selected" : "hover:bg-bg-hover"}`}>
-      <div className="flex items-center justify-between">
-        <div className="text-sm font-medium truncate">{title}</div>
-        <StatusBadge status={status} />
+      <div className="w-9 h-9 rounded-full bg-bg-card flex items-center justify-center text-sm font-semibold text-secondary shrink-0">
+        <FileSignature size={16} />
       </div>
-      <div className="flex items-center gap-2 text-xs text-tertiary mt-0.5">
-        {clientName && <span>{clientName}</span>}
-        {clientName && priceLabel && <span>·</span>}
-        {priceLabel && <span>{priceLabel}</span>}
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-sm font-medium truncate">{title}</div>
+          <StatusBadge status={status} />
+        </div>
+        <div className="flex items-center gap-2 text-xs text-tertiary mt-0.5">
+          {clientName && <span>{clientName}</span>}
+          {clientName && priceLabel && <span>·</span>}
+          {priceLabel && <span>{priceLabel}</span>}
+        </div>
       </div>
     </button>
   );

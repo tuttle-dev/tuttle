@@ -228,18 +228,23 @@ export function ProjectsView() {
               const isHighlighted = !isSelected && navFilter.contractId != null && num(p, "contract_id") === navFilter.contractId;
               return (
                 <button key={p.id} onClick={() => selectProject(p)}
-                  className={`w-full text-left ${LIST_ROW_PADDING} border-b transition-colors
+                  className={`w-full text-left ${LIST_ROW_PADDING} border-b transition-colors flex items-center gap-3
                     ${isSelected ? "bg-bg-selected border-border-subtle" : isHighlighted ? "bg-accent/10 border-accent/30" : "border-border-subtle hover:bg-bg-hover"}`}>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm font-medium truncate">{str(p, "title")}</span>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <TagBadge tag={str(p, "tag")} />
-                      <StatusBadge status={projectStatus(p)} />
-                    </div>
+                  <div className="w-9 h-9 rounded-full bg-bg-card flex items-center justify-center text-sm font-semibold text-secondary shrink-0">
+                    <FolderKanban size={16} />
                   </div>
-                  {clientName(p) && (
-                    <div className="text-xs text-tertiary mt-0.5 truncate">{clientName(p)}</div>
-                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-medium truncate">{str(p, "title")}</span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <TagBadge tag={str(p, "tag")} />
+                        <StatusBadge status={projectStatus(p)} />
+                      </div>
+                    </div>
+                    {clientName(p) && (
+                      <div className="text-xs text-tertiary mt-0.5 truncate">{clientName(p)}</div>
+                    )}
+                  </div>
                 </button>
               );
             })
