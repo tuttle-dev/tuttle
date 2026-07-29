@@ -15,6 +15,23 @@ class ContractType(enum.Enum):
         return str(self.value)
 
 
+class ChargeBasis(enum.Enum):
+    """How an additional contract charge is quantified on an invoice.
+
+    ``per_unit`` charges scale with the billed time quantity — three billed
+    days of work carry three daily fees. The other two are flat: one is
+    repeated on every invoice, the other is billed a single time over the
+    whole life of the contract.
+    """
+
+    per_unit = "per_unit"
+    per_invoice = "per_invoice"
+    once = "once"
+
+    def __str__(self):
+        return str(self.value)
+
+
 class Cycle(enum.Enum):
     hourly = "hourly"
     daily = "daily"

@@ -11,17 +11,19 @@ import numpy
 from loguru import logger
 from sqlmodel import Session, create_engine
 
-from tuttle import rendering
+from tuttle import invoicing, rendering
 from tuttle.calendar import Calendar, ICSCalendar
 from tuttle.data_dir import get_data_dir
 from tuttle.db_schema import ensure_schema
 from tuttle.model import (
     Address,
     BankAccount,
+    ChargeBasis,
     Client,
     ClientContact,
     Contact,
     Contract,
+    ContractCharge,
     Cycle,
     FinancialGoal,
     Invoice,
@@ -349,29 +351,60 @@ def create_fake_invoice(
         project=project,
         rendered=render,
     )
-    number_of_items = fake.random_int(min=1, max=4)
-    used_items = random.sample(
-        _HEATING_INVOICE_ITEMS,
-        k=min(number_of_items, len(_HEATING_INVOICE_ITEMS)),
-    )
     contract = project.contract
-    for desc, unit in used_items:
-        unit_price = abs(round(numpy.random.normal(75, 20), 2))
-        item_end = inv_date - timedelta(days=random.randint(1, 10))
-        item_start = item_end - timedelta(days=random.randint(5, 25))
+    item_end = inv_date - timedelta(days=random.randint(1, 10))
+    item_start = item_end - timedelta(days=random.randint(5, 25))
+
+    if contract.charges:
+        # A contract with additional charges bills one work line at the
+        # contractual rate plus a line per charge, the same shape
+        # invoicing.generate_invoice produces from tracked time.
+        days_worked = Decimal(fake.random_int(min=2, max=5))
         InvoiceItem(
             start_date=item_start,
             end_date=item_end,
-            quantity=fake.random_int(min=1, max=8),
-            unit=unit,
-            unit_price=Decimal(unit_price),
-            description=desc,
-            # Follow the contract: a USD contract to a US client is outside the
-            # scope of German VAT, so its items must not carry 19%.
+            quantity=float(days_worked),
+            unit=contract.unit.value,
+            unit_price=Decimal(str(contract.rate)),
+            description=project.title,
             VAT_rate=contract.VAT_rate,
             VAT_category=contract.VAT_category,
             invoice=invoice,
         )
+        # Recurring charges only. A one-time charge belongs on a single
+        # invoice, which is settled once the whole history exists — see
+        # apply_one_time_charges.
+        for charge_item in invoicing.build_charge_items(
+            invoicing._applicable_charges(contract, None),
+            contract=contract,
+            billable_quantity=days_worked,
+            start_date=item_start,
+            end_date=item_end,
+        ):
+            charge_item.invoice = invoice
+    else:
+        number_of_items = fake.random_int(min=1, max=4)
+        used_items = random.sample(
+            _HEATING_INVOICE_ITEMS,
+            k=min(number_of_items, len(_HEATING_INVOICE_ITEMS)),
+        )
+        for desc, unit in used_items:
+            unit_price = abs(round(numpy.random.normal(75, 20), 2))
+            item_end = inv_date - timedelta(days=random.randint(1, 10))
+            item_start = item_end - timedelta(days=random.randint(5, 25))
+            InvoiceItem(
+                start_date=item_start,
+                end_date=item_end,
+                quantity=fake.random_int(min=1, max=8),
+                unit=unit,
+                unit_price=Decimal(unit_price),
+                description=desc,
+                # Follow the contract: a USD contract to a US client is outside the
+                # scope of German VAT, so its items must not carry 19%.
+                VAT_rate=contract.VAT_rate,
+                VAT_category=contract.VAT_category,
+                invoice=invoice,
+            )
 
     # an invoice is created together with a timesheet. For the sake of simplicity, timesheet and invoice items are not linked.
     timesheet = create_fake_timesheet(fake, project)
@@ -640,6 +673,52 @@ def create_heating_data(
         )
         projects.append(project)
 
+    # -- a day-rate contract with additional charges ---------------------------
+    # Harry bills on-site retrofit work by the day, and the contract also
+    # covers a daily allowance for travel and consumables plus a one-off
+    # survey fee. Demonstrates a mixed contract: a time-based rate together
+    # with charges that are not derived from tracked time.
+    onsite_contract = Contract(
+        title="On-Site Boiler Retrofit – Central Services",
+        client=central_services,
+        signature_date=fake.date_between(start_date="-9M", end_date="-8M"),
+        start_date=fake.date_between(start_date="-8M", end_date="-7M"),
+        rate=Decimal("640"),
+        currency="EUR",
+        VAT_rate=Decimal("0.19"),
+        unit=TimeUnit.day,
+        units_per_workday=8,
+        volume=60,
+        term_of_payment=14,
+        billing_cycle=Cycle.monthly,
+        charges=[
+            ContractCharge(
+                description="Daily allowance (travel and consumables)",
+                amount=Decimal("85"),
+                basis=ChargeBasis.per_unit,
+                position=0,
+            ),
+            ContractCharge(
+                description="Site survey and setup fee",
+                amount=Decimal("450"),
+                basis=ChargeBasis.once,
+                position=1,
+            ),
+        ],
+    )
+    contracts.append(onsite_contract)
+    projects.append(
+        Project(
+            title="Boiler Retrofit",
+            tag="#boilerretrofit",
+            description="On-site boiler retrofit billed by the day, with a daily allowance",
+            is_completed=False,
+            start_date=onsite_contract.start_date,
+            end_date=datetime.date.today() + datetime.timedelta(days=180),
+            contract=onsite_contract,
+        )
+    )
+
     # -- one US client invoiced in USD ----------------------------------------
     # Harry is taxed in Germany but bills this one in dollars: the mixed-currency
     # case. B2B to a non-EU recipient, so the supply is outside the scope of
@@ -674,6 +753,34 @@ def create_fake_data(
 ):
     """Legacy entry point — delegates to heating-themed generator."""
     return create_heating_data(user, n=n)
+
+
+def apply_one_time_charges(invoices: List[Invoice]) -> List[InvoiceItem]:
+    """Bill each contract's one-time charges on its earliest invoice.
+
+    Demo invoices are generated per project and out of chronological order,
+    so a setup fee can only be placed correctly once the whole history is
+    known. Mirrors the rule the app enforces at runtime: a ``once`` charge
+    appears on exactly one invoice per contract.
+    """
+    by_contract: dict[int, List[Invoice]] = {}
+    for invoice in invoices:
+        if invoice.contract is not None and invoice.contract.charges:
+            by_contract.setdefault(id(invoice.contract), []).append(invoice)
+
+    created: List[InvoiceItem] = []
+    for contract_invoices in by_contract.values():
+        first = min(contract_invoices, key=lambda inv: inv.date)
+        contract = first.contract
+        one_time = [c for c in contract.charges if c.is_active and c.basis == ChargeBasis.once]
+        if not one_time:
+            continue
+        for item in invoicing.build_charge_items(one_time, contract=contract):
+            item.start_date = first.date
+            item.end_date = first.date
+            item.invoice = first
+            created.append(item)
+    return created
 
 
 def create_historical_invoices(
@@ -857,6 +964,12 @@ def install_demo_data(
         historical_invoices = create_historical_invoices(fake, projects, user, n_months=24)
         for invoice in historical_invoices:
             session.add(invoice)
+        session.commit()
+
+        # Only now is the full invoice history known, so one-time charges can
+        # be placed on the earliest invoice of each contract.
+        for item in apply_one_time_charges(invoices + historical_invoices):
+            session.add(item)
         session.commit()
 
         # add projects in the same session

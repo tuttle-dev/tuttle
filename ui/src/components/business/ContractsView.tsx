@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import {
   FileText, FileSignature, Plus, Trash2, Save, X, DollarSign, Calendar,
   FileUp, Sparkles, Check, CheckCheck, Loader2, CheckCircle2,
-  FolderKanban, ReceiptText, ArrowRight,
+  FolderKanban, ReceiptText, ArrowRight, ChevronRight, XCircle,
 } from "lucide-react";
 import { rpc } from "../../api/rpc";
 import { str, num, bool, entity as subEntity, list as entityList, displayName, formatDate } from "../../api/entity";
@@ -11,6 +11,7 @@ import { Toolbar, ToolbarButtonPrimary, ToolbarButtonSecondary, ToolbarFilterGro
 import { StatusBadge } from "../shared/StatusBadge";
 import { useNavigation } from "../shared/NavigationContext";
 import { EmptyStateIntro } from "../shared/EmptyStateIntro";
+import { InfoHint } from "../shared/InfoHint";
 import { useFieldRequirements } from "../../hooks/useFieldRequirements";
 import type { Entity } from "../../api/types";
 
@@ -97,6 +98,13 @@ export function ContractsView() {
       end_date: data.endDate || null,
       term_of_payment: data.termOfPayment || null,
       units_per_workday: data.unitsPerWorkday,
+      // Always sent, so clearing the last charge clears it server-side too.
+      charges: data.charges.map((c) => ({
+        id: c.id,
+        description: c.description.trim(),
+        amount: parseFloat(c.amount),
+        basis: c.basis,
+      })),
     };
     if (mode === "edit" && selected) contract.id = selected.id;
     const res = await rpc("contracts.save", { contract });
@@ -287,6 +295,7 @@ function ContractDetail({ contract, onEdit, onDelete, onToggle, deleteError }: {
   const isFixed = fixedPrice > 0;
   const projects = entityList(contract, "projects");
   const invoices = entityList(contract, "invoices");
+  const charges = entityList(contract, "charges");
 
   const startDate = str(contract, "start_date");
   const endDate = str(contract, "end_date");
@@ -343,6 +352,27 @@ function ContractDetail({ contract, onEdit, onDelete, onToggle, deleteError }: {
           {!isFixed && <TermItem label="Workday" value={`${str(contract, "units_per_workday") || "8"} ${unit}s`} />}
         </div>
       </DetailSection>
+
+      {/* Additional charges — only shown when this contract actually uses them */}
+      {charges.length > 0 && (
+        <DetailSection label="Additional Charges">
+          <div className="space-y-2">
+            {charges.map((charge) => (
+              <div key={charge.id} className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg bg-bg-card border border-border-subtle">
+                <div className="min-w-0">
+                  <div className="text-sm truncate">{str(charge, "description")}</div>
+                  <div className="text-xs text-tertiary mt-0.5">
+                    {CHARGE_BASIS_LABELS[(str(charge, "basis") as ChargeBasis)] || str(charge, "basis")}
+                  </div>
+                </div>
+                <div className="text-sm font-medium tabular-nums shrink-0">
+                  {num(charge, "amount")} {currency}
+                </div>
+              </div>
+            ))}
+          </div>
+        </DetailSection>
+      )}
 
       {/* Period */}
       <DetailSection label="Period">
@@ -427,9 +457,39 @@ interface ContractFormData {
   endDate: string;
   termOfPayment: number | null;
   unitsPerWorkday: number;
+  charges: ChargeRow[];
 }
 
 type PricingMode = "time_based" | "fixed_price";
+
+type ChargeBasis = "per_unit" | "per_invoice" | "once";
+
+const CHARGE_BASIS_LABELS: Record<ChargeBasis, string> = {
+  per_unit: "Per billed unit",
+  per_invoice: "On every invoice",
+  once: "Once (first invoice only)",
+};
+
+interface ChargeRow {
+  id: number | null;
+  description: string;
+  amount: string;
+  basis: ChargeBasis;
+}
+
+function chargeRowsFrom(contract?: Entity): ChargeRow[] {
+  if (!contract) return [];
+  return entityList(contract, "charges").map((c) => ({
+    id: c.id,
+    description: str(c, "description"),
+    amount: str(c, "amount"),
+    basis: (str(c, "basis") as ChargeBasis) || "per_unit",
+  }));
+}
+
+function isBlankCharge(row: ChargeRow): boolean {
+  return !row.description.trim() && !row.amount.trim();
+}
 
 function ContractForm({ contract, clients, defaultCurrency, currencies, onSave, onCancel, error }: {
   contract?: Entity;
@@ -468,16 +528,21 @@ function ContractForm({ contract, clients, defaultCurrency, currencies, onSave, 
       endDate: str(contract, "end_date"),
       termOfPayment: num(contract, "term_of_payment") || null,
       unitsPerWorkday: num(contract, "units_per_workday") || 8,
+      charges: chargeRowsFrom(contract),
     };
     return {
       title: "", clientId: null, type: "time_based", fixedPrice: null, rate: null, currency: defaultCurrency,
       unit: "hour", billingCycle: "monthly", volume: null, vatRate: 0.19, vatCategory: "S",
       signatureDate: "", startDate: "", endDate: "", termOfPayment: 31, unitsPerWorkday: 8,
+      charges: [],
     };
   });
   const { isRequired } = useFieldRequirements("contracts");
   const [saving, setSaving] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
+  // Additional charges are an advanced option: kept out of sight unless this
+  // contract already uses them or the user asks for them.
+  const [showCharges, setShowCharges] = useState(chargeRowsFrom(contract).length > 0);
   const isNew = !contract;
   const isFixed = pricingMode === "fixed_price";
 
@@ -500,10 +565,37 @@ function ContractForm({ contract, clients, defaultCurrency, currencies, onSave, 
     setPricingMode(mode);
     setValidationError(null);
     if (mode === "fixed_price") {
-      setForm((prev) => ({ ...prev, type: mode, rate: null }));
+      // A fixed-price contract has no billed units for a per-unit charge to
+      // scale by, so those rows move to the nearest meaningful basis.
+      setForm((prev) => ({
+        ...prev,
+        type: mode,
+        rate: null,
+        charges: prev.charges.map((c) => (c.basis === "per_unit" ? { ...c, basis: "per_invoice" } : c)),
+      }));
     } else {
       setForm((prev) => ({ ...prev, type: mode, fixedPrice: null }));
     }
+  }
+
+  function updateCharge(idx: number, patch: Partial<ChargeRow>) {
+    setForm((prev) => ({
+      ...prev,
+      charges: prev.charges.map((c, i) => (i === idx ? { ...c, ...patch } : c)),
+    }));
+    setValidationError(null);
+  }
+
+  function addCharge() {
+    setForm((prev) => ({
+      ...prev,
+      charges: [...prev.charges, { id: null, description: "", amount: "", basis: isFixed ? "per_invoice" : "per_unit" }],
+    }));
+  }
+
+  function removeCharge(idx: number) {
+    setForm((prev) => ({ ...prev, charges: prev.charges.filter((_, i) => i !== idx) }));
+    setValidationError(null);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -518,8 +610,15 @@ function ContractForm({ contract, clients, defaultCurrency, currencies, onSave, 
     if (form.endDate && form.startDate && form.endDate < form.startDate) {
       setValidationError("End date must be on or after start date"); return;
     }
+    // An untouched row the user added and ignored is dropped; a half-filled
+    // one is a mistake worth reporting rather than silently discarding.
+    const charges = form.charges.filter((c) => !isBlankCharge(c));
+    if (charges.some((c) => !c.description.trim() || !(parseFloat(c.amount) > 0))) {
+      setValidationError("Give every additional charge a description and an amount greater than zero");
+      return;
+    }
     setSaving(true);
-    await onSave(form);
+    await onSave({ ...form, charges });
     setSaving(false);
   }
 
@@ -652,6 +751,19 @@ function ContractForm({ contract, clients, defaultCurrency, currencies, onSave, 
             </div>
           </div>
         )}
+
+        <ChargesEditor
+          charges={form.charges}
+          expanded={showCharges}
+          onToggle={() => setShowCharges((v) => !v)}
+          isFixed={isFixed}
+          currency={form.currency}
+          unitLabel={form.unit}
+          onAdd={addCharge}
+          onUpdate={updateCharge}
+          onRemove={removeCharge}
+          inputCls={inputCls}
+        />
       </Section>
 
       <Section title="Dates">
@@ -686,6 +798,86 @@ function ContractForm({ contract, clients, defaultCurrency, currencies, onSave, 
         </div>
       </Section>
     </form>
+  );
+}
+
+/* ---------- Additional charges ---------- */
+
+function ChargesEditor({ charges, expanded, onToggle, isFixed, currency, unitLabel, onAdd, onUpdate, onRemove, inputCls }: {
+  charges: ChargeRow[];
+  expanded: boolean;
+  onToggle: () => void;
+  isFixed: boolean;
+  currency: string;
+  unitLabel: string;
+  onAdd: () => void;
+  onUpdate: (idx: number, patch: Partial<ChargeRow>) => void;
+  onRemove: (idx: number) => void;
+  inputCls: string;
+}) {
+  // Collapsing while rows exist would hide data the user cannot see is still
+  // there, so the toggle only closes an empty editor.
+  const canCollapse = charges.length === 0;
+  const bases: ChargeBasis[] = isFixed ? ["per_invoice", "once"] : ["per_unit", "per_invoice", "once"];
+
+  return (
+    <div className="mt-4 pt-4 border-t border-border-subtle">
+      <div className="flex items-center gap-2">
+        <button type="button" onClick={expanded && !canCollapse ? undefined : onToggle}
+          aria-expanded={expanded}
+          className={`flex items-center gap-1.5 text-xs font-medium transition-colors
+            ${expanded && !canCollapse ? "text-secondary cursor-default" : "text-tertiary hover:text-primary"}`}>
+          <ChevronRight size={13} className={`transition-transform ${expanded ? "rotate-90" : ""}`} />
+          Additional charges <span className="text-muted font-normal">(optional)</span>
+        </button>
+        <InfoHint
+          label="additional charges"
+          text="Extra charges billed alongside the rate, such as a daily expense allowance that accompanies a day rate, or a one-time setup fee. Each one becomes its own line on the invoice."
+        />
+      </div>
+
+      {expanded && (
+        <div className="mt-3 space-y-2">
+          {charges.map((charge, idx) => (
+            <div key={idx} className="flex gap-1.5 items-start p-2 rounded-lg bg-bg-card border border-border-subtle">
+              <div className="flex-1 min-w-0 space-y-1.5">
+                <input type="text" placeholder="Description" value={charge.description}
+                  onChange={(e) => onUpdate(idx, { description: e.target.value })}
+                  className="w-full px-2 py-1 rounded bg-bg-content border border-border-subtle text-xs text-primary placeholder:text-muted" />
+                <div className="flex gap-1.5">
+                  <div className="flex items-center gap-1 w-32">
+                    <input type="number" min="0" step="0.01" placeholder="Amount" value={charge.amount}
+                      onChange={(e) => onUpdate(idx, { amount: e.target.value })}
+                      className="w-full px-2 py-1 rounded bg-bg-content border border-border-subtle text-xs text-primary placeholder:text-muted tabular-nums" />
+                    <span className="text-[10px] text-muted shrink-0">{currency}</span>
+                  </div>
+                  <select value={charge.basis} onChange={(e) => onUpdate(idx, { basis: e.target.value as ChargeBasis })}
+                    className="flex-1 min-w-0 px-1.5 py-1 rounded bg-bg-content border border-border-subtle text-xs text-primary">
+                    {bases.map((b) => <option key={b} value={b}>{CHARGE_BASIS_LABELS[b]}</option>)}
+                  </select>
+                </div>
+                <p className="text-[10px] text-muted">
+                  {charge.basis === "per_unit"
+                    ? `Billed once per ${unitLabel} worked, matching the quantity of the ${unitLabel} rate.`
+                    : charge.basis === "per_invoice"
+                      ? "Billed once on every invoice from this contract."
+                      : "Billed a single time, on the first invoice from this contract."}
+                </p>
+              </div>
+              <button type="button" onClick={() => onRemove(idx)}
+                className="mt-1 p-1 rounded text-muted hover:text-red-400 hover:bg-red-400/10 transition-colors"
+                title="Remove charge">
+                <XCircle size={14} />
+              </button>
+            </div>
+          ))}
+          <button type="button" onClick={onAdd}
+            className="flex items-center gap-1 text-xs text-accent hover:text-accent/80 transition-colors">
+            <Plus size={12} /> Add charge
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
 

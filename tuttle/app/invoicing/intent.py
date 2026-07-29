@@ -12,6 +12,7 @@ from ... import invoicing, mail, rendering, timetracking
 from ...app_db import AppDatabase
 from ...data_dir import get_data_dir
 from ...model import Invoice, InvoiceItem, Project, Timesheet, User
+from ...time import ChargeBasis
 from ..auth.data_source import UserDataSource
 from ..auth.intent import AuthIntent
 from ..core.abstractions import Intent
@@ -202,6 +203,34 @@ class InvoicingIntent(Intent):
                 error_msg=f"Could not delete invoice: {ex}",
             )
 
+    def get_eligible_charges(self, project_id) -> IntentResult:
+        """Charges that the next invoice for this project would carry.
+
+        Lets the invoice dialog preview exactly what will be billed rather
+        than the whole charge list — a one-time fee that is already spent
+        must not be advertised as upcoming.
+        """
+        result = self._projects_intent.get_by_id(project_id)
+        if not result.was_intent_successful or result.data is None:
+            return IntentResult(was_intent_successful=True, data=[])
+        contract = result.data.contract
+        if contract is None:
+            return IntentResult(was_intent_successful=True, data=[])
+        return IntentResult(was_intent_successful=True, data=self._eligible_charges(contract))
+
+    def _eligible_charges(self, contract) -> list:
+        """Active contract charges that belong on the next invoice.
+
+        A ``once`` charge drops out as soon as it appears on any
+        non-cancelled invoice of the same contract, so a setup fee lands on
+        the first invoice and never again.
+        """
+        active = [c for c in contract.charges if c.is_active]
+        if not any(c.basis == ChargeBasis.once for c in active):
+            return active
+        billed = self._invoicing_data_source.get_billed_charge_ids(contract.id)
+        return [c for c in active if c.basis != ChargeBasis.once or c.id not in billed]
+
     def create_invoice(
         self,
         invoice_date: date,
@@ -286,6 +315,7 @@ class InvoicingIntent(Intent):
                     number=invoice_number,
                     contract=project.contract,
                     project=project,
+                    charges=self._eligible_charges(project.contract),
                 )
             else:
                 # ── Time-tracking path (existing) ─────────────────
@@ -302,6 +332,7 @@ class InvoicingIntent(Intent):
                     timesheets=[timesheet],
                     contract=project.contract,
                     project=project,
+                    charges=self._eligible_charges(project.contract),
                 )
                 timesheet.invoice = invoice
 
