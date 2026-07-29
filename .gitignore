@@ -157,3 +157,7 @@ ui/dist/
 ui/dist-electron/
 ui/release/
 ui/.vite/
+
+# graft's local graph cache — regenerable, not committed (run `graft build`).
+# Anchored: an unanchored pattern would also swallow .claude/skills/graft/.
+/graft/
