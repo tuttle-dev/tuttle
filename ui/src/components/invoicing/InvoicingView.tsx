@@ -224,16 +224,49 @@ interface LineItem {
 
 const UNIT_OPTIONS = ["hour", "day", "piece", "flat"] as const;
 
+const CHARGE_BASIS_LABELS: Record<string, string> = {
+  per_unit: "per billed unit",
+  per_invoice: "every invoice",
+  once: "once, on the first invoice",
+};
+
+function contractOf(project?: Entity | null): Entity | null {
+  return project ? subEntity(project, "contract") : null;
+}
+
+/** Additional charges the contract will add to the invoice, if any. */
+function contractCharges(project?: Entity | null): Entity[] {
+  const contract = contractOf(project);
+  if (!contract) return [];
+  return entityList(contract, "charges").filter((c) => bool(c, "is_active"));
+}
+
 function makeDefaultItem(project?: Entity | null): LineItem {
-  const contract = project ? (project as Record<string, unknown>).contract as Record<string, unknown> | undefined : undefined;
-  const unit = contract?.unit as string | undefined;
-  const rate = contract?.rate as number | undefined;
+  const contract = contractOf(project);
+  const unit = contract ? str(contract, "unit") : "";
+  const rate = contract ? num(contract, "rate") : 0;
   return {
     description: project ? str(project, "title") : "",
     quantity: "",
-    unit: unit ?? "hour",
-    unitPrice: rate != null ? String(rate) : "",
+    unit: unit || "hour",
+    unitPrice: rate ? String(rate) : "",
   };
+}
+
+/** Manual line items seeded from the project: the rate line plus each charge. */
+function makeDefaultItems(project?: Entity | null, charges?: Entity[] | null): LineItem[] {
+  const contract = contractOf(project);
+  const contractUnit = contract ? str(contract, "unit") || "hour" : "hour";
+  const items = [makeDefaultItem(project)];
+  for (const charge of charges ?? contractCharges(project)) {
+    items.push({
+      description: str(charge, "description"),
+      quantity: "",
+      unit: str(charge, "unit") || (str(charge, "basis") === "per_unit" ? contractUnit : "flat"),
+      unitPrice: String(num(charge, "amount")),
+    });
+  }
+  return items;
 }
 
 function CreateInvoiceDialog({ onClose, onCreated }: { onClose: () => void; onCreated: (newId?: number, warning?: string | null) => Promise<void> | void }) {
@@ -276,6 +309,28 @@ function CreateInvoiceDialog({ onClose, onCreated }: { onClose: () => void; onCr
 
   const selectedProject = projects.find((p) => p.id === projectId) ?? null;
   const isFixedPrice = selectedProject ? bool(selectedProject, "is_fixed_price") : false;
+  const [eligibleCharges, setEligibleCharges] = useState<Entity[] | null>(null);
+  const charges = eligibleCharges ?? contractCharges(selectedProject);
+  const selectedContract = contractOf(selectedProject);
+  const chargeCurrency = (selectedContract ? str(selectedContract, "currency") : "") || "EUR";
+
+  // The backend decides which charges a new invoice actually carries — a
+  // one-time fee already billed must not be previewed as upcoming.
+  useEffect(() => {
+    if (projectId == null) { setEligibleCharges(null); return; }
+    let cancelled = false;
+    (async () => {
+      const res = await rpc<Entity[]>("invoicing.get_eligible_charges", { project_id: projectId });
+      if (cancelled) return;
+      const resolved = res.ok && res.data ? res.data : null;
+      setEligibleCharges(resolved);
+      if (resolved) {
+        const proj = projects.find((p) => p.id === projectId) ?? null;
+        setLineItems(makeDefaultItems(proj, resolved));
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [projectId]);
 
   useEffect(() => {
     (async () => {
@@ -289,7 +344,7 @@ function CreateInvoiceDialog({ onClose, onCreated }: { onClose: () => void; onCr
         setProjects(active);
         if (active.length > 0) {
           setProjectId(active[0].id);
-          setLineItems([makeDefaultItem(active[0])]);
+          setLineItems(makeDefaultItems(active[0]));
         }
       }
       if (ttRes.ok && ttRes.data && ttRes.data.total_events > 0) setHasTimeData(true);
@@ -301,7 +356,7 @@ function CreateInvoiceDialog({ onClose, onCreated }: { onClose: () => void; onCr
   function handleProjectChange(newId: number) {
     setProjectId(newId);
     const proj = projects.find((p) => p.id === newId) ?? null;
-    setLineItems([makeDefaultItem(proj)]);
+    setLineItems(makeDefaultItems(proj));
   }
 
   function updateItem(idx: number, patch: Partial<LineItem>) {
@@ -398,6 +453,29 @@ function CreateInvoiceDialog({ onClose, onCreated }: { onClose: () => void; onCr
               </div>
             );
           })()}
+
+          {/* Additional charges the contract will add on top — only when it has any */}
+          {mode !== "manual" && charges.length > 0 && (
+            <div className="px-3 py-2.5 rounded-lg bg-bg-card border border-border-subtle">
+              <div className="text-[10px] font-semibold text-muted uppercase tracking-wider">Additional charges</div>
+              <div className="mt-1.5 space-y-1">
+                {charges.map((charge) => (
+                  <div key={charge.id} className="flex items-center justify-between gap-2 text-xs">
+                    <span className="text-secondary truncate">
+                      {str(charge, "description")}
+                      <span className="text-muted ml-1.5">
+                        {CHARGE_BASIS_LABELS[str(charge, "basis")] || str(charge, "basis")}
+                      </span>
+                    </span>
+                    <span className="text-primary tabular-nums shrink-0">
+                      {num(charge, "amount")} {chargeCurrency}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[10px] text-muted mt-1.5">Added to this invoice as separate lines.</p>
+            </div>
+          )}
 
           {/* Mode toggle (time-based only) */}
           {!isFixedPrice && (

@@ -25,6 +25,10 @@ UNIT_CODE_MAP = {
     "unit": "C62",
     "piece": "C62",
     "minute": "MIN",
+    # Lump-sum lines: a fixed-price total or a flat contract charge. UN/ECE
+    # has no "lump sum" code, so they bill as one countable unit.
+    "flat": "C62",
+    "fixed_price": "C62",
 }
 
 

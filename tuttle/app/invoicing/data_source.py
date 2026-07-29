@@ -1,10 +1,10 @@
 import datetime
-from typing import List, Optional
+from typing import List, Optional, Set
 
 import sqlmodel
 from loguru import logger
 
-from ...model import Invoice, Timesheet
+from ...model import Invoice, InvoiceItem, Timesheet
 from ..core.abstractions import SQLModelDataSourceMixin
 from ..core.intent_result import IntentResult
 
@@ -156,6 +156,24 @@ class InvoicingDataSource(SQLModelDataSourceMixin):
                 log_message=f"InvoicingDataSource.get_reminder_chain({invoice_id}): {ex}",
                 exception=ex,
             )
+
+    def get_billed_charge_ids(self, contract_id: int) -> Set[int]:
+        """Ids of contract charges already billed on this contract.
+
+        Cancelled invoices do not count — a one-time fee on an invoice that
+        was voided has not actually been charged, so it stays billable.
+        """
+        with self.create_session() as session:
+            rows = session.exec(
+                sqlmodel.select(InvoiceItem.contract_charge_id)
+                .join(Invoice, InvoiceItem.invoice_id == Invoice.id)  # type: ignore[arg-type]
+                .where(
+                    Invoice.contract_id == contract_id,
+                    InvoiceItem.contract_charge_id.is_not(None),  # type: ignore[union-attr]
+                    sqlmodel.col(Invoice.cancelled).is_not(True),
+                )
+            ).all()
+        return {row for row in rows if row is not None}
 
     def get_all_reminders_for_invoice(self, invoice_id: int) -> List[Invoice]:
         """Return only the reminders (not the root) for a given root invoice id."""

@@ -12,10 +12,12 @@ from sqlmodel import Session, SQLModel, create_engine, select
 
 from tuttle.model import (
     Address,
+    ChargeBasis,
     Client,
     ClientContact,
     Contact,
     Contract,
+    ContractCharge,
     Cycle,
     InvoiceItem,
     Project,
@@ -323,6 +325,49 @@ class TestContract:
     def test_missing_fields_instantiation(self):
         with pytest.raises(ValidationError):
             Contract.validate(dict())
+
+
+class TestContractCharge:
+    """Additional charges live and die with their contract."""
+
+    def _contract_with_charge(self):
+        return Contract(
+            title="Retrofit Contract",
+            client=Client(name="Central Services"),
+            start_date=datetime.date(2026, 1, 1),
+            rate=Decimal("640"),
+            currency="EUR",
+            VAT_rate=Decimal("0.19"),
+            unit=TimeUnit.day,
+            charges=[ContractCharge(description="Daily allowance", amount=Decimal("85"))],
+        )
+
+    def test_charges_are_deleted_with_the_contract(self):
+        engine = create_engine("sqlite:///")
+        SQLModel.metadata.create_all(engine)
+        with Session(engine) as session:
+            contract = self._contract_with_charge()
+            session.add(contract)
+            session.commit()
+            assert len(session.exec(select(ContractCharge)).all()) == 1
+            session.delete(contract)
+            session.commit()
+            assert session.exec(select(ContractCharge)).all() == []
+
+    def test_effective_unit_falls_back_to_the_contract_unit(self):
+        contract = self._contract_with_charge()
+        charge = contract.charges[0]
+        assert charge.effective_unit(contract) == "day"
+
+    def test_flat_charges_default_to_a_flat_unit(self):
+        contract = self._contract_with_charge()
+        charge = ContractCharge(description="Setup fee", amount=Decimal("450"), basis=ChargeBasis.once)
+        assert charge.effective_unit(contract) == "flat"
+
+    def test_an_explicit_unit_wins(self):
+        contract = self._contract_with_charge()
+        charge = ContractCharge(description="Materials", amount=Decimal("30"), unit="piece")
+        assert charge.effective_unit(contract) == "piece"
 
 
 class TestProject:

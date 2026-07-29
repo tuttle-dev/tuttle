@@ -14,13 +14,14 @@ from tuttle.model import (
     Address,
     Client,
     Contract,
+    ContractCharge,
     Invoice,
     InvoiceItem,
     InvoiceNote,
     Project,
     TaxCategory,
 )
-from tuttle.time import ContractType, Cycle, TimeUnit
+from tuttle.time import ChargeBasis, ContractType, Cycle, TimeUnit
 
 
 def test_invoice():
@@ -323,6 +324,203 @@ class TestFixedPriceInvoicing:
         )
         assert invoice.VAT_total == Decimal("190.00")
         assert invoice.total == Decimal("1190.00")
+
+
+# ---------------------------------------------------------------------------
+# Additional contract charges
+# ---------------------------------------------------------------------------
+
+
+def _tracked_hours(tag: str, hours: int) -> pandas.DataFrame:
+    """One tracked block of *hours* hours, starting 2022-01-03 09:00."""
+    begin = pandas.to_datetime(["2022-01-03 09:00:00"])
+    df = pandas.DataFrame(
+        {
+            "begin": begin,
+            "end": begin + pandas.Timedelta(hours=hours),
+            "title": ["Retrofit work"],
+            "tag": [tag],
+            "description": [""],
+            "all_day": [False],
+        }
+    )
+    df["duration"] = df["end"] - df["begin"]
+    return df.set_index("begin")
+
+
+def _day_rate_project_with_charges(*charges: ContractCharge, tag: str) -> Project:
+    """A €500/day contract (8h workday) carrying the given charges."""
+    project = _build_project(TimeUnit.day, Decimal("500"), tag=tag)
+    project.contract.charges = list(charges)
+    return project
+
+
+def _invoice_for(project: Project, hours: int, charges=None) -> Invoice:
+    timesheet = timetracking.generate_timesheet(
+        timetracking_data=_tracked_hours(project.tag, hours),
+        project=project,
+        period_start=datetime.date(2022, 1, 1),
+        period_end=datetime.date(2022, 1, 31),
+    )
+    return invoicing.generate_invoice(
+        timesheets=[timesheet],
+        contract=project.contract,
+        project=project,
+        number="CHG-001",
+        date=datetime.date(2022, 2, 1),
+        charges=charges,
+    )
+
+
+class TestPerUnitCharges:
+    """A per-unit charge is billed in lockstep with the tracked time."""
+
+    def test_daily_fee_mirrors_billed_days(self):
+        """The headline case: 3 days worked bills 3 day rates and 3 daily fees."""
+        project = _day_rate_project_with_charges(
+            ContractCharge(description="Daily allowance", amount=Decimal("80")),
+            tag="#DailyFee",
+        )
+        invoice = _invoice_for(project, hours=24)
+
+        assert len(invoice.items) == 2
+        work, fee = invoice.items
+        assert work.quantity == pytest.approx(3.0)
+        assert work.unit_price == Decimal("500")
+        assert fee.quantity == pytest.approx(3.0)
+        assert fee.unit == "day"
+        assert fee.unit_price == Decimal("80")
+        assert fee.description == "Daily allowance"
+        assert invoice.sum == Decimal("1740")  # 3 × 500 + 3 × 80
+
+    def test_fractional_days_carry_fractional_fees(self):
+        """A fee mirrors the billed quantity exactly, fractions included."""
+        project = _day_rate_project_with_charges(
+            ContractCharge(description="Daily allowance", amount=Decimal("80")),
+            tag="#FracFee",
+        )
+        invoice = _invoice_for(project, hours=20)
+
+        work, fee = invoice.items
+        assert work.quantity == pytest.approx(2.5)
+        assert fee.quantity == pytest.approx(2.5)
+        assert invoice.sum == Decimal("1450")  # 2.5 × 500 + 2.5 × 80
+
+    def test_charge_inherits_contract_tax_treatment(self):
+        project = _day_rate_project_with_charges(
+            ContractCharge(description="Daily allowance", amount=Decimal("80")),
+            tag="#FeeVAT",
+        )
+        project.contract.VAT_category = TaxCategory.standard
+        fee = _invoice_for(project, hours=8).items[1]
+
+        assert fee.VAT_rate == Decimal("0.19")
+        assert fee.VAT_category is TaxCategory.standard
+
+
+class TestFlatCharges:
+    """Charges that are not derived from tracked time bill a single unit."""
+
+    def test_per_invoice_charge_ignores_tracked_time(self):
+        project = _day_rate_project_with_charges(
+            ContractCharge(description="Handling fee", amount=Decimal("25"), basis=ChargeBasis.per_invoice),
+            tag="#Handling",
+        )
+        invoice = _invoice_for(project, hours=24)
+
+        fee = invoice.items[1]
+        assert fee.quantity == pytest.approx(1.0)
+        assert fee.unit == "flat"
+        assert invoice.sum == Decimal("1525")  # 3 × 500 + 25
+
+    def test_charges_keep_their_configured_order(self):
+        project = _day_rate_project_with_charges(
+            ContractCharge(description="Second", amount=Decimal("10"), basis=ChargeBasis.per_invoice, position=1),
+            ContractCharge(description="First", amount=Decimal("20"), basis=ChargeBasis.per_invoice, position=0),
+            tag="#Ordered",
+        )
+        invoice = _invoice_for(project, hours=8)
+
+        assert [item.description for item in invoice.items[1:]] == ["First", "Second"]
+
+    def test_once_charge_is_left_out_when_history_is_unknown(self):
+        """Without a caller-supplied list, a one-time charge is withheld.
+
+        ``generate_invoice`` cannot see earlier invoices, and billing a setup
+        fee twice is worse than billing it late.
+        """
+        project = _day_rate_project_with_charges(
+            ContractCharge(description="Setup fee", amount=Decimal("450"), basis=ChargeBasis.once),
+            tag="#OnceUnknown",
+        )
+        invoice = _invoice_for(project, hours=8)
+
+        assert len(invoice.items) == 1
+
+    def test_once_charge_is_billed_when_the_caller_supplies_it(self):
+        project = _day_rate_project_with_charges(
+            ContractCharge(description="Setup fee", amount=Decimal("450"), basis=ChargeBasis.once),
+            tag="#OnceGiven",
+        )
+        invoice = _invoice_for(project, hours=8, charges=project.contract.charges)
+
+        assert [item.description for item in invoice.items][1:] == ["Setup fee"]
+        assert invoice.items[1].quantity == pytest.approx(1.0)
+
+    def test_inactive_charges_are_skipped(self):
+        project = _day_rate_project_with_charges(
+            ContractCharge(description="Retired fee", amount=Decimal("99"), is_active=False),
+            tag="#Inactive",
+        )
+        assert len(_invoice_for(project, hours=8).items) == 1
+
+    def test_fixed_price_invoice_carries_flat_charges(self):
+        project = _build_fixed_price_project(Decimal("4500"), tag="#FPCharge")
+        project.contract.charges = [
+            ContractCharge(description="Handling fee", amount=Decimal("50"), basis=ChargeBasis.per_invoice),
+        ]
+        invoice = invoicing.generate_fixed_price_invoice(
+            contract=project.contract,
+            project=project,
+            number="FP-CHG",
+            date=datetime.date(2022, 2, 1),
+        )
+
+        assert len(invoice.items) == 2
+        assert invoice.sum == Decimal("4550")
+
+
+class TestChargeValidation:
+    """``Contract.validate_charges`` is the single gate on every write path."""
+
+    def test_per_unit_charge_rejected_on_fixed_price_contract(self):
+        project = _build_fixed_price_project(Decimal("4500"), tag="#FPPerUnit")
+        project.contract.charges = [
+            ContractCharge(description="Daily allowance", amount=Decimal("80"), basis=ChargeBasis.per_unit),
+        ]
+        with pytest.raises(ValueError, match="per unit"):
+            project.contract.validate_charges()
+
+    def test_charge_needs_a_description(self):
+        project = _build_project(TimeUnit.day, Decimal("500"), tag="#NoDesc")
+        project.contract.charges = [ContractCharge(description="  ", amount=Decimal("80"))]
+        with pytest.raises(ValueError, match="description"):
+            project.contract.validate_charges()
+
+    @pytest.mark.parametrize("amount", [Decimal("0"), Decimal("-5")])
+    def test_charge_needs_a_positive_amount(self, amount):
+        project = _build_project(TimeUnit.day, Decimal("500"), tag="#BadAmount")
+        project.contract.charges = [ContractCharge(description="Allowance", amount=amount)]
+        with pytest.raises(ValueError, match="greater than zero"):
+            project.contract.validate_charges()
+
+    def test_valid_charges_pass(self):
+        project = _day_rate_project_with_charges(
+            ContractCharge(description="Daily allowance", amount=Decimal("80")),
+            ContractCharge(description="Setup fee", amount=Decimal("450"), basis=ChargeBasis.once),
+            tag="#Valid",
+        )
+        project.contract.validate_charges()
 
 
 # ---------------------------------------------------------------------------

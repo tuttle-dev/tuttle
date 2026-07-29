@@ -36,7 +36,7 @@ from .app.core.formatting import fmt_currency
 from .data_dir import get_data_dir
 from .dev import deprecated
 from .fx import convert, primary_currency, rate
-from .time import ContractType, Cycle, TimeUnit
+from .time import ChargeBasis, ContractType, Cycle, TimeUnit
 
 DocumentType = Literal["invoice", "reminder"]
 
@@ -480,6 +480,7 @@ class Contract(RpcMixin, VatCategoryMixin, SQLModel, table=True):
         "client": None,
         "projects": ("id", "title"),
         "invoices": ("id",),
+        "charges": None,
     }
     __rpc_computed__ = ("unit_abbrev", "is_fixed_price")
 
@@ -573,6 +574,14 @@ class Contract(RpcMixin, VatCategoryMixin, SQLModel, table=True):
         back_populates="contract",
         sa_relationship_kwargs={"lazy": "subquery", "passive_deletes": "all"},
     )
+    charges: List["ContractCharge"] = Relationship(
+        back_populates="contract",
+        sa_relationship_kwargs={
+            "lazy": "subquery",
+            "cascade": "all, delete-orphan",
+            "order_by": "ContractCharge.position",
+        },
+    )
 
     @property
     def is_fixed_price(self) -> bool:
@@ -665,6 +674,72 @@ class Contract(RpcMixin, VatCategoryMixin, SQLModel, table=True):
             if not (self.rate is not None and self.rate > 0):
                 raise ValueError("A time-based contract needs a rate.")
             self.fixed_price = None
+
+    def validate_charges(self) -> None:
+        """Check the additional charges attached to this contract.
+
+        Explicit rather than a pydantic validator, for the same reason as
+        ``validate_pricing``. A ``per_unit`` charge scales with tracked
+        time, so it is meaningless on a fixed-price contract, which has no
+        billable units to scale by.
+        """
+        for charge in self.charges:
+            if not (charge.description or "").strip():
+                raise ValueError("An additional charge needs a description.")
+            if charge.amount is None or Decimal(str(charge.amount)) <= 0:
+                raise ValueError(f"Additional charge '{charge.description}' needs an amount greater than zero.")
+            if charge.basis == ChargeBasis.per_unit and self.is_fixed_price:
+                raise ValueError(
+                    f"Additional charge '{charge.description}' is billed per unit, which a fixed-price contract does not have."
+                )
+
+
+class ContractCharge(RpcMixin, SQLModel, table=True):
+    """An additional charge billed alongside a contract's primary price.
+
+    Models the parts of a contract that the single ``rate`` /
+    ``fixed_price`` column cannot express: a daily lump-sum expense
+    allowance that accompanies the day rate, a flat handling fee on every
+    invoice, or a one-off setup fee. Each charge becomes its own line on
+    the generated invoice and inherits the contract's tax treatment.
+    """
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    contract_id: Optional[int] = Field(default=None, foreign_key="contract.id", ondelete="CASCADE")
+    contract: Optional[Contract] = Relationship(
+        back_populates="charges",
+        sa_relationship_kwargs={"lazy": "subquery"},
+    )
+    description: str = Field(description="What the charge is for, used as the invoice line description.")
+    amount: Decimal = Field(
+        sa_column=sqlalchemy.Column(sqlalchemy.Numeric(12, 2), nullable=False),
+        description="Price of one unit of this charge.",
+    )
+    basis: ChargeBasis = Field(
+        description="How the charge is quantified: scaling with the billed time "
+        "quantity, repeated on every invoice, or billed once per contract.",
+        sa_column=sqlalchemy.Column(
+            sqlalchemy.Enum(ChargeBasis),
+            nullable=False,
+            server_default=ChargeBasis.per_unit.name,
+        ),
+        default=ChargeBasis.per_unit,
+    )
+    unit: Optional[str] = Field(
+        default=None,
+        description="Display unit for the invoice line. When unset it falls back "
+        "to the contract unit for per-unit charges and 'flat' otherwise.",
+    )
+    position: int = Field(default=0, description="Sort order of the charge among the invoice lines.")
+    is_active: bool = Field(default=True, description="Whether the charge is applied to new invoices.")
+
+    def effective_unit(self, contract: "Contract") -> str:
+        """Invoice-line unit for this charge, resolved against its contract."""
+        if self.unit:
+            return self.unit
+        if self.basis == ChargeBasis.per_unit:
+            return contract.unit.value
+        return "flat"
 
 
 class Project(RpcMixin, SQLModel, table=True):
@@ -1191,6 +1266,20 @@ class InvoiceItem(RpcMixin, VatCategoryMixin, SQLModel, table=True):
             server_default=TaxCategory.standard.name,
         ),
         default=TaxCategory.standard,
+    )
+    # Provenance: set when the line came from a ContractCharge rather than
+    # from tracked time. A ``once`` charge is recognised as already billed by
+    # looking for an earlier item carrying its id.
+    contract_charge_id: Optional[int] = Field(
+        default=None,
+        foreign_key="contractcharge.id",
+        ondelete="SET NULL",
+        description="The contract charge this line was generated from, if any.",
+    )
+    # Assigning the object rather than the raw id lets the FK resolve on flush,
+    # which matters when the charge itself is not yet persisted.
+    contract_charge: Optional[ContractCharge] = Relationship(
+        sa_relationship_kwargs={"lazy": "subquery"},
     )
     # invoice
     invoice_id: Optional[int] = Field(default=None, foreign_key="invoice.id", ondelete="CASCADE")
