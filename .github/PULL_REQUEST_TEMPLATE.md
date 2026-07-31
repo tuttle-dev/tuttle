@@ -12,4 +12,5 @@
 - [ ] I have updated the documentation / docstrings where appropriate.
 - [ ] If my change touches the schema (`tuttle/model.py`), I generated and reviewed an Alembic migration (`just migrate "<msg>"`).
 - [ ] If my change affects the graphical user interface, I have provided screenshots.
+- [ ] UI verification evidence is included for product UI changes, or this PR has no product UI surface.
 - [ ] I understand and can explain all submitted changes; if AI assistance was significant, I have disclosed it in the summary above.
