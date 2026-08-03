@@ -139,11 +139,32 @@ def revenue_curve(
     return combined
 
 
+def _invoiced_ranges_by_tag(invoices: List[Invoice]) -> dict:
+    """Map project tag -> list of (period_start, period_end) already invoiced.
+
+    A timesheet's period is the exact slice of calendar hours that were
+    pulled into an invoice, regardless of the invoice's own date (an
+    invoice raised in August can cover a timesheet for July). Cancelled
+    invoices don't count: their hours are still un-invoiced.
+    """
+    ranges: dict = {}
+    for inv in invoices:
+        if inv.cancelled:
+            continue
+        for ts in inv.timesheets:
+            tag = ts.project.tag if ts.project else None
+            if not tag:
+                continue
+            ranges.setdefault(tag, []).append((ts.period_start, ts.period_end))
+    return ranges
+
+
 def monthly_revenue_from_calendar(
     time_data: DataFrame,
     projects: List[Project],
     start_date: datetime.date,
     end_date: datetime.date,
+    invoices: Optional[List[Invoice]] = None,
 ) -> DataFrame:
     """Derive monthly revenue from calendar time-tracking events.
 
@@ -151,6 +172,13 @@ def monthly_revenue_from_calendar(
     and hours planned (future).  Filters *time_data* for events in
     [start_date, end_date], groups by month and project tag, then converts
     hours to revenue via contract rates.
+
+    If *invoices* is given, hours already captured in a timesheet attached
+    to a (non-cancelled) invoice are excluded, keyed by the timesheet's own
+    period rather than the invoice's date — otherwise work billed in a
+    later month than it was performed would show up twice: once as
+    "planned" for the month it was done, and again as "invoiced" for the
+    month the invoice was actually raised.
 
     Returns a DataFrame with columns: month, project, revenue, contract_id, hours.
     """
@@ -164,6 +192,18 @@ def monthly_revenue_from_calendar(
     filtered = time_data[mask]
     if filtered.empty:
         return DataFrame(columns=["month", "project", "revenue", "contract_id", "hours"])
+
+    if invoices:
+        invoiced_ranges = _invoiced_ranges_by_tag(invoices)
+        if invoiced_ranges:
+            dates = filtered.index.date
+            tags = filtered["tag"]
+            already_invoiced = [
+                any(start <= d <= end for start, end in invoiced_ranges.get(tag, ())) for d, tag in zip(dates, tags)
+            ]
+            filtered = filtered[[not v for v in already_invoiced]]
+            if filtered.empty:
+                return DataFrame(columns=["month", "project", "revenue", "contract_id", "hours"])
 
     records = []
     df = filtered.copy()
@@ -275,7 +315,7 @@ def revenue_curve_with_calendar(
     cal_monthly = DataFrame(columns=["month", "revenue", "is_forecast", "source"])
     if time_data is not None and not time_data.empty:
         cal_start = time_data.index.min().date().replace(day=1)
-        cal_revenue = monthly_revenue_from_calendar(time_data, projects, cal_start, forecast_end)
+        cal_revenue = monthly_revenue_from_calendar(time_data, projects, cal_start, forecast_end, invoices=invoices)
         if not cal_revenue.empty:
             cal_monthly = cal_revenue.groupby("month").agg(revenue=("revenue", "sum")).reset_index()
             cal_monthly["is_forecast"] = cal_monthly["month"] >= pandas.Timestamp(today.replace(day=1))

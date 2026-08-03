@@ -88,11 +88,12 @@ export function DashboardView() {
       }
     }
 
-    // Deduplicate: calendar-derived planned revenue overlaps with
-    // invoice-based received/invoiced for the same month.  Only show the
-    // portion not yet covered by invoices.
+    // The backend already excludes calendar hours that have been captured
+    // into an invoice (keyed by the timesheet's own period, not the
+    // invoice's date), so `planned` here only ever reflects genuinely
+    // un-invoiced work. Guard against floating-point dust only.
     for (const bar of byLabel.values()) {
-      bar.planned = Math.max(0, bar.planned - bar.received - bar.invoiced);
+      bar.planned = Math.max(0, bar.planned);
     }
 
     const sorted = [...byLabel.values()].sort((a, b) => {

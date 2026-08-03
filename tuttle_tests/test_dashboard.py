@@ -7,6 +7,7 @@ import pandas
 import pytest
 
 from tuttle.forecasting import (
+    monthly_revenue_from_calendar,
     monthly_revenue_from_contracts,
     revenue_curve,
     revenue_history,
@@ -219,6 +220,86 @@ class TestMonthlyRevenueFromContracts:
             today + datetime.timedelta(days=30),
         )
         assert result.empty
+
+
+class TestMonthlyRevenueFromCalendar:
+    """Regression tests for the July-worked/August-invoiced double-count bug.
+
+    A timesheet's period (not the invoice's own date) determines whether
+    calendar hours have already been billed, since an invoice can be raised
+    in a later month than the work it covers.
+    """
+
+    @staticmethod
+    def _time_data(tag: str, work_date: datetime.date, hours: int = 8):
+        begin = datetime.datetime(work_date.year, work_date.month, work_date.day, 9, 0)
+        end = begin + datetime.timedelta(hours=hours)
+        df = pandas.DataFrame(
+            {
+                "begin": [begin],
+                "end": [end],
+                "title": ["Work"],
+                "tag": [tag],
+                "description": [""],
+                "all_day": [False],
+            }
+        )
+        df["duration"] = df["end"] - df["begin"]
+        return df.set_index("begin")
+
+    def test_excludes_hours_already_invoiced_in_a_later_month(self, project, active_contract):
+        time_data = self._time_data(project.tag, datetime.date(2026, 7, 15))
+        inv = Invoice(
+            number="2026-100",
+            date=datetime.date(2026, 8, 3),
+            contract=active_contract,
+            project=project,
+            sent=True,
+        )
+        Timesheet(
+            title="July work",
+            date=inv.date,
+            period_start=datetime.date(2026, 7, 1),
+            period_end=datetime.date(2026, 7, 31),
+            project=project,
+            invoice=inv,
+        )
+
+        result = monthly_revenue_from_calendar(
+            time_data, [project], datetime.date(2026, 7, 1), datetime.date(2026, 8, 31), invoices=[inv]
+        )
+        assert result.empty
+
+    def test_without_invoices_still_shows_calendar_revenue(self, project):
+        time_data = self._time_data(project.tag, datetime.date(2026, 7, 15))
+        result = monthly_revenue_from_calendar(time_data, [project], datetime.date(2026, 7, 1), datetime.date(2026, 7, 31))
+        assert not result.empty
+        assert result["revenue"].sum() > 0
+
+    def test_cancelled_invoice_does_not_exclude_hours(self, project, active_contract):
+        time_data = self._time_data(project.tag, datetime.date(2026, 7, 15))
+        inv = Invoice(
+            number="2026-101",
+            date=datetime.date(2026, 8, 3),
+            contract=active_contract,
+            project=project,
+            sent=True,
+            cancelled=True,
+        )
+        Timesheet(
+            title="July work",
+            date=inv.date,
+            period_start=datetime.date(2026, 7, 1),
+            period_end=datetime.date(2026, 7, 31),
+            project=project,
+            invoice=inv,
+        )
+
+        result = monthly_revenue_from_calendar(
+            time_data, [project], datetime.date(2026, 7, 1), datetime.date(2026, 7, 31), invoices=[inv]
+        )
+        assert not result.empty
+        assert result["revenue"].sum() > 0
 
 
 class TestRevenueHistory:
