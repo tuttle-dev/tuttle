@@ -259,6 +259,13 @@ body {
   color: #444;
 }
 
+.payment-qr {
+  display: block;
+  width: 72pt;
+  height: 72pt;
+  margin-top: 8pt;
+}
+
 /* ── Closing ──────────────────────────────────── */
 
 .closing {

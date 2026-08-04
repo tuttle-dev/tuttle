@@ -131,6 +131,9 @@
     <div class="payment-value">
       {% if user.bank_account %}<div>IBAN: {{ user.bank_account.IBAN }}{% if user.bank_account.BIC %}&emsp;BIC: {{ user.bank_account.BIC }}{% endif %}</div>{% endif %}
     </div>
+    {% if qr_code_data_uri %}
+    <img class="payment-qr" src="{{ qr_code_data_uri }}" alt="{{ l.payment }} QR code">
+    {% endif %}
   </div>
 
   {% if invoice.is_outside_scope %}

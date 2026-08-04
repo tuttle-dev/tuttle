@@ -109,6 +109,9 @@
         {% if user.bank_account.BIC %}<tr><td class="payment-key">BIC</td><td class="payment-val">{{ user.bank_account.BIC }}</td></tr>{% endif %}
       </table>
       {% endif %}
+      {% if qr_code_data_uri %}
+      <img class="payment-qr" src="{{ qr_code_data_uri }}" alt="{{ l.payment }} QR code">
+      {% endif %}
     </div>
     <div class="totals">
       <div class="totals-line">

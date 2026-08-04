@@ -81,6 +81,7 @@ interface InvoicingPrefs {
   include_logo: boolean;
   include_due_date: boolean;
   include_signature: boolean;
+  include_qr_code: boolean;
 }
 
 const DEFAULT_INVOICING: InvoicingPrefs = {
@@ -91,6 +92,7 @@ const DEFAULT_INVOICING: InvoicingPrefs = {
   include_logo: true,
   include_due_date: true,
   include_signature: true,
+  include_qr_code: true,
 };
 
 const SCHEME_EXAMPLES: Record<string, string> = {
@@ -399,6 +401,7 @@ export function SettingsView() {
       include_logo: invoicing.include_logo,
       include_due_date: invoicing.include_due_date,
       include_signature: invoicing.include_signature,
+      include_qr_code: invoicing.include_qr_code,
     });
     if (res.ok) {
       await loadInvoicingPrefs();
@@ -800,6 +803,18 @@ export function SettingsView() {
             <span className="text-sm text-primary">Include signature on invoices</span>
           </label>
           <p className="mt-1 text-xs text-muted mb-3">When enabled, your uploaded signature appears above your name on generated invoices.</p>
+
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={invoicing.include_qr_code}
+              onChange={(e) => setInvoicing((p) => ({ ...p, include_qr_code: e.target.checked }))}
+              className="rounded border-border-subtle text-accent focus:ring-accent"
+            />
+            <span className="text-sm text-primary">Include SEPA payment QR code</span>
+          </label>
+
+          <p className="mt-1 text-xs text-muted mb-3">When enabled, a scannable payment QR code (Girocode) appears on EUR invoices with a complete bank account set. Not available for other currencies.</p>
 
           <div>
             <label className={labelCls}>Invoice language</label>

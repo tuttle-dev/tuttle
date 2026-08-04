@@ -12,6 +12,7 @@ from tuttle import demo, invoicing, rendering, timetracking
 from tuttle.calendar import get_month_start_end
 from tuttle.model import (
     Address,
+    BankAccount,
     Client,
     Contract,
     ContractCharge,
@@ -731,3 +732,103 @@ class TestTaxCategoryPropagation:
         assert all(item.VAT_category is TaxCategory.standard for item in invoice.items)
         assert invoice.is_outside_scope is False
         assert invoice.total == Decimal("5355.00")
+
+
+class TestInvoicePaymentQR:
+    """The SEPA payment (EPC/Girocode) QR code appears on invoices exactly when eligible."""
+
+    VALID_IBAN = "DE89370400440532013000"
+
+    def test_qr_appears_when_eligible(self, fake):
+        user = demo.create_fake_user(fake)
+        user.bank_account = BankAccount(name=user.name, IBAN=self.VALID_IBAN, BIC="COBADEFFXXX")
+        invoice = demo.create_fake_invoice(fake)
+
+        html = rendering.render_invoice(
+            user=user,
+            invoice=invoice,
+            out_dir=None,
+            document_format="html",
+            only_final=False,
+        )
+
+        assert "payment-qr" in html
+        assert "data:image/svg+xml" in html
+
+    def test_qr_absent_when_toggle_off(self, fake):
+        user = demo.create_fake_user(fake)
+        user.bank_account = BankAccount(name=user.name, IBAN=self.VALID_IBAN, BIC="COBADEFFXXX")
+        invoice = demo.create_fake_invoice(fake)
+
+        html = rendering.render_invoice(
+            user=user,
+            invoice=invoice,
+            out_dir=None,
+            document_format="html",
+            only_final=False,
+            include_qr_code=False,
+        )
+
+        assert "payment-qr" not in html
+
+    def test_qr_absent_without_bank_account(self, fake):
+        user = demo.create_fake_user(fake)
+        invoice = demo.create_fake_invoice(fake)
+
+        html = rendering.render_invoice(
+            user=user,
+            invoice=invoice,
+            out_dir=None,
+            document_format="html",
+            only_final=False,
+        )
+
+        assert "payment-qr" not in html
+
+    def test_qr_absent_for_non_eur_invoice(self, fake):
+        user = demo.create_fake_user(fake)
+        user.bank_account = BankAccount(name=user.name, IBAN=self.VALID_IBAN, BIC="COBADEFFXXX")
+        contract = demo.create_fake_contract(fake)
+        contract.currency = "USD"
+        project = demo.create_fake_project(fake, contract=contract)
+        invoice = demo.create_fake_invoice(fake, project=project, user=user)
+
+        html = rendering.render_invoice(
+            user=user,
+            invoice=invoice,
+            out_dir=None,
+            document_format="html",
+            only_final=False,
+        )
+
+        assert "payment-qr" not in html
+
+
+class TestGeneratePaymentQR:
+    """Direct tests of rendering.generate_payment_qr(), independent of full HTML rendering."""
+
+    VALID_IBAN = "DE89370400440532013000"
+
+    def test_returns_none_without_bank_account(self, fake):
+        user = demo.create_fake_user(fake)
+        invoice = demo.create_fake_invoice(fake)
+        assert rendering.generate_payment_qr(user, invoice) is None
+
+    def test_returns_none_for_non_eur_currency(self, fake):
+        user = demo.create_fake_user(fake)
+        user.bank_account = BankAccount(name=user.name, IBAN=self.VALID_IBAN, BIC="COBADEFFXXX")
+        contract = demo.create_fake_contract(fake)
+        contract.currency = "USD"
+        project = demo.create_fake_project(fake, contract=contract)
+        invoice = demo.create_fake_invoice(fake, project=project, user=user)
+        assert rendering.generate_payment_qr(user, invoice) is None
+
+    def test_returns_svg_data_uri_when_eligible(self, fake):
+        user = demo.create_fake_user(fake)
+        user.bank_account = BankAccount(name=user.name, IBAN=self.VALID_IBAN, BIC="COBADEFFXXX")
+        invoice = demo.create_fake_invoice(fake)
+
+        result = rendering.generate_payment_qr(user, invoice)
+
+        assert result is not None
+        assert result.startswith("data:image/svg+xml")

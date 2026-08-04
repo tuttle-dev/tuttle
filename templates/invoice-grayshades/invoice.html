@@ -110,6 +110,13 @@
     </tr>
   </table>
 
+  {% if qr_code_data_uri %}
+  <div class="payment">
+    <span class="payment-label">{{ l.payment }}</span>
+    <img class="payment-qr" src="{{ qr_code_data_uri }}" alt="{{ l.payment }} QR code">
+  </div>
+  {% endif %}
+
   {% if invoice.is_outside_scope %}
   <div class="tax-note">{{ l.outside_scope_note }}</div>
   {% endif %}

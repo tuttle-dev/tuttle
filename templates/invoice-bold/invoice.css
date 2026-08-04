@@ -219,6 +219,13 @@ body {
   vertical-align: top;
 }
 
+.payment-qr {
+  display: block;
+  width: 72pt;
+  height: 72pt;
+  margin-top: 8pt;
+}
+
 .totals {
   width: 220pt;
 }
