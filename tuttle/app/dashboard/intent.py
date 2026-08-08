@@ -132,6 +132,7 @@ class DashboardIntent(SQLModelDataSourceMixin, Intent):
     def get_cash_flow(self, forecast_months: int = 6) -> IntentResult:
         """Get cash flow projection based on calendar allocations."""
         try:
+            invoices = self.query(Invoice)
             contracts = self.query(Contract)
             projects = self.query(Project)
             time_data = self._time_data_source.get_data_frame()
@@ -140,7 +141,7 @@ class DashboardIntent(SQLModelDataSourceMixin, Intent):
             forecast_start = today.replace(day=1)
             forecast_end = (forecast_start + datetime.timedelta(days=30 * forecast_months)).replace(day=1)
 
-            rev_forecast = monthly_revenue_from_calendar(time_data, projects, forecast_start, forecast_end)
+            rev_forecast = monthly_revenue_from_calendar(time_data, projects, forecast_start, forecast_end, invoices=invoices)
 
             data = cash_flow_projection(rev_forecast, contracts)
             return IntentResult(was_intent_successful=True, data=data)
