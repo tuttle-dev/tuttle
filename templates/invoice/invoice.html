@@ -1,3 +1,4 @@
+{% import "document_type.html" as doc %}
 <html>
 <head>
     <meta charset="utf-8">
@@ -24,13 +25,15 @@
     {% endif %}
 
 
-    <title>Invoice</title>
+    <link rel="stylesheet" href="./document-type.css">
+
+    <title>{{ doc.document_title(l, invoice, is_reminder, is_deposit, is_final, reminder_title) }}</title>
 </head>
 
 <body>
   <div class="container" style="width: 80%;margin-left: 1%;">
 
-  <h1>{% if is_reminder %}{{ reminder_title }}{% else %}Invoice No. {{ invoice.number }}{% endif %}</h1>
+  <h1>{% if is_reminder %}{{ reminder_title }}{% else %}{{ doc.document_title(l, invoice, is_reminder, is_deposit, is_final, reminder_title) }}{% endif %}</h1>
 
 
   <div>
@@ -58,10 +61,12 @@
 
   <div>
   <p>
-    <b>Invoice number: {{ invoice.number }}</b><br>
+    <b>{{ doc.number_label(l, is_deposit, is_final) }}: {{ invoice.number }}</b><br>
     <b>Date: {{ invoice.date }}</b> <br>
   </p>
 </div>
+
+  {% if is_deposit %}{{ doc.deposit_context(l, contract_title, milestone_title, milestone_percentage, contract_total) }}{% endif %}
 
   <div>
   <table>
@@ -80,7 +85,7 @@
     <tbody>
       {% for item in invoice.items %}
       <tr>
-        <td>{{ item.date }}</td>
+        <td>{{ item.start_date | as_date_short }} – {{ item.end_date | as_date_short }}</td>
         <td>{{ item.description }}</td>
         <td>{{ item.quantity }}</td>
         <td>{{ item.unit | unit_label(item.quantity) }}</td>
@@ -97,22 +102,26 @@
   <div class="tax-note">{{ l.outside_scope_note }}</div>
   {% endif %}
 
+  {% if is_final %}{{ doc.settlement_summary(l, invoice, deposit_deductions, remaining_balance) }}{% endif %}
+
   <table id="total">
     <thead>
       <tr>
         <th>Due by</th>
         <th>Account number</th>
-        <th>Total due</th>
+        <th>{{ doc.amount_due_label(l, is_deposit, is_final) }}</th>
       </tr>
     </thead>
     <tbody>
       <tr>
         <td>{{ invoice.effective_due_date }}</td>
         <td>{% if bank_account %}{{ bank_account.IBAN }}{% endif %}</td>
-        <td>{{ invoice.total | as_currency }}</td>
+        <td>{{ remaining_balance | as_currency }}</td>
       </tr>
     </tbody>
   </table>
+
+  {% if is_deposit %}<p>{{ l.deposit_closing }}</p>{% endif %}
 </div>
 
 </div>

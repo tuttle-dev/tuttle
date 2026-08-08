@@ -114,7 +114,10 @@ body {
   vertical-align: baseline;
 }
 
-.meta-label {
+/* Matches the specificity of `.meta-table td` above, which would otherwise
+ * reset the gutter and leave a long label (ABSCHLAGSRECHNUNG) touching its
+ * value. */
+.meta-table td.meta-label {
   font-size: 7pt;
   font-weight: 600;
   text-transform: uppercase;
@@ -327,50 +330,5 @@ body {
   color: #555;
 }
 
-/* ── Document type (deposit / final / reminder) ─ */
-
-.document-type-banner {
-  font-size: 13pt;
-  font-weight: 700;
-  letter-spacing: 0.6pt;
-  text-transform: uppercase;
-  padding: 9pt 12pt;
-  margin-bottom: 10pt;
-}
-
-.document-type-banner.deposit {
-  background: #e8f0fe;
-  color: #1e40af;
-  border-left: 4pt solid #2563eb;
-}
-
-.document-type-banner.final {
-  background: #f3e8ff;
-  color: #6b21a8;
-  border-left: 4pt solid #7c3aed;
-}
-
-.document-type-banner.reminder {
-  background: #fef3c7;
-  color: #92400e;
-  border-left: 4pt solid #f59e0b;
-}
-
-.deposit-context {
-  font-size: 9pt;
-  color: #444;
-  margin-bottom: 12pt;
-  line-height: 1.65;
-  padding: 8pt 10pt;
-  background: #f9fafb;
-  border: 0.5pt solid #e5e7eb;
-}
-
-.deposit-context .label {
-  color: var(--invoice-accent);
-  font-weight: 600;
-  text-transform: uppercase;
-  font-size: 7pt;
-  letter-spacing: 0.4pt;
-  margin-right: 4pt;
-}
+/* Deposit / final / reminder styling lives in the shared
+ * document-type.css, linked ahead of this file. */

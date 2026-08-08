@@ -1,9 +1,11 @@
 <!doctype html>
+{% import "document_type.html" as doc %}
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Invoice No. {{ invoice.number }}</title>
+  <title>{{ doc.document_title(l, invoice, is_reminder, is_deposit, is_final, reminder_title) }}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="./document-type.css">
   <link rel="stylesheet" href="./invoice.css">
 </head>
 <body>
@@ -17,19 +19,19 @@
       <div class="sender-detail">{{ user.subtitle }}</div>
     </div>
     <div class="header-right">
-      <div class="doc-title">{% if is_reminder %}{{ reminder_title }}{% else %}Invoice{% endif %}</div>
+      <div class="doc-title">{% if is_reminder %}{{ reminder_title }}{% elif is_deposit %}{{ l.deposit_invoice }}{% elif is_final %}{{ l.final_invoice }}{% else %}{{ l.invoice }}{% endif %}</div>
       <table class="meta-table">
         <tr>
-          <td class="meta-label">Number</td>
+          <td class="meta-label">{{ doc.number_label(l, is_deposit, is_final) }}</td>
           <td class="meta-value">{{ invoice.number }}</td>
         </tr>
         <tr>
-          <td class="meta-label">Date</td>
-          <td class="meta-value">{{ invoice.date }}</td>
+          <td class="meta-label">{{ l.date }}</td>
+          <td class="meta-value">{{ invoice.date | as_date_short }}</td>
         </tr>
         <tr>
-          <td class="meta-label">Due</td>
-          <td class="meta-value">{{ invoice.effective_due_date }}</td>
+          <td class="meta-label">{{ l.due_date }}</td>
+          <td class="meta-value">{{ invoice.effective_due_date | as_date_short }}</td>
         </tr>
       </table>
     </div>
@@ -37,9 +39,11 @@
 
   <div class="rule"></div>
 
+  {% if is_deposit %}{{ doc.deposit_context(l, contract_title, milestone_title, milestone_percentage, contract_total) }}{% endif %}
+
   <div class="parties">
     <div class="party">
-      <span class="party-label">From</span>
+      <span class="party-label">{{ l.from }}</span>
       <div class="party-value">
         {{ user.name }}<br>
         {{ user.address.html }}
@@ -49,7 +53,7 @@
       </div>
     </div>
     <div class="party">
-      <span class="party-label">Bill To</span>
+      <span class="party-label">{{ l.bill_to }}</span>
       <div class="party-value">
         <strong>{{ invoice.contract.client.name }}</strong><br>
         {% if invoice.contract.client.invoicing_contact %}
@@ -77,7 +81,7 @@
     <tbody>
       {% for item in invoice.items %}
       <tr>
-        <td class="col-date">{{ item.start_date }} – {{ item.end_date }}</td>
+        <td class="col-date">{{ item.start_date | as_date_short }}&hairsp;&ndash;&hairsp;{{ item.end_date | as_date_short }}</td>
         <td class="col-desc">{{ item.description }}</td>
         <td class="col-qty num">{{ item.quantity }}</td>
         <td class="col-unit">{{ item.unit | unit_label(item.quantity) }}</td>
@@ -91,7 +95,7 @@
 
   <div class="bottom-section">
     <div class="payment">
-      <span class="party-label">Payment Details</span>
+      <span class="party-label">{{ l.payment_details }}</span>
       <div class="payment-value">
         {% if bank_account %}IBAN: {{ bank_account.IBAN }}
         {% if bank_account.BIC %}<br>BIC: {{ bank_account.BIC }}{% endif %}{% endif %}
@@ -99,25 +103,26 @@
     </div>
     <div class="totals">
       <div class="totals-line">
-        <span class="totals-label">Subtotal</span>
+        <span class="totals-label">{% if is_final %}{{ l.total_fee }}{% else %}{{ l.subtotal }}{% endif %}</span>
         <span class="totals-amount">{{ invoice.sum | as_currency }}</span>
       </div>
       {% if not invoice.is_outside_scope %}
       <div class="totals-line">
-        <span class="totals-label">VAT</span>
+        <span class="totals-label">{{ l.vat }}</span>
         <span class="totals-amount">{{ invoice.VAT_total | as_currency }}</span>
       </div>
       {% endif %}
       {% if is_reminder and invoice.reminder_fee %}
       <div class="totals-line">
-        <span class="totals-label">Reminder Fee</span>
+        <span class="totals-label">{{ l.reminder_fee }}</span>
         <span class="totals-amount">{{ invoice.reminder_fee | as_currency }}</span>
       </div>
       {% endif %}
+      {% if is_final %}{{ doc.settlement_lines_div(l, invoice, deposit_deductions) }}{% endif %}
       <div class="totals-rule"></div>
       <div class="totals-line total-due">
-        <span class="totals-label">Total Due</span>
-        <span class="totals-amount">{{ invoice.total | as_currency }}</span>
+        <span class="totals-label">{{ doc.amount_due_label(l, is_deposit, is_final) }}</span>
+        <span class="totals-amount">{{ remaining_balance | as_currency }}</span>
       </div>
     </div>
   </div>
@@ -127,7 +132,7 @@
   {% endif %}
 
   <div class="closing">
-    <p>{% if is_reminder %}Please settle the outstanding amount by the new due date.{% elif notes %}<span style="white-space:pre-line">{{ notes }}</span>{% else %}Thank you for your business.{% endif %}</p>
+    <p>{{ doc.closing_text(l, is_reminder, is_deposit, notes) }}</p>
     <div class="sig-line"></div>
     {{ user.name }}
   </div>

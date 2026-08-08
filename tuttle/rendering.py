@@ -177,6 +177,16 @@ def get_template_path(template_name) -> str:
     return template_path
 
 
+def get_shared_template_path() -> Path:
+    """Directory of partials and stylesheets every document template shares.
+
+    Lets the templates import one definition of the parts that must not drift
+    between skins — notably the deposit/final settlement layout, where the
+    markup carries the legal statement of what has been deducted.
+    """
+    return Path(__file__).parent.parent.resolve() / "templates" / "_shared"
+
+
 def convert_html_to_pdf(
     in_path,
     out_path,
@@ -294,7 +304,8 @@ def render_invoice(
         return singular if abs(q - 1) < 1e-9 else plural
 
     template_path = get_template_path(template_name)
-    template_env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_path))
+    shared_path = get_shared_template_path()
+    template_env = jinja2.Environment(loader=jinja2.FileSystemLoader([template_path, shared_path]))
 
     template_env.filters["as_currency"] = as_currency
     template_env.filters["as_date"] = as_date
@@ -377,7 +388,10 @@ def render_invoice(
     with open(invoice_path, "w", encoding="utf-8") as invoice_file:
         invoice_file.write(html)
 
-    # Copy all CSS files and subdirectories from the template
+    # Copy all CSS files and subdirectories from the template. Shared
+    # stylesheets go first so a template's own rules can override them.
+    for css in shared_path.glob("*.css"):
+        shutil.copy(css, invoice_dir / css.name)
     for item in template_path.iterdir():
         dest = invoice_dir / item.name
         if item.is_file() and item.suffix == ".css":
@@ -393,15 +407,22 @@ def render_invoice(
             css_paths=css_paths,
             out_path=pdf_out,
         )
-        if e_invoice_profile and not invoice.is_reminder:
-            from .einvoice import embed_zugferd_in_pdf
+        if e_invoice_profile:
+            from .einvoice import embed_zugferd_in_pdf, unsupported_reason
 
-            embed_zugferd_in_pdf(
-                pdf_path=str(pdf_out),
-                invoice=invoice,
-                user=user,
-                profile=e_invoice_profile,
-            )
+            reason = unsupported_reason(invoice)
+            if reason:
+                logger.warning(
+                    f"Skipping e-invoice XML for {invoice.number or invoice.id}: {reason}. "
+                    "The PDF is written without embedded XML."
+                )
+            else:
+                embed_zugferd_in_pdf(
+                    pdf_path=str(pdf_out),
+                    invoice=invoice,
+                    user=user,
+                    profile=e_invoice_profile,
+                )
     if only_final:
         final_output_path = out_dir / Path(f"{invoice.prefix}.{document_format}")
         if document_format == "pdf":

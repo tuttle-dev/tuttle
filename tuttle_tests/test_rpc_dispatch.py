@@ -28,6 +28,7 @@ from tuttle.model import (
     ContractType,
     Invoice,
     Project,
+    TaxCategory,
     User,
 )
 
@@ -396,9 +397,16 @@ class TestSerialization:
                 for item in items:
                     assert prop in item, f"{model_cls.__name__} missing computed prop '{prop}' after serialisation via {route}"
 
-    def test_deposit_and_final_invoice_serialize(self, rpc_env):
-        """A final invoice with linked deposits must serialise without
-        DetachedInstanceError when invoicing.get_all runs."""
+    def test_deposit_and_final_invoice_lifecycle(self, rpc_env):
+        """Walk a fixed-price contract through its whole payment schedule:
+        two deposits, the final invoice deducting both, and settling the chain.
+
+        The serialisation assertions guard against DetachedInstanceError, which
+        is what a deposit chain provokes when `invoicing.get_all` runs. The
+        second deposit matters on its own: the settlement once dropped every
+        deposit but the newest, because writing the milestone flags merged a
+        stale contract graph over the links that had just been made.
+        """
         dispatch("db.ensure", {})
 
         engine = sqlmodel.create_engine(f"sqlite:///{abstractions._active_db_path}")
@@ -413,6 +421,10 @@ class TestSerialization:
             contract.type = ContractType.fixed_price
             contract.rate = None
             contract.fixed_price = Decimal("10000")
+            # Pinned rather than inherited: the deduction amounts asserted below
+            # are only meaningful against a known VAT treatment.
+            contract.VAT_rate = Decimal("0.19")
+            contract.VAT_category = TaxCategory.standard
             sess.add(contract)
             sess.commit()
             contract_id = contract.id
@@ -435,8 +447,9 @@ class TestSerialization:
             {
                 "contract_id": contract_id,
                 "milestones": [
-                    {"title": "Upfront", "percentage": 50, "position": 0},
-                    {"title": "On delivery", "percentage": 50, "position": 1},
+                    {"title": "Upfront", "percentage": 40, "position": 0},
+                    {"title": "On commissioning", "percentage": 40, "position": 1},
+                    {"title": "On delivery", "percentage": 20, "position": 2},
                 ],
             },
         )
@@ -452,57 +465,80 @@ class TestSerialization:
         )
         assert ms_list["ok"], f"get_milestones failed: {ms_list.get('error')}"
         milestones = ms_list["data"]
-        assert len(milestones) == 2
+        assert len(milestones) == 3
 
-        deposit_res = dispatch(
-            "invoicing.create_deposit",
-            {
-                "project_id": project_id,
-                "milestone_id": milestones[0]["id"],
-                "invoice_date": "2026-06-28",
-            },
-        )
-        assert deposit_res["ok"], f"create_deposit failed: {deposit_res.get('error')}"
-
-        reset_all()
+        for milestone in milestones[:2]:
+            deposit_res = dispatch(
+                "invoicing.create_deposit",
+                {
+                    "project_id": project_id,
+                    "milestone_id": milestone["id"],
+                    "invoice_date": "2026-06-28",
+                },
+            )
+            assert deposit_res["ok"], f"create_deposit failed: {deposit_res.get('error')}"
+            reset_all()
 
         result = dispatch("invoicing.get_all", {})
         assert result["ok"], f"invoicing.get_all failed after deposit creation: {result.get('error')}"
         data = result["data"]
-        deposit = next((i for i in data if i.get("document_type") == "deposit"), None)
-        assert deposit is not None, "Deposit invoice not in get_all results"
-        assert deposit.get("deposit_deductions") is not None
-        assert deposit.get("remaining_balance") is not None
-        try:
-            json.dumps(deposit)
-        except (TypeError, ValueError) as exc:
-            pytest.fail(f"Deposit invoice not JSON-serializable: {exc}")
+        deposits = [i for i in data if i.get("document_type") == "deposit" and i["project_id"] == project_id]
+        assert len(deposits) == 2, "Both deposit invoices should be in get_all results"
+        for deposit in deposits:
+            # 40% of 10,000 at 19% VAT.
+            assert Decimal(str(deposit["remaining_balance"])) == Decimal("4760")
+            assert deposit.get("deposit_deductions") == []
+            try:
+                json.dumps(deposit)
+            except (TypeError, ValueError) as exc:
+                pytest.fail(f"Deposit invoice not JSON-serializable: {exc}")
 
-        reset_all()
-
-        deposit2_res = dispatch(
+        final_res = dispatch(
             "invoicing.create_deposit",
             {
                 "project_id": project_id,
-                "milestone_id": milestones[1]["id"],
+                "milestone_id": milestones[2]["id"],
                 "invoice_date": "2026-06-28",
             },
         )
-        assert deposit2_res["ok"], f"create_deposit (last milestone / final) failed: {deposit2_res.get('error')}"
+        assert final_res["ok"], f"create_deposit (last milestone / final) failed: {final_res.get('error')}"
 
         reset_all()
 
         result2 = dispatch("invoicing.get_all", {})
         assert result2["ok"], f"invoicing.get_all failed after final invoice creation: {result2.get('error')}"
         data2 = result2["data"]
-        final = next((i for i in data2 if i.get("document_type") == "final"), None)
+        # Project-scoped: the demo data ships a settled milestone contract of
+        # its own, whose final invoice would otherwise be picked up here.
+        final = next(
+            (i for i in data2 if i.get("document_type") == "final" and i["project_id"] == project_id),
+            None,
+        )
         assert final is not None, "Final invoice not in get_all results — last milestone should auto-create a final invoice"
-        assert isinstance(final.get("deposit_deductions"), list)
-        assert final.get("remaining_balance") is not None
+        deductions = final.get("deposit_deductions")
+        assert isinstance(deductions, list)
+        assert len(deductions) == 2, "The settlement must deduct every deposit of the contract"
+        # 11,900 gross less two 4,760 deposits leaves the closing 20% instalment.
+        assert Decimal(str(final["remaining_balance"])) == Decimal("2380")
         try:
             json.dumps(final)
         except (TypeError, ValueError) as exc:
             pytest.fail(f"Final invoice not JSON-serializable: {exc}")
+
+        reset_all()
+
+        # Settling the Schlussrechnung settles the contract: its remaining
+        # balance is what is left after the deposits, so paying it means the
+        # deposits were paid too.
+        paid_res = dispatch("invoicing.toggle_paid", {"id": final["id"]})
+        assert paid_res["ok"], f"toggle_paid failed: {paid_res.get('error')}"
+
+        reset_all()
+
+        data3 = assert_ok(dispatch("invoicing.get_all", {}))["data"]
+        chain = [i for i in data3 if i["id"] == final["id"] or i.get("deposit_for_id") == final["id"]]
+        assert len(chain) == 3, "Expected the final invoice and its two deposits"
+        assert all(i["paid"] for i in chain), "Paying the final invoice must settle its deposits"
 
     def test_full_response_is_json_serializable(self, rpc_env):
         for method in [

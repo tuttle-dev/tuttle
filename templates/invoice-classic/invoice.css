@@ -76,7 +76,10 @@ body {
   font-size: 9pt;
 }
 
-.meta-label {
+/* Matches the specificity of `.meta-table td` above, which would otherwise
+ * reset the gutter and leave a long label (ABSCHLAGSRECHNUNG) touching its
+ * value. */
+.meta-table td.meta-label {
   text-align: right;
   color: #999;
   padding-right: 12pt;

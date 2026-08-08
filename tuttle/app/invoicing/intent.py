@@ -195,7 +195,7 @@ class InvoicingIntent(Intent):
                 item.validate_vat()
 
             self._invoicing_data_source.save_invoice(invoice)
-            self._mark_milestone_invoiced(milestone)
+            self._mark_milestones_invoiced([milestone])
 
             invoice, warnings = self._render_saved_invoice(invoice.id, "deposit invoice")
             return IntentResult(
@@ -256,15 +256,14 @@ class InvoicingIntent(Intent):
             # ``generate_final_invoice`` cannot set deposit_for_id before the
             # final invoice has an id, so the chain is linked after the insert.
             self._invoicing_data_source.save_invoice(invoice)
-            for dep in deposit_invoices:
-                dep.deposit_for_id = invoice.id
-                self._invoicing_data_source.save_invoice(dep)
+            self._invoicing_data_source.link_deposits_to_final(
+                invoice.id,
+                [dep.id for dep in deposit_invoices if dep.id is not None],
+            )
 
             # The settlement bills whatever the deposits left, so no milestone
             # of this contract is still open once it exists.
-            for milestone in contract.payment_milestones:
-                if not milestone.invoiced:
-                    self._mark_milestone_invoiced(milestone)
+            self._mark_milestones_invoiced([m for m in contract.payment_milestones if not m.invoiced])
 
             invoice, warnings = self._render_saved_invoice(invoice.id, "final invoice")
 
@@ -286,9 +285,13 @@ class InvoicingIntent(Intent):
                 error_msg=f"Failed to create final invoice: {ex}",
             )
 
-    def _mark_milestone_invoiced(self, milestone) -> None:
-        milestone.invoiced = True
-        self._invoicing_data_source.store(milestone)
+    def _mark_milestones_invoiced(self, milestones) -> None:
+        ids = [m.id for m in milestones if m.id is not None]
+        if not ids:
+            return
+        self._invoicing_data_source.mark_milestones_invoiced(ids)
+        for milestone in milestones:
+            milestone.invoiced = True
 
     def _next_invoice_number(self, invoice_date) -> str:
         app_db = AppDatabase()
@@ -337,8 +340,13 @@ class InvoicingIntent(Intent):
                 return result.data
             return default
 
+        # The e-invoice profile is resolved like any other preference; rendering
+        # decides per document type whether XML can be embedded at all.
+        e_invoice_profile = app_db.get_setting(PreferencesStorageKeys.e_invoice_profile_key.value) or DEFAULT_E_INVOICE_PROFILE
+
         return {
             "language": language,
+            "e_invoice_profile": e_invoice_profile or None,
             "template_name": _pref(
                 self._preferences_intent.get_preferred_invoice_template,
                 DEFAULT_INVOICE_TEMPLATE,

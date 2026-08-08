@@ -1,9 +1,11 @@
 <!doctype html>
+{% import "document_type.html" as doc %}
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>{% if is_reminder %}{{ reminder_title }} – {{ invoice.number }}{% elif is_deposit %}{{ l.deposit_invoice }} {{ invoice.number }}{% elif is_final %}{{ l.final_invoice }} {{ invoice.number }}{% else %}{{ l.invoice_no }} {{ invoice.number }}{% endif %}</title>
+  <title>{{ doc.document_title(l, invoice, is_reminder, is_deposit, is_final, reminder_title) }}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="./document-type.css">
   <link rel="stylesheet" href="./invoice.css">
   {% if accent_color %}<style>:root { --invoice-accent: {{ accent_color }}; }</style>{% endif %}
 </head>
@@ -45,31 +47,12 @@
 
   <div class="accent-rule"></div>
 
-  {% if is_reminder %}
-  <div class="document-type-banner reminder">{{ reminder_title }}</div>
-  {% elif is_deposit %}
-  <div class="document-type-banner deposit">{{ l.deposit_invoice }}</div>
-  {% elif is_final %}
-  <div class="document-type-banner final">{{ l.final_invoice }}</div>
-  {% endif %}
-
-  {% if is_deposit and (contract_title or milestone_title) %}
-  <div class="deposit-context">
-    {% if contract_title %}
-    <div><span class="label">{{ l.in_respect_of }}</span> {{ contract_title }}</div>
-    {% endif %}
-    {% if milestone_title %}
-    <div><span class="label">{{ l.payment_milestone }}</span> {{ milestone_title }}{% if milestone_percentage %} ({{ milestone_percentage }}%){% endif %}</div>
-    {% endif %}
-    {% if contract_total %}
-    <div><span class="label">{{ l.contract_total }}</span> {{ contract_total | as_currency }}</div>
-    {% endif %}
-  </div>
-  {% endif %}
+  {{ doc.banner(l, is_reminder, is_deposit, is_final, reminder_title) }}
+  {% if is_deposit %}{{ doc.deposit_context(l, contract_title, milestone_title, milestone_percentage, contract_total) }}{% endif %}
 
   <table class="meta-table">
     <tr>
-      <td class="meta-label">{% if is_deposit %}{{ l.deposit_invoice }}{% elif is_final %}{{ l.final_invoice }}{% else %}{{ l.invoice_no }}{% endif %}</td>
+      <td class="meta-label">{{ doc.number_label(l, is_deposit, is_final) }}</td>
       <td class="meta-value">{{ invoice.number }}</td>
     </tr>
     {% if is_reminder %}
@@ -148,33 +131,12 @@
         <span class="totals-amount">{{ invoice.reminder_fee | as_currency }}</span>
       </div>
       {% endif %}
-      {% if is_final %}
-      <div class="totals-line">
-        <span class="totals-label">{{ l.gross }}</span>
-        <span class="totals-amount">{{ invoice.total | as_currency }}</span>
-      </div>
-      {% for dep in deposit_deductions %}
-      <div class="totals-line" style="color:#666;">
-        <span class="totals-label">{{ l.less_deposit }} {{ dep.invoice_number }}</span>
-        <span class="totals-amount">−{{ dep.gross | as_currency }}</span>
-      </div>
-      <div class="totals-line" style="font-size:.85em; color:#888; padding-left:1em;">
-        <span class="totals-label">({{ l.vat_included_therein }}: {{ dep.vat | as_currency }})</span>
-        <span class="totals-amount"></span>
-      </div>
-      {% endfor %}
+      {% if is_final %}{{ doc.settlement_lines_div(l, invoice, deposit_deductions) }}{% endif %}
       <div class="totals-rule"></div>
       <div class="totals-line total-due">
-        <span class="totals-label">{{ l.remaining_balance }}</span>
+        <span class="totals-label">{{ doc.amount_due_label(l, is_deposit, is_final) }}</span>
         <span class="totals-amount">{{ remaining_balance | as_currency }}</span>
       </div>
-      {% else %}
-      <div class="totals-rule"></div>
-      <div class="totals-line total-due">
-        <span class="totals-label">{% if is_deposit %}{{ l.deposit_due }}{% else %}{{ l.total_due }}{% endif %}</span>
-        <span class="totals-amount">{{ invoice.total | as_currency }}</span>
-      </div>
-      {% endif %}
     </div>
   </div>
 
@@ -183,7 +145,7 @@
   {% endif %}
 
   <div class="closing">
-    <p>{% if is_reminder %}{{ l.reminder_closing }}{% elif is_deposit %}{{ l.deposit_closing }}{% elif notes %}<span style="white-space:pre-line">{{ notes }}</span>{% else %}{{ l.closing }}{% endif %}</p>
+    <p>{{ doc.closing_text(l, is_reminder, is_deposit, notes) }}</p>
     {% if include_signature and user.signature %}
     <img class="sig-image" src="{{ user.signature }}" alt="">
     {% else %}

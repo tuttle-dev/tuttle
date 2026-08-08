@@ -227,6 +227,9 @@ export function milestoneScheduleStatus(
 
   const deposits = chainDepositInvoices(root, nestedDeposits);
   const hasFinal = isFinalInvoice(root);
+  // An ordinary invoice on a contract that happens to have a schedule is not
+  // part of that schedule, so it must not advertise the schedule's progress.
+  if (!hasFinal && deposits.length === 0) return null;
   const issued = hasFinal ? [...deposits, root] : deposits;
   const paidCount = issued.filter((inv) => invoiceStatus(inv) === "Paid").length;
 

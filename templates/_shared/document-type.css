@@ -1,0 +1,97 @@
+/* Deposit / final / reminder presentation, shared by every invoice template.
+ *
+ * Neutral by design: colours come from each template's own palette through
+ * --invoice-accent, and a template can override any rule because its own
+ * stylesheet is linked after this one. */
+
+.document-type-banner {
+  font-size: 13pt;
+  font-weight: 700;
+  letter-spacing: 0.6pt;
+  text-transform: uppercase;
+  padding: 9pt 12pt;
+  margin-bottom: 10pt;
+}
+
+.document-type-banner.deposit {
+  background: #e8f0fe;
+  color: #1e40af;
+  border-left: 4pt solid #2563eb;
+}
+
+.document-type-banner.final {
+  background: #f3e8ff;
+  color: #6b21a8;
+  border-left: 4pt solid #7c3aed;
+}
+
+.document-type-banner.reminder {
+  background: #fef3c7;
+  color: #92400e;
+  border-left: 4pt solid #f59e0b;
+}
+
+.deposit-context {
+  font-size: 9pt;
+  color: #444;
+  margin-bottom: 12pt;
+  line-height: 1.65;
+  padding: 8pt 10pt;
+  background: #f9fafb;
+  border: 0.5pt solid #e5e7eb;
+}
+
+.deposit-context .label {
+  color: var(--invoice-accent, #1e40af);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 7pt;
+  letter-spacing: 0.4pt;
+  margin-right: 4pt;
+}
+
+/* A deduction is money already invoiced, so it reads as secondary to the
+ * gross amount above it rather than as another charge. */
+.deposit-deduction,
+.deposit-deduction td {
+  color: #666;
+}
+
+.deposit-deduction-vat,
+.deposit-deduction-vat td {
+  font-size: 0.85em;
+  color: #888;
+  padding-left: 1em;
+}
+
+/* "abzgl. Abschlag lt. Rechnung Nr. 2026-001" is far longer than any other
+ * totals label and has to wrap. In the templates whose totals column is a
+ * flex row, the amount would otherwise be squeezed out of the page. The
+ * element selector keeps this ahead of a template's own class rule. */
+.deposit-deduction > span:last-child,
+.deposit-deduction-vat > span:last-child {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* Standalone settlement breakdown, for templates that lay their totals out
+ * horizontally and have nowhere to append the deduction lines. */
+.settlement-summary {
+  margin-left: auto;
+  margin-top: 10pt;
+  border-collapse: collapse;
+}
+
+.settlement-summary td {
+  padding: 2pt 0 2pt 14pt;
+}
+
+.settlement-summary .settlement-value {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.settlement-summary .settlement-total td {
+  font-weight: 700;
+  border-top: 1pt solid currentColor;
+}

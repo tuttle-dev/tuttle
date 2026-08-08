@@ -1,14 +1,16 @@
 <!doctype html>
+{% import "document_type.html" as doc %}
 <html class="no-js" lang="">
 
 <head>
   <meta charset="utf-8">
-  <title>Invoice No. {{ invoice.number }}</title>
+  <title>{{ doc.document_title(l, invoice, is_reminder, is_deposit, is_final, reminder_title) }}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   {% if style == "anvil" %}
   <link rel="stylesheet" href="./web/modern-normalize.css">
   <link rel="stylesheet" href="./web/web-base.css">
+  <link rel="stylesheet" href="./document-type.css">
   <link rel="stylesheet" href="./invoice.css">
   <!-- <script type="text/javascript" src="./web/scripts.js"></script> -->
   {% else %}
@@ -74,17 +76,18 @@
     <tr>
       <td>
         <br>
-       {% if is_reminder %}
-       <big><strong>{{ reminder_title }}</strong></big><br>
+       {% if is_reminder or is_deposit or is_final %}
+       <big><strong>{{ doc.document_title(l, invoice, is_reminder, is_deposit, is_final, reminder_title) }}</strong></big><br>
        {% endif %}
        <big>Invoice Date: <strong>{{ invoice.date }}</strong></big> <br>
-       <big>Invoice Number: <strong>{{ invoice.number }}<big></big></strong>
+       <big>{{ doc.number_label(l, is_deposit, is_final) }}: <strong>{{ invoice.number }}<big></big></strong>
       </td>
       <td>
       </td>
     </tr>
   </table>
 
+  {% if is_deposit %}{{ doc.deposit_context(l, contract_title, milestone_title, milestone_percentage, contract_total) }}{% endif %}
 
   <table class="line-items-container">
     <thead>
@@ -101,7 +104,7 @@
     <tbody>
       {% for item in invoice.items %}
       <tr>
-        <td>{{ item.start_date }} -  {{ item.end_date }}</td>
+        <td>{{ item.start_date | as_date_short }} - {{ item.end_date | as_date_short }}</td>
         <td>{{ item.description }}</td>
         <td class="right">{{ item.quantity }}</td>
         <td class="right">{{ item.unit | unit_label(item.quantity) }}</td>
@@ -120,7 +123,7 @@
         <th>Payment Info</th>
         <th>Due By</th>
         <th>Total VAT</th>
-        <th>Total Due</th>
+        <th>{{ doc.amount_due_label(l, is_deposit, is_final) }}</th>
       </tr>
     </thead>
     <tbody>
@@ -132,10 +135,12 @@
         </td>
         <td class="bold">{{ invoice.effective_due_date }}</td>
         <td>{% if invoice.is_outside_scope %}&mdash;{% else %}{{ invoice.VAT_total | as_currency }}{% endif %}</td>
-        <td class="bold">{{ invoice.total | as_currency }}</td>
+        <td class="bold">{{ remaining_balance | as_currency }}</td>
       </tr>
     </tbody>
   </table>
+
+  {% if is_final %}{{ doc.settlement_summary(l, invoice, deposit_deductions, remaining_balance) }}{% endif %}
 
   {% if invoice.is_outside_scope %}
   <div class="tax-note">{{ l.outside_scope_note }}</div>
@@ -144,7 +149,7 @@
   <div>
     <p>
       <br>
-    <span style="white-space:pre-line">{% if is_reminder %}Please settle the outstanding amount by the new due date.{% elif notes %}{{ notes }}{% else %}Thank you for your business{% endif %}</span>
+    <span style="white-space:pre-line">{% if is_reminder %}Please settle the outstanding amount by the new due date.{% elif is_deposit %}{{ l.deposit_closing }}{% elif notes %}{{ notes }}{% else %}Thank you for your business{% endif %}</span>
    </p>
     <br>
     <br>
