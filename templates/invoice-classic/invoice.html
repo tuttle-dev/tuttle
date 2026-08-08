@@ -22,7 +22,7 @@
       <div class="doc-title">{% if is_reminder %}{{ reminder_title }}{% elif is_deposit %}{{ l.deposit_invoice }}{% elif is_final %}{{ l.final_invoice }}{% else %}{{ l.invoice }}{% endif %}</div>
       <table class="meta-table">
         <tr>
-          <td class="meta-label">{{ doc.number_label(l, is_deposit, is_final) }}</td>
+          <td class="meta-label">{{ l.invoice_no }}</td>
           <td class="meta-value">{{ invoice.number }}</td>
         </tr>
         <tr>

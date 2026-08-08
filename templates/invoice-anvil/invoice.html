@@ -76,11 +76,12 @@
     <tr>
       <td>
         <br>
-       {% if is_reminder or is_deposit or is_final %}
+       {% if is_reminder %}
        <big><strong>{{ doc.document_title(l, invoice, is_reminder, is_deposit, is_final, reminder_title) }}</strong></big><br>
        {% endif %}
        <big>Invoice Date: <strong>{{ invoice.date }}</strong></big> <br>
-       <big>{{ doc.number_label(l, is_deposit, is_final) }}: <strong>{{ invoice.number }}<big></big></strong>
+       <big>{{ l.invoice_no }}: <strong>{{ invoice.number }}<big></big></strong>{% if is_deposit or is_final %}<br>
+       <big>{{ l.document_type }}: <strong>{% if is_deposit %}{{ l.deposit_invoice }}{% else %}{{ l.final_invoice }}{% endif %}</strong></big>{% endif %}
       </td>
       <td>
       </td>

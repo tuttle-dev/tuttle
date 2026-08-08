@@ -61,7 +61,8 @@
 
   <div>
   <p>
-    <b>{{ doc.number_label(l, is_deposit, is_final) }}: {{ invoice.number }}</b><br>
+    <b>{{ l.invoice_no }}: {{ invoice.number }}</b>{% if is_deposit or is_final %}<br>
+    <b>{{ l.document_type }}: {% if is_deposit %}{{ l.deposit_invoice }}{% else %}{{ l.final_invoice }}{% endif %}</b>{% endif %}<br>
     <b>Date: {{ invoice.date }}</b> <br>
   </p>
 </div>

@@ -46,14 +46,20 @@
 
   <div class="divider"></div>
 
-  {{ doc.banner(l, is_reminder, is_deposit, is_final, reminder_title) }}
+  {% if is_reminder %}{{ doc.banner(l, is_reminder, is_deposit, is_final, reminder_title) }}{% endif %}
   {% if is_deposit %}{{ doc.deposit_context(l, contract_title, milestone_title, milestone_percentage, contract_total) }}{% endif %}
 
   <table class="meta-table">
     <tr>
-      <td class="meta-label">{{ doc.number_label(l, is_deposit, is_final) }}</td>
+      <td class="meta-label">{{ l.invoice_no }}</td>
       <td class="meta-value">{{ invoice.number }}</td>
     </tr>
+    {% if is_deposit or is_final %}
+    <tr>
+      <td class="meta-label">{{ l.document_type }}</td>
+      <td class="meta-value"><strong>{% if is_deposit %}{{ l.deposit_invoice }}{% else %}{{ l.final_invoice }}{% endif %}</strong></td>
+    </tr>
+    {% endif %}
     {% if is_reminder %}
     <tr>
       <td class="meta-label">{{ l.original_invoice }}</td>

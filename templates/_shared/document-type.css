@@ -1,52 +1,46 @@
 /* Deposit / final / reminder presentation, shared by every invoice template.
  *
- * Neutral by design: colours come from each template's own palette through
- * --invoice-accent, and a template can override any rule because its own
- * stylesheet is linked after this one. */
+ * Understated by design: an invoice is already the document it says it is in
+ * its heading and number, so these blocks only annotate. Colour comes from
+ * the template's own palette through --invoice-accent; a template can
+ * override any rule because its own stylesheet is linked after this one. */
 
+/* A banner only where a template explicitly places one; most templates
+ * instead render a quiet "document type" meta row, or carry the type in the
+ * heading as a qualifier. */
 .document-type-banner {
-  font-size: 13pt;
-  font-weight: 700;
-  letter-spacing: 0.6pt;
-  text-transform: uppercase;
-  padding: 9pt 12pt;
-  margin-bottom: 10pt;
-}
-
-.document-type-banner.deposit {
-  background: #e8f0fe;
-  color: #1e40af;
-  border-left: 4pt solid #2563eb;
-}
-
-.document-type-banner.final {
-  background: #f3e8ff;
-  color: #6b21a8;
-  border-left: 4pt solid #7c3aed;
-}
-
-.document-type-banner.reminder {
-  background: #fef3c7;
-  color: #92400e;
-  border-left: 4pt solid #f59e0b;
-}
-
-.deposit-context {
   font-size: 9pt;
-  color: #444;
-  margin-bottom: 12pt;
-  line-height: 1.65;
-  padding: 8pt 10pt;
-  background: #f9fafb;
-  border: 0.5pt solid #e5e7eb;
+  font-weight: 700;
+  letter-spacing: 0.8pt;
+  text-transform: uppercase;
+  padding: 3pt 8pt;
+  margin-bottom: 8pt;
+  color: var(--invoice-accent, #374151);
+  border-left: 2pt solid var(--invoice-accent, #374151);
+}
+
+/* The type in the heading ("Rechnung 2026-042 · Schlussrechnung"), set a
+ * step down so it informs without competing with the number. */
+.document-type-qualifier {
+  font-size: 0.6em;
+  font-weight: 400;
+  color: #555;
+}
+
+/* What a deposit bills: which contract, which milestone, of what total. A
+ * short key/value list, set off only by the rules above and below it. */
+.deposit-context {
+  font-size: 8.5pt;
+  line-height: 1.6;
+  margin: 6pt 0 12pt;
+  padding: 5pt 0;
+  border-top: 0.5pt solid #d1d5db;
+  border-bottom: 0.5pt solid #d1d5db;
 }
 
 .deposit-context .label {
-  color: var(--invoice-accent, #1e40af);
+  color: var(--invoice-accent, #6b7280);
   font-weight: 600;
-  text-transform: uppercase;
-  font-size: 7pt;
-  letter-spacing: 0.4pt;
   margin-right: 4pt;
 }
 
@@ -54,7 +48,7 @@
  * gross amount above it rather than as another charge. */
 .deposit-deduction,
 .deposit-deduction td {
-  color: #666;
+  color: #555;
 }
 
 .deposit-deduction-vat,

@@ -10,13 +10,14 @@
   provides the class names that `document-type.css` styles.
 #}
 
+{#
+  Banner only for reminders. Deposit and final invoices announce themselves in
+  the meta table and heading of every template — a full-width coloured strip
+  on top of that would be noise.
+#}
 {% macro banner(l, is_reminder=False, is_deposit=False, is_final=False, reminder_title="") %}
 {%- if is_reminder %}
 <div class="document-type-banner reminder">{{ reminder_title }}</div>
-{%- elif is_deposit %}
-<div class="document-type-banner deposit">{{ l.deposit_invoice }}</div>
-{%- elif is_final %}
-<div class="document-type-banner final">{{ l.final_invoice }}</div>
 {%- endif %}
 {% endmacro %}
 

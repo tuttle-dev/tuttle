@@ -90,7 +90,8 @@ class TestRenderInvoice:
             only_final=False,
         )
 
-        assert "document-type-banner deposit" in html
+        # A deposit announces itself in the meta table, not through a banner.
+        assert "document-type-banner" not in html
         assert "Deposit Invoice" in html
         assert "Deposit due" in html
 

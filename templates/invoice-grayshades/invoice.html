@@ -45,9 +45,9 @@
     </div>
   </div>
 
-  {{ doc.banner(l, is_reminder, is_deposit, is_final, reminder_title) }}
+  {% if is_reminder %}{{ doc.banner(l, is_reminder, is_deposit, is_final, reminder_title) }}{% endif %}
 
-  <h1 class="invoice-title">{{ doc.number_label(l, is_deposit, is_final) }} {{ invoice.number }}</h1>
+  <h1 class="invoice-title">{{ l.invoice_no }} {{ invoice.number }}{% if is_deposit or is_final %} <span class="document-type-qualifier">({% if is_deposit %}{{ l.deposit_invoice }}{% else %}{{ l.final_invoice }}{% endif %})</span>{% endif %}</h1>
 
   {% if is_deposit %}{{ doc.deposit_context(l, contract_title, milestone_title, milestone_percentage, contract_total) }}{% endif %}
 
