@@ -184,7 +184,7 @@ def generate_invoice_email(
     Returns None when no contact email is available.
     """
     client = invoice.client
-    contact = client.invoicing_contact if client else None
+    contact = client.invoice_recipient_contact if client else None
     greeting = contact.first_name if contact and contact.first_name else client.name
     recipient = contact.email if contact and contact.email else None
 

@@ -13,6 +13,8 @@ from tuttle.calendar import get_month_start_end
 from tuttle.model import (
     Address,
     Client,
+    ClientContact,
+    Contact,
     Contract,
     ContractCharge,
     Invoice,
@@ -20,6 +22,7 @@ from tuttle.model import (
     InvoiceNote,
     Project,
     TaxCategory,
+    User,
 )
 from tuttle.time import ChargeBasis, ContractType, Cycle, TimeUnit
 
@@ -61,6 +64,31 @@ def test_invoice():
     assert the_invoice.sum == Decimal(1500)
     assert the_invoice.VAT_total == Decimal(300)
     assert the_invoice.total == Decimal(1800)
+
+
+def test_generate_invoice_email_uses_invoicing_role_contact():
+    """Clients with many-to-many invoicing contacts can still send invoices."""
+    contact = Contact(first_name="Jill", last_name="Invoice", email="billing@example.com")
+    client = Client(name="Client Corp")
+    client.client_contacts.append(ClientContact(client=client, contact=contact, role=" invoicing "))
+    contract = Contract(
+        title="Retainer",
+        client=client,
+        rate=Decimal("100"),
+        currency="EUR",
+        unit=TimeUnit.hour,
+        units_per_workday=8,
+        term_of_payment=14,
+        billing_cycle=Cycle.monthly,
+    )
+    invoice = Invoice(number="INV-1", date=datetime.date(2026, 7, 29), contract=contract)
+    user = User(first_name="Harry", last_name="Tuttle")
+
+    email = invoicing.generate_invoice_email(invoice, user)
+
+    assert email is not None
+    assert email["recipient"] == "billing@example.com"
+    assert "Dear Jill" in email["body"]
 
 
 def test_generate_invoice(
