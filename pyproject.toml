@@ -119,3 +119,10 @@ replace = '__version__ = "{new_version}"'
 filename = "ui/package.json"
 search = '"version": "{current_version}"'
 replace = '"version": "{new_version}"'
+
+# Landing page: rewrites the release tag and every download asset filename, so the
+# published download links point at the files of the release being cut.
+[[tool.bumpversion.files]]
+filename = "index.html"
+search = "{current_version}"
+replace = "{new_version}"

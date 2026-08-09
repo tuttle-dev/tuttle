@@ -198,6 +198,12 @@ sync-data:
 
 # Bump version, commit, tag, push to origin, create GitHub release.
 #
+# bumpversion also rewrites the download links in index.html (the GitHub Pages
+# landing page) to the asset filenames of the new version — see
+# [tool.bumpversion.files] in pyproject.toml. Those files only exist once the
+# pack-electron workflow finishes; until then the page falls back to the release
+# page via the GitHub API.
+#
 #   just release patch                  3.1.0 → 3.1.1
 #   just release minor                  3.1.0 → 3.2.0
 #   just release major                  3.1.0 → 4.0.0
