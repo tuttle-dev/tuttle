@@ -9,6 +9,10 @@ __pycache__/
 # Distribution / packaging
 .Python
 build/
+# ui/build/ holds committed electron-builder inputs (app icons, entitlements),
+# not build output.
+!ui/build/
+!ui/build/**
 develop-eggs/
 dist/
 downloads/
