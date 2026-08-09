@@ -53,10 +53,7 @@ Repository = "https://github.com/tuttle-dev/tuttle"
 
 [dependency-groups]
 dev = [
-    "jupyterlab",
-    "ipywidgets",
     "ruff",
-    "nbdime",
     "pre-commit",
     "bump-my-version>=1.3.0",
 ]
