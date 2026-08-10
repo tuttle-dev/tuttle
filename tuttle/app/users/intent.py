@@ -25,6 +25,9 @@ LOGO_MAX_DIMENSION = 600
 #: Signatures are stored at higher resolution for crisp 300 DPI print at ~5 cm.
 SIGNATURE_MAX_DIMENSION = 1200
 
+#: Distinguishes "the payload said nothing about bank accounts" from "clear them all".
+_ACCOUNTS_UNCHANGED = object()
+
 
 def _normalize_logo(data_uri: str) -> str:
     """Validate, downscale, and re-encode a logo image as a PNG data URI.
@@ -294,11 +297,14 @@ class UsersIntent:
             )
             bank = params.get("bank_account")
             if bank and any(bank.get(k) for k in ("IBAN", "BIC", "name")):
-                user.bank_account = BankAccount(
-                    name=bank.get("name", ""),
-                    IBAN=bank.get("IBAN", ""),
-                    BIC=bank.get("BIC", ""),
-                )
+                user.bank_accounts = [
+                    BankAccount(
+                        name=bank.get("name", ""),
+                        IBAN=bank.get("IBAN", ""),
+                        BIC=bank.get("BIC", ""),
+                        is_default=True,
+                    )
+                ]
             s.add(user)
             s.commit()
         engine.dispose()
@@ -307,6 +313,64 @@ class UsersIntent:
         return IntentResult(was_intent_successful=True, data=reg)
 
     # -- profile update -------------------------------------------------------
+
+    def _resolve_bank_accounts(self, profile, profile_data):
+        """Resolve the incoming bank-account payload into a full replacement.
+
+        Reads the ``bank_accounts`` list (preferred) or the legacy single
+        ``bank_account`` dict. Returns ``(error_msg, accounts)`` where a
+        falsy ``error_msg`` means success and ``_ACCOUNTS_UNCHANGED`` signals
+        that the payload said nothing about bank accounts.
+
+        Existing accounts keep their identity by id, so contracts referencing
+        one keep pointing at it. Exactly one account ends up default (the
+        flagged one, else the first). Removing an account a contract still
+        invoices from is refused.
+        """
+        if "bank_accounts" not in profile_data and "bank_account" not in profile_data:
+            return None, _ACCOUNTS_UNCHANGED
+
+        raw = profile_data.get("bank_accounts")
+        if not isinstance(raw, list):
+            legacy = profile_data.get("bank_account")
+            raw = [legacy] if legacy else []
+
+        rows = [r for r in raw if isinstance(r, dict) and any((r.get(k) or "").strip() for k in ("name", "IBAN", "BIC"))]
+
+        existing = {a.id: a for a in profile.bank_accounts if a.id is not None}
+        flagged = [r for r in rows if r.get("is_default")]
+        default_index = rows.index(flagged[0]) if flagged else (0 if rows else -1)
+
+        accounts = []
+        for i, row in enumerate(rows):
+            fields = {k: (row.get(k) or "").strip() for k in ("name", "IBAN", "BIC")}
+            account = existing.get(row.get("id"))
+            if account is None:
+                account = BankAccount(**fields)
+            else:
+                for key, value in fields.items():
+                    setattr(account, key, value)
+            account.is_default = i == default_index
+            accounts.append(account)
+
+        removed_ids = {a.id for a in existing.values()} - {a.id for a in accounts}
+        if removed_ids:
+            from ...model import Contract
+
+            engine = sql_create_engine(f"sqlite:///{get_active_db()}")
+            try:
+                with SqlSession(engine) as s:
+                    referenced = s.exec(select(Contract).where(Contract.bank_account_id.in_(removed_ids))).all()
+            finally:
+                engine.dispose()
+            if referenced:
+                titles = ", ".join(c.title for c in referenced)
+                return (
+                    "Cannot remove a bank account that is still used for invoicing "
+                    f"by: {titles}. Clear the account on the contract(s) first.",
+                    None,
+                )
+        return None, accounts
 
     def update_profile(self, profile_data: Dict[str, Any]) -> IntentResult:
         """Update the active user's profile from a dict."""
@@ -369,18 +433,11 @@ class UsersIntent:
             else:
                 profile.address = Address(**{k: v for k, v in addr.items() if k != "id" and not k.startswith("_")})
 
-        bank = profile_data.get("bank_account")
-        if bank is not None:
-            if profile.bank_account:
-                for k in ("name", "IBAN", "BIC"):
-                    if k in bank:
-                        setattr(profile.bank_account, k, bank[k])
-            else:
-                profile.bank_account = BankAccount(
-                    name=bank.get("name", ""),
-                    IBAN=bank.get("IBAN", ""),
-                    BIC=bank.get("BIC", ""),
-                )
+        error, accounts = self._resolve_bank_accounts(profile, profile_data)
+        if error:
+            return IntentResult(was_intent_successful=False, error_msg=error)
+        if accounts is not _ACCOUNTS_UNCHANGED:
+            profile.bank_accounts = accounts
 
         with ds.create_session() as s:
             s.add(profile)

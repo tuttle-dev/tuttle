@@ -127,7 +127,7 @@
       <tr>
         <td class="payment-info">
           <div>
-            {% if user.bank_account %}IBAN: <strong>{{ user.bank_account.IBAN }}</strong><br>{% endif %}
+            {% if bank_account %}IBAN: <strong>{{ bank_account.IBAN }}</strong><br>{% endif %}
           </div>
         </td>
         <td class="bold">{{ invoice.effective_due_date }}</td>
@@ -154,8 +154,8 @@
 
   <div class="footer">
     <div class="footer-info">
-      {% if user.bank_account %}<span>IBAN: {{ user.bank_account.IBAN }} </span> |
-      <span>BIC: {{ user.bank_account.BIC  }}</span> |{% endif %}
+      {% if bank_account %}<span>IBAN: {{ bank_account.IBAN }} </span> |
+      <span>BIC: {{ bank_account.BIC  }}</span> |{% endif %}
       {% if seller_tax_id %}<span>{{ seller_tax_id_label }}: {{ seller_tax_id }}</span>{% endif %}
     </div>
   </div>

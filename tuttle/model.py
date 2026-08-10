@@ -150,7 +150,7 @@ class Address(RpcMixin, SQLModel, table=True):
 class User(RpcMixin, SQLModel, table=True):
     """User of the application, a freelancer."""
 
-    __rpc_relationships__ = ("address", "bank_account")
+    __rpc_relationships__ = ("address", "bank_accounts")
 
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
@@ -183,11 +183,14 @@ class User(RpcMixin, SQLModel, table=True):
         description="Tax number (Steuernummer) of the user. Required on invoices "
         "outside the scope of VAT, where EN16931 BR-O-02 forbids the VAT number.",
     )
-    # User 1:1 business BankAccount
-    bank_account_id: Optional[int] = Field(default=None, foreign_key="bankaccount.id")
-    bank_account: Optional["BankAccount"] = Relationship(
+    # User 1:n BankAccount
+    bank_accounts: List["BankAccount"] = Relationship(
         back_populates="user",
-        sa_relationship_kwargs={"lazy": "subquery"},
+        sa_relationship_kwargs={
+            "lazy": "subquery",
+            "cascade": "all, delete-orphan",
+            "order_by": "BankAccount.id",
+        },
     )
     logo: Optional[str] = Field(
         default=None,
@@ -203,13 +206,29 @@ class User(RpcMixin, SQLModel, table=True):
     )
 
     @property
+    def bank_account(self) -> Optional["BankAccount"]:
+        """The user's default bank account.
+
+        Backwards-compatible view over ``bank_accounts``: the account marked
+        default, else the first one. Invoices prefer the bank account named on
+        their contract and fall back to this.
+        """
+        if not self.bank_accounts:
+            return None
+        for account in self.bank_accounts:
+            if account.is_default:
+                return account
+        return self.bank_accounts[0]
+
+    @property
     def bank_account_not_set(self) -> bool:
-        """True if bank account is not set."""
-        if not self.bank_account:
+        """True if no bank account is set."""
+        if not self.bank_accounts:
             return True
-        if not self.bank_account.BIC or not self.bank_account.IBAN or not self.bank_account.name:
-            return True
-        return False
+        for account in self.bank_accounts:
+            if account.BIC and account.IBAN and account.name:
+                return False
+        return True
 
 
 class Bank(SQLModel, table=True):
@@ -224,8 +243,18 @@ class BankAccount(SQLModel, table=True):
     name: str
     IBAN: str
     BIC: str
+    is_default: bool = Field(
+        default=False,
+        description="Whether this is the user's default account, used when an "
+        "invoice's contract names no bank account of its own.",
+    )
     # username: str  # online banking user name
-    user: User = Relationship(back_populates="bank_account")
+    user_id: Optional[int] = Field(default=None, foreign_key="user.id", ondelete="CASCADE")
+    user: Optional[User] = Relationship(back_populates="bank_accounts")
+    contracts: List["Contract"] = Relationship(
+        back_populates="bank_account",
+        sa_relationship_kwargs={"lazy": "subquery", "passive_deletes": "all"},
+    )
 
 
 class Contact(RpcMixin, SQLModel, table=True):
@@ -497,6 +526,7 @@ class Contract(RpcMixin, VatCategoryMixin, SQLModel, table=True):
         "projects": ("id", "title"),
         "invoices": ("id",),
         "charges": None,
+        "bank_account": None,
     }
     __rpc_computed__ = ("unit_abbrev", "is_fixed_price")
 
@@ -522,6 +552,19 @@ class Contract(RpcMixin, VatCategoryMixin, SQLModel, table=True):
         default=None,
         foreign_key="client.id",
         ondelete="RESTRICT",
+    )
+    # The bank account this contract invoices from. Named when the contract is
+    # agreed; invoices for the contract pay into it. None falls back to the
+    # user's default account.
+    bank_account_id: Optional[int] = Field(
+        default=None,
+        foreign_key="bankaccount.id",
+        ondelete="SET NULL",
+        description="Bank account to invoice from for this contract.",
+    )
+    bank_account: Optional["BankAccount"] = Relationship(
+        back_populates="contracts",
+        sa_relationship_kwargs={"lazy": "subquery"},
     )
     type: ContractType = Field(
         description="Whether the contract is time-based (rate per unit) or fixed-price. "

@@ -11,11 +11,11 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { Settings, RefreshCw, Save, CheckCircle2, AlertCircle, User, Bot, FileText, RotateCcw, Trash2, AlertTriangle, Monitor, Globe, Info, Image as ImageIcon, X, Sun, Moon, Laptop, Palette, Terminal, Clipboard, Check } from "lucide-react";
+import { Settings, Plus, RefreshCw, Save, CheckCircle2, AlertCircle, User, Bot, FileText, RotateCcw, Trash2, AlertTriangle, Monitor, Globe, Info, Image as ImageIcon, X, Sun, Moon, Laptop, Palette, Terminal, Clipboard, Check } from "lucide-react";
 import { useTheme, type ThemeChoice } from "../../hooks/useTheme";
 import { rpc } from "../../api/rpc";
 import type { Entity } from "../../api/types";
-import { str } from "../../api/entity";
+import { str, bool, list as entityList } from "../../api/entity";
 import { useStatusBar, type StatusMessage, type MessageType } from "../shared/status-bar-context";
 
 // ---------------------------------------------------------------------------
@@ -38,6 +38,14 @@ const DEFAULT_CONFIG: LLMConfig = {
   request_timeout: 600,
 };
 
+interface BankAccountRow {
+  id: number | null;
+  name: string;
+  IBAN: string;
+  BIC: string;
+  is_default: boolean;
+}
+
 interface ProfileForm {
   name: string;
   subtitle: string;
@@ -55,9 +63,8 @@ interface ProfileForm {
   postal_code: string;
   city: string;
   country: string;
-  bank_name: string;
-  bank_IBAN: string;
-  bank_BIC: string;
+  bank_accounts: BankAccountRow[];
+  bank_accountsError: string | null;
 }
 
 const EMPTY_PROFILE: ProfileForm = {
@@ -66,7 +73,8 @@ const EMPTY_PROFILE: ProfileForm = {
   accent_color: "#2563eb",
   VAT_number: "", tax_number: "", operating_country: "",
   street: "", number: "", postal_code: "", city: "", country: "",
-  bank_name: "", bank_IBAN: "", bank_BIC: "",
+  bank_accounts: [],
+  bank_accountsError: null,
 };
 
 // Reject logos larger than this before upload; the backend also downscales.
@@ -233,7 +241,6 @@ export function SettingsView() {
       const p = d.profile as Entity | undefined;
       if (p) {
         const addr = p.address as Entity | undefined;
-        const bank = p.bank_account as Entity | undefined;
         setProfile({
           name: str(p, "name"),
           subtitle: str(p, "subtitle"),
@@ -251,9 +258,14 @@ export function SettingsView() {
           postal_code: addr ? str(addr, "postal_code") : "",
           city: addr ? str(addr, "city") : "",
           country: addr ? str(addr, "country") : "",
-          bank_name: bank ? str(bank, "name") : "",
-          bank_IBAN: bank ? str(bank, "IBAN") : "",
-          bank_BIC: bank ? str(bank, "BIC") : "",
+          bank_accounts: entityList(p, "bank_accounts").map((b) => ({
+            id: b.id ?? null,
+            name: str(b, "name"),
+            IBAN: str(b, "IBAN"),
+            BIC: str(b, "BIC"),
+            is_default: bool(b, "is_default"),
+          })),
+          bank_accountsError: null,
         });
       }
     }
@@ -283,11 +295,13 @@ export function SettingsView() {
           city: profile.city,
           country: profile.country,
         },
-        bank_account: {
-          name: profile.bank_name,
-          IBAN: profile.bank_IBAN,
-          BIC: profile.bank_BIC,
-        },
+        bank_accounts: profile.bank_accounts.map((b) => ({
+          id: b.id,
+          name: b.name,
+          IBAN: b.IBAN,
+          BIC: b.BIC,
+          is_default: b.is_default,
+        })),
       },
     };
     const res = await rpc("users.update_profile", payload);
@@ -547,20 +561,108 @@ export function SettingsView() {
           </fieldset>
 
           <fieldset className="border border-border-subtle rounded-lg px-4 pb-3 pt-2">
-            <legend className="text-xs font-medium text-secondary px-1">Bank Account</legend>
-            <div className="grid grid-cols-2 gap-3 mt-1">
-              <div className="col-span-2">
-                <label className={labelCls}>Account holder / Bank name</label>
-                <input className={inputCls} value={profile.bank_name} onChange={pset("bank_name")} placeholder="Your Name or Bank Name" />
-              </div>
-              <div>
-                <label className={labelCls}>IBAN</label>
-                <input className={inputCls} value={profile.bank_IBAN} onChange={pset("bank_IBAN")} />
-              </div>
-              <div>
-                <label className={labelCls}>BIC</label>
-                <input className={inputCls} value={profile.bank_BIC} onChange={pset("bank_BIC")} />
-              </div>
+            <legend className="text-xs font-medium text-secondary px-1">Bank Accounts</legend>
+            <p className="text-xs text-muted mt-1 mb-2">
+              Multiple accounts let you invoice from the right one: contracts name the account to pay into,
+              falling back to the default. Mark the account used when no contract picks one.
+            </p>
+            <div className="space-y-3">
+              {profile.bank_accounts.map((acc, idx) => (
+                <div key={acc.id ?? `new-${idx}`} className="grid grid-cols-2 gap-3 p-3 rounded-lg bg-bg-card border border-border-subtle">
+                  <label className="flex items-center gap-2 text-xs text-secondary col-span-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="default-bank"
+                      checked={acc.is_default}
+                      onChange={() =>
+                        setProfile((p) => ({
+                          ...p,
+                          bank_accounts: p.bank_accounts.map((a, i) => ({ ...a, is_default: i === idx })),
+                        }))
+                      }
+                    />
+                    Default account
+                  </label>
+                  <div className="col-span-2">
+                    <label className={labelCls}>Account holder / Bank name</label>
+                    <input
+                      className={inputCls}
+                      value={acc.name}
+                      onChange={(e) =>
+                        setProfile((p) => ({
+                          ...p,
+                          bank_accounts: p.bank_accounts.map((a, i) => (i === idx ? { ...a, name: e.target.value } : a)),
+                        }))
+                      }
+                      placeholder="Your Name or Bank Name"
+                    />
+                  </div>
+                  <div>
+                    <label className={labelCls}>IBAN</label>
+                    <input
+                      className={inputCls}
+                      value={acc.IBAN}
+                      onChange={(e) =>
+                        setProfile((p) => ({
+                          ...p,
+                          bank_accounts: p.bank_accounts.map((a, i) => (i === idx ? { ...a, IBAN: e.target.value } : a)),
+                        }))
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className={labelCls}>BIC</label>
+                    <input
+                      className={inputCls}
+                      value={acc.BIC}
+                      onChange={(e) =>
+                        setProfile((p) => ({
+                          ...p,
+                          bank_accounts: p.bank_accounts.map((a, i) => (i === idx ? { ...a, BIC: e.target.value } : a)),
+                        }))
+                      }
+                    />
+                  </div>
+                  <div className="col-span-2 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setProfile((p) => ({
+                          ...p,
+                          bank_accounts: p.bank_accounts
+                            .filter((_, i) => i !== idx)
+                            .map((a, i) => ({ ...a, is_default: p.bank_accounts.length === 1 ? false : a.is_default })),
+                        }))
+                      }
+                      className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs text-secondary hover:text-red-400 border border-border-subtle hover:bg-red-400/10 transition-colors w-fit"
+                    >
+                      <Trash2 size={12} />
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+              <button
+                type="button"
+                onClick={() =>
+                  setProfile((p) => ({
+                    ...p,
+                    bank_accounts: [
+                      ...p.bank_accounts,
+                      { id: null, name: "", IBAN: "", BIC: "", is_default: p.bank_accounts.length === 0 },
+                    ],
+                  }))
+                }
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-bg-card text-secondary hover:text-primary border border-border-subtle hover:bg-bg-hover transition-colors w-fit"
+              >
+                <Plus size={13} />
+                Add bank account
+              </button>
+
+              {profile.bank_accountsError && (
+                <p className="text-xs text-red-400">{profile.bank_accountsError}</p>
+              )}
             </div>
           </fieldset>
 

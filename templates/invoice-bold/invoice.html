@@ -101,11 +101,11 @@
   <div class="bottom-section">
     <div class="payment">
       <span class="label">{{ l.payment }}</span>
-      {% if user.bank_account %}
+      {% if bank_account %}
       <table class="payment-table">
-        {% if user.bank_account.name %}<tr><td class="payment-key">{{ l.account_holder }}</td><td class="payment-val">{{ user.bank_account.name }}</td></tr>{% endif %}
-        <tr><td class="payment-key">IBAN</td><td class="payment-val">{{ user.bank_account.IBAN }}</td></tr>
-        {% if user.bank_account.BIC %}<tr><td class="payment-key">BIC</td><td class="payment-val">{{ user.bank_account.BIC }}</td></tr>{% endif %}
+        {% if bank_account.name %}<tr><td class="payment-key">{{ l.account_holder }}</td><td class="payment-val">{{ bank_account.name }}</td></tr>{% endif %}
+        <tr><td class="payment-key">IBAN</td><td class="payment-val">{{ bank_account.IBAN }}</td></tr>
+        {% if bank_account.BIC %}<tr><td class="payment-key">BIC</td><td class="payment-val">{{ bank_account.BIC }}</td></tr>{% endif %}
       </table>
       {% endif %}
     </div>
@@ -149,8 +149,8 @@
 
   <div class="footer">
     <span>{{ user.name }}</span>
-    {% if user.bank_account %}<span>IBAN: {{ user.bank_account.IBAN }}</span>
-    {% if user.bank_account.BIC %}<span>BIC: {{ user.bank_account.BIC }}</span>{% endif %}{% endif %}
+    {% if bank_account %}<span>IBAN: {{ bank_account.IBAN }}</span>
+    {% if bank_account.BIC %}<span>BIC: {{ bank_account.BIC }}</span>{% endif %}{% endif %}
     {% if seller_tax_id %}<span>{{ seller_tax_id_label }}: {{ seller_tax_id }}</span>{% endif %}
   </div>
 

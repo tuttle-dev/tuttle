@@ -252,6 +252,14 @@ def render_invoice(
         seller_tax_id_label = labels.get("tax_number", "Tax No.")
         seller_tax_id = user.tax_number or ""
 
+    # The bank account named on the contract takes precedence; without one the
+    # user's default account is used. Falls back defensively when the contract
+    # relationship cannot be loaded (detached / legacy data).
+    try:
+        payee_account = invoice.contract.bank_account or user.bank_account
+    except Exception:
+        payee_account = user.bank_account
+
     invoice_template = template_env.get_template("invoice.html")
     html = invoice_template.render(
         user=user,
@@ -266,6 +274,7 @@ def render_invoice(
         include_due_date=include_due_date,
         include_signature=include_signature,
         accent_color=accent_color or "",
+        bank_account=payee_account,
     )
     if out_dir is None:
         return html

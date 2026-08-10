@@ -43,6 +43,7 @@ export function ContractsView() {
   const [parsedContracts, setParsedContracts] = useState<ParsedContract[]>([]);
   const [parsing, setParsing] = useState(false);
   const [parseError, setParseError] = useState<string | null>(null);
+  const [bankAccounts, setBankAccounts] = useState<Entity[]>([]);
   const selectedIdRef = useRef<number | null>(null);
 
   useEffect(() => { selectedIdRef.current = selected?.id ?? null; }, [selected]);
@@ -50,11 +51,12 @@ export function ContractsView() {
 
   async function load() {
     setLoading(true);
-    const [res, clRes, curRes, supRes] = await Promise.all([
+    const [res, clRes, curRes, supRes, accRes] = await Promise.all([
       rpc<Entity[]>("contracts.get_all"),
       rpc<Record<string, Entity>>("contracts.get_all_clients"),
       rpc<string>("contracts.get_default_currency"),
       rpc<{ supported: string[] }>("settings.get_currency"),
+      rpc<Entity>("users.get_active"),
     ]);
     if (res.ok && res.data) {
       setContracts(res.data);
@@ -67,6 +69,8 @@ export function ContractsView() {
     if (clRes.ok && clRes.data) setClients(clRes.data);
     if (curRes.ok && curRes.data) setDefaultCurrency(curRes.data);
     if (supRes.ok && supRes.data?.supported?.length) setCurrencies(supRes.data.supported);
+    const profile = accRes.ok && accRes.data ? (accRes.data.profile as Entity | undefined) : undefined;
+    setBankAccounts(profile ? entityList(profile, "bank_accounts") : []);
     setLoading(false);
   }
 
@@ -98,6 +102,7 @@ export function ContractsView() {
       end_date: data.endDate || null,
       term_of_payment: data.termOfPayment || null,
       units_per_workday: data.unitsPerWorkday,
+      bank_account_id: data.bankAccountId || null,
       // Always sent, so clearing the last charge clears it server-side too.
       charges: data.charges.map((c) => ({
         id: c.id,
@@ -218,9 +223,9 @@ export function ContractsView() {
               onDiscard={discardContract} onUpdate={updateParsedContract} onClose={() => setMode("view")}
             />
           ) : mode === "create" ? (
-            <ContractForm clients={clients} defaultCurrency={defaultCurrency} currencies={currencies} onSave={handleSave} onCancel={() => setMode("view")} error={saveError} />
+            <ContractForm contract={null} clients={clients} defaultCurrency={defaultCurrency} currencies={currencies} bankAccounts={bankAccounts} onSave={handleSave} onCancel={() => setMode("view")} error={saveError} />
           ) : mode === "edit" && selected ? (
-            <ContractForm contract={selected} clients={clients} defaultCurrency={defaultCurrency} currencies={currencies} onSave={handleSave} onCancel={() => setMode("view")} error={saveError} />
+            <ContractForm contract={selected} clients={clients} defaultCurrency={defaultCurrency} currencies={currencies} bankAccounts={bankAccounts} onSave={handleSave} onCancel={() => setMode("view")} error={saveError} />
           ) : selected ? (
             <ContractDetail contract={selected}
               onEdit={() => setMode("edit")}
@@ -457,6 +462,7 @@ interface ContractFormData {
   endDate: string;
   termOfPayment: number | null;
   unitsPerWorkday: number;
+  bankAccountId: number | "";
   charges: ChargeRow[];
 }
 
@@ -477,7 +483,7 @@ interface ChargeRow {
   basis: ChargeBasis;
 }
 
-function chargeRowsFrom(contract?: Entity): ChargeRow[] {
+function chargeRowsFrom(contract?: Entity | null): ChargeRow[] {
   if (!contract) return [];
   return entityList(contract, "charges").map((c) => ({
     id: c.id,
@@ -491,11 +497,12 @@ function isBlankCharge(row: ChargeRow): boolean {
   return !row.description.trim() && !row.amount.trim();
 }
 
-function ContractForm({ contract, clients, defaultCurrency, currencies, onSave, onCancel, error }: {
-  contract?: Entity;
+function ContractForm({ contract, clients, defaultCurrency, currencies, bankAccounts, onSave, onCancel, error }: {
+  contract: Entity | null;
   clients: Record<string, Entity>;
   defaultCurrency: string;
   currencies: string[];
+  bankAccounts: Entity[];
   onSave: (data: ContractFormData) => void;
   onCancel: () => void;
   error?: string | null;
@@ -506,6 +513,7 @@ function ContractForm({ contract, clients, defaultCurrency, currencies, onSave, 
     ? ((str(contract, "type") as PricingMode) || (initFixed ? "fixed_price" : "time_based"))
     : "time_based";
   const [pricingMode, setPricingMode] = useState<PricingMode>(initType);
+  const contractBankId: number | "" = contract ? (subEntity(contract, "bank_account")?.id ?? "") : "";
   const [form, setForm] = useState<ContractFormData>(() => {
     if (contract) return {
       title: str(contract, "title"),
@@ -528,12 +536,14 @@ function ContractForm({ contract, clients, defaultCurrency, currencies, onSave, 
       endDate: str(contract, "end_date"),
       termOfPayment: num(contract, "term_of_payment") || null,
       unitsPerWorkday: num(contract, "units_per_workday") || 8,
+      bankAccountId: contractBankId,
       charges: chargeRowsFrom(contract),
     };
     return {
       title: "", clientId: null, type: "time_based", fixedPrice: null, rate: null, currency: defaultCurrency,
       unit: "hour", billingCycle: "monthly", volume: null, vatRate: 0.19, vatCategory: "S",
       signatureDate: "", startDate: "", endDate: "", termOfPayment: 31, unitsPerWorkday: 8,
+      bankAccountId: "",
       charges: [],
     };
   });
@@ -795,6 +805,24 @@ function ContractForm({ contract, clients, defaultCurrency, currencies, onSave, 
               <input type="number" value={form.unitsPerWorkday} onChange={(e) => update("unitsPerWorkday", parseInt(e.target.value) || 8)} className={inputCls} />
             </div>
           )}
+        </div>
+        <div className="mt-3">
+          <label className="block text-xs text-tertiary mb-1">Invoicing Bank Account</label>
+          <select
+            value={form.bankAccountId}
+            onChange={(e) => update("bankAccountId", e.target.value ? parseInt(e.target.value) : "")}
+            className={inputCls}
+          >
+            <option value="">Use my default account</option>
+            {bankAccounts.map((acc) => (
+              <option key={String(acc.id)} value={String(acc.id)}>
+                {str(acc, "name")} — {str(acc, "IBAN")}{bool(acc, "is_default") ? " (default)" : ""}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-muted mt-1">
+            Invoices for this contract pay into this account. Leave unset to pay into the default account.
+          </p>
         </div>
       </Section>
     </form>

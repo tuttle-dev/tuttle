@@ -73,11 +73,13 @@ def demo_user():
             postal_code="555555",
             country="Brazil",
         ),
-        bank_account=BankAccount(
-            name="Giro",
-            IBAN="BZ99830994950003161565",
-            BIC="BANKINFO101",
-        ),
+        bank_accounts=[
+            BankAccount(
+                name="Giro",
+                IBAN="BZ99830994950003161565",
+                BIC="BANKINFO101",
+            ),
+        ],
     )
     return user
 
