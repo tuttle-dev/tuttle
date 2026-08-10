@@ -750,6 +750,7 @@ class TestInvoicePaymentQR:
             out_dir=None,
             document_format="html",
             only_final=False,
+            include_qr_code=True,
         )
 
         assert "payment-qr" in html
@@ -781,6 +782,7 @@ class TestInvoicePaymentQR:
             out_dir=None,
             document_format="html",
             only_final=False,
+            include_qr_code=True,
         )
 
         assert "payment-qr" not in html
@@ -799,6 +801,7 @@ class TestInvoicePaymentQR:
             out_dir=None,
             document_format="html",
             only_final=False,
+            include_qr_code=True,
         )
 
         assert "payment-qr" not in html

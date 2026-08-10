@@ -199,7 +199,7 @@ def render_invoice(
     include_logo: bool = True,
     include_due_date: bool = True,
     include_signature: bool = True,
-    include_qr_code: bool = True,
+    include_qr_code: bool = False,
     accent_color: Optional[str] = None,
 ):
     """Render an Invoice using an HTML template.

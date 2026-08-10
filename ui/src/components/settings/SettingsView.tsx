@@ -92,7 +92,7 @@ const DEFAULT_INVOICING: InvoicingPrefs = {
   include_logo: true,
   include_due_date: true,
   include_signature: true,
-  include_qr_code: true,
+  include_qr_code: false,
 };
 
 const SCHEME_EXAMPLES: Record<string, string> = {

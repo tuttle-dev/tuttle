@@ -390,7 +390,7 @@ class InvoicingIntent(Intent):
 
                 qr_result = self._preferences_intent.get_include_qr_code()
                 resolved_include_qr_code = (
-                    qr_result.data if qr_result.was_intent_successful and qr_result.data is not None else True
+                    qr_result.data if qr_result.was_intent_successful and qr_result.data is not None else False
                 )
 
                 try:
@@ -536,7 +536,7 @@ class InvoicingIntent(Intent):
 
                 qr_result = self._preferences_intent.get_include_qr_code()
                 resolved_include_qr_code = (
-                    qr_result.data if qr_result.was_intent_successful and qr_result.data is not None else True
+                    qr_result.data if qr_result.was_intent_successful and qr_result.data is not None else False
                 )
 
                 try:
