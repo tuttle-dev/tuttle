@@ -857,7 +857,7 @@ def create_demo_user() -> User:
                 is_default=True,
             ),
             BankAccount(
-                name="Wise USD",
+                name="Harry Tuttle",
                 IBAN="US88589600002547441617",
                 BIC="TRWIBEB1",
                 is_default=False,
