@@ -851,7 +851,7 @@ def create_demo_user() -> User:
         ),
         bank_accounts=[
             BankAccount(
-                name="Giro",
+                name="Harry Tuttle",
                 IBAN="BZ99830994950003161565",
                 BIC="BANKINFO101",
                 is_default=True,
