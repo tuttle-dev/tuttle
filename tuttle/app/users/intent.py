@@ -330,6 +330,28 @@ class UsersIntent:
         if "bank_accounts" not in profile_data and "bank_account" not in profile_data:
             return None, _ACCOUNTS_UNCHANGED
 
+        # Keep the legacy single-account payload as a partial update.  Before
+        # multiple accounts were supported, omitted fields were left alone on
+        # an existing account, so replacing it with a row containing empty
+        # strings would erase data from older callers.
+        if "bank_accounts" not in profile_data:
+            legacy = profile_data.get("bank_account")
+            if legacy is None:
+                return None, _ACCOUNTS_UNCHANGED
+            account = profile.bank_account
+            if account is not None:
+                for key in ("name", "IBAN", "BIC"):
+                    if key in legacy:
+                        setattr(account, key, legacy[key])
+                return None, list(profile.bank_accounts)
+            account = BankAccount(
+                name=legacy.get("name", ""),
+                IBAN=legacy.get("IBAN", ""),
+                BIC=legacy.get("BIC", ""),
+                is_default=True,
+            )
+            return None, [account]
+
         raw = profile_data.get("bank_accounts")
         if not isinstance(raw, list):
             legacy = profile_data.get("bank_account")
