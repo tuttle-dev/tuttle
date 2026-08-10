@@ -593,7 +593,7 @@ class InvoicingIntent(Intent):
         try:
             user = self._user_data_source.get_user()
             client = invoice.contract.client
-            contact = client.invoicing_contact if client else None
+            contact = client.invoice_recipient_contact if client else None
             greeting = contact.name if contact and contact.name else client.name
             recipient = contact.email if contact and contact.email else None
             if not recipient:
@@ -655,7 +655,7 @@ Best regards,
             user = self._user_data_source.get_user()
             # open email client with message pre-filled
             client = invoice.contract.client
-            contact = client.invoicing_contact if client else None
+            contact = client.invoice_recipient_contact if client else None
             greeting = contact.name if contact and contact.name else client.name
             recipient = contact.email if contact and contact.email else None
 

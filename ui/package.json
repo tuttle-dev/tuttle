@@ -1,7 +1,7 @@
 {
   "name": "tuttle-ui",
   "productName": "Tuttle",
-  "version": "4.2.0",
+  "version": "4.2.1",
   "description": "Cross-platform Electron UI for Tuttle",
   "homepage": "https://github.com/tuttle-dev/tuttle",
   "author": {
@@ -43,6 +43,7 @@
       "releaseType": "release"
     },
     "mac": {
+      "icon": "build/icon.icns",
       "artifactName": "Tuttle-${version}-macOS-${arch}.${ext}",
       "category": "public.app-category.business",
       "hardenedRuntime": true,
@@ -59,10 +60,12 @@
       }
     },
     "win": {
+      "icon": "build/icon.ico",
       "artifactName": "Tuttle-${version}-Windows-Setup.${ext}",
       "target": "nsis"
     },
     "linux": {
+      "icon": "build/icon.png",
       "target": [
         "AppImage",
         "deb",

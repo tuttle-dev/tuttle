@@ -373,17 +373,33 @@ class Client(RpcMixin, SQLModel, table=True):
     )
 
     @property
+    def invoice_recipient_contact(self) -> Optional[Contact]:
+        """Contact to use for invoice delivery.
+
+        Prefer the legacy direct invoicing contact, but also support the
+        many-to-many contact association used by the current contact UI.
+        """
+        if self.invoicing_contact:
+            return self.invoicing_contact
+        for association in self.client_contacts:
+            if (association.role or "").strip().casefold() == "invoicing":
+                return association.contact
+        return None
+
+    @property
     def invoice_recipient_name(self) -> str:
         """Name to use on invoices: contact name if available, else client name."""
-        if self.invoicing_contact and self.invoicing_contact.name:
-            return self.invoicing_contact.name
+        contact = self.invoice_recipient_contact
+        if contact and contact.name:
+            return contact.name
         return self.name
 
     @property
     def invoice_recipient_address(self) -> Optional["Address"]:
         """Address for invoices: prefer contact address, fall back to client address."""
-        if self.invoicing_contact and self.invoicing_contact.address:
-            return self.invoicing_contact.address
+        contact = self.invoice_recipient_contact
+        if contact and contact.address:
+            return contact.address
         return self.address
 
 
