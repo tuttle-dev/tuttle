@@ -476,3 +476,74 @@ def test_backfill_leaves_no_null_categories(backfilled_db):
     for table in ("contract", "invoiceitem"):
         count = backfilled_db.execute(f'SELECT COUNT(*) FROM {table} WHERE "VAT_category" IS NULL').fetchone()[0]
         assert count == 0, f"{table} has NULL VAT_category rows"
+
+
+# -- Bank account ownership backfill (revision f87515d1d068) ------------------
+
+_BANK_ACCOUNTS_REVISION = "f87515d1d068"
+_BEFORE_BANK_ACCOUNTS = "9cad5ae77a79"
+
+
+@pytest.fixture
+def bank_accounts_db(tmp_db: tuple[Path, str]):
+    """A DB seeded with the old 1:1 user -> bank account link, then upgraded.
+
+    Two accounts exist: the one the user was linked to, and one left
+    unreferenced by an earlier profile edit.
+    """
+    db, url = tmp_db
+    cfg = _alembic_config_for(url)
+    command.upgrade(cfg, _BEFORE_BANK_ACCOUNTS)
+
+    con = sqlite3.connect(db)
+    cur = con.cursor()
+    _insert(cur, "bankaccount", id=1, name="Linked", IBAN="DE1", BIC="B1")
+    _insert(cur, "bankaccount", id=2, name="Unreferenced", IBAN="DE2", BIC="B2")
+    _insert(cur, "user", id=1, name="Legacy User", bank_account_id=1)
+    _insert(cur, "client", id=1, name="ACME")
+    _insert(cur, "contract", id=1, title="c1", client_id=1, currency="EUR", unit="hour", type="time_based")
+    con.commit()
+    con.close()
+
+    command.upgrade(cfg, _BANK_ACCOUNTS_REVISION)
+    con = sqlite3.connect(db)
+    yield con
+    con.close()
+
+
+def test_linked_account_becomes_owned_and_default(bank_accounts_db):
+    """The account behind the old user.bank_account_id must survive as the default."""
+    row = bank_accounts_db.execute("SELECT user_id, is_default FROM bankaccount WHERE id = 1").fetchone()
+    assert row == (1, 1)
+
+
+def test_unreferenced_account_is_kept_but_not_default(bank_accounts_db):
+    """An account no user pointed at is not deleted and does not become a default."""
+    row = bank_accounts_db.execute("SELECT user_id, is_default FROM bankaccount WHERE id = 2").fetchone()
+    assert row == (None, 0)
+
+
+def test_user_bank_account_id_is_dropped(bank_accounts_db):
+    cols = {r[1] for r in bank_accounts_db.execute("PRAGMA table_info(user)")}
+    assert "bank_account_id" not in cols
+    assert bank_accounts_db.execute("SELECT COUNT(*) FROM user").fetchone()[0] == 1
+
+
+def test_contract_gains_a_null_bank_account(bank_accounts_db):
+    """Existing contracts invoice from the user's default until one is picked."""
+    row = bank_accounts_db.execute("SELECT bank_account_id FROM contract WHERE id = 1").fetchone()
+    assert row[0] is None
+
+
+@pytest.mark.parametrize(
+    "table,column,on_delete",
+    [
+        ("bankaccount", "user_id", "CASCADE"),
+        ("contract", "bank_account_id", "SET NULL"),
+    ],
+)
+def test_foreign_keys_survive_the_batch_rebuild(bank_accounts_db, table, column, on_delete):
+    """Batch mode rebuilds tables; the new FKs must come back with their actions."""
+    fks = [f for f in bank_accounts_db.execute(f"PRAGMA foreign_key_list({table})") if f[3] == column]
+    assert len(fks) == 1, f"{table}.{column} has no foreign key after the rebuild"
+    assert fks[0][6] == on_delete
