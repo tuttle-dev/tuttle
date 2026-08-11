@@ -25,6 +25,7 @@ LOGO_MAX_DIMENSION = 600
 #: Signatures are stored at higher resolution for crisp 300 DPI print at ~5 cm.
 SIGNATURE_MAX_DIMENSION = 1200
 
+
 def _normalize_logo(data_uri: str) -> str:
     """Validate, downscale, and re-encode a logo image as a PNG data URI.
 
