@@ -25,10 +25,6 @@ LOGO_MAX_DIMENSION = 600
 #: Signatures are stored at higher resolution for crisp 300 DPI print at ~5 cm.
 SIGNATURE_MAX_DIMENSION = 1200
 
-#: Distinguishes "the payload said nothing about bank accounts" from "clear them all".
-_ACCOUNTS_UNCHANGED = object()
-
-
 def _normalize_logo(data_uri: str) -> str:
     """Validate, downscale, and re-encode a logo image as a PNG data URI.
 
@@ -314,49 +310,17 @@ class UsersIntent:
 
     # -- profile update -------------------------------------------------------
 
-    def _resolve_bank_accounts(self, profile, profile_data):
-        """Resolve the incoming bank-account payload into a full replacement.
+    def _resolve_bank_accounts(self, profile, raw):
+        """Resolve an incoming ``bank_accounts`` list into a full replacement.
 
-        Reads the ``bank_accounts`` list (preferred) or the legacy single
-        ``bank_account`` dict. Returns ``(error_msg, accounts)`` where a
-        falsy ``error_msg`` means success and ``_ACCOUNTS_UNCHANGED`` signals
-        that the payload said nothing about bank accounts.
+        Returns ``(error_msg, accounts)`` where a falsy ``error_msg`` means
+        success.
 
         Existing accounts keep their identity by id, so contracts referencing
         one keep pointing at it. Exactly one account ends up default (the
         flagged one, else the first). Removing an account a contract still
         invoices from is refused.
         """
-        if "bank_accounts" not in profile_data and "bank_account" not in profile_data:
-            return None, _ACCOUNTS_UNCHANGED
-
-        # Keep the legacy single-account payload as a partial update.  Before
-        # multiple accounts were supported, omitted fields were left alone on
-        # an existing account, so replacing it with a row containing empty
-        # strings would erase data from older callers.
-        if "bank_accounts" not in profile_data:
-            legacy = profile_data.get("bank_account")
-            if legacy is None:
-                return None, _ACCOUNTS_UNCHANGED
-            account = profile.bank_account
-            if account is not None:
-                for key in ("name", "IBAN", "BIC"):
-                    if key in legacy:
-                        setattr(account, key, legacy[key])
-                return None, list(profile.bank_accounts)
-            account = BankAccount(
-                name=legacy.get("name", ""),
-                IBAN=legacy.get("IBAN", ""),
-                BIC=legacy.get("BIC", ""),
-                is_default=True,
-            )
-            return None, [account]
-
-        raw = profile_data.get("bank_accounts")
-        if not isinstance(raw, list):
-            legacy = profile_data.get("bank_account")
-            raw = [legacy] if legacy else []
-
         rows = [r for r in raw if isinstance(r, dict) and any((r.get(k) or "").strip() for k in ("name", "IBAN", "BIC"))]
 
         existing = {a.id: a for a in profile.bank_accounts if a.id is not None}
@@ -455,10 +419,11 @@ class UsersIntent:
             else:
                 profile.address = Address(**{k: v for k, v in addr.items() if k != "id" and not k.startswith("_")})
 
-        error, accounts = self._resolve_bank_accounts(profile, profile_data)
-        if error:
-            return IntentResult(was_intent_successful=False, error_msg=error)
-        if accounts is not _ACCOUNTS_UNCHANGED:
+        raw_accounts = profile_data.get("bank_accounts")
+        if isinstance(raw_accounts, list):
+            error, accounts = self._resolve_bank_accounts(profile, raw_accounts)
+            if error:
+                return IntentResult(was_intent_successful=False, error_msg=error)
             profile.bank_accounts = accounts
 
         with ds.create_session() as s:
