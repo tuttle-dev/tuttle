@@ -64,7 +64,6 @@ interface ProfileForm {
   city: string;
   country: string;
   bank_accounts: BankAccountRow[];
-  bank_accountsError: string | null;
 }
 
 const EMPTY_PROFILE: ProfileForm = {
@@ -74,7 +73,6 @@ const EMPTY_PROFILE: ProfileForm = {
   VAT_number: "", tax_number: "", operating_country: "",
   street: "", number: "", postal_code: "", city: "", country: "",
   bank_accounts: [],
-  bank_accountsError: null,
 };
 
 // Reject logos larger than this before upload; the backend also downscales.
@@ -265,7 +263,6 @@ export function SettingsView() {
             BIC: str(b, "BIC"),
             is_default: bool(b, "is_default"),
           })),
-          bank_accountsError: null,
         });
       }
     }
@@ -325,6 +322,13 @@ export function SettingsView() {
 
   function pset<K extends keyof ProfileForm>(key: K) {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setProfile((p) => ({ ...p, [key]: e.target.value }));
+  }
+
+  function patchAccount(idx: number, patch: Partial<BankAccountRow>) {
+    setProfile((p) => ({
+      ...p,
+      bank_accounts: p.bank_accounts.map((a, i) => (i === idx ? { ...a, ...patch } : a)),
+    }));
   }
 
   const [logoDragOver, setLogoDragOver] = useState(false);
@@ -588,40 +592,17 @@ export function SettingsView() {
                     <input
                       className={inputCls}
                       value={acc.name}
-                      onChange={(e) =>
-                        setProfile((p) => ({
-                          ...p,
-                          bank_accounts: p.bank_accounts.map((a, i) => (i === idx ? { ...a, name: e.target.value } : a)),
-                        }))
-                      }
+                      onChange={(e) => patchAccount(idx, { name: e.target.value })}
                       placeholder="Your Name or Bank Name"
                     />
                   </div>
                   <div>
                     <label className={labelCls}>IBAN</label>
-                    <input
-                      className={inputCls}
-                      value={acc.IBAN}
-                      onChange={(e) =>
-                        setProfile((p) => ({
-                          ...p,
-                          bank_accounts: p.bank_accounts.map((a, i) => (i === idx ? { ...a, IBAN: e.target.value } : a)),
-                        }))
-                      }
-                    />
+                    <input className={inputCls} value={acc.IBAN} onChange={(e) => patchAccount(idx, { IBAN: e.target.value })} />
                   </div>
                   <div>
                     <label className={labelCls}>BIC</label>
-                    <input
-                      className={inputCls}
-                      value={acc.BIC}
-                      onChange={(e) =>
-                        setProfile((p) => ({
-                          ...p,
-                          bank_accounts: p.bank_accounts.map((a, i) => (i === idx ? { ...a, BIC: e.target.value } : a)),
-                        }))
-                      }
-                    />
+                    <input className={inputCls} value={acc.BIC} onChange={(e) => patchAccount(idx, { BIC: e.target.value })} />
                   </div>
                   <div className="col-span-2 flex justify-end">
                     <button
@@ -629,9 +610,7 @@ export function SettingsView() {
                       onClick={() =>
                         setProfile((p) => ({
                           ...p,
-                          bank_accounts: p.bank_accounts
-                            .filter((_, i) => i !== idx)
-                            .map((a, i) => ({ ...a, is_default: p.bank_accounts.length === 1 ? false : a.is_default })),
+                          bank_accounts: p.bank_accounts.filter((_, i) => i !== idx),
                         }))
                       }
                       className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs text-secondary hover:text-red-400 border border-border-subtle hover:bg-red-400/10 transition-colors w-fit"
@@ -659,10 +638,6 @@ export function SettingsView() {
                 <Plus size={13} />
                 Add bank account
               </button>
-
-              {profile.bank_accountsError && (
-                <p className="text-xs text-red-400">{profile.bank_accountsError}</p>
-              )}
             </div>
           </fieldset>
 
