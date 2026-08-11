@@ -213,22 +213,12 @@ class User(RpcMixin, SQLModel, table=True):
         default, else the first one. Invoices prefer the bank account named on
         their contract and fall back to this.
         """
-        if not self.bank_accounts:
-            return None
-        for account in self.bank_accounts:
-            if account.is_default:
-                return account
-        return self.bank_accounts[0]
+        return next((a for a in self.bank_accounts if a.is_default), None) or next(iter(self.bank_accounts), None)
 
     @property
     def bank_account_not_set(self) -> bool:
-        """True if no bank account is set."""
-        if not self.bank_accounts:
-            return True
-        for account in self.bank_accounts:
-            if account.BIC and account.IBAN and account.name:
-                return False
-        return True
+        """True if no bank account is fully filled in."""
+        return not any(a.BIC and a.IBAN and a.name for a in self.bank_accounts)
 
 
 class Bank(SQLModel, table=True):
