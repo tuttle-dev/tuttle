@@ -1,6 +1,6 @@
 from decimal import Decimal, InvalidOperation
 
-from ...model import BankAccount, Client, Contract, ContractCharge, User
+from ...model import Client, Contract, ContractCharge, User
 from ...tax import get_tax_system
 from ...time import ChargeBasis
 from ..clients.intent import ClientsIntent
@@ -161,14 +161,6 @@ class ContractsIntent(CrudIntent):
                 log_message=f"ContractsIntent._validated_save: {e}",
             )
         try:
-            self._validate_bank_account(contract)
-        except ValueError as e:
-            return IntentResult(
-                was_intent_successful=False,
-                error_msg=str(e),
-                log_message=f"ContractsIntent._validated_save: {e}",
-            )
-        try:
             contract.validate_vat()
         except ValueError as e:
             return IntentResult(
@@ -185,20 +177,6 @@ class ContractsIntent(CrudIntent):
             result.log_message_if_any()
         return result
 
-    def _validate_bank_account(self, contract: Contract) -> None:
-        """Reject a bank account that no longer exists.
-
-        ``contract.bank_account`` resolves lazily and would not survive the
-        session boundary here, so the existence check runs against the data
-        source instead of the model relationship.
-        """
-        if contract.bank_account_id is None:
-            return
-        try:
-            self.query_by_id(BankAccount, contract.bank_account_id)
-        except Exception:
-            raise ValueError("The selected bank account does not exist anymore.")
-
     @staticmethod
     def _describe_save_error(exc) -> str:
         if exc is None:
@@ -211,7 +189,7 @@ class ContractsIntent(CrudIntent):
         if "NOT NULL" in detail:
             return "A required field is missing."
         if "FOREIGN KEY" in detail or "foreign key" in detail:
-            return "The selected client is invalid."
+            return "The selected client or bank account is invalid."
         return "Failed to save the contract."
 
     toggle_complete_status = CrudIntent.toggle_completed
