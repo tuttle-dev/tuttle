@@ -58,10 +58,7 @@ Open the generated `versions/NNNN_*.py` and review:
            sa.column("id", sa.Integer),
            sa.column("document_type", sa.String),
        )
-       op.execute(
-           invoice.update().values(document_type="invoice")
-                           .where(invoice.c.document_type.is_(None))
-       )
+       op.execute(invoice.update().values(document_type="invoice").where(invoice.c.document_type.is_(None)))
    ```
 
 3. **Batch-mode FK integrity** — `render_as_batch=True` is required for

@@ -388,6 +388,11 @@ class InvoicingIntent(Intent):
                     sig_result.data if sig_result.was_intent_successful and sig_result.data is not None else True
                 )
 
+                qr_result = self._preferences_intent.get_include_qr_code()
+                resolved_include_qr_code = (
+                    qr_result.data if qr_result.was_intent_successful and qr_result.data is not None else False
+                )
+
                 try:
                     rendering.render_invoice(
                         user=user,
@@ -400,6 +405,7 @@ class InvoicingIntent(Intent):
                         include_logo=resolved_include_logo,
                         include_due_date=resolved_include_due_date,
                         include_signature=resolved_include_signature,
+                        include_qr_code=resolved_include_qr_code,
                         accent_color=user.accent_color or "",
                     )
                 except Exception as ex:
@@ -528,6 +534,11 @@ class InvoicingIntent(Intent):
                     sig_result.data if sig_result.was_intent_successful and sig_result.data is not None else True
                 )
 
+                qr_result = self._preferences_intent.get_include_qr_code()
+                resolved_include_qr_code = (
+                    qr_result.data if qr_result.was_intent_successful and qr_result.data is not None else False
+                )
+
                 try:
                     rendering.render_invoice(
                         user=user,
@@ -539,6 +550,7 @@ class InvoicingIntent(Intent):
                         include_logo=resolved_include_logo,
                         include_due_date=resolved_include_due_date,
                         include_signature=resolved_include_signature,
+                        include_qr_code=resolved_include_qr_code,
                         accent_color=user.accent_color or "",
                     )
                     self._invoicing_data_source.save_invoice(reminder)

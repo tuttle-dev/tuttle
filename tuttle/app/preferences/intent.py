@@ -12,6 +12,7 @@ from .model import (
     DEFAULT_E_INVOICE_PROFILE,
     DEFAULT_INCLUDE_DUE_DATE,
     DEFAULT_INCLUDE_LOGO,
+    DEFAULT_INCLUDE_QR_CODE,
     DEFAULT_INCLUDE_SIGNATURE,
     DEFAULT_INVOICE_NUMBER_SCHEME,
     DEFAULT_INVOICE_TEMPLATE,
@@ -51,6 +52,14 @@ class PreferencesIntent:
         else:
             include_signature = raw_include_signature == "true"
 
+        raw_include_qr_code = self._app_db.get_setting(
+            PreferencesStorageKeys.include_qr_code_key.value,
+        )
+        if raw_include_qr_code is None:
+            include_qr_code = DEFAULT_INCLUDE_QR_CODE
+        else:
+            include_qr_code = raw_include_qr_code == "true"
+
         return IntentResult(
             was_intent_successful=True,
             data={
@@ -77,6 +86,7 @@ class PreferencesIntent:
                 "include_logo": include_logo,
                 "include_due_date": include_due_date,
                 "include_signature": include_signature,
+                "include_qr_code": include_qr_code,
             },
         )
 
@@ -90,6 +100,7 @@ class PreferencesIntent:
         include_logo=None,
         include_due_date=None,
         include_signature=None,
+        include_qr_code=None,
     ) -> IntentResult:
         if theme_mode is not None:
             self._app_db.set_setting(
@@ -130,6 +141,11 @@ class PreferencesIntent:
             self._app_db.set_setting(
                 PreferencesStorageKeys.include_signature_key.value,
                 "true" if include_signature else "false",
+            )
+        if include_qr_code is not None:
+            self._app_db.set_setting(
+                PreferencesStorageKeys.include_qr_code_key.value,
+                "true" if include_qr_code else "false",
             )
         return IntentResult(was_intent_successful=True, data=None)
 
@@ -177,6 +193,16 @@ class PreferencesIntent:
         )
         if raw is None:
             include = DEFAULT_INCLUDE_SIGNATURE
+        else:
+            include = raw == "true"
+        return IntentResult(was_intent_successful=True, data=include)
+
+    def get_include_qr_code(self) -> IntentResult:
+        raw = self._app_db.get_setting(
+            PreferencesStorageKeys.include_qr_code_key.value,
+        )
+        if raw is None:
+            include = DEFAULT_INCLUDE_QR_CODE
         else:
             include = raw == "true"
         return IntentResult(was_intent_successful=True, data=include)
