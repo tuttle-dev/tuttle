@@ -2,15 +2,197 @@ name: RPM Compatibility
 
 on:
   workflow_dispatch:
-    inputs:
-      tag:
-        description: "Tuttle release tag to test"
-        required: true
-        default: "v4.2.1"
 
 jobs:
+  # =========================================================
+  # Build the REAL Tuttle RPM from source on Fedora 44
+  # =========================================================
+  build-rpm:
+    name: Build RPM on Fedora 44
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Build Tuttle RPM on Fedora 44
+        run: |
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE:/workspace" \
+            -w /workspace \
+            fedora:44 \
+            bash -c '
+              set -e
+
+              echo "======================================"
+              echo "Operating System"
+              echo "======================================"
+
+              cat /etc/os-release
+
+              echo
+              echo "======================================"
+              echo "Install system dependencies"
+              echo "======================================"
+
+              dnf install -y \
+                curl \
+                git \
+                gcc \
+                gcc-c++ \
+                make \
+                rpm \
+                rpm-build \
+                python3 \
+                python3-devel \
+                jq \
+                ca-certificates \
+                tar \
+                gzip
+
+              echo
+              echo "======================================"
+              echo "Install Node.js 22"
+              echo "======================================"
+
+              curl -fsSL https://rpm.nodesource.com/setup_22.x | bash -
+              dnf install -y nodejs
+
+              node --version
+              npm --version
+
+              echo
+              echo "======================================"
+              echo "Install uv"
+              echo "======================================"
+
+              curl -LsSf https://astral.sh/uv/install.sh | sh
+              export PATH="$HOME/.local/bin:$PATH"
+
+              uv --version
+
+              echo
+              echo "======================================"
+              echo "Install Python 3.13"
+              echo "======================================"
+
+              uv python install 3.13
+
+              echo
+              echo "======================================"
+              echo "Install Python dependencies"
+              echo "======================================"
+
+              uv sync --all-groups
+
+              echo
+              echo "======================================"
+              echo "Build Python core"
+              echo "======================================"
+
+              uv run pyinstaller \
+                --clean \
+                --noconfirm \
+                tuttle-rpc.spec
+
+              echo
+              echo "======================================"
+              echo "Smoke test Python core"
+              echo "======================================"
+
+              uv run python scripts/smoke_core.py
+
+              echo
+              echo "======================================"
+              echo "Install Electron dependencies"
+              echo "======================================"
+
+              cd ui
+
+              npm ci
+
+              echo
+              echo "======================================"
+              echo "Build Electron app"
+              echo "======================================"
+
+              npm run build
+
+              echo
+              echo "======================================"
+              echo "Build RPM"
+              echo "======================================"
+
+              npx electron-builder \
+                --linux rpm \
+                --publish never
+
+              echo
+              echo "======================================"
+              echo "Generated RPM"
+              echo "======================================"
+
+              find release -type f -name "*.rpm" -print
+            '
+
+      - name: Verify RPM was generated
+        run: |
+          echo "======================================"
+          echo "Generated RPM"
+          echo "======================================"
+
+          find ui/release -type f -name "*.rpm" -print
+
+          RPM_COUNT=$(find ui/release -type f -name "*.rpm" | wc -l)
+
+          if [ "$RPM_COUNT" -eq 0 ]; then
+            echo "❌ FAIL: No RPM generated"
+            exit 1
+          fi
+
+          echo "✅ Found $RPM_COUNT RPM"
+
+      - name: Inspect RPM dependencies
+        run: |
+          RPM=$(find ui/release -type f -name "*.rpm" | head -n 1)
+
+          echo "======================================"
+          echo "RPM information"
+          echo "======================================"
+
+          rpm -qip "$RPM"
+
+          echo
+          echo "======================================"
+          echo "RPM dependencies"
+          echo "======================================"
+
+          rpm -qp --requires "$RPM"
+
+          echo
+          echo "======================================"
+          echo "FUSE dependencies"
+          echo "======================================"
+
+          rpm -qp --requires "$RPM" | grep -i fuse || true
+
+      - name: Upload RPM
+        uses: actions/upload-artifact@v7
+        with:
+          name: tuttle-rpm
+          path: ui/release/*.rpm
+          if-no-files-found: error
+
+
+  # =========================================================
+  # Test the SAME RPM on RPM-based distributions
+  # =========================================================
   rpm-test:
     name: ${{ matrix.name }}
+
+    needs: build-rpm
+
+    runs-on: ubuntu-latest
 
     strategy:
       fail-fast: false
@@ -32,240 +214,83 @@ jobs:
           - name: Oracle Linux 9
             image: oraclelinux:9
 
-    runs-on: ubuntu-latest
-
-    container:
-      image: ${{ matrix.image }}
-
     steps:
-      # ---------------------------------------------------------
-      # 1. Install tools
-      # ---------------------------------------------------------
-      - name: Install test tools
-        run: |
-          dnf install -y --allowerasing \
-            curl \
-            rpm \
-            dnf \
-            jq \
-            ca-certificates
+      - name: Download RPM
+        uses: actions/download-artifact@v7
+        with:
+          name: tuttle-rpm
+          path: /tmp/tuttle
 
-      # ---------------------------------------------------------
-      # 2. Show OS
-      # ---------------------------------------------------------
-      - name: Show operating system
-        run: |
-          echo "======================================"
-          echo "Operating System"
-          echo "======================================"
-
-          cat /etc/os-release
-
-      # ---------------------------------------------------------
-      # 3. Show repositories
-      # ---------------------------------------------------------
-      - name: Show enabled repositories
-        run: |
-          echo "======================================"
-          echo "Enabled repositories"
-          echo "======================================"
-
-          dnf repolist
-
-      # ---------------------------------------------------------
-      # 4. Download RPM from GitHub Release
-      # ---------------------------------------------------------
-      - name: Download Tuttle RPM
+      - name: Test RPM on ${{ matrix.name }}
         env:
-          TAG: ${{ inputs.tag }}
+          IMAGE: ${{ matrix.image }}
         run: |
-          echo "======================================"
-          echo "Downloading Tuttle RPM"
-          echo "Release: ${TAG}"
-          echo "======================================"
+          docker run --rm \
+            -v "/tmp/tuttle:/tmp/tuttle:ro" \
+            "$IMAGE" \
+            bash -c '
+              set -e
 
-          mkdir -p /tmp/tuttle
+              echo "======================================"
+              echo "Operating System"
+              echo "======================================"
 
-          # Get release metadata from GitHub
-          curl -fsSL \
-            "https://api.github.com/repos/tuttle-dev/tuttle/releases/tags/${TAG}" \
-            -o /tmp/tuttle/release.json
+              cat /etc/os-release
 
-          echo
-          echo "Release assets:"
-          jq -r '.assets[].browser_download_url' /tmp/tuttle/release.json || true
+              echo
+              echo "======================================"
+              echo "Install RPM tools"
+              echo "======================================"
 
-          # Download the first architecture-appropriate RPM asset (excluding debuginfo)
-          RPM_URL=$(jq -r '.assets[] | select(.name | endswith(".rpm") and (contains("debuginfo") | not)) | .browser_download_url' /tmp/tuttle/release.json | head -n 1)
+              dnf install -y \
+                rpm \
+                dnf \
+                ca-certificates
 
-          if [ -z "$RPM_URL" ] || [ "$RPM_URL" = "null" ]; then
-            echo "❌ FAIL: No valid RPM asset found in release ${TAG}"
-            exit 1
-          fi
+              RPM=$(find /tmp/tuttle -type f -name "*.rpm" | head -n 1)
 
-          echo
-          echo "RPM URL:"
-          echo "$RPM_URL"
+              if [ -z "$RPM" ]; then
+                echo "❌ FAIL: RPM not found"
+                exit 1
+              fi
 
-          curl -fL \
-            "$RPM_URL" \
-            -o /tmp/tuttle/tuttle.rpm
+              echo
+              echo "======================================"
+              echo "RPM information"
+              echo "======================================"
 
-          echo
-          echo "Downloaded RPM:"
-          ls -lh /tmp/tuttle/tuttle.rpm
+              rpm -qip "$RPM"
 
-      # ---------------------------------------------------------
-      # 5. Verify RPM
-      # ---------------------------------------------------------
-      - name: Verify RPM
-        run: |
-          RPM=/tmp/tuttle/tuttle.rpm
+              echo
+              echo "======================================"
+              echo "RPM dependencies"
+              echo "======================================"
 
-          echo "======================================"
-          echo "RPM Information"
-          echo "======================================"
+              rpm -qp --requires "$RPM"
 
-          rpm -qip "$RPM"
+              echo
+              echo "======================================"
+              echo "FUSE dependencies"
+              echo "======================================"
 
-      # ---------------------------------------------------------
-      # 6. Inspect dependencies
-      # ---------------------------------------------------------
-      - name: Inspect Tuttle dependencies
-        run: |
-          RPM=/tmp/tuttle/tuttle.rpm
+              rpm -qp --requires "$RPM" | grep -i fuse || true
 
-          echo "======================================"
-          echo "Tuttle RPM dependencies"
-          echo "======================================"
+              echo
+              echo "======================================"
+              echo "Testing installation"
+              echo "======================================"
 
-          rpm -qp --requires "$RPM"
+              dnf install -y "$RPM"
 
-          echo
-          echo "======================================"
-          echo "FUSE dependencies"
-          echo "======================================"
+              echo
+              echo "======================================"
+              echo "Verify installation"
+              echo "======================================"
 
-          rpm -qp --requires "$RPM" | grep -i fuse || true
+              rpm -qa | grep -i "^tuttle"
 
-      # ---------------------------------------------------------
-      # 7. Check fuse2-libs
-      # ---------------------------------------------------------
-      - name: Check fuse2-libs availability
-        run: |
-          RPM=/tmp/tuttle/tuttle.rpm
-
-          echo "======================================"
-          echo "Checking fuse2-libs"
-          echo "======================================"
-
-          if rpm -qp --requires "$RPM" | grep -q 'fuse2-libs'; then
-
-            echo "Tuttle requires fuse2-libs"
-
-            if dnf repoquery --whatprovides 'fuse2-libs' 2>/dev/null | grep -q .; then
-              echo "✅ PASS: fuse2-libs is available"
-            else
-              echo "❌ FAIL: fuse2-libs is NOT available"
-              exit 1
-            fi
-
-          else
-            echo "ℹ️ Tuttle does not explicitly require fuse2-libs"
-          fi
-
-      # ---------------------------------------------------------
-      # 8. Check libfuse.so.2
-      # ---------------------------------------------------------
-      - name: Check libfuse.so.2 availability
-        run: |
-          RPM=/tmp/tuttle/tuttle.rpm
-
-          echo "======================================"
-          echo "Checking libfuse.so.2"
-          echo "======================================"
-
-          if rpm -qp --requires "$RPM" | grep -q 'fuse2-libs'; then
-
-            if dnf provides '*/libfuse.so.2' 2>/dev/null | grep -q .; then
-              echo "✅ PASS: libfuse.so.2 is available"
-            else
-              echo "❌ FAIL: libfuse.so.2 is NOT available"
-              exit 1
-            fi
-
-          else
-            echo "ℹ️ libfuse.so.2 is not required by the RPM"
-          fi
-
-      # ---------------------------------------------------------
-      # 9. Test actual installation
-      # ---------------------------------------------------------
-      - name: Test Tuttle RPM installation
-        run: |
-          RPM=/tmp/tuttle/tuttle.rpm
-
-          echo "======================================"
-          echo "Testing Tuttle installation"
-          echo "======================================"
-
-          if dnf install -y "$RPM"; then
-
-            echo
-            echo "======================================"
-            echo "✅ PASS: Tuttle installed successfully"
-            echo "======================================"
-
-          else
-
-            echo
-            echo "======================================"
-            echo "❌ FAIL: Tuttle installation failed"
-            echo "======================================"
-
-            exit 1
-          fi
-
-      # ---------------------------------------------------------
-      # 10. Verify package
-      # ---------------------------------------------------------
-      - name: Verify installed package
-        run: |
-          echo "======================================"
-          echo "Verifying installed Tuttle package"
-          echo "======================================"
-
-          if rpm -qa | grep -qi '^tuttle'; then
-
-            echo
-            echo "======================================"
-            echo "✅ PASS: Tuttle package is installed"
-            echo "======================================"
-
-            rpm -qa | grep -i tuttle
-
-          else
-
-            echo
-            echo "======================================"
-            echo "❌ FAIL: Tuttle package not found"
-            echo "======================================"
-
-            exit 1
-          fi
-
-      # ---------------------------------------------------------
-      # 11. Final result
-      # ---------------------------------------------------------
-      - name: Final result
-        run: |
-          echo
-          echo "======================================"
-          echo "✅ PASS: ${{ matrix.name }}"
-          echo "======================================"
-          echo
-          echo "Tuttle RPM:"
-          echo "${{ inputs.tag }}"
-          echo
-          echo "The RPM successfully installed using"
-          echo "the distribution's configured repositories."
+              echo
+              echo "======================================"
+              echo "✅ PASS: ${{ matrix.name }}"
+              echo "======================================"
+            '
