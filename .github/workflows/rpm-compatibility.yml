@@ -43,7 +43,7 @@ jobs:
       # ---------------------------------------------------------
       - name: Install test tools
         run: |
-          dnf install -y \
+          dnf install -y --allowerasing \
             curl \
             rpm \
             dnf \
