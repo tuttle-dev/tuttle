@@ -1,0 +1,173 @@
+
+name: RPM Compatibility
+
+on:
+  workflow_dispatch:
+
+jobs:
+  rpm-test:
+    name: ${{ matrix.name }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Fedora 44
+            image: fedora:44
+
+          - name: Rocky Linux 9
+            image: rockylinux:9
+
+          - name: AlmaLinux 9
+            image: almalinux:9
+
+          - name: CentOS Stream 9
+            image: quay.io/centos/centos:stream9
+
+          - name: Oracle Linux 9
+            image: oraclelinux:9
+
+    runs-on: ubuntu-latest
+
+    container:
+      image: ${{ matrix.image }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Show operating system
+        run: |
+          echo "======================================"
+          echo "Operating System"
+          echo "======================================"
+          cat /etc/os-release
+
+      - name: Install RPM test tools
+        run: |
+          dnf install -y rpm dnf
+
+      - name: Show enabled repositories
+        run: |
+          echo "======================================"
+          echo "Enabled repositories"
+          echo "======================================"
+          dnf repolist
+
+      - name: Find Tuttle RPM
+        id: find-rpm
+        run: |
+          RPM=$(find . -type f -name '*.rpm' | head -n 1)
+
+          if [ -z "$RPM" ]; then
+            echo "❌ FAIL: No Tuttle RPM found"
+            exit 1
+          fi
+
+          echo "Tuttle RPM: $RPM"
+          echo "rpm=$RPM" >> "$GITHUB_OUTPUT"
+
+      - name: Inspect Tuttle dependencies
+        run: |
+          RPM="${{ steps.find-rpm.outputs.rpm }}"
+
+          echo "======================================"
+          echo "Tuttle RPM dependencies"
+          echo "======================================"
+
+          rpm -qp --requires "$RPM"
+
+          echo
+          echo "======================================"
+          echo "FUSE dependencies"
+          echo "======================================"
+
+          rpm -qp --requires "$RPM" | grep -i fuse || true
+
+      - name: Check fuse2-libs availability
+        run: |
+          RPM="${{ steps.find-rpm.outputs.rpm }}"
+
+          echo "======================================"
+          echo "Checking FUSE 2 package"
+          echo "======================================"
+
+          if rpm -qp --requires "$RPM" | grep -qx 'fuse2-libs'; then
+            echo "Tuttle requires fuse2-libs"
+
+            if dnf repoquery --whatprovides 'fuse2-libs' 2>/dev/null | grep -q .; then
+              echo "✅ PASS: fuse2-libs is available"
+            else
+              echo "❌ FAIL: fuse2-libs is NOT available"
+              exit 1
+            fi
+          else
+            echo "Tuttle does not explicitly require fuse2-libs"
+            echo "Continuing..."
+          fi
+
+      - name: Check libfuse.so.2 availability
+        run: |
+          RPM="${{ steps.find-rpm.outputs.rpm }}"
+
+          echo "======================================"
+          echo "Checking libfuse.so.2"
+          echo "======================================"
+
+          if rpm -qp --requires "$RPM" | grep -q 'fuse2-libs'; then
+
+            if dnf provides '*/libfuse.so.2' 2>/dev/null | grep -q .; then
+              echo "✅ PASS: libfuse.so.2 is available"
+            else
+              echo "❌ FAIL: libfuse.so.2 is NOT available"
+              exit 1
+            fi
+
+          else
+            echo "libfuse.so.2 is not required by the RPM"
+          fi
+
+      - name: Test Tuttle RPM installation
+        run: |
+          RPM="${{ steps.find-rpm.outputs.rpm }}"
+
+          echo "======================================"
+          echo "Testing Tuttle installation"
+          echo "======================================"
+
+          if dnf install -y "$RPM"; then
+            echo
+            echo "======================================"
+            echo "✅ PASS: Tuttle installed successfully"
+            echo "======================================"
+          else
+            echo
+            echo "======================================"
+            echo "❌ FAIL: Tuttle installation failed"
+            echo "======================================"
+            exit 1
+          fi
+
+      - name: Verify installed package
+        run: |
+          echo "======================================"
+          echo "Installed Tuttle packages"
+          echo "======================================"
+
+          rpm -qa | grep -i tuttle || {
+            echo "❌ FAIL: Tuttle package not found after installation"
+            exit 1
+          }
+
+          echo
+          echo "======================================"
+          echo "✅ PASS: Tuttle package is installed"
+          echo "======================================"
+
+      - name: Final result
+        run: |
+          echo
+          echo "======================================"
+          echo "✅ PASS: ${{ matrix.name }}"
+          echo "Tuttle RPM works with the default repositories."
+          echo "======================================"
