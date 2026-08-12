@@ -24,7 +24,7 @@ import { NavigationContext, type NavigationFilter } from "../shared/NavigationCo
 import { rpc } from "../../api/rpc";
 import { useThemeProvider, ThemeContext } from "../../hooks/useTheme";
 
-type BootState = "loading" | "welcome" | "ready";
+type BootState = "loading" | "welcome" | "ready" | "failed";
 
 type BootPhase =
   | "init"
@@ -54,6 +54,7 @@ export function Shell() {
   const [allUsers, setAllUsers] = useState<RegisteredUser[]>([]);
   const [regDialogOpen, setRegDialogOpen] = useState(false);
   const [regLoading, setRegLoading] = useState(false);
+  const [bootError, setBootError] = useState<string | null>(null);
 
   const navigate = useCallback((view: string, filter?: NavigationFilter) => {
     setNavFilter(filter || {});
@@ -70,27 +71,51 @@ export function Shell() {
     if (res.ok && res.data) setAllUsers(res.data);
   }
 
-  async function refreshActiveUser() {
+  async function refreshActiveUser(): Promise<RegisteredUser | null> {
     const res = await rpc<RegisteredUser | null>("users.get_active");
-    if (res.ok && res.data) setActiveUser(res.data);
-    else setActiveUser(null);
+    const user = res.ok && res.data ? res.data : null;
+    setActiveUser(user);
+    return user;
+  }
+
+  function failBoot(message: string) {
+    console.error("[shell] boot failed:", message);
+    setBootError(message);
+    setBootState("failed");
   }
 
   useEffect(() => {
     (async () => {
       setBootPhase("registry");
-      await rpc("db.ensure");
+      const ensured = await rpc("db.ensure");
+      if (!ensured.ok) {
+        failBoot(ensured.error ?? "The database could not be prepared.");
+        return;
+      }
       setBootPhase("users");
       const usersRes = await rpc<RegisteredUser[]>("users.list");
-      const users = usersRes.ok && usersRes.data ? usersRes.data : [];
+      if (!usersRes.ok) {
+        failBoot(usersRes.error ?? "The user registry could not be read.");
+        return;
+      }
+      const users = usersRes.data ?? [];
       setAllUsers(users);
 
       if (users.length === 0) {
         setBootState("welcome");
-      } else {
-        await refreshActiveUser();
-        setBootState("ready");
+        return;
       }
+      // Registered users but no active one means the switch to their database
+      // failed. Starting anyway would show an empty app that looks like data loss.
+      const active = await refreshActiveUser();
+      if (!active) {
+        failBoot(
+          "Your user database could not be opened, so Tuttle stopped instead of " +
+            "starting with an empty workspace. Your data is still on disk.",
+        );
+        return;
+      }
+      setBootState("ready");
     })();
   }, []);
 
@@ -179,6 +204,27 @@ export function Shell() {
         <div className="text-center space-y-2">
           <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="text-sm">{PHASE[bootPhase]}…</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (bootState === "failed") {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-bg-content p-8 text-primary">
+        <div className="max-w-lg space-y-4 text-center">
+          <h1 className="text-lg font-medium">Tuttle could not start</h1>
+          <p className="text-sm text-secondary">{bootError}</p>
+          <p className="text-xs text-secondary">
+            Nothing was deleted — your databases and their backups remain in the Tuttle data
+            folder. Reinstalling the previous version will let you keep working.
+          </p>
+          <button
+            className="rounded-lg bg-accent px-4 py-2 text-sm text-white"
+            onClick={() => window.location.reload()}
+          >
+            Try again
+          </button>
         </div>
       </div>
     );

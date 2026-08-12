@@ -42,8 +42,10 @@ jobs:
         version: "latest"
     - name: Set up Python
       run: uv python install 3.13
+    # Only runtime + build deps: dev-group packages must never influence what
+    # PyInstaller bundles (see logging.config regression in v4.3.0).
     - name: Install Python dependencies
-      run: uv sync --all-groups
+      run: uv sync --group build
     - name: Build Python core (PyInstaller)
       run: uv run pyinstaller --clean --noconfirm tuttle-rpc.spec
     # Verify the frozen binary actually bundles every RPC domain before the
