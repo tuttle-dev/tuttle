@@ -14,7 +14,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
-
+      - name: Install dependencies
+        run: |
+            sudo dnf install -y libxcrypt-compat
       - name: Build Tuttle RPM on Fedora 44
         run: |
           docker run --rm \
