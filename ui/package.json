@@ -84,7 +84,7 @@
     "rpm": {
       "depends": [
         "zlib",
-        "fuse2-libs"
+        "fuse-libs"
       ]
     }
   },
