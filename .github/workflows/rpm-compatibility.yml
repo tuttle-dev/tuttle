@@ -282,7 +282,24 @@ jobs:
               echo "======================================"
 
               dnf install -y "$RPM"
-
+              echo "======================================"
+              echo "Verify Tuttle RPM installation"
+              echo "======================================"
+              
+              echo "RPM package status:"
+              rpm -q tuttle || true
+              
+              echo ""
+              echo "Installed files:"
+              rpm -ql tuttle || true
+              
+              echo ""
+              echo "Tuttle executables:"
+              rpm -ql tuttle | grep -Ei 'tuttle|/bin/' || true
+              
+              echo ""
+              echo "Searching filesystem:"
+              find /usr /opt -iname '*tuttle*' -type f 2>/dev/null || true
               echo
               echo "======================================"
               echo "Verify installation"
