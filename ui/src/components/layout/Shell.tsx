@@ -97,13 +97,21 @@ export function Shell() {
   async function handleWelcomeDemo() {
     setBootPhase("demo");
     setBootState("loading");
-    await rpc("users.ensure_demo");
+    const demoResult = await rpc("users.ensure_demo");
+    if (!demoResult.ok) {
+      console.error("[shell] ensure_demo failed:", demoResult.error);
+      setBootState("welcome");
+      return;
+    }
     await refreshUsers();
     setBootPhase("switching");
     const demoSwitch = await rpc("users.switch", { db_file: "harry-tuttle.db" });
-    if (demoSwitch.ok) {
-      await refreshActiveUser();
+    if (!demoSwitch.ok) {
+      console.error("[shell] users.switch failed:", demoSwitch.error);
+      setBootState("welcome");
+      return;
     }
+    await refreshActiveUser();
     setBootState("ready");
   }
 
