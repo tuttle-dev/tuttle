@@ -12,16 +12,34 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # -------------------------------------------------------
+      # Checkout
+      # -------------------------------------------------------
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # -------------------------------------------------------
+      # Build RPM inside Fedora 44
+      # -------------------------------------------------------
       - name: Build Tuttle RPM on Fedora 44
         run: |
+          set -e
+
+          echo "======================================"
+          echo "Pull Fedora 44"
+          echo "======================================"
+
+          docker pull fedora:44
+
+          echo "======================================"
+          echo "Build Tuttle RPM inside Fedora 44"
+          echo "======================================"
+
           docker run --rm \
             -v "$GITHUB_WORKSPACE:/workspace" \
             -w /workspace \
             fedora:44 \
-            bash -c '
+            bash -lc '
               set -e
 
               echo "======================================"
@@ -49,7 +67,8 @@ jobs:
                 jq \
                 ca-certificates \
                 tar \
-                gzip
+                gzip \
+                findutils
 
               echo
               echo "======================================"
@@ -59,7 +78,12 @@ jobs:
               curl -fsSL https://rpm.nodesource.com/setup_22.x | bash -
               dnf install -y nodejs
 
+              echo
+              echo "Node version:"
               node --version
+
+              echo
+              echo "npm version:"
               npm --version
 
               echo
@@ -68,8 +92,10 @@ jobs:
               echo "======================================"
 
               curl -LsSf https://astral.sh/uv/install.sh | sh
+
               export PATH="$HOME/.local/bin:$PATH"
 
+              echo
               uv --version
 
               echo
@@ -78,6 +104,10 @@ jobs:
               echo "======================================"
 
               uv python install 3.13
+
+              echo
+              echo "Python versions:"
+              uv python list
 
               echo
               echo "======================================"
@@ -114,7 +144,7 @@ jobs:
 
               echo
               echo "======================================"
-              echo "Build Electron app"
+              echo "Build Electron application"
               echo "======================================"
 
               npm run build
@@ -130,19 +160,40 @@ jobs:
 
               echo
               echo "======================================"
-              echo "Generated RPM"
+              echo "Generated RPM files"
               echo "======================================"
 
-              find release -type f -name "*.rpm" -print
+              find release \
+                -type f \
+                -name "*.rpm" \
+                -print
+
+              RPM_COUNT=$(find release -type f -name "*.rpm" | wc -l)
+
+              if [ "$RPM_COUNT" -eq 0 ]; then
+                echo "❌ FAIL: electron-builder did not generate an RPM"
+                exit 1
+              fi
+
+              echo
+              echo "✅ Successfully generated $RPM_COUNT RPM file(s)"
             '
 
+      # -------------------------------------------------------
+      # Verify RPM exists
+      # -------------------------------------------------------
       - name: Verify RPM was generated
         run: |
+          set -e
+
           echo "======================================"
           echo "Generated RPM"
           echo "======================================"
 
-          find ui/release -type f -name "*.rpm" -print
+          find ui/release \
+            -type f \
+            -name "*.rpm" \
+            -print
 
           RPM_COUNT=$(find ui/release -type f -name "*.rpm" | wc -l)
 
@@ -151,11 +202,32 @@ jobs:
             exit 1
           fi
 
-          echo "✅ Found $RPM_COUNT RPM"
+          echo "✅ Found $RPM_COUNT RPM file(s)"
 
+      # -------------------------------------------------------
+      # Install RPM tool on GitHub runner
+      # -------------------------------------------------------
+      - name: Install RPM inspection tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rpm
+
+      # -------------------------------------------------------
+      # Inspect RPM
+      # -------------------------------------------------------
       - name: Inspect RPM dependencies
         run: |
-          RPM=$(find ui/release -type f -name "*.rpm" | head -n 1)
+          set -e
+
+          RPM=$(find ui/release \
+            -type f \
+            -name "*.rpm" \
+            | head -n 1)
+
+          if [ -z "$RPM" ]; then
+            echo "❌ RPM not found"
+            exit 1
+          fi
 
           echo "======================================"
           echo "RPM information"
@@ -177,6 +249,9 @@ jobs:
 
           rpm -qp --requires "$RPM" | grep -i fuse || true
 
+      # -------------------------------------------------------
+      # Upload RPM
+      # -------------------------------------------------------
       - name: Upload RPM
         uses: actions/upload-artifact@v4
         with:
@@ -186,7 +261,7 @@ jobs:
 
 
   # =========================================================
-  # Test the SAME RPM on RPM-based distributions
+  # Test SAME RPM on RPM-based distributions
   # =========================================================
   rpm-test:
     name: ${{ matrix.name }}
@@ -216,20 +291,75 @@ jobs:
             image: oraclelinux:9
 
     steps:
+      # -------------------------------------------------------
+      # Download RPM
+      # -------------------------------------------------------
       - name: Download RPM
         uses: actions/download-artifact@v4
         with:
           name: tuttle-rpm
           path: /tmp/tuttle
 
+      # -------------------------------------------------------
+      # Verify downloaded RPM on host
+      # -------------------------------------------------------
+      - name: Verify downloaded RPM
+        run: |
+          set -e
+
+          echo "======================================"
+          echo "Downloaded RPM"
+          echo "======================================"
+
+          find /tmp/tuttle \
+            -type f \
+            -name "*.rpm" \
+            -print
+
+          RPM_COUNT=$(find /tmp/tuttle \
+            -type f \
+            -name "*.rpm" \
+            | wc -l)
+
+          if [ "$RPM_COUNT" -eq 0 ]; then
+            echo "❌ FAIL: RPM artifact not found"
+            exit 1
+          fi
+
+          echo "✅ Found $RPM_COUNT RPM file(s)"
+
+      # -------------------------------------------------------
+      # Pull test image
+      # -------------------------------------------------------
+      - name: Pull ${{ matrix.name }} image
+        env:
+          IMAGE: ${{ matrix.image }}
+        run: |
+          set -e
+
+          echo "======================================"
+          echo "Pull Docker image"
+          echo "======================================"
+
+          echo "Image: $IMAGE"
+
+          docker pull "$IMAGE"
+
+          echo "✅ Docker image pulled successfully"
+
+      # -------------------------------------------------------
+      # Test RPM
+      # -------------------------------------------------------
       - name: Test RPM on ${{ matrix.name }}
         env:
           IMAGE: ${{ matrix.image }}
         run: |
+          set -e
+
           docker run --rm \
             -v "/tmp/tuttle:/tmp/tuttle:ro" \
             "$IMAGE" \
-            bash -c '
+            bash -lc '
               set -e
 
               echo "======================================"
@@ -246,14 +376,25 @@ jobs:
               dnf install -y \
                 rpm \
                 dnf \
-                ca-certificates
+                ca-certificates \
+                findutils
 
-              RPM=$(find /tmp/tuttle -type f -name "*.rpm" | head -n 1)
+              echo
+              echo "======================================"
+              echo "Locate RPM"
+              echo "======================================"
+
+              RPM=$(find /tmp/tuttle \
+                -type f \
+                -name "*.rpm" \
+                | head -n 1)
 
               if [ -z "$RPM" ]; then
                 echo "❌ FAIL: RPM not found"
                 exit 1
               fi
+
+              echo "RPM: $RPM"
 
               echo
               echo "======================================"
@@ -278,106 +419,193 @@ jobs:
 
               echo
               echo "======================================"
-              echo "Testing installation"
+              echo "Testing RPM installation"
               echo "======================================"
 
               dnf install -y "$RPM"
+
+              echo
               echo "======================================"
               echo "Verify Tuttle RPM installation"
               echo "======================================"
-              
+
               echo "RPM package status:"
-              rpm -q tuttle || true
-              
-              echo ""
+              rpm -q tuttle
+
+              echo
               echo "Installed files:"
-              rpm -ql tuttle || true
-              
-              echo ""
-              echo "Tuttle executables:"
-              rpm -ql tuttle | grep -Ei 'tuttle|/bin/' || true
-              
-              echo ""
+              rpm -ql tuttle
+
+              echo
+              echo "Tuttle-related files:"
+              rpm -ql tuttle | grep -Ei "tuttle|/bin/" || true
+
+              echo
               echo "Searching filesystem:"
-              find /usr /opt -iname '*tuttle*' -type f 2>/dev/null || true
+              find /usr /opt \
+                -iname "*tuttle*" \
+                -type f \
+                2>/dev/null || true
+
               echo
               echo "======================================"
-              echo "Verify installation"
+              echo "Verify package database"
               echo "======================================"
 
               rpm -qa | grep -i "^tuttle"
 
               echo
               echo "======================================"
-              echo "Install Xvfb (virtual display)"
+              echo "Install Xvfb"
               echo "======================================"
 
-              dnf install -y xorg-x11-server-Xvfb
+              dnf install -y \
+                xorg-x11-server-Xvfb \
+                procps-ng \
+                which
 
               echo
               echo "======================================"
-              echo "Locate app binary"
+              echo "Locate application binary"
               echo "======================================"
 
-              BINARY=$(rpm -ql tuttle | grep -E "^/usr/bin/|^/opt/.*/[Tt]uttle$" | head -n 1)
+              BINARY=""
+
+              # First try normal executable locations
+              for candidate in \
+                /usr/bin/tuttle \
+                /usr/bin/Tuttle \
+                /opt/tuttle/tuttle \
+                /opt/Tuttle/Tuttle \
+                /opt/Tuttle/tuttle
+              do
+                if [ -x "$candidate" ]; then
+                  BINARY="$candidate"
+                  break
+                fi
+              done
+
+              # If not found, search RPM file list
+              if [ -z "$BINARY" ]; then
+                BINARY=$(rpm -ql tuttle \
+                  | grep -E "/(tuttle|Tuttle)$" \
+                  | head -n 1 || true)
+              fi
 
               if [ -z "$BINARY" ]; then
-                echo "❌ FAIL: Could not locate app binary"
+                echo "❌ FAIL: Could not locate Tuttle executable"
+
+                echo
+                echo "Complete RPM file list:"
                 rpm -ql tuttle
+
                 exit 1
               fi
 
               echo "Binary: $BINARY"
 
+              if [ ! -x "$BINARY" ]; then
+                echo "❌ FAIL: Located file is not executable"
+                ls -la "$BINARY"
+                exit 1
+              fi
+
               echo
               echo "======================================"
-              echo "Smoke test app under Xvfb (display)"
+              echo "Binary information"
+              echo "======================================"
+
+              file "$BINARY"
+
+              echo
+              echo "======================================"
+              echo "Check shared libraries"
+              echo "======================================"
+
+              if command -v ldd >/dev/null 2>&1; then
+                ldd "$BINARY" || true
+              fi
+
+              echo
+              echo "======================================"
+              echo "Smoke test app under Xvfb"
               echo "======================================"
 
               rm -rf /tmp/crash-reports
               mkdir -p /tmp/crash-reports
 
+              rm -f /tmp/app-stdout.log
+
               set +e
-              xvfb-run --auto-servernum --server-args="-screen 0 1280x1024x24" \
-                timeout 20s "$BINARY" \
-                  --no-sandbox \
-                  --disable-gpu \
-                  --crash-dumps-dir=/tmp/crash-reports \
-                  > /tmp/app-stdout.log 2>&1
+
+              xvfb-run \
+                --auto-servernum \
+                --server-args="-screen 0 1280x1024x24" \
+                timeout 20s \
+                "$BINARY" \
+                --no-sandbox \
+                --disable-gpu \
+                --disable-dev-shm-usage \
+                --crash-dumps-dir=/tmp/crash-reports \
+                > /tmp/app-stdout.log 2>&1
+
               APP_EXIT=$?
+
               set -e
 
+              echo
               echo "--- App stdout/stderr ---"
               cat /tmp/app-stdout.log || true
 
               echo
               echo "======================================"
-              echo "Check for crash artifacts"
+              echo "Check crash artifacts"
               echo "======================================"
 
-              CRASH_FILES=$(find /tmp/crash-reports -type f 2>/dev/null | wc -l)
-              CORE_FILES=$(find / -maxdepth 2 -name "core*" -newer /tmp/app-stdout.log 2>/dev/null | wc -l)
+              CRASH_FILES=$(find /tmp/crash-reports \
+                -type f \
+                2>/dev/null \
+                | wc -l)
+
+              CORE_FILES=$(find / \
+                -maxdepth 3 \
+                -name "core*" \
+                -type f \
+                2>/dev/null \
+                | wc -l)
 
               echo "Crash dump files: $CRASH_FILES"
               echo "Core files: $CORE_FILES"
               echo "App exit code: $APP_EXIT"
 
-              # Exit code 124 = timeout (expected for a long-running GUI app
-              # that launched fine and had to be killed) -- treat as success.
+              echo
+              echo "======================================"
+              echo "Evaluate application result"
+              echo "======================================"
+
+              # 124 means timeout killed the process.
+              # This is expected if the GUI launched successfully
+              # and continued running for 20 seconds.
               if [ "$APP_EXIT" -ne 0 ] && [ "$APP_EXIT" -ne 124 ]; then
-                echo "❌ FAIL: App exited abnormally (code $APP_EXIT)"
+                echo "❌ FAIL: App exited abnormally"
+                echo "Exit code: $APP_EXIT"
                 exit 1
               fi
 
-              if [ "$CRASH_FILES" -gt 0 ] || [ "$CORE_FILES" -gt 0 ]; then
-                echo "❌ FAIL: Crash artifacts detected"
+              if [ "$CRASH_FILES" -gt 0 ]; then
+                echo "❌ FAIL: Crash dump files detected"
+                find /tmp/crash-reports -type f -print
                 exit 1
               fi
 
-              echo "✅ PASS: No crash on launch (${{ matrix.name }})"
+              if [ "$CORE_FILES" -gt 0 ]; then
+                echo "❌ FAIL: Core dump files detected"
+                exit 1
+              fi
 
               echo
               echo "======================================"
-              echo "✅ PASS: ${{ matrix.name }}"
+              echo "✅ PASS: No crash on launch"
+              echo "Distribution: ${{ matrix.name }}"
               echo "======================================"
             '
