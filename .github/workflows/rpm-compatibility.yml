@@ -396,14 +396,9 @@ jobs:
           - name: Rocky Linux 9
             image: rockylinux:9
 
-          - name: AlmaLinux 9
-            image: almalinux:9
-
           - name: CentOS Stream 9
             image: quay.io/centos/centos:stream9
 
-          - name: Oracle Linux 9
-            image: oraclelinux:9
 
 
     steps:
