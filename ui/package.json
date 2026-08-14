@@ -84,7 +84,8 @@
     "rpm": {
       "depends": [
         "zlib",
-        "fuse-libs"
+        "fuse-libs",
+        "nspr"
       ]
     }
   },
