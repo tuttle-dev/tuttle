@@ -4,14 +4,16 @@ on:
   workflow_dispatch:
 
 jobs:
+
   # =========================================================
-  # Build the REAL Tuttle RPM from source on Fedora 44
+  # BUILD REAL TUTTLE RPM
   # =========================================================
   build-rpm:
     name: Build RPM on Fedora 44
     runs-on: ubuntu-latest
 
     steps:
+
       # -------------------------------------------------------
       # Checkout
       # -------------------------------------------------------
@@ -23,7 +25,7 @@ jobs:
       # -------------------------------------------------------
       - name: Build Tuttle RPM on Fedora 44
         run: |
-          set -e
+          set -Eeuo pipefail
 
           echo "======================================"
           echo "Pull Fedora 44"
@@ -36,17 +38,26 @@ jobs:
           echo "======================================"
 
           docker run --rm \
+            --privileged \
             -v "$GITHUB_WORKSPACE:/workspace" \
             -w /workspace \
             fedora:44 \
             bash -lc '
-              set -e
+
+              set -Eeuo pipefail
 
               echo "======================================"
               echo "Operating System"
               echo "======================================"
 
               cat /etc/os-release
+
+              echo
+              echo "======================================"
+              echo "Architecture"
+              echo "======================================"
+
+              uname -m
 
               echo
               echo "======================================"
@@ -68,7 +79,9 @@ jobs:
                 ca-certificates \
                 tar \
                 gzip \
-                findutils
+                findutils \
+                which \
+                file
 
               echo
               echo "======================================"
@@ -176,6 +189,64 @@ jobs:
               fi
 
               echo
+              echo "======================================"
+              echo "RPM metadata"
+              echo "======================================"
+
+              for RPM in release/*.rpm; do
+
+                echo
+                echo "--------------------------------------"
+                echo "RPM: $RPM"
+                echo "--------------------------------------"
+
+                rpm -qip "$RPM"
+
+                echo
+                echo "Package name:"
+                rpm -qp --qf "%{NAME}\n" "$RPM"
+
+                echo "Version:"
+                rpm -qp --qf "%{VERSION}\n" "$RPM"
+
+                echo "Release:"
+                rpm -qp --qf "%{RELEASE}\n" "$RPM"
+
+                echo "Architecture:"
+                rpm -qp --qf "%{ARCH}\n" "$RPM"
+
+              done
+
+              echo
+              echo "======================================"
+              echo "RPM scriptlets"
+              echo "======================================"
+
+              for RPM in release/*.rpm; do
+                echo
+                echo "--------------------------------------"
+                echo "Scripts in: $RPM"
+                echo "--------------------------------------"
+
+                rpm -qp --scripts "$RPM" || true
+              done
+
+              echo
+              echo "======================================"
+              echo "RPM dependency check"
+              echo "======================================"
+
+              for RPM in release/*.rpm; do
+                echo
+                echo "Dependencies for $RPM:"
+                rpm -qp --requires "$RPM" || true
+              done
+
+              echo
+              echo "======================================"
+              echo "RPM build completed"
+              echo "======================================"
+
               echo "✅ Successfully generated $RPM_COUNT RPM file(s)"
             '
 
@@ -184,7 +255,7 @@ jobs:
       # -------------------------------------------------------
       - name: Verify RPM was generated
         run: |
-          set -e
+          set -Eeuo pipefail
 
           echo "======================================"
           echo "Generated RPM"
@@ -195,29 +266,42 @@ jobs:
             -name "*.rpm" \
             -print
 
-          RPM_COUNT=$(find ui/release -type f -name "*.rpm" | wc -l)
+          RPM_COUNT=$(find ui/release \
+            -type f \
+            -name "*.rpm" \
+            | wc -l)
 
           if [ "$RPM_COUNT" -eq 0 ]; then
             echo "❌ FAIL: No RPM generated"
             exit 1
           fi
 
+          echo
+          echo "Found RPM files:"
+          find ui/release \
+            -type f \
+            -name "*.rpm" \
+            -print
+
+          echo
           echo "✅ Found $RPM_COUNT RPM file(s)"
 
       # -------------------------------------------------------
-      # Install RPM tool on GitHub runner
+      # Install RPM inspection tools
       # -------------------------------------------------------
       - name: Install RPM inspection tools
         run: |
+          set -Eeuo pipefail
+
           sudo apt-get update
           sudo apt-get install -y rpm
 
       # -------------------------------------------------------
       # Inspect RPM
       # -------------------------------------------------------
-      - name: Inspect RPM dependencies
+      - name: Inspect RPM
         run: |
-          set -e
+          set -Eeuo pipefail
 
           RPM=$(find ui/release \
             -type f \
@@ -237,10 +321,34 @@ jobs:
 
           echo
           echo "======================================"
+          echo "Package identity"
+          echo "======================================"
+
+          echo "Name:"
+          rpm -qp --qf "%{NAME}\n" "$RPM"
+
+          echo "Version:"
+          rpm -qp --qf "%{VERSION}\n" "$RPM"
+
+          echo "Release:"
+          rpm -qp --qf "%{RELEASE}\n" "$RPM"
+
+          echo "Architecture:"
+          rpm -qp --qf "%{ARCH}\n" "$RPM"
+
+          echo
+          echo "======================================"
           echo "RPM dependencies"
           echo "======================================"
 
           rpm -qp --requires "$RPM"
+
+          echo
+          echo "======================================"
+          echo "RPM scripts"
+          echo "======================================"
+
+          rpm -qp --scripts "$RPM" || true
 
           echo
           echo "======================================"
@@ -261,9 +369,10 @@ jobs:
 
 
   # =========================================================
-  # Test SAME RPM on RPM-based distributions
+  # TEST SAME RPM ON RPM DISTRIBUTIONS
   # =========================================================
   rpm-test:
+
     name: ${{ matrix.name }}
 
     needs: build-rpm
@@ -274,7 +383,9 @@ jobs:
       fail-fast: false
 
       matrix:
+
         include:
+
           - name: Fedora 44
             image: fedora:44
 
@@ -290,7 +401,9 @@ jobs:
           - name: Oracle Linux 9
             image: oraclelinux:9
 
+
     steps:
+
       # -------------------------------------------------------
       # Download RPM
       # -------------------------------------------------------
@@ -301,11 +414,11 @@ jobs:
           path: /tmp/tuttle
 
       # -------------------------------------------------------
-      # Verify downloaded RPM on host
+      # Verify downloaded RPM
       # -------------------------------------------------------
       - name: Verify downloaded RPM
         run: |
-          set -e
+          set -Eeuo pipefail
 
           echo "======================================"
           echo "Downloaded RPM"
@@ -328,14 +441,16 @@ jobs:
 
           echo "✅ Found $RPM_COUNT RPM file(s)"
 
+
       # -------------------------------------------------------
       # Pull test image
       # -------------------------------------------------------
       - name: Pull ${{ matrix.name }} image
         env:
           IMAGE: ${{ matrix.image }}
+
         run: |
-          set -e
+          set -Eeuo pipefail
 
           echo "======================================"
           echo "Pull Docker image"
@@ -347,26 +462,42 @@ jobs:
 
           echo "✅ Docker image pulled successfully"
 
+
       # -------------------------------------------------------
       # Test RPM
       # -------------------------------------------------------
       - name: Test RPM on ${{ matrix.name }}
         env:
           IMAGE: ${{ matrix.image }}
+
         run: |
-          set -e
+
+          set -Eeuo pipefail
+
+          echo "======================================"
+          echo "Starting privileged test container"
+          echo "======================================"
 
           docker run --rm \
+            --privileged \
             -v "/tmp/tuttle:/tmp/tuttle:ro" \
             "$IMAGE" \
             bash -lc '
-              set -e
+
+              set -Eeuo pipefail
 
               echo "======================================"
               echo "Operating System"
               echo "======================================"
 
               cat /etc/os-release
+
+              echo
+              echo "======================================"
+              echo "Architecture"
+              echo "======================================"
+
+              uname -m
 
               echo
               echo "======================================"
@@ -377,7 +508,12 @@ jobs:
                 rpm \
                 dnf \
                 ca-certificates \
-                findutils
+                findutils \
+                which \
+                file \
+                procps-ng \
+                xorg-x11-server-Xvfb \
+                fuse-libs
 
               echo
               echo "======================================"
@@ -405,6 +541,38 @@ jobs:
 
               echo
               echo "======================================"
+              echo "RPM package identity"
+              echo "======================================"
+
+              PACKAGE_NAME=$(rpm -qp --qf "%{NAME}" "$RPM")
+              PACKAGE_VERSION=$(rpm -qp --qf "%{VERSION}" "$RPM")
+              PACKAGE_RELEASE=$(rpm -qp --qf "%{RELEASE}" "$RPM")
+              PACKAGE_ARCH=$(rpm -qp --qf "%{ARCH}" "$RPM")
+
+              echo "Package:      $PACKAGE_NAME"
+              echo "Version:      $PACKAGE_VERSION"
+              echo "Release:      $PACKAGE_RELEASE"
+              echo "Architecture: $PACKAGE_ARCH"
+
+              echo
+              echo "======================================"
+              echo "Validate architecture"
+              echo "======================================"
+
+              CURRENT_ARCH=$(uname -m)
+
+              echo "Host architecture: $CURRENT_ARCH"
+              echo "RPM architecture:  $PACKAGE_ARCH"
+
+              if [ "$CURRENT_ARCH" = "x86_64" ] && [ "$PACKAGE_ARCH" != "x86_64" ]; then
+                echo "❌ FAIL: RPM architecture does not match runner"
+                exit 1
+              fi
+
+              echo "✅ Architecture is compatible"
+
+              echo
+              echo "======================================"
               echo "RPM dependencies"
               echo "======================================"
 
@@ -412,95 +580,234 @@ jobs:
 
               echo
               echo "======================================"
-              echo "FUSE dependencies"
+              echo "RPM scripts BEFORE installation"
               echo "======================================"
 
-              rpm -qp --requires "$RPM" | grep -i fuse || true
+              rpm -qp --scripts "$RPM" || true
+
+              echo
+              echo "======================================"
+              echo "Check unshare capability"
+              echo "======================================"
+
+              if command -v unshare >/dev/null 2>&1; then
+
+                echo "unshare binary:"
+                command -v unshare
+
+                echo
+                echo "Testing namespace creation..."
+
+                if unshare --mount true >/dev/null 2>&1; then
+                  echo "✅ unshare works"
+                else
+                  echo "⚠️ unshare is restricted"
+                  echo "Container is privileged, but this runtime still restricts namespace creation."
+                fi
+
+              else
+
+                echo "Installing util-linux..."
+
+                dnf install -y util-linux
+
+                if unshare --mount true >/dev/null 2>&1; then
+                  echo "✅ unshare works"
+                else
+                  echo "⚠️ unshare is restricted"
+                fi
+
+              fi
 
               echo
               echo "======================================"
               echo "Testing RPM installation"
               echo "======================================"
 
+              set +e
+
               dnf install -y "$RPM"
 
+              INSTALL_EXIT=$?
+
+              set -e
+
+              echo
+              echo "dnf exit code: $INSTALL_EXIT"
+
+              if [ "$INSTALL_EXIT" -ne 0 ]; then
+                echo "❌ FAIL: RPM installation failed"
+
+                echo
+                echo "Package database:"
+                rpm -qa | grep -i tuttle || true
+
+                exit "$INSTALL_EXIT"
+              fi
+
+              echo "✅ dnf reported successful installation"
+
               echo
               echo "======================================"
-              echo "Verify Tuttle RPM installation"
+              echo "Verify package by detected name"
               echo "======================================"
 
-              echo "RPM package status:"
-              rpm -q tuttle
+              if rpm -q "$PACKAGE_NAME" >/dev/null 2>&1; then
+                echo "✅ Package is installed:"
+                rpm -q "$PACKAGE_NAME"
+              else
+                echo "❌ FAIL: Package was not installed"
+                echo "Expected package: $PACKAGE_NAME"
+
+                echo
+                echo "Installed Tuttle packages:"
+                rpm -qa | grep -i tuttle || true
+
+                exit 1
+              fi
 
               echo
-              echo "Installed files:"
-              rpm -ql tuttle
+              echo "======================================"
+              echo "Installed package files"
+              echo "======================================"
+
+              rpm -ql "$PACKAGE_NAME"
 
               echo
-              echo "Tuttle-related files:"
-              rpm -ql tuttle | grep -Ei "tuttle|/bin/" || true
+              echo "======================================"
+              echo "Tuttle-related installed files"
+              echo "======================================"
 
-              echo
-              echo "Searching filesystem:"
-              find /usr /opt \
-                -iname "*tuttle*" \
-                -type f \
-                2>/dev/null || true
+              rpm -ql "$PACKAGE_NAME" \
+                | grep -Ei "tuttle|/bin/|\.desktop$" \
+                || true
 
               echo
               echo "======================================"
               echo "Verify package database"
               echo "======================================"
 
-              rpm -qa | grep -i "^tuttle"
+              rpm -qa | grep -i tuttle || true
 
               echo
               echo "======================================"
-              echo "Install Xvfb"
+              echo "Install additional runtime dependencies"
               echo "======================================"
 
               dnf install -y \
                 xorg-x11-server-Xvfb \
                 procps-ng \
-                which
+                which \
+                file
 
               echo
               echo "======================================"
-              echo "Locate application binary"
+              echo "Locate application executable"
               echo "======================================"
 
               BINARY=""
 
-              # First try normal executable locations
-              for candidate in \
-                /usr/bin/tuttle \
-                /usr/bin/Tuttle \
-                /opt/tuttle/tuttle \
-                /opt/Tuttle/Tuttle \
-                /opt/Tuttle/tuttle
-              do
-                if [ -x "$candidate" ]; then
-                  BINARY="$candidate"
-                  break
-                fi
-              done
+              # -------------------------------------------------
+              # First inspect files registered by RPM
+              # -------------------------------------------------
 
-              # If not found, search RPM file list
+              while IFS= read -r FILE; do
+
+                if [ -f "$FILE" ] && [ -x "$FILE" ]; then
+
+                  BASENAME=$(basename "$FILE")
+
+                  case "$BASENAME" in
+
+                    tuttle|Tuttle|tuttle-ui|TuttleUI)
+                      BINARY="$FILE"
+                      break
+                      ;;
+
+                  esac
+
+                fi
+
+              done < <(rpm -ql "$PACKAGE_NAME")
+
+              # -------------------------------------------------
+              # Search standard executable locations
+              # -------------------------------------------------
+
               if [ -z "$BINARY" ]; then
-                BINARY=$(rpm -ql tuttle \
-                  | grep -E "/(tuttle|Tuttle)$" \
+
+                for candidate in \
+                  /usr/bin/tuttle \
+                  /usr/bin/Tuttle \
+                  /usr/bin/tuttle-ui \
+                  /usr/bin/TuttleUI \
+                  /opt/tuttle/tuttle \
+                  /opt/Tuttle/Tuttle \
+                  /opt/Tuttle/tuttle
+
+                do
+
+                  if [ -x "$candidate" ]; then
+                    BINARY="$candidate"
+                    break
+                  fi
+
+                done
+
+              fi
+
+              # -------------------------------------------------
+              # Search filesystem if still not found
+              # -------------------------------------------------
+
+              if [ -z "$BINARY" ]; then
+
+                echo "Standard binary locations failed."
+
+                echo
+                echo "Searching filesystem..."
+
+                BINARY=$(find /usr /opt \
+                  -type f \
+                  -perm /111 \
+                  \( \
+                    -iname "tuttle" \
+                    -o \
+                    -iname "tuttle-ui" \
+                    -o \
+                    -iname "Tuttle" \
+                    -o \
+                    -iname "TuttleUI" \
+                  \) \
+                  2>/dev/null \
                   | head -n 1 || true)
+
               fi
 
               if [ -z "$BINARY" ]; then
+
+                echo
                 echo "❌ FAIL: Could not locate Tuttle executable"
 
                 echo
                 echo "Complete RPM file list:"
-                rpm -ql tuttle
+                rpm -ql "$PACKAGE_NAME"
+
+                echo
+                echo "Tuttle files on filesystem:"
+                find /usr /opt \
+                  -iname "*tuttle*" \
+                  2>/dev/null \
+                  || true
 
                 exit 1
+
               fi
+
+              echo
+              echo "======================================"
+              echo "Executable found"
+              echo "======================================"
 
               echo "Binary: $BINARY"
 
@@ -518,13 +825,38 @@ jobs:
               file "$BINARY"
 
               echo
+              echo "Permissions:"
+              ls -la "$BINARY"
+
+              echo
               echo "======================================"
               echo "Check shared libraries"
               echo "======================================"
 
               if command -v ldd >/dev/null 2>&1; then
+
                 ldd "$BINARY" || true
+
+                echo
+                echo "Missing libraries:"
+
+                ldd "$BINARY" 2>/dev/null \
+                  | grep "not found" \
+                  || echo "No missing shared libraries detected"
+
               fi
+
+              echo
+              echo "======================================"
+              echo "Electron application diagnostics"
+              echo "======================================"
+
+              echo "Electron-related files:"
+
+              rpm -ql "$PACKAGE_NAME" \
+                | grep -Ei \
+                  "electron|chrome|chromium|resources|app.asar" \
+                  || true
 
               echo
               echo "======================================"
@@ -555,6 +887,7 @@ jobs:
 
               echo
               echo "--- App stdout/stderr ---"
+
               cat /tmp/app-stdout.log || true
 
               echo
@@ -575,37 +908,57 @@ jobs:
                 | wc -l)
 
               echo "Crash dump files: $CRASH_FILES"
-              echo "Core files: $CORE_FILES"
-              echo "App exit code: $APP_EXIT"
+              echo "Core files:       $CORE_FILES"
+              echo "App exit code:    $APP_EXIT"
 
               echo
               echo "======================================"
               echo "Evaluate application result"
               echo "======================================"
 
-              # 124 means timeout killed the process.
-              # This is expected if the GUI launched successfully
-              # and continued running for 20 seconds.
+              # 124 = timeout.
+              # This is acceptable because GUI applications normally
+              # continue running.
+
               if [ "$APP_EXIT" -ne 0 ] && [ "$APP_EXIT" -ne 124 ]; then
+
                 echo "❌ FAIL: App exited abnormally"
                 echo "Exit code: $APP_EXIT"
+
                 exit 1
+
               fi
 
               if [ "$CRASH_FILES" -gt 0 ]; then
+
                 echo "❌ FAIL: Crash dump files detected"
-                find /tmp/crash-reports -type f -print
+
+                find /tmp/crash-reports \
+                  -type f \
+                  -print
+
                 exit 1
+
               fi
 
               if [ "$CORE_FILES" -gt 0 ]; then
+
                 echo "❌ FAIL: Core dump files detected"
+
                 exit 1
+
               fi
 
               echo
               echo "======================================"
-              echo "✅ PASS: No crash on launch"
-              echo "Distribution: ${{ matrix.name }}"
+              echo "✅ PASS: RPM installed and app did not crash"
               echo "======================================"
+
+              echo "Distribution: ${{ matrix.name }}"
+              echo "Package:      $PACKAGE_NAME"
+              echo "Version:      $PACKAGE_VERSION"
+              echo "Release:      $PACKAGE_RELEASE"
+              echo "Architecture: $PACKAGE_ARCH"
+              echo "Binary:       $BINARY"
+
             '
