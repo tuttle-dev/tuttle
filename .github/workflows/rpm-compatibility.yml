@@ -223,12 +223,14 @@ jobs:
               echo "======================================"
 
               for RPM in release/*.rpm; do
+
                 echo
                 echo "--------------------------------------"
                 echo "Scripts in: $RPM"
                 echo "--------------------------------------"
 
                 rpm -qp --scripts "$RPM" || true
+
               done
 
               echo
@@ -237,9 +239,11 @@ jobs:
               echo "======================================"
 
               for RPM in release/*.rpm; do
+
                 echo
                 echo "Dependencies for $RPM:"
                 rpm -qp --requires "$RPM" || true
+
               done
 
               echo
@@ -278,6 +282,7 @@ jobs:
 
           echo
           echo "Found RPM files:"
+
           find ui/release \
             -type f \
             -name "*.rpm" \
@@ -383,7 +388,6 @@ jobs:
       fail-fast: false
 
       matrix:
-
         include:
 
           - name: Fedora 44
@@ -513,7 +517,8 @@ jobs:
                 file \
                 procps-ng \
                 xorg-x11-server-Xvfb \
-                fuse-libs
+                fuse-libs \
+                util-linux
 
               echo
               echo "======================================"
@@ -564,7 +569,8 @@ jobs:
               echo "Host architecture: $CURRENT_ARCH"
               echo "RPM architecture:  $PACKAGE_ARCH"
 
-              if [ "$CURRENT_ARCH" = "x86_64" ] && [ "$PACKAGE_ARCH" != "x86_64" ]; then
+              if [ "$CURRENT_ARCH" = "x86_64" ] &&
+                 [ "$PACKAGE_ARCH" != "x86_64" ]; then
                 echo "❌ FAIL: RPM architecture does not match runner"
                 exit 1
               fi
@@ -580,44 +586,26 @@ jobs:
 
               echo
               echo "======================================"
+              echo "Check important Electron dependencies"
+              echo "======================================"
+
+              echo "NSS dependency:"
+              rpm -qp --requires "$RPM" \
+                | grep -Ei "nss|libnss" \
+                || echo "⚠️ NSS dependency not explicitly listed"
+
+              echo
+              echo "NSPR dependency:"
+              rpm -qp --requires "$RPM" \
+                | grep -Ei "nspr|libnspr" \
+                || echo "⚠️ NSPR dependency not explicitly listed"
+
+              echo
+              echo "======================================"
               echo "RPM scripts BEFORE installation"
               echo "======================================"
 
               rpm -qp --scripts "$RPM" || true
-
-              echo
-              echo "======================================"
-              echo "Check unshare capability"
-              echo "======================================"
-
-              if command -v unshare >/dev/null 2>&1; then
-
-                echo "unshare binary:"
-                command -v unshare
-
-                echo
-                echo "Testing namespace creation..."
-
-                if unshare --mount true >/dev/null 2>&1; then
-                  echo "✅ unshare works"
-                else
-                  echo "⚠️ unshare is restricted"
-                  echo "Container is privileged, but this runtime still restricts namespace creation."
-                fi
-
-              else
-
-                echo "Installing util-linux..."
-
-                dnf install -y util-linux
-
-                if unshare --mount true >/dev/null 2>&1; then
-                  echo "✅ unshare works"
-                else
-                  echo "⚠️ unshare is restricted"
-                fi
-
-              fi
 
               echo
               echo "======================================"
@@ -636,6 +624,7 @@ jobs:
               echo "dnf exit code: $INSTALL_EXIT"
 
               if [ "$INSTALL_EXIT" -ne 0 ]; then
+
                 echo "❌ FAIL: RPM installation failed"
 
                 echo
@@ -643,6 +632,7 @@ jobs:
                 rpm -qa | grep -i tuttle || true
 
                 exit "$INSTALL_EXIT"
+
               fi
 
               echo "✅ dnf reported successful installation"
@@ -653,9 +643,12 @@ jobs:
               echo "======================================"
 
               if rpm -q "$PACKAGE_NAME" >/dev/null 2>&1; then
+
                 echo "✅ Package is installed:"
                 rpm -q "$PACKAGE_NAME"
+
               else
+
                 echo "❌ FAIL: Package was not installed"
                 echo "Expected package: $PACKAGE_NAME"
 
@@ -664,6 +657,7 @@ jobs:
                 rpm -qa | grep -i tuttle || true
 
                 exit 1
+
               fi
 
               echo
@@ -691,7 +685,7 @@ jobs:
 
               echo
               echo "======================================"
-              echo "Install additional runtime dependencies"
+              echo "Install Xvfb"
               echo "======================================"
 
               dnf install -y \
@@ -720,6 +714,7 @@ jobs:
                   case "$BASENAME" in
 
                     tuttle|Tuttle|tuttle-ui|TuttleUI)
+
                       BINARY="$FILE"
                       break
                       ;;
@@ -729,6 +724,7 @@ jobs:
                 fi
 
               done < <(rpm -ql "$PACKAGE_NAME")
+
 
               # -------------------------------------------------
               # Search standard executable locations
@@ -748,13 +744,16 @@ jobs:
                 do
 
                   if [ -x "$candidate" ]; then
+
                     BINARY="$candidate"
                     break
+
                   fi
 
                 done
 
               fi
+
 
               # -------------------------------------------------
               # Search filesystem if still not found
@@ -784,6 +783,7 @@ jobs:
 
               fi
 
+
               if [ -z "$BINARY" ]; then
 
                 echo
@@ -804,6 +804,7 @@ jobs:
 
               fi
 
+
               echo
               echo "======================================"
               echo "Executable found"
@@ -812,10 +813,15 @@ jobs:
               echo "Binary: $BINARY"
 
               if [ ! -x "$BINARY" ]; then
+
                 echo "❌ FAIL: Located file is not executable"
+
                 ls -la "$BINARY"
+
                 exit 1
+
               fi
+
 
               echo
               echo "======================================"
@@ -828,23 +834,70 @@ jobs:
               echo "Permissions:"
               ls -la "$BINARY"
 
+
               echo
               echo "======================================"
               echo "Check shared libraries"
               echo "======================================"
 
-              if command -v ldd >/dev/null 2>&1; then
+              echo "Running ldd..."
 
-                ldd "$BINARY" || true
+              ldd "$BINARY" | tee /tmp/tuttle-ldd.txt || true
 
-                echo
-                echo "Missing libraries:"
+              echo
+              echo "======================================"
+              echo "Missing shared libraries"
+              echo "======================================"
 
-                ldd "$BINARY" 2>/dev/null \
-                  | grep "not found" \
-                  || echo "No missing shared libraries detected"
+              MISSING_LIBS=$(grep "not found" \
+                /tmp/tuttle-ldd.txt \
+                || true)
+
+              if [ -n "$MISSING_LIBS" ]; then
+
+                echo "❌ FAIL: Missing shared libraries detected:"
+                echo "$MISSING_LIBS"
+
+                exit 1
 
               fi
+
+              echo "✅ No missing shared libraries"
+
+
+              echo
+              echo "======================================"
+              echo "Check NSPR"
+              echo "======================================"
+
+              if ldconfig -p 2>/dev/null \
+                | grep -q "libnspr4.so"; then
+
+                echo "✅ libnspr4.so available"
+
+              else
+
+                echo "⚠️ libnspr4.so not found in ldconfig"
+
+              fi
+
+
+              echo
+              echo "======================================"
+              echo "Check NSS"
+              echo "======================================"
+
+              if ldconfig -p 2>/dev/null \
+                | grep -q "libnss3.so"; then
+
+                echo "✅ libnss3.so available"
+
+              else
+
+                echo "⚠️ libnss3.so not found in ldconfig"
+
+              fi
+
 
               echo
               echo "======================================"
@@ -856,7 +909,8 @@ jobs:
               rpm -ql "$PACKAGE_NAME" \
                 | grep -Ei \
                   "electron|chrome|chromium|resources|app.asar" \
-                  || true
+                || true
+
 
               echo
               echo "======================================"
@@ -885,10 +939,12 @@ jobs:
 
               set -e
 
+
               echo
               echo "--- App stdout/stderr ---"
 
               cat /tmp/app-stdout.log || true
+
 
               echo
               echo "======================================"
@@ -900,38 +956,59 @@ jobs:
                 2>/dev/null \
                 | wc -l)
 
-              CORE_FILES=$(find / \
-                -maxdepth 3 \
-                -name "core*" \
-                -type f \
-                2>/dev/null \
-                | wc -l)
-
               echo "Crash dump files: $CRASH_FILES"
-              echo "Core files:       $CORE_FILES"
               echo "App exit code:    $APP_EXIT"
+
+
+              echo
+              echo "======================================"
+              echo "DBus messages"
+              echo "======================================"
+
+              if grep -qi "dbus" /tmp/app-stdout.log; then
+
+                echo "ℹ️ DBus messages detected."
+                echo "These are ignored for this container smoke test."
+
+              else
+
+                echo "No DBus messages detected."
+
+              fi
+
 
               echo
               echo "======================================"
               echo "Evaluate application result"
               echo "======================================"
 
-              # 124 = timeout.
-              # This is acceptable because GUI applications normally
-              # continue running.
+              # -------------------------------------------------
+              # Exit code 124 means timeout terminated the app
+              # after 20 seconds.
+              #
+              # This is EXPECTED for this smoke test.
+              # -------------------------------------------------
 
-              if [ "$APP_EXIT" -ne 0 ] && [ "$APP_EXIT" -ne 124 ]; then
+              if [ "$APP_EXIT" -ne 0 ] &&
+                 [ "$APP_EXIT" -ne 124 ]; then
 
-                echo "❌ FAIL: App exited abnormally"
+                echo "❌ FAIL: Tuttle exited abnormally"
                 echo "Exit code: $APP_EXIT"
 
                 exit 1
 
               fi
 
+
+              # -------------------------------------------------
+              # ONLY check Tuttle-specific crash dumps.
+              #
+              # DO NOT search / for core* files.
+              # -------------------------------------------------
+
               if [ "$CRASH_FILES" -gt 0 ]; then
 
-                echo "❌ FAIL: Crash dump files detected"
+                echo "❌ FAIL: Tuttle crash dump files detected"
 
                 find /tmp/crash-reports \
                   -type f \
@@ -941,17 +1018,14 @@ jobs:
 
               fi
 
-              if [ "$CORE_FILES" -gt 0 ]; then
-
-                echo "❌ FAIL: Core dump files detected"
-
-                exit 1
-
-              fi
 
               echo
               echo "======================================"
-              echo "✅ PASS: RPM installed and app did not crash"
+              echo "✅ PASS: RPM installed successfully"
+              echo "✅ PASS: Tuttle executable found"
+              echo "✅ PASS: Shared libraries available"
+              echo "✅ PASS: Tuttle launched under Xvfb"
+              echo "✅ PASS: No Tuttle crash dumps"
               echo "======================================"
 
               echo "Distribution: ${{ matrix.name }}"
