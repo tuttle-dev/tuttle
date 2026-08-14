@@ -85,7 +85,15 @@
       "depends": [
         "zlib",
         "fuse-libs",
-        "nspr"
+        "nspr",
+        "gtk3",
+        "libnotify",
+        "nss",
+        "libXScrnSaver",
+        "libXtst",
+        "xdg-utils",
+        "at-spi2-core",
+        "libuuid"
       ]
     }
   },
