@@ -93,9 +93,12 @@ export function RevenueChart() {
   }
 
   const currency = data?.currency || "EUR";
+  // Below a thousand there is no compact suffix to shorten the number, so a
+  // decimal there is just noise: €904, not €903.6.
   const fmtCompact = useCallback(
     (v: number) => new Intl.NumberFormat(undefined, {
-      style: "currency", currency, notation: "compact", maximumFractionDigits: 1,
+      style: "currency", currency, notation: "compact",
+      maximumFractionDigits: Math.abs(v) < 1000 ? 0 : 1,
     }).format(v),
     [currency],
   );
@@ -133,7 +136,10 @@ export function RevenueChart() {
     return indices;
   }, [rows]);
 
+  // Grouping buckets by year is only meaningful when a year spans several of
+  // them — in year view every bucket is its own year.
   const yearBands = useMemo(() => {
+    if (granularity === "year") return [];
     const bands: { year: number; count: number }[] = [];
     for (const row of rows) {
       const last = bands[bands.length - 1];
@@ -141,12 +147,13 @@ export function RevenueChart() {
       else bands.push({ year: row.year, count: 1 });
     }
     return bands;
-  }, [rows]);
+  }, [rows, granularity]);
 
   const windowLabel = useMemo(() => {
     if (!rows.length) return "";
     const first = rows[0], last = rows[rows.length - 1];
     if (granularity === "year") return first.year === last.year ? first.label : `${first.label}–${last.label}`;
+    if (first.year === last.year) return `${first.label} – ${last.label} ${first.year}`;
     return `${first.label} ${first.year} – ${last.label} ${last.year}`;
   }, [rows, granularity]);
 
@@ -254,6 +261,7 @@ export function RevenueChart() {
                     fill={s.color}
                     fillOpacity={s.opacity}
                     radius={isTop ? [3, 3, 0, 0] : [0, 0, 0, 0]}
+                    maxBarSize={72}
                     isAnimationActive={false}
                   >
                     {isTop && (
@@ -276,7 +284,7 @@ export function RevenueChart() {
             <div
               key={`${band.year}-${i}`}
               style={{ flexGrow: band.count }}
-              className={`text-[11px] text-tertiary text-center ${i > 0 ? "border-l border-border" : ""}`}
+              className={`text-[11px] text-secondary text-center ${i > 0 ? "border-l border-border" : ""}`}
             >
               {band.year}
             </div>
