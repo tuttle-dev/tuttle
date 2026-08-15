@@ -453,13 +453,24 @@ class UsersIntent:
         invoice_language: str = "en",
         invoice_template: str = "invoice-modern",
     ) -> IntentResult:
-        """Ensure the Harry Tuttle demo user exists."""
+        """Ensure the Harry Tuttle demo user exists with a fully populated database.
+
+        If a previous attempt registered the demo user but failed to install
+        data (e.g. a rendering error), the incomplete registration is removed
+        and the installation is retried from scratch.
+        """
         from ...demo import install_demo_data
         from ..timetracking.data_source import TimeTrackingDataFrameSource
 
-        if self._app_db.get_user_by_db_file("harry-tuttle.db"):
-            reg = self._app_db.get_user_by_db_file("harry-tuttle.db")
-            return IntentResult(was_intent_successful=True, data=reg)
+        existing = self._app_db.get_user_by_db_file("harry-tuttle.db")
+        if existing:
+            db_path = self._app_db.get_user_db_path("harry-tuttle.db")
+            if self._demo_db_is_populated(db_path):
+                return IntentResult(was_intent_successful=True, data=existing)
+            logger.warning("Demo registration exists but database is empty — reinstalling")
+            self._app_db.remove_user("harry-tuttle.db")
+            if db_path.exists():
+                db_path.unlink()
 
         reg = self._app_db.add_user(
             name="Harry Tuttle",
@@ -478,15 +489,37 @@ class UsersIntent:
             ds.save_source_config("demo", calendar_name="Demo calendar")
             logger.info(f"Cached {len(df)} demo time-tracking events")
 
-        install_demo_data(
-            n_projects=4,
-            db_path=str(db_path),
-            on_cache_timetracking_dataframe=_cache_demo_timetracking,
-            invoice_language=invoice_language,
-            invoice_template=invoice_template,
-        )
+        try:
+            install_demo_data(
+                n_projects=4,
+                db_path=str(db_path),
+                on_cache_timetracking_dataframe=_cache_demo_timetracking,
+                invoice_language=invoice_language,
+                invoice_template=invoice_template,
+            )
+        except Exception:
+            logger.exception("Demo data installation failed — rolling back registration")
+            self._app_db.remove_user("harry-tuttle.db")
+            if db_path.exists():
+                db_path.unlink()
+            raise
+
         logger.info("Demo user Harry Tuttle created with heating-repair data")
         return IntentResult(was_intent_successful=True, data=reg)
+
+    @staticmethod
+    def _demo_db_is_populated(db_path: Path) -> bool:
+        """Quick sanity check: does the demo database have at least one user row?"""
+        if not db_path.exists():
+            return False
+        try:
+            engine = sql_create_engine(f"sqlite:///{db_path}")
+            with SqlSession(engine) as s:
+                user = s.exec(select(User)).first()
+            engine.dispose()
+            return user is not None
+        except Exception:
+            return False
 
     def ensure_db(self, **_kw) -> IntentResult:
         """Ensure app.db exists and switch to last-active user if any."""

@@ -74,7 +74,12 @@ hiddenimports = collect_submodules("tuttle.app") + [
     # SQLModel / SQLAlchemy backends
     "sqlmodel",
     "sqlalchemy.dialects.sqlite",
-    # Alembic — env.py is imported by path at runtime; deps must be bundled
+    # Alembic — env.py is imported by path at runtime, so nothing it imports
+    # is visible to the analyzer. logging.config only ever reached the bundle
+    # as a transitive import of the notebook dev dependencies; when those were
+    # dropped, every migration in the frozen build started failing.
+    "logging.config",
+    "logging.handlers",
     "alembic",
     "alembic.config",
     "alembic.command",

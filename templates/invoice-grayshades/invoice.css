@@ -259,6 +259,28 @@ body {
   color: #000;
 }
 
+/* ── Payment ─────────────────────────────────── */
+
+.payment {
+  margin-bottom: 20pt;
+}
+
+.payment-label {
+  display: block;
+  font-size: 7pt;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8pt;
+  color: #4d4d4d;
+  margin-bottom: 6pt;
+}
+
+.payment-qr {
+  display: block;
+  width: 72pt;
+  height: 72pt;
+}
+
 /* ── Closing ─────────────────────────────────── */
 
 .closing {

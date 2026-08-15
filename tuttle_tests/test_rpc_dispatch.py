@@ -86,6 +86,106 @@ def assert_ok(result: dict) -> dict:
 # ---------------------------------------------------------------------------
 
 
+class TestDemoStartPath:
+    """Regression tests for the 'Try with demo data' onboarding flow.
+
+    Mirrors the exact RPC sequence the Electron shell fires when the user
+    clicks the button: ensure_demo → users.list → users.switch → get_active.
+    Also covers recovery from partial/failed installations.
+    """
+
+    def test_full_demo_onboarding_sequence(self, rpc_env):
+        """Happy path: the full sequence produces a usable demo session."""
+        demo_result = dispatch("users.ensure_demo", {})
+        assert_ok(demo_result)
+        assert demo_result["data"]["db_file"] == "harry-tuttle.db"
+
+        users = assert_ok(dispatch("users.list", {}))["data"]
+        assert any(u["db_file"] == "harry-tuttle.db" for u in users)
+
+        switch = dispatch("users.switch", {"db_file": "harry-tuttle.db"})
+        assert_ok(switch)
+
+        active = assert_ok(dispatch("users.get_active", {}))["data"]
+        assert active is not None, "get_active must return a user after switch"
+        assert active["name"] == "Harry Tuttle"
+        assert active["profile"] is not None
+
+    def test_demo_has_projects_and_invoices(self, rpc_env):
+        """The demo database must contain non-empty data for the dashboard."""
+        dispatch("users.switch", {"db_file": "harry-tuttle.db"})
+
+        projects = assert_ok(dispatch("projects.get_all", {}))["data"]
+        assert len(projects) >= 4, "Demo should have at least 4 projects"
+
+        invoices = assert_ok(dispatch("invoicing.get_all", {}))["data"]
+        assert len(invoices) >= 4, "Demo should have at least 4 invoices"
+
+    def test_recovery_from_empty_database(self, rpc_env):
+        """If the demo DB exists but is empty, ensure_demo reinstalls it."""
+        from tuttle.app.users.intent import UsersIntent
+
+        users_intent = UsersIntent()
+        db_path = users_intent._app_db.get_user_db_path("harry-tuttle.db")
+
+        # Wipe the database contents but keep the file
+        from tuttle.db_schema import ensure_schema
+
+        db_path.unlink(missing_ok=True)
+        ensure_schema(f"sqlite:///{db_path}")
+
+        assert not UsersIntent._demo_db_is_populated(db_path)
+
+        result = dispatch("users.ensure_demo", {})
+        assert_ok(result)
+        assert UsersIntent._demo_db_is_populated(db_path)
+
+        dispatch("users.switch", {"db_file": "harry-tuttle.db"})
+        projects = assert_ok(dispatch("projects.get_all", {}))["data"]
+        assert len(projects) >= 4
+
+    def test_recovery_from_missing_database(self, rpc_env):
+        """If the demo DB file is gone, ensure_demo reinstalls it."""
+        from tuttle.app.users.intent import UsersIntent
+
+        users_intent = UsersIntent()
+        db_path = users_intent._app_db.get_user_db_path("harry-tuttle.db")
+        db_path.unlink(missing_ok=True)
+
+        result = dispatch("users.ensure_demo", {})
+        assert_ok(result)
+        assert db_path.exists()
+        assert UsersIntent._demo_db_is_populated(db_path)
+
+    def test_failed_install_rolls_back_registration(self, rpc_env):
+        """If install_demo_data crashes, the registration must not persist."""
+        from unittest.mock import patch
+
+        from tuttle.app.users.intent import UsersIntent
+
+        users_intent = UsersIntent()
+        db_path = users_intent._app_db.get_user_db_path("harry-tuttle.db")
+
+        # Remove existing demo so ensure_demo attempts a fresh install
+        users_intent._app_db.remove_user("harry-tuttle.db")
+        db_path.unlink(missing_ok=True)
+        reset_all()
+        _intents.clear()
+
+        with patch("tuttle.demo.install_demo_data", side_effect=RuntimeError("boom")):
+            with pytest.raises(RuntimeError, match="boom"):
+                dispatch("users.ensure_demo", {})
+
+        reg = users_intent._app_db.get_user_by_db_file("harry-tuttle.db")
+        assert reg is None, "Registration must be rolled back after install failure"
+
+        # Reinstall for other tests
+        _intents.clear()
+        result = dispatch("users.ensure_demo", {})
+        assert_ok(result)
+        dispatch("users.switch", {"db_file": "harry-tuttle.db"})
+
+
 class TestLifecycle:
     """The startup sequence the Electron shell runs on every launch."""
 

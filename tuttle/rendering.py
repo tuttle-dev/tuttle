@@ -13,8 +13,9 @@ import PyPDF2
 from babel.dates import format_date
 from babel.numbers import format_currency
 from loguru import logger
+from segno.helpers import make_epc_qr
 
-from .model import Invoice, Timesheet, User
+from .model import BankAccount, Invoice, Timesheet, User
 
 LANGUAGE_TO_LOCALE = {
     "en": "en_US",
@@ -159,6 +160,32 @@ def convert_html_to_pdf(
     book.write_to_pdf(str(out_path))
 
 
+def generate_payment_qr(bank_account: Optional[BankAccount], invoice: Invoice) -> Optional[str]:
+    """Generate a SEPA payment (EPC/Girocode) QR code for an invoice, if eligible.
+
+    Returns an SVG data URI, or None if ``bank_account`` is missing or incomplete,
+    or the invoice isn't in EUR (the EPC QR format is SEPA-only).
+    """
+    if bank_account is None or not (bank_account.BIC and bank_account.IBAN and bank_account.name):
+        return None
+    if invoice.currency != "EUR":
+        return None
+
+    try:
+        qr = make_epc_qr(
+            name=bank_account.name,
+            iban=bank_account.IBAN,
+            amount=float(invoice.total),
+            text=invoice.number,
+            bic=bank_account.BIC,
+        )
+    except ValueError as ex:
+        logger.warning(f"Could not generate payment QR code for invoice {invoice.number}: {ex}")
+        return None
+
+    return qr.svg_data_uri(scale=4)
+
+
 def render_invoice(
     user: User,
     invoice: Invoice,
@@ -171,6 +198,7 @@ def render_invoice(
     include_logo: bool = True,
     include_due_date: bool = True,
     include_signature: bool = True,
+    include_qr_code: bool = False,
     accent_color: Optional[str] = None,
 ):
     """Render an Invoice using an HTML template.
@@ -185,6 +213,8 @@ def render_invoice(
         language: Language code for labels and date/currency formatting ("en", "de", "es").
         e_invoice_profile: If set, embed ZUGFeRD/Factur-X XML into the PDF.
             One of "EN16931", "EXTENDED", "BASIC", "MINIMUM", "XRECHNUNG", or None.
+        include_qr_code: Whether to render a SEPA payment (EPC/Girocode) QR code in the
+            payment section, when the invoice is in EUR and a complete bank account is set.
         accent_color: Hex color string (e.g. "#C8281E") to use as the invoice accent color.
             Falls back to the template's hardcoded default when None or empty.
     """
@@ -255,6 +285,7 @@ def render_invoice(
     # The bank account named on the contract takes precedence; without one the
     # user's default account is used.
     payee_account = (invoice.contract.bank_account if invoice.contract else None) or user.bank_account
+    qr_code_data_uri = generate_payment_qr(payee_account, invoice) if include_qr_code else None
 
     invoice_template = template_env.get_template("invoice.html")
     html = invoice_template.render(
@@ -269,6 +300,7 @@ def render_invoice(
         include_logo=include_logo,
         include_due_date=include_due_date,
         include_signature=include_signature,
+        qr_code_data_uri=qr_code_data_uri,
         accent_color=accent_color or "",
         bank_account=payee_account,
     )
