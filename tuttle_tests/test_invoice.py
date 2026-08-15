@@ -769,7 +769,7 @@ class TestInvoicePaymentQR:
 
     def test_qr_appears_when_eligible(self, fake):
         user = demo.create_fake_user(fake)
-        user.bank_account = BankAccount(name=user.name, IBAN=self.VALID_IBAN, BIC="COBADEFFXXX")
+        user.bank_accounts = [BankAccount(name=user.name, IBAN=self.VALID_IBAN, BIC="COBADEFFXXX", is_default=True)]
         invoice = demo.create_fake_invoice(fake)
 
         html = rendering.render_invoice(
@@ -786,7 +786,7 @@ class TestInvoicePaymentQR:
 
     def test_qr_absent_when_toggle_off(self, fake):
         user = demo.create_fake_user(fake)
-        user.bank_account = BankAccount(name=user.name, IBAN=self.VALID_IBAN, BIC="COBADEFFXXX")
+        user.bank_accounts = [BankAccount(name=user.name, IBAN=self.VALID_IBAN, BIC="COBADEFFXXX", is_default=True)]
         invoice = demo.create_fake_invoice(fake)
 
         html = rendering.render_invoice(
@@ -817,7 +817,7 @@ class TestInvoicePaymentQR:
 
     def test_qr_absent_for_non_eur_invoice(self, fake):
         user = demo.create_fake_user(fake)
-        user.bank_account = BankAccount(name=user.name, IBAN=self.VALID_IBAN, BIC="COBADEFFXXX")
+        user.bank_accounts = [BankAccount(name=user.name, IBAN=self.VALID_IBAN, BIC="COBADEFFXXX", is_default=True)]
         contract = demo.create_fake_contract(fake)
         contract.currency = "USD"
         project = demo.create_fake_project(fake, contract=contract)
@@ -841,25 +841,24 @@ class TestGeneratePaymentQR:
     VALID_IBAN = "DE89370400440532013000"
 
     def test_returns_none_without_bank_account(self, fake):
-        user = demo.create_fake_user(fake)
         invoice = demo.create_fake_invoice(fake)
-        assert rendering.generate_payment_qr(user, invoice) is None
+        assert rendering.generate_payment_qr(None, invoice) is None
 
     def test_returns_none_for_non_eur_currency(self, fake):
         user = demo.create_fake_user(fake)
-        user.bank_account = BankAccount(name=user.name, IBAN=self.VALID_IBAN, BIC="COBADEFFXXX")
+        user.bank_accounts = [BankAccount(name=user.name, IBAN=self.VALID_IBAN, BIC="COBADEFFXXX", is_default=True)]
         contract = demo.create_fake_contract(fake)
         contract.currency = "USD"
         project = demo.create_fake_project(fake, contract=contract)
         invoice = demo.create_fake_invoice(fake, project=project, user=user)
-        assert rendering.generate_payment_qr(user, invoice) is None
+        assert rendering.generate_payment_qr(user.bank_account, invoice) is None
 
     def test_returns_svg_data_uri_when_eligible(self, fake):
         user = demo.create_fake_user(fake)
-        user.bank_account = BankAccount(name=user.name, IBAN=self.VALID_IBAN, BIC="COBADEFFXXX")
+        user.bank_accounts = [BankAccount(name=user.name, IBAN=self.VALID_IBAN, BIC="COBADEFFXXX", is_default=True)]
         invoice = demo.create_fake_invoice(fake)
 
-        result = rendering.generate_payment_qr(user, invoice)
+        result = rendering.generate_payment_qr(user.bank_account, invoice)
 
         assert result is not None
         assert result.startswith("data:image/svg+xml")

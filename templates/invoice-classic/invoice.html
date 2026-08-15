@@ -93,8 +93,8 @@
     <div class="payment">
       <span class="party-label">Payment Details</span>
       <div class="payment-value">
-        {% if user.bank_account %}IBAN: {{ user.bank_account.IBAN }}
-        {% if user.bank_account.BIC %}<br>BIC: {{ user.bank_account.BIC }}{% endif %}{% endif %}
+        {% if bank_account %}IBAN: {{ bank_account.IBAN }}
+        {% if bank_account.BIC %}<br>BIC: {{ bank_account.BIC }}{% endif %}{% endif %}
       </div>
     </div>
     <div class="totals">
@@ -134,8 +134,8 @@
 
   <div class="footer">
     <span>{{ user.name }}</span>
-    {% if user.bank_account %}<span>IBAN: {{ user.bank_account.IBAN }}</span>
-    {% if user.bank_account.BIC %}<span>BIC: {{ user.bank_account.BIC }}</span>{% endif %}{% endif %}
+    {% if bank_account %}<span>IBAN: {{ bank_account.IBAN }}</span>
+    {% if bank_account.BIC %}<span>BIC: {{ bank_account.BIC }}</span>{% endif %}{% endif %}
     {% if seller_tax_id %}<span>{{ seller_tax_id_label }}: {{ seller_tax_id }}</span>{% endif %}
   </div>
 

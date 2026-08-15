@@ -15,7 +15,7 @@ from babel.numbers import format_currency
 from loguru import logger
 from segno.helpers import make_epc_qr
 
-from .model import Invoice, Timesheet, User
+from .model import BankAccount, Invoice, Timesheet, User
 
 LANGUAGE_TO_LOCALE = {
     "en": "en_US",
@@ -160,18 +160,17 @@ def convert_html_to_pdf(
     book.write_to_pdf(str(out_path))
 
 
-def generate_payment_qr(user: User, invoice: Invoice) -> Optional[str]:
+def generate_payment_qr(bank_account: Optional[BankAccount], invoice: Invoice) -> Optional[str]:
     """Generate a SEPA payment (EPC/Girocode) QR code for an invoice, if eligible.
 
-    Returns an SVG data URI, or None if the user has no complete bank account
-    on file, or the invoice isn't in EUR (the EPC QR format is SEPA-only).
+    Returns an SVG data URI, or None if ``bank_account`` is missing or incomplete,
+    or the invoice isn't in EUR (the EPC QR format is SEPA-only).
     """
-    if user.bank_account_not_set:
+    if bank_account is None or not (bank_account.BIC and bank_account.IBAN and bank_account.name):
         return None
     if invoice.currency != "EUR":
         return None
 
-    bank_account = user.bank_account
     try:
         qr = make_epc_qr(
             name=bank_account.name,
@@ -283,7 +282,10 @@ def render_invoice(
         seller_tax_id_label = labels.get("tax_number", "Tax No.")
         seller_tax_id = user.tax_number or ""
 
-    qr_code_data_uri = generate_payment_qr(user, invoice) if include_qr_code else None
+    # The bank account named on the contract takes precedence; without one the
+    # user's default account is used.
+    payee_account = (invoice.contract.bank_account if invoice.contract else None) or user.bank_account
+    qr_code_data_uri = generate_payment_qr(payee_account, invoice) if include_qr_code else None
 
     invoice_template = template_env.get_template("invoice.html")
     html = invoice_template.render(
@@ -300,6 +302,7 @@ def render_invoice(
         include_signature=include_signature,
         qr_code_data_uri=qr_code_data_uri,
         accent_color=accent_color or "",
+        bank_account=payee_account,
     )
     if out_dir is None:
         return html

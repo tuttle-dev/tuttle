@@ -28,11 +28,13 @@ user = User(
         postal_code="555555",
         country="Brazil",
     ),
-    bank_account=BankAccount(
-        name="Giro",
-        IBAN="BZ99830994950003161565",
-        BIC="BANKINFO101",
-    ),
+    bank_accounts=[
+        BankAccount(
+            name="Harry Tuttle",
+            IBAN="BZ99830994950003161565",
+            BIC="BANKINFO101",
+        ),
+    ],
 )
 
 # CONTACTS

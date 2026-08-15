@@ -189,7 +189,7 @@ class ContractsIntent(CrudIntent):
         if "NOT NULL" in detail:
             return "A required field is missing."
         if "FOREIGN KEY" in detail or "foreign key" in detail:
-            return "The selected client is invalid."
+            return "The selected client or bank account is invalid."
         return "Failed to save the contract."
 
     toggle_complete_status = CrudIntent.toggle_completed

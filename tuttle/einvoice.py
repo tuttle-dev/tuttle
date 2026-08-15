@@ -207,12 +207,15 @@ def build_zugferd_document(
     doc.trade.settlement.currency_code = currency
 
     # -- Payment means (not in MINIMUM) ----------------------------------------
-    if not is_minimum and user.bank_account and user.bank_account.IBAN:
+    # The bank account named on the contract takes precedence; otherwise the
+    # user's default account (which ``User.bank_account`` resolves to).
+    payee = contract.bank_account or user.bank_account
+    if not is_minimum and payee and payee.IBAN:
         pm = PaymentMeans()
         pm.type_code = "58"  # SEPA credit transfer
-        pm.payee_account.iban = user.bank_account.IBAN
-        if user.bank_account.BIC and profile not in ("BASIC",):
-            pm.payee_institution.bic = user.bank_account.BIC
+        pm.payee_account.iban = payee.IBAN
+        if payee.BIC and profile not in ("BASIC",):
+            pm.payee_institution.bic = payee.BIC
         doc.trade.settlement.payment_means.add(pm)
 
     # -- Line items & tax (not in MINIMUM) -------------------------------------

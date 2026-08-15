@@ -42,11 +42,13 @@ def _make_user() -> User:
             city="Berlin",
             country="Germany",
         ),
-        bank_account=BankAccount(
-            name="Business",
-            IBAN="DE89370400440532013000",
-            BIC="COBADEFFXXX",
-        ),
+        bank_accounts=[
+            BankAccount(
+                name="Business",
+                IBAN="DE89370400440532013000",
+                BIC="COBADEFFXXX",
+            ),
+        ],
     )
 
 

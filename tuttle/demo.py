@@ -473,6 +473,8 @@ def create_usd_security_data(user: User) -> tuple[Project, Invoice, ClientContac
         volume=10,
         term_of_payment=14,
         billing_cycle=Cycle.monthly,
+        # Harry keeps a dedicated USD account for dollar invoices.
+        bank_account=next(a for a in user.bank_accounts if not a.is_default),
     )
 
     project = Project(
@@ -847,11 +849,20 @@ def create_demo_user() -> User:
             postal_code="555555",
             country="Brazil",
         ),
-        bank_account=BankAccount(
-            name="Giro",
-            IBAN="BZ99830994950003161565",
-            BIC="BANKINFO101",
-        ),
+        bank_accounts=[
+            BankAccount(
+                name="Harry Tuttle",
+                IBAN="BZ99830994950003161565",
+                BIC="BANKINFO101",
+                is_default=True,
+            ),
+            BankAccount(
+                name="Harry Tuttle",
+                IBAN="US88589600002547441617",
+                BIC="TRWIBEB1",
+                is_default=False,
+            ),
+        ],
     )
     return user
 
