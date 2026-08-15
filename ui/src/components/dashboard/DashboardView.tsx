@@ -7,11 +7,8 @@ import { rpc } from "../../api/rpc";
 import { str, num, int } from "../../api/entity";
 import { KPICard } from "../shared/KPICard";
 import { EmptyStateIntro } from "../shared/EmptyStateIntro";
+import { RevenueChart } from "./RevenueChart";
 import type { Entity } from "../../api/types";
-import {
-  Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
-  ComposedChart,
-} from "recharts";
 
 interface BudgetEntry {
   project_id: number;
@@ -26,24 +23,8 @@ interface BudgetEntry {
   open_ended?: boolean;
 }
 
-interface RevenueCurveEntry {
-  month: string;
-  revenue: number;
-  cumulative_revenue: number;
-  is_forecast: boolean;
-  source: string;
-}
-
-interface RevenueBar {
-  label: string;
-  received: number;
-  invoiced: number;
-  planned: number;
-}
-
 export function DashboardView() {
   const [kpis, setKpis] = useState<Entity | null>(null);
-  const [revenueBars, setRevenueBars] = useState<RevenueBar[]>([]);
   const [budgets, setBudgets] = useState<BudgetEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -51,57 +32,12 @@ export function DashboardView() {
 
   async function load() {
     setLoading(true);
-    const [kpiRes, chartRes, budgetRes, curveRes] = await Promise.all([
+    const [kpiRes, budgetRes] = await Promise.all([
       rpc("dashboard.get_kpis"),
-      rpc("dashboard.get_monthly_chart_data", { n_months: 12 }),
       rpc<BudgetEntry[]>("dashboard.get_project_budgets"),
-      rpc<RevenueCurveEntry[]>("dashboard.get_revenue_curve", { forecast_months: 6 }),
     ]);
     if (kpiRes.ok && kpiRes.data) setKpis(kpiRes.data as Entity);
     if (budgetRes.ok && Array.isArray(budgetRes.data)) setBudgets(budgetRes.data);
-
-    const byLabel = new Map<string, RevenueBar>();
-
-    if (chartRes.ok && chartRes.data) {
-      const d = chartRes.data as { revenue: Entity[]; spendable: Entity[] };
-      for (const r of (d.revenue || []) as Entity[]) {
-        const m = str(r, "month"), p = m.split("-");
-        const label = p.length === 2 ? `${p[1]}/${p[0].slice(2)}` : m;
-        byLabel.set(label, {
-          label,
-          received: num(r, "revenue"),
-          invoiced: num(r, "pipeline"),
-          planned: 0,
-        });
-      }
-    }
-
-    if (curveRes.ok && Array.isArray(curveRes.data)) {
-      for (const r of curveRes.data as RevenueCurveEntry[]) {
-        const m = (r.month ?? "").slice(0, 7), p = m.split("-");
-        const label = p.length === 2 ? `${p[1]}/${p[0].slice(2)}` : m;
-        if (r.source === "calendar") {
-          const existing = byLabel.get(label) ?? { label, received: 0, invoiced: 0, planned: 0 };
-          existing.planned += r.revenue ?? 0;
-          byLabel.set(label, existing);
-        }
-      }
-    }
-
-    // The backend already excludes calendar hours that have been captured
-    // into an invoice (keyed by the timesheet's own period, not the
-    // invoice's date), so `planned` here only ever reflects genuinely
-    // un-invoiced work. Guard against floating-point dust only.
-    for (const bar of byLabel.values()) {
-      bar.planned = Math.max(0, bar.planned);
-    }
-
-    const sorted = [...byLabel.values()].sort((a, b) => {
-      const [am, ay] = a.label.split("/");
-      const [bm, by] = b.label.split("/");
-      return (+(ay ?? 0) - +(by ?? 0)) || (+(am ?? 0) - +(bm ?? 0));
-    });
-    setRevenueBars(sorted);
     setLoading(false);
   }
 
@@ -133,31 +69,7 @@ export function DashboardView() {
         </div>
       </div>
 
-      {revenueBars.length > 0 && (
-        <div className="rounded-lg bg-bg-card border border-border-subtle p-4">
-          <h2 className="text-sm font-medium text-secondary mb-1">Revenue</h2>
-          <p className="text-[11px] text-tertiary mb-3">Received + invoiced from past months, planned from calendar</p>
-          <ResponsiveContainer width="100%" height={260}>
-            <ComposedChart data={revenueBars} barGap={0}>
-              <XAxis dataKey="label" tick={{ fill: "var(--color-chart-label)", fontSize: 12 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: "var(--color-chart-label)", fontSize: 12 }} axisLine={false} tickLine={false}
-                tickFormatter={(v: number) => v >= 1000 ? `€${(v / 1000).toFixed(0)}K` : `€${v}`} />
-              <Tooltip
-                contentStyle={{ background: "var(--color-bg-card)", border: "1px solid var(--color-border)", borderRadius: 8, color: "var(--color-primary)" }}
-                labelStyle={{ color: "var(--color-chart-label)" }}
-                formatter={(value: number, name: string) => {
-                  if (!value) return [null, null];
-                  return [`€${value.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`, name];
-                }}
-              />
-              <Legend wrapperStyle={{ fontSize: 12, color: "var(--color-chart-label)" }} />
-              <Bar dataKey="received" name="Received" stackId="rev" fill="#4ADE80" radius={[0, 0, 0, 0]} />
-              <Bar dataKey="invoiced" name="Invoiced" stackId="rev" fill="#FACC15" radius={[0, 0, 0, 0]} />
-              <Bar dataKey="planned" name="Planned" stackId="rev" fill="#60A5FA" radius={[3, 3, 0, 0]} />
-            </ComposedChart>
-          </ResponsiveContainer>
-        </div>
-      )}
+      <RevenueChart />
 
       {budgets.length > 0 && (
         <div className="rounded-lg bg-bg-card border border-border-subtle p-4 space-y-3">

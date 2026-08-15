@@ -6,6 +6,7 @@ from ...forecasting import (
     cash_flow_projection,
     monthly_revenue_from_calendar,
     revenue_curve_with_calendar,
+    revenue_series,
 )
 from ...kpi import (
     compute_kpis,
@@ -103,6 +104,26 @@ class DashboardIntent(SQLModelDataSourceMixin, Intent):
                 was_intent_successful=False,
                 error_msg=f"Failed to load chart data: {e}",
                 log_message=f"DashboardIntent.get_monthly_chart_data: {e}",
+                exception=e,
+            )
+
+    def get_revenue_series(self, granularity: str = "month", offset: int = 0) -> IntentResult:
+        """Revenue per week/month/year bucket for one window of the revenue chart."""
+        try:
+            data = revenue_series(
+                self.query(Invoice),
+                self.query(Project),
+                self._time_data_source.get_data_frame(),
+                granularity=granularity,
+                offset=int(offset),
+                country=self._get_country(),
+            )
+            return IntentResult(was_intent_successful=True, data=data)
+        except Exception as e:
+            return IntentResult(
+                was_intent_successful=False,
+                error_msg=f"Failed to load revenue series: {e}",
+                log_message=f"DashboardIntent.get_revenue_series: {e}",
                 exception=e,
             )
 

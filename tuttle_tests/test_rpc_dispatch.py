@@ -279,6 +279,9 @@ def test_read_route_resolves(rpc_env, method):
 DASHBOARD_ROUTES = [
     ("dashboard.get_kpis", {}),
     ("dashboard.get_monthly_chart_data", {"n_months": 12}),
+    ("dashboard.get_revenue_series", {"granularity": "week", "offset": 0}),
+    ("dashboard.get_revenue_series", {"granularity": "month", "offset": -1}),
+    ("dashboard.get_revenue_series", {"granularity": "year", "offset": 0}),
 ]
 
 
