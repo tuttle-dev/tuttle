@@ -87,9 +87,12 @@ br: build run
 
 # ── Calendar helper (dev-mode workaround) ───────────────────────────────────
 
-# Build the TuttleCalendar.app helper and request calendar access
+# Build the TuttleCalendar.app helper and request calendar access.
+# This intentionally targets the real ~/.tuttle (not ~/.tuttle-dev):
+# the helper's macOS calendar permission grant is tied to that fixed
+# path, which is where the packaged app also looks for it.
 calendar-setup:
-    uv run --no-sync python -c "from tuttle.eventkit_bridge import _ensure_helper; _ensure_helper()"
+    TUTTLE_DATA_DIR="$HOME/.tuttle" uv run --no-sync python -c "from tuttle.eventkit_bridge import _ensure_helper; _ensure_helper()"
     open --wait-apps ~/.tuttle/TuttleCalendar.app --args request-access
     @echo "Check System Settings → Privacy → Calendars for 'Tuttle Calendar'"
 

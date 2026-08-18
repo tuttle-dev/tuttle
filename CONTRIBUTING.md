@@ -179,9 +179,13 @@ just dev
 
 ### Dev vs production data
 
-`just dev` stores data in `~/.tuttle-dev/` (via the `TUTTLE_DATA_DIR`
-env var) so that development never touches your production database in
-`~/.tuttle/`. To test with your real data, copy it once:
+`~/.tuttle-dev/` is the default data directory for anything run from
+this source checkout — `just dev`, `uv run python -m tuttle.rpc_server`,
+one-off `uv run python -c "..."` snippets, an unpackaged dev build of
+Electron launched some other way, all of it. This is enforced in
+`tuttle/data_dir.py` itself (only a PyInstaller-*frozen* build defaults
+to the real `~/.tuttle`), so it holds even if `TUTTLE_DATA_DIR` never
+gets set. To test with your real data, copy it once *on purpose*:
 
 ```shell
 just sync-data   # one-way copy ~/.tuttle → ~/.tuttle-dev
