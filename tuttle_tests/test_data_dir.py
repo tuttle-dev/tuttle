@@ -1,21 +1,40 @@
 """Tests for tuttle.data_dir — env-var override and default behaviour."""
 
-from pathlib import Path
+import sys
 
 from tuttle.data_dir import get_data_dir
 
 
-def test_default_is_dot_tuttle(monkeypatch, tmp_path):
-    """Without TUTTLE_DATA_DIR, get_data_dir() returns ~/.tuttle."""
+def test_default_is_dot_tuttle_dev_when_unfrozen(monkeypatch, tmp_path):
+    """Without TUTTLE_DATA_DIR, an unfrozen (dev/test) run gets ~/.tuttle-dev.
+
+    A source checkout must never fall back to a real user's ~/.tuttle just
+    because some script forgot to set TUTTLE_DATA_DIR.
+    """
     monkeypatch.delenv("TUTTLE_DATA_DIR", raising=False)
     fake_home = tmp_path / "home"
     fake_home.mkdir()
-    monkeypatch.setattr(Path, "home", staticmethod(lambda: fake_home))
 
-    # Re-import to pick up patched home
+    import tuttle.data_dir as mod
+
+    monkeypatch.setattr(mod, "_DEFAULT_DEV", fake_home / ".tuttle-dev")
+    monkeypatch.setattr(sys, "frozen", False, raising=False)
+
+    result = mod.get_data_dir()
+    assert result == fake_home / ".tuttle-dev"
+    assert result.is_dir()
+
+
+def test_default_is_dot_tuttle_when_frozen(monkeypatch, tmp_path):
+    """Without TUTTLE_DATA_DIR, a PyInstaller-frozen (production) build gets ~/.tuttle."""
+    monkeypatch.delenv("TUTTLE_DATA_DIR", raising=False)
+    fake_home = tmp_path / "home"
+    fake_home.mkdir()
+
     import tuttle.data_dir as mod
 
     monkeypatch.setattr(mod, "_DEFAULT", fake_home / ".tuttle")
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
 
     result = mod.get_data_dir()
     assert result == fake_home / ".tuttle"
@@ -47,11 +66,11 @@ def test_empty_env_var_falls_back_to_default(monkeypatch, tmp_path):
     monkeypatch.setenv("TUTTLE_DATA_DIR", "")
     fake_home = tmp_path / "home"
     fake_home.mkdir()
-    monkeypatch.setattr(Path, "home", staticmethod(lambda: fake_home))
 
     import tuttle.data_dir as mod
 
-    monkeypatch.setattr(mod, "_DEFAULT", fake_home / ".tuttle")
+    monkeypatch.setattr(mod, "_DEFAULT_DEV", fake_home / ".tuttle-dev")
+    monkeypatch.setattr(sys, "frozen", False, raising=False)
 
     result = mod.get_data_dir()
-    assert result == fake_home / ".tuttle"
+    assert result == fake_home / ".tuttle-dev"

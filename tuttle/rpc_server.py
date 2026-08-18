@@ -26,6 +26,7 @@ logger.remove()
 logger.add(sys.stderr, level="DEBUG")
 
 from tuttle.app.system.log_sink import sink as _log_sink  # noqa: E402
+from tuttle.data_dir import get_data_dir  # noqa: E402
 
 logger.add(_log_sink, level="DEBUG")
 
@@ -55,6 +56,7 @@ def main():
 
     _start_parent_watchdog()
     logger.info("Tuttle RPC server starting…")
+    logger.info(f"Data directory: {get_data_dir()} (frozen={getattr(sys, 'frozen', False)})")
 
     for line in sys.stdin:
         line = line.strip()
