@@ -92,6 +92,13 @@ commit = true
 tag = true
 tag_name = "v{new_version}"
 commit_message = "chore: release v{new_version}"
+# uv.lock carries the version of the tuttle package itself, but it cannot be
+# listed under [[tool.bumpversion.files]]: the lock has to be regenerated, not
+# string-substituted. Re-lock once the version files are rewritten and stage the
+# result so it lands in the bump commit. Without this the lockfile stays one
+# release behind, and the next release's `uv sync` dirties the tree and makes
+# bump-my-version refuse to run.
+pre_commit_hooks = ["uv lock", "git add uv.lock"]
 parse = '(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)((?P<pre_l>a|b|rc)(?P<pre_n>\d+))?'
 serialize = [
     "{major}.{minor}.{patch}{pre_l}{pre_n}",

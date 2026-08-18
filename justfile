@@ -230,8 +230,9 @@ release part *flags="":
         base=$(uv run --no-sync python -m bumpversion show new_version --increment {{part}})
         bump_flags+=(--new-version "${base}${pre}1")
     fi
-    uv sync
-    git add uv.lock
+    # uv.lock is re-locked and staged by bumpversion's pre_commit_hooks (see
+    # pyproject.toml) so it lands in the bump commit. Staging it here instead
+    # would leave a staged change that bumpversion rejects as a dirty tree.
     uv run --no-sync python -m bumpversion bump {{part}} ${bump_flags[@]+"${bump_flags[@]}"}
     if [[ "$dry_run" -eq 1 ]]; then exit 0; fi
     tag=$(git describe --tags --abbrev=0)
