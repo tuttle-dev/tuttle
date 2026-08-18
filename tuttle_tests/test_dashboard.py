@@ -11,6 +11,8 @@ from tuttle.forecasting import (
     monthly_revenue_from_contracts,
     revenue_curve,
     revenue_history,
+    revenue_series,
+    revenue_window,
 )
 from tuttle.kpi import (
     compute_kpis,
@@ -300,6 +302,114 @@ class TestMonthlyRevenueFromCalendar:
         )
         assert not result.empty
         assert result["revenue"].sum() > 0
+
+
+class TestRevenueWindow:
+    """The paged window the revenue chart scrolls through."""
+
+    TODAY = datetime.date(2026, 8, 15)
+
+    def test_month_window_spans_sixteen_buckets_reaching_into_the_future(self):
+        start, end = revenue_window("month", 0, today=self.TODAY)
+        assert (start, end) == (datetime.date(2025, 8, 1), datetime.date(2026, 11, 30))
+
+    def test_paging_back_does_not_overlap_or_skip_buckets(self):
+        _, earlier_end = revenue_window("month", -1, today=self.TODAY)
+        later_start, _ = revenue_window("month", 0, today=self.TODAY)
+        assert earlier_end + datetime.timedelta(days=1) == later_start
+
+    def test_week_window_starts_on_a_monday(self):
+        start, end = revenue_window("week", 0, today=self.TODAY)
+        assert start.weekday() == 0
+        assert end.weekday() == 6
+
+    def test_year_is_not_paged(self):
+        with pytest.raises(ValueError):
+            revenue_window("year", 0, today=self.TODAY)
+
+
+class TestRevenueSeries:
+    TODAY = datetime.date(2026, 8, 15)
+
+    def test_unknown_granularity_rejected(self):
+        with pytest.raises(ValueError):
+            revenue_series([], [], None, granularity="fortnight", today=self.TODAY)
+
+    def test_empty_buckets_are_kept_so_the_axis_stays_continuous(self):
+        result = revenue_series([], [], None, granularity="month", today=self.TODAY)
+        assert len(result["buckets"]) == 16
+        assert all(b["total"] == 0 for b in result["buckets"])
+
+    def test_month_window_always_contains_a_year_boundary(self):
+        result = revenue_series([], [], None, granularity="month", today=self.TODAY)
+        boundaries = [b for b in result["buckets"] if b["is_year_start"]]
+        assert len(boundaries) >= 1
+        assert all(b["label"] == "Jan" for b in boundaries)
+
+    def test_first_bucket_is_never_a_year_boundary(self):
+        result = revenue_series([], [], None, granularity="month", today=self.TODAY)
+        assert result["buckets"][0]["is_year_start"] is False
+
+    @staticmethod
+    def _bucket_of(result, day: datetime.date):
+        return next(b for b in result["buckets"] if b["bucket"] <= day.isoformat() <= b["bucket_end"])
+
+    def test_paid_invoice_lands_in_received(self, paid_invoice):
+        result = revenue_series([paid_invoice], [], None, granularity="month", today=datetime.date.today())
+        bucket = self._bucket_of(result, paid_invoice.date)
+        assert bucket["received"] > 0
+        assert bucket["invoiced"] == 0
+
+    def test_sent_unpaid_invoice_lands_in_invoiced(self, unpaid_invoice):
+        result = revenue_series([unpaid_invoice], [], None, granularity="month", today=datetime.date.today())
+        bucket = self._bucket_of(result, unpaid_invoice.date)
+        assert bucket["invoiced"] > 0
+        assert bucket["received"] == 0
+
+    def test_cancelled_invoice_excluded(self, paid_invoice):
+        paid_invoice.cancelled = True
+        result = revenue_series([paid_invoice], [], None, granularity="month", today=datetime.date.today())
+        assert result["total"] == 0
+
+    def test_total_matches_sum_of_buckets(self, paid_invoice, unpaid_invoice):
+        result = revenue_series([paid_invoice, unpaid_invoice], [], None, today=datetime.date.today())
+        expected = sum(b["received"] + b["invoiced"] + b["planned"] for b in result["buckets"])
+        assert result["total"] == pytest.approx(expected, abs=0.01)
+
+    def test_uninvoiced_calendar_hours_land_in_planned(self, project):
+        time_data = TestMonthlyRevenueFromCalendar._time_data(project.tag, datetime.date(2026, 8, 12))
+        result = revenue_series([], [project], time_data, granularity="month", today=self.TODAY)
+        current = next(b for b in result["buckets"] if b["is_current"])
+        assert current["planned"] > 0
+        assert current["hours"] > 0
+
+    def test_weekly_and_monthly_agree_on_the_same_work(self, project):
+        time_data = TestMonthlyRevenueFromCalendar._time_data(project.tag, datetime.date(2026, 8, 12))
+        weekly = revenue_series([], [project], time_data, granularity="week", today=self.TODAY)
+        monthly = revenue_series([], [project], time_data, granularity="month", today=self.TODAY)
+        assert weekly["total"] == pytest.approx(monthly["total"], abs=0.01)
+
+    def test_year_view_covers_the_full_data_extent(self, paid_invoice):
+        old = Invoice(
+            number="2023-001",
+            date=datetime.date(2023, 3, 1),
+            contract=paid_invoice.contract,
+            project=paid_invoice.project,
+            sent=True,
+            paid=True,
+        )
+        result = revenue_series([paid_invoice, old], [], None, granularity="year", today=self.TODAY)
+        years = [b["label"] for b in result["buckets"]]
+        assert years[0] == "2023"
+        assert str(self.TODAY.year) in years
+        assert result["has_earlier"] is False
+        assert result["has_later"] is False
+
+    def test_paging_flags_follow_the_data_extent(self, paid_invoice):
+        present = revenue_series([paid_invoice], [], None, granularity="month", offset=0, today=datetime.date.today())
+        assert present["has_later"] is False
+        past = revenue_series([paid_invoice], [], None, granularity="month", offset=-1, today=datetime.date.today())
+        assert past["has_later"] is True
 
 
 class TestRevenueHistory:
