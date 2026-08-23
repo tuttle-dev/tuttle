@@ -622,11 +622,14 @@ function ContractForm({ contract, clients, defaultCurrency, currencies, bankAcco
   const isNew = !contract;
   const isFixed = pricingMode === "fixed_price";
 
-  const [milestonesOpen, setMilestonesOpen] = useState(() => {
+  // Whether this contract carries a payment schedule at all — distinct from
+  // whether the milestone list is collapsed, which is purely visual.
+  const [scheduleEnabled, setScheduleEnabled] = useState(() => {
     if (!contract) return false;
     const ms = entityList(contract, "payment_milestones");
     return ms.length > 0;
   });
+  const [scheduleCollapsed, setScheduleCollapsed] = useState(false);
   const [milestones, setMilestones] = useState<MilestoneRow[]>(() => {
     if (!contract) return [];
     return entityList(contract, "payment_milestones").map((m) => ({
@@ -709,7 +712,7 @@ function ContractForm({ contract, clients, defaultCurrency, currencies, bankAcco
       return;
     }
     const schedule = milestones.filter((m) => !isBlankMilestone(m));
-    if (isFixed && milestonesOpen && schedule.length > 0) {
+    if (isFixed && scheduleEnabled && schedule.length > 0) {
       if (schedule.some((m) => !m.title.trim())) {
         setValidationError("Give every payment milestone a title");
         return;
@@ -723,7 +726,7 @@ function ContractForm({ contract, clients, defaultCurrency, currencies, bankAcco
     setSaving(true);
     const ok = await onSave(
       { ...form, charges },
-      isFixed && milestonesOpen ? { open: true, milestones: schedule } : undefined,
+      isFixed && scheduleEnabled ? { open: true, milestones: schedule } : undefined,
     );
     setSaving(false);
     if (!ok) return;
@@ -925,7 +928,7 @@ function ContractForm({ contract, clients, defaultCurrency, currencies, bankAcco
 
       {isFixed && (
         <Section title="Payment Schedule">
-          {!milestonesOpen ? (
+          {!scheduleEnabled ? (
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 py-3 rounded-lg bg-bg-card border border-dashed border-border-subtle">
               <p className="text-xs text-secondary leading-relaxed">
                 Split a fixed-price contract into instalments for deposit and final invoices.
@@ -933,7 +936,8 @@ function ContractForm({ contract, clients, defaultCurrency, currencies, bankAcco
               <button
                 type="button"
                 onClick={() => {
-                  setMilestonesOpen(true);
+                  setScheduleEnabled(true);
+                  setScheduleCollapsed(false);
                   if (milestones.length === 0) {
                     setMilestones([
                       { title: "", percentage: "50" },
@@ -947,51 +951,58 @@ function ContractForm({ contract, clients, defaultCurrency, currencies, bankAcco
             </div>
           ) : (
             <div>
-              <button type="button" onClick={() => setMilestonesOpen(false)}
+              <button type="button" onClick={() => setScheduleCollapsed((c) => !c)}
                 className="flex items-center gap-1.5 text-xs text-tertiary hover:text-secondary mb-3 transition-colors">
-                <ChevronDown size={12} className="rotate-180" /> Collapse
+                {scheduleCollapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
+                {scheduleCollapsed
+                  ? `${milestones.length} milestone${milestones.length === 1 ? "" : "s"}`
+                  : "Collapse"}
               </button>
-              <div className="space-y-2">
-                {milestones.map((m, idx) => (
-                  <div key={idx} className="flex items-center gap-2">
-                    <input type="text" placeholder="Milestone title" value={m.title}
-                      onChange={(e) => setMilestones((prev) => prev.map((ms, i) => i === idx ? { ...ms, title: e.target.value } : ms))}
-                      disabled={m.invoiced}
-                      className={`flex-1 ${inputCls} ${m.invoiced ? "opacity-50" : ""}`} />
-                    <div className="flex items-center gap-1">
-                      <input type="number" min="0" max="100" step="0.1" placeholder="%" value={m.percentage}
-                        onChange={(e) => setMilestones((prev) => prev.map((ms, i) => i === idx ? { ...ms, percentage: e.target.value } : ms))}
-                        disabled={m.invoiced}
-                        className={`w-20 ${inputCls} ${m.invoiced ? "opacity-50" : ""}`} />
-                      <span className="text-xs text-muted">%</span>
-                    </div>
-                    {m.invoiced ? (
-                      <span className="text-[10px] text-green-500 font-medium px-1.5 py-0.5 rounded bg-green-500/10">Invoiced</span>
-                    ) : (
-                      <button type="button" onClick={() => setMilestones((prev) => prev.filter((_, i) => i !== idx))}
-                        disabled={milestones.length <= 1}
-                        className="p-1 rounded text-muted hover:text-red-400 disabled:opacity-30 transition-colors">
-                        <X size={14} />
-                      </button>
-                    )}
+              {!scheduleCollapsed && (
+                <>
+                  <div className="space-y-2">
+                    {milestones.map((m, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <input type="text" placeholder="Milestone title" value={m.title}
+                          onChange={(e) => setMilestones((prev) => prev.map((ms, i) => i === idx ? { ...ms, title: e.target.value } : ms))}
+                          disabled={m.invoiced}
+                          className={`flex-1 ${inputCls} ${m.invoiced ? "opacity-50" : ""}`} />
+                        <div className="flex items-center gap-1">
+                          <input type="number" min="0" max="100" step="0.1" placeholder="%" value={m.percentage}
+                            onChange={(e) => setMilestones((prev) => prev.map((ms, i) => i === idx ? { ...ms, percentage: e.target.value } : ms))}
+                            disabled={m.invoiced}
+                            className={`w-20 ${inputCls} ${m.invoiced ? "opacity-50" : ""}`} />
+                          <span className="text-xs text-muted">%</span>
+                        </div>
+                        {m.invoiced ? (
+                          <span className="text-[10px] text-green-500 font-medium px-1.5 py-0.5 rounded bg-green-500/10">Invoiced</span>
+                        ) : (
+                          <button type="button" onClick={() => setMilestones((prev) => prev.filter((_, i) => i !== idx))}
+                            disabled={milestones.length <= 1}
+                            className="p-1 rounded text-muted hover:text-red-400 disabled:opacity-30 transition-colors">
+                            <X size={14} />
+                          </button>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-              <button
-                type="button"
-                onClick={() => setMilestones((prev) => [...prev, { title: "", percentage: "" }])}
-                className="mt-3 flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium bg-bg-content text-primary border border-border-subtle hover:bg-bg-hover transition-colors">
-                <Plus size={14} /> Add milestone
-              </button>
-              {milestones.length > 0 && (() => {
-                const total = milestones.reduce((s, m) => s + (parseFloat(m.percentage) || 0), 0);
-                const ok = Math.abs(total - 100) < 0.01;
-                return (
-                  <div className={`mt-2 text-xs ${ok ? "text-green-500" : "text-amber-400"}`}>
-                    Total: {total.toFixed(1)}%{!ok && " (must be 100%)"}
-                  </div>
-                );
-              })()}
+                  <button
+                    type="button"
+                    onClick={() => setMilestones((prev) => [...prev, { title: "", percentage: "" }])}
+                    className="mt-3 flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium bg-bg-content text-primary border border-border-subtle hover:bg-bg-hover transition-colors">
+                    <Plus size={14} /> Add milestone
+                  </button>
+                  {milestones.length > 0 && (() => {
+                    const total = milestones.reduce((s, m) => s + (parseFloat(m.percentage) || 0), 0);
+                    const ok = Math.abs(total - 100) < 0.01;
+                    return (
+                      <div className={`mt-2 text-xs ${ok ? "text-green-500" : "text-amber-400"}`}>
+                        Total: {total.toFixed(1)}%{!ok && " (must be 100%)"}
+                      </div>
+                    );
+                  })()}
+                </>
+              )}
             </div>
           )}
         </Section>

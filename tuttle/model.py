@@ -519,7 +519,7 @@ class Contract(RpcMixin, VatCategoryMixin, SQLModel, table=True):
         "bank_account": None,
         "payment_milestones": None,
     }
-    __rpc_computed__ = ("unit_abbrev", "is_fixed_price", "has_milestones")
+    __rpc_computed__ = ("unit_abbrev", "is_fixed_price", "has_milestones", "fixed_price_formatted")
 
     id: Optional[int] = Field(default=None, primary_key=True)
     title: str = Field(
@@ -648,6 +648,12 @@ class Contract(RpcMixin, VatCategoryMixin, SQLModel, table=True):
     @property
     def has_milestones(self) -> bool:
         return bool(self.payment_milestones)
+
+    @property
+    def fixed_price_formatted(self) -> str:
+        if self.fixed_price is None:
+            return ""
+        return fmt_currency(self.fixed_price, self.currency)
 
     @property
     def unit_abbrev(self) -> str:
@@ -1059,6 +1065,7 @@ class Invoice(RpcMixin, SQLModel, table=True):
         "timesheet_pdf_path",
         "remaining_balance",
         "remaining_balance_formatted",
+        "deposits_deducted_formatted",
         "deposit_deductions",
     )
 
@@ -1333,6 +1340,15 @@ class Invoice(RpcMixin, SQLModel, table=True):
     def remaining_balance_formatted(self) -> str:
         currency = self.contract.currency if self.contract else "EUR"
         return fmt_currency(self.remaining_balance, currency)
+
+    @property
+    def deposits_deducted_formatted(self) -> str:
+        """For a final invoice: formatted sum of the gross amounts it deducts."""
+        if not self.is_final_invoice:
+            return ""
+        currency = self.contract.currency if self.contract else "EUR"
+        deducted = sum(d["gross"] for d in self.deposit_deductions)
+        return fmt_currency(deducted, currency)
 
     @property
     def client(self):

@@ -1138,10 +1138,22 @@ function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid, onTog
           </div>
         </div>
 
+        {/* A final invoice settles the whole contract: what matters is the
+            balance still due after deducting the deposits, not the full total. */}
         <div className="grid grid-cols-3 gap-2">
-          <AmountCard label="Subtotal" value={str(invoice, "sum_formatted")} />
-          <AmountCard label="VAT" value={invoiceTaxCategory === "O" ? "—" : str(invoice, "vat_total_formatted")} color="#f97316" />
-          <AmountCard label="Total" value={str(invoice, "total_formatted")} prominent />
+          {isFinalInvoice(invoice) ? (
+            <>
+              <AmountCard label="Contract total" value={str(invoice, "total_formatted")} />
+              <AmountCard label="Deposits deducted" value={str(invoice, "deposits_deducted_formatted") ? `−${str(invoice, "deposits_deducted_formatted")}` : "—"} color="#3b82f6" />
+              <AmountCard label="Balance due" value={str(invoice, "remaining_balance_formatted")} prominent />
+            </>
+          ) : (
+            <>
+              <AmountCard label="Subtotal" value={str(invoice, "sum_formatted")} />
+              <AmountCard label="VAT" value={invoiceTaxCategory === "O" ? "—" : str(invoice, "vat_total_formatted")} color="#f97316" />
+              <AmountCard label="Total" value={str(invoice, "total_formatted")} prominent />
+            </>
+          )}
         </div>
 
         {/* Actions group */}
@@ -1311,6 +1323,24 @@ function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid, onTog
               {isRem && num(invoice, "reminder_fee") > 0 && (
                 <DRow icon={<Banknote size={14} />} label="Reminder Fee" value={String(num(invoice, "reminder_fee"))} />
               )}
+              {/* A deposit bills one milestone of the contract's schedule —
+                  say which, and how large a share of the contract it is. */}
+              {isDeposit(invoice) && (() => {
+                const contract = subEntity(invoice, "contract");
+                const milestoneId = num(invoice, "milestone_id");
+                const milestone = contract
+                  ? entityList(contract, "payment_milestones").find((m) => m.id === milestoneId)
+                  : undefined;
+                const pct = milestone ? num(milestone, "percentage") : 0;
+                return (
+                  <>
+                    <DRow icon={<Milestone size={14} />} label="Milestone"
+                      value={depositLabel ? `${depositLabel}${pct ? ` — ${pct}%` : ""}` : "—"} />
+                    <DRow icon={<FileText size={14} />} label="Contract total"
+                      value={contract ? str(contract, "fixed_price_formatted") || "—" : "—"} />
+                  </>
+                );
+              })()}
             </div>
           </Section>
 

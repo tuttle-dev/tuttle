@@ -1,7 +1,7 @@
 """deposit and final invoices
 
 Revision ID: 1100c34b90c6
-Revises: 34dd17917a18
+Revises: f87515d1d068
 Create Date: 2026-06-28 10:36:58.702409
 
 ======================================================================
@@ -47,7 +47,7 @@ import sqlmodel.sql.sqltypes  # noqa: F401 — ensures runtime resolution of Aut
 from alembic import op
 
 revision: str = "1100c34b90c6"
-down_revision: Union[str, Sequence[str], None] = "9cad5ae77a79"
+down_revision: Union[str, Sequence[str], None] = "f87515d1d068"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
