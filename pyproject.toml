@@ -1,6 +1,6 @@
 [project]
 name = "tuttle"
-version = "4.3.2"
+version = "4.4.0"
 description = "Painless business planning for freelancers."
 readme = "README.md"
 license = "GPL-3.0-only"
@@ -87,7 +87,7 @@ ignore = ["E501"]
 known-first-party = ["tuttle"]
 
 [tool.bumpversion]
-current_version = "4.3.2"
+current_version = "4.4.0"
 commit = true
 tag = true
 tag_name = "v{new_version}"
