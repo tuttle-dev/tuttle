@@ -94,17 +94,6 @@ Drop an invoice or contract PDF and let Tuttle extract the structured data autom
 
 <img src="assets/images/screenshot-import.png" width=768 />
 
-## Roadmap
-
-### Expense Management
-
-A dedicated view for managing recurring business expenses (health insurance, professional liability, operating costs) and seeing their impact on your tax estimate and safe-to-spend.
-
-### Deposit & Final Invoices
-
-Support for partial invoicing with payment milestones: deposit invoices, a final invoice that deducts prior deposits, and correct VAT settlement across the chain.
-
-
 ## Getting Started
 
 Tuttle is a desktop application for Windows, macOS, and Linux.
