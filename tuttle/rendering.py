@@ -53,7 +53,20 @@ INVOICE_LABELS = {
         "reminder_n": "{n}. Payment Reminder",
         "reminder_fee": "Reminder Fee",
         "original_invoice": "Original Invoice",
+        "document_type": "Document type",
         "reminder_closing": "Please settle the outstanding amount by the new due date.",
+        "deposit_invoice": "Deposit Invoice",
+        "final_invoice": "Final Invoice",
+        "total_fee": "Total fee",
+        "less_deposit": "less deposit per invoice no.",
+        "vat_included_therein": "VAT included therein",
+        "remaining_balance": "Remaining balance",
+        "gross": "Gross",
+        "deposit_due": "Deposit due",
+        "in_respect_of": "In respect of",
+        "payment_milestone": "Payment milestone",
+        "contract_total": "Contract total",
+        "deposit_closing": "This is a partial payment (deposit invoice) towards the contract total.",
         "units": {
             "hour": ("hour", "hours"),
             "day": ("day", "days"),
@@ -88,7 +101,20 @@ INVOICE_LABELS = {
         "reminder_n": "{n}. Mahnung",
         "reminder_fee": "Mahngebühr",
         "original_invoice": "Ursprungsrechnung",
+        "document_type": "Belegart",
         "reminder_closing": "Bitte begleichen Sie den offenen Betrag bis zum neuen Fälligkeitsdatum.",
+        "deposit_invoice": "Abschlagsrechnung",
+        "final_invoice": "Schlussrechnung",
+        "total_fee": "Gesamthonorar",
+        "less_deposit": "abzgl. Abschlag lt. Rechnung Nr.",
+        "vat_included_therein": "darin enthaltene USt.",
+        "remaining_balance": "Restbetrag",
+        "gross": "Brutto",
+        "deposit_due": "Abschlagsbetrag",
+        "in_respect_of": "Betreffend",
+        "payment_milestone": "Zahlungsmeilenstein",
+        "contract_total": "Vertragsgesamtbetrag",
+        "deposit_closing": "Dies ist eine Teilzahlung (Abschlagsrechnung) auf den Vertragsgesamtbetrag.",
         "units": {
             "hour": ("Stunde", "Stunden"),
             "day": ("Tag", "Tage"),
@@ -123,7 +149,20 @@ INVOICE_LABELS = {
         "reminder_n": "{n}.º recordatorio de pago",
         "reminder_fee": "Cargo por recordatorio",
         "original_invoice": "Factura original",
+        "document_type": "Tipo de documento",
         "reminder_closing": "Le rogamos abone el importe pendiente antes de la nueva fecha de vencimiento.",
+        "deposit_invoice": "Factura de anticipo",
+        "final_invoice": "Factura final",
+        "total_fee": "Honorario total",
+        "less_deposit": "menos anticipo según factura n.º",
+        "vat_included_therein": "IVA incluido",
+        "remaining_balance": "Saldo pendiente",
+        "gross": "Bruto",
+        "deposit_due": "Anticipo a pagar",
+        "in_respect_of": "Referente a",
+        "payment_milestone": "Hito de pago",
+        "contract_total": "Importe total del contrato",
+        "deposit_closing": "Este documento es un pago parcial (factura de anticipo) sobre el importe total del contrato.",
         "units": {
             "hour": ("hora", "horas"),
             "day": ("día", "días"),
@@ -139,6 +178,16 @@ def get_template_path(template_name) -> str:
     template_path = app_dir / Path(f"templates/{template_name}")
     logger.info(f"Template path: {template_path}")
     return template_path
+
+
+def get_shared_template_path() -> Path:
+    """Directory of partials and stylesheets every document template shares.
+
+    Lets the templates import one definition of the parts that must not drift
+    between skins — notably the deposit/final settlement layout, where the
+    markup carries the legal statement of what has been deducted.
+    """
+    return Path(__file__).parent.parent.resolve() / "templates" / "_shared"
 
 
 def convert_html_to_pdf(
@@ -258,7 +307,8 @@ def render_invoice(
         return singular if abs(q - 1) < 1e-9 else plural
 
     template_path = get_template_path(template_name)
-    template_env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_path))
+    shared_path = get_shared_template_path()
+    template_env = jinja2.Environment(loader=jinja2.FileSystemLoader([template_path, shared_path]))
 
     template_env.filters["as_currency"] = as_currency
     template_env.filters["as_date"] = as_date
@@ -287,6 +337,26 @@ def render_invoice(
     payee_account = (invoice.contract.bank_account if invoice.contract else None) or user.bank_account
     qr_code_data_uri = generate_payment_qr(payee_account, invoice) if include_qr_code else None
 
+    # Deposit and final invoices are the two halves of one settlement: the
+    # deposit states what share of the contract it bills, the final states the
+    # whole contract and deducts every deposit already issued. Both need the
+    # invoice fully hydrated — callers render from a session-loaded instance.
+    is_deposit = invoice.is_deposit
+    is_final = invoice.is_final_invoice
+    deposit_deductions = invoice.deposit_deductions
+    remaining_balance = invoice.remaining_balance
+
+    contract_title = ""
+    contract_total = None
+    milestone_title = ""
+    milestone_percentage = None
+    if invoice.contract:
+        contract_title = invoice.contract.title or ""
+        contract_total = invoice.contract.fixed_price
+    if is_deposit and invoice.milestone is not None:
+        milestone_title = invoice.milestone.title or ""
+        milestone_percentage = invoice.milestone.percentage
+
     invoice_template = template_env.get_template("invoice.html")
     html = invoice_template.render(
         user=user,
@@ -296,6 +366,14 @@ def render_invoice(
         seller_tax_id_label=seller_tax_id_label,
         is_reminder=is_reminder,
         reminder_title=reminder_title,
+        is_deposit=is_deposit,
+        is_final=is_final,
+        deposit_deductions=deposit_deductions,
+        remaining_balance=remaining_balance,
+        contract_title=contract_title,
+        contract_total=contract_total,
+        milestone_title=milestone_title,
+        milestone_percentage=milestone_percentage,
         notes=invoice.notes,
         include_logo=include_logo,
         include_due_date=include_due_date,
@@ -313,7 +391,10 @@ def render_invoice(
     with open(invoice_path, "w", encoding="utf-8") as invoice_file:
         invoice_file.write(html)
 
-    # Copy all CSS files and subdirectories from the template
+    # Copy all CSS files and subdirectories from the template. Shared
+    # stylesheets go first so a template's own rules can override them.
+    for css in shared_path.glob("*.css"):
+        shutil.copy(css, invoice_dir / css.name)
     for item in template_path.iterdir():
         dest = invoice_dir / item.name
         if item.is_file() and item.suffix == ".css":
@@ -329,15 +410,22 @@ def render_invoice(
             css_paths=css_paths,
             out_path=pdf_out,
         )
-        if e_invoice_profile and not invoice.is_reminder:
-            from .einvoice import embed_zugferd_in_pdf
+        if e_invoice_profile:
+            from .einvoice import embed_zugferd_in_pdf, unsupported_reason
 
-            embed_zugferd_in_pdf(
-                pdf_path=str(pdf_out),
-                invoice=invoice,
-                user=user,
-                profile=e_invoice_profile,
-            )
+            reason = unsupported_reason(invoice)
+            if reason:
+                logger.warning(
+                    f"Skipping e-invoice XML for {invoice.number or invoice.id}: {reason}. "
+                    "The PDF is written without embedded XML."
+                )
+            else:
+                embed_zugferd_in_pdf(
+                    pdf_path=str(pdf_out),
+                    invoice=invoice,
+                    user=user,
+                    profile=e_invoice_profile,
+                )
     if only_final:
         final_output_path = out_dir / Path(f"{invoice.prefix}.{document_format}")
         if document_format == "pdf":

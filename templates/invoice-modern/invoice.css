@@ -114,7 +114,10 @@ body {
   vertical-align: baseline;
 }
 
-.meta-label {
+/* Matches the specificity of `.meta-table td` above, which would otherwise
+ * reset the gutter and leave a long label (ABSCHLAGSRECHNUNG) touching its
+ * value. */
+.meta-table td.meta-label {
   font-size: 7pt;
   font-weight: 600;
   text-transform: uppercase;
@@ -326,3 +329,6 @@ body {
   line-height: 1.4;
   color: #555;
 }
+
+/* Deposit / final / reminder styling lives in the shared
+ * document-type.css, linked ahead of this file. */

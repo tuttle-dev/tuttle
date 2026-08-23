@@ -50,6 +50,8 @@ def monthly_revenue_from_contracts(
             else:
                 billable_units = workdays_in_month * contract.units_per_workday
 
+            if not contract.rate:
+                continue
             monthly_revenue = Decimal(str(billable_units)) * contract.rate
             project_title = contract.projects[0].title if contract.projects else contract.title
 
@@ -229,6 +231,8 @@ def revenue_from_calendar(
         if not project:
             continue
         contract = project.contract
+        if not contract.rate:
+            continue
         unit_hours = contract.units_per_workday if contract.unit == TimeUnit.day else 1
         billable_units = row["hours"] / unit_hours
         revenue = float(Decimal(str(billable_units)) * contract.rate)

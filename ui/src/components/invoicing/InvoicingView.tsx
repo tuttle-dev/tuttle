@@ -2,10 +2,10 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import {
   FileText, Send, CheckCircle, XCircle, Mail, Trash2,
   Building2, FolderKanban, Calendar, Banknote, Eye, DollarSign,
-  Plus, Clock, AlertTriangle, ChevronLeft, ChevronRight, Search, Share, Receipt,
+  Plus, Clock, AlertTriangle, ChevronLeft, ChevronRight, Search, Share, Receipt, Milestone,
 } from "lucide-react";
 import { rpc, readFileAsDataURL } from "../../api/rpc";
-import { str, num, bool, entity as subEntity, list as entityList, formatDate, invoiceStatus, deepStr, isReminder, reminderLevel } from "../../api/entity";
+import { str, num, bool, entity as subEntity, list as entityList, formatDate, invoiceStatus, deepStr, isReminder, isDeposit, isFinalInvoice, reminderLevel, depositChainHeadId, depositMilestoneLabel, milestoneScheduleStatus, type MilestoneScheduleStatus } from "../../api/entity";
 import { taxCategory, taxTreatment } from "../../api/tax";
 import { StatusBadge } from "../shared/StatusBadge";
 import { ViewModeToggle } from "../shared/ViewModeToggle";
@@ -15,7 +15,7 @@ import { useNavigation } from "../shared/NavigationContext";
 import { EmptyStateIntro } from "../shared/EmptyStateIntro";
 import type { Entity } from "../../api/types";
 
-type InvoiceChain = { root: Entity; reminders: Entity[] };
+type InvoiceChain = { root: Entity; reminders: Entity[]; deposits: Entity[] };
 
 const INVOICE_COLUMNS: BoardColumn[] = [
   { id: "Draft", label: "Draft", color: "#8e8e93" },
@@ -32,6 +32,14 @@ const FILTER_COLORS: Record<string, string> = {
   All: "#007AFF", Draft: "#a0a0a0", Sent: "#60a5fa",
   Paid: "#34d399", Overdue: "#f87171", Cancelled: "#fb923c",
 };
+
+type DocumentType = "invoice" | "deposit" | "final";
+
+const DOCUMENT_TYPE_OPTIONS = [
+  { value: "invoice" as DocumentType, label: "Invoice", icon: FileText },
+  { value: "deposit" as DocumentType, label: "Deposit", icon: Milestone },
+  { value: "final" as DocumentType, label: "Final", icon: Receipt },
+];
 
 export function InvoicingView() {
   const { filter: navFilter } = useNavigation();
@@ -94,6 +102,18 @@ export function InvoicingView() {
   const reminderCountMap = useMemo(() => {
     const m = new Map<number, number>();
     for (const c of boardChains) m.set(c.root.id, c.reminders.length);
+    return m;
+  }, [boardChains]);
+  const depositCountMap = useMemo(() => {
+    const m = new Map<number, number>();
+    for (const c of boardChains) {
+      if (c.deposits.length > 0) m.set(c.root.id, c.deposits.length);
+    }
+    return m;
+  }, [boardChains]);
+  const chainByRootId = useMemo(() => {
+    const m = new Map<number, InvoiceChain>();
+    for (const c of boardChains) m.set(c.root.id, c);
     return m;
   }, [boardChains]);
 
@@ -163,10 +183,17 @@ export function InvoicingView() {
               const isSelected = selected?.id === inv.id;
               const isHighlighted = !isSelected && (inv.id === newlyCreatedId || (navFilter.contractId != null && num(inv, "contract_id") === navFilter.contractId));
               return (
-                <div key={inv.id}>
+                <div key={inv.id} className={chainAccentClass(chain)}>
                   <InvoiceRow invoice={inv} isSelected={isSelected} isHighlighted={isHighlighted}
                     reminderCount={chain.reminders.length}
+                    depositCount={chain.deposits.length}
+                    schedule={milestoneScheduleStatus(inv, chain.deposits)}
                     onSelect={() => { setNewlyCreatedId(null); setSelected(inv); }} />
+                  {chain.deposits.map((dep) => {
+                    const depSelected = selected?.id === dep.id;
+                    return <DepositRow key={dep.id} invoice={dep} isSelected={depSelected}
+                      onSelect={() => { setNewlyCreatedId(null); setSelected(dep); }} />;
+                  })}
                   {chain.reminders.map((rem) => {
                     const remSelected = selected?.id === rem.id;
                     return <ReminderRow key={rem.id} invoice={rem} isSelected={remSelected}
@@ -196,7 +223,14 @@ export function InvoicingView() {
         <div className="flex-1 overflow-hidden">
           <KanbanBoard entities={boardRoots} columns={INVOICE_COLUMNS}
             columnFor={(e) => stageStore.columnFor(e)} onMove={moveToColumn}
-            renderCard={(inv, col) => <InvoiceCard invoice={inv} color={col.color} reminderCount={reminderCountMap.get(inv.id) || 0} />} />
+            renderCard={(inv, col) => (
+              <InvoiceChainCard
+                chain={chainByRootId.get(inv.id) ?? { root: inv, reminders: [], deposits: [] }}
+                color={col.color}
+                reminderCount={reminderCountMap.get(inv.id) || 0}
+                depositCount={depositCountMap.get(inv.id) || 0}
+              />
+            )} />
         </div>
       )}
 
@@ -307,12 +341,28 @@ function CreateInvoiceDialog({ onClose, onCreated }: { onClose: () => void; onCr
   const [selectedNoteIds, setSelectedNoteIds] = useState<Set<number>>(new Set());
   const [customNoteText, setCustomNoteText] = useState("");
 
+  const [docType, setDocType] = useState<DocumentType>("invoice");
+  const [selectedMilestoneId, setSelectedMilestoneId] = useState<number | null>(null);
+
   const selectedProject = projects.find((p) => p.id === projectId) ?? null;
   const isFixedPrice = selectedProject ? bool(selectedProject, "is_fixed_price") : false;
   const [eligibleCharges, setEligibleCharges] = useState<Entity[] | null>(null);
   const charges = eligibleCharges ?? contractCharges(selectedProject);
   const selectedContract = contractOf(selectedProject);
   const chargeCurrency = (selectedContract ? str(selectedContract, "currency") : "") || "EUR";
+
+  const milestones = selectedContract ? entityList(selectedContract, "payment_milestones") : [];
+  const hasMilestones = milestones.length > 0;
+  const openMilestones = milestones.filter((m) => !bool(m, "invoiced"));
+  const isLastOpenMilestone =
+    openMilestones.length === 1 && selectedMilestoneId === openMilestones[0]?.id;
+  const canSettle = hasMilestones && openMilestones.length < milestones.length;
+
+  // The document type resets with the project, so a picker option that no
+  // longer applies cannot survive into a submission.
+  useEffect(() => {
+    if (docType === "final" && !canSettle) setDocType("invoice");
+  }, [docType, canSettle]);
 
   // The backend decides which charges a new invoice actually carries — a
   // one-time fee already billed must not be previewed as upcoming.
@@ -357,6 +407,8 @@ function CreateInvoiceDialog({ onClose, onCreated }: { onClose: () => void; onCr
     setProjectId(newId);
     const proj = projects.find((p) => p.id === newId) ?? null;
     setLineItems(makeDefaultItems(proj));
+    setDocType("invoice");
+    setSelectedMilestoneId(null);
   }
 
   function updateItem(idx: number, patch: Partial<LineItem>) {
@@ -383,6 +435,34 @@ function CreateInvoiceDialog({ onClose, onCreated }: { onClose: () => void; onCr
     if (!projectId) { setError("Select a project"); return; }
     setSubmitting(true);
     setError("");
+
+    // Deposit invoice flow
+    if (docType === "deposit") {
+      if (!selectedMilestoneId) { setError("Select a milestone"); setSubmitting(false); return; }
+      const res = await rpc<{ id?: number }>("invoicing.create_deposit", {
+        project_id: projectId,
+        milestone_id: selectedMilestoneId,
+        invoice_date: invoiceDate,
+      });
+      if (res.ok) { await onCreated(res.data?.id, res.warning); }
+      else { setError(res.error || "Failed to create deposit invoice"); }
+      setSubmitting(false);
+      return;
+    }
+
+    // Final invoice flow
+    if (docType === "final") {
+      const res = await rpc<{ id?: number }>("invoicing.create_final", {
+        project_id: projectId,
+        invoice_date: invoiceDate,
+      });
+      if (res.ok) { await onCreated(res.data?.id, res.warning); }
+      else { setError(res.error || "Failed to create final invoice"); }
+      setSubmitting(false);
+      return;
+    }
+
+    // Standard invoice flow
     const params: Record<string, unknown> = {
       project_id: projectId,
       invoice_date: invoiceDate,
@@ -439,8 +519,61 @@ function CreateInvoiceDialog({ onClose, onCreated }: { onClose: () => void; onCr
             </select>
           </label>
 
+          {/* Document type (only when contract has milestones) */}
+          {hasMilestones && isFixedPrice && (
+            <div>
+              <span className="text-xs font-semibold text-secondary uppercase tracking-wider">Document Type</span>
+              <div className="flex gap-2 mt-1">
+                {DOCUMENT_TYPE_OPTIONS.map(({ value, label, icon: Icon }) => {
+                  // Settling early is only meaningful once a deposit exists to deduct.
+                  const disabled = value === "final" && !canSettle;
+                  return (
+                    <button key={value} type="button" disabled={disabled}
+                      onClick={() => { setDocType(value); setSelectedMilestoneId(null); }}
+                      title={disabled ? "Invoice at least one milestone first" : undefined}
+                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-colors border
+                        ${docType === value ? "border-accent bg-accent/15 text-primary" : "border-border-subtle text-tertiary"}
+                        ${disabled ? "opacity-40 cursor-not-allowed" : ""}`}>
+                      <Icon size={14} /> {label}
+                    </button>
+                  );
+                })}
+              </div>
+              {docType === "final" && (
+                <p className="text-[10px] text-blue-300 mt-1">
+                  States the full contract amount and deducts every deposit already issued.
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Milestone picker (deposit only) */}
+          {docType === "deposit" && hasMilestones && (
+            <label className="block">
+              <span className="text-xs font-semibold text-secondary uppercase tracking-wider">Milestone</span>
+              <select value={selectedMilestoneId ?? ""} onChange={(e) => setSelectedMilestoneId(e.target.value ? Number(e.target.value) : null)}
+                className="mt-1 w-full px-3 py-1.5 rounded-md bg-bg-card border border-border-subtle text-sm text-primary">
+                <option value="">— Select milestone —</option>
+                {openMilestones.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {str(m, "title")} ({num(m, "percentage")}%)
+                    {openMilestones.length === 1 ? " — final settlement" : ""}
+                  </option>
+                ))}
+              </select>
+              {isLastOpenMilestone && (
+                <p className="text-[10px] text-blue-300 mt-1">
+                  Last milestone — creates the final settlement invoice with prior deposits deducted.
+                </p>
+              )}
+              {openMilestones.length === 0 && (
+                <p className="text-[10px] text-muted mt-1">All milestones have been invoiced.</p>
+              )}
+            </label>
+          )}
+
           {/* Fixed-price notice */}
-          {isFixedPrice && selectedProject && (() => {
+          {isFixedPrice && docType === "invoice" && selectedProject && (() => {
             const ct = subEntity(selectedProject, "contract");
             const price = ct ? num(ct, "fixed_price") : 0;
             const currency = ct ? str(ct, "currency") : "EUR";
@@ -477,8 +610,8 @@ function CreateInvoiceDialog({ onClose, onCreated }: { onClose: () => void; onCr
             </div>
           )}
 
-          {/* Mode toggle (time-based only) */}
-          {!isFixedPrice && (
+          {/* Mode toggle (time-based only, not for deposit/final) */}
+          {!isFixedPrice && docType === "invoice" && (
             <div>
               <span className="text-xs font-semibold text-secondary uppercase tracking-wider">Source</span>
               <div className="flex gap-2 mt-1">
@@ -500,8 +633,8 @@ function CreateInvoiceDialog({ onClose, onCreated }: { onClose: () => void; onCr
             </div>
           )}
 
-          {/* Timesheet opt-out (time-tracking mode only) */}
-          {!isFixedPrice && mode === "timetracking" && (
+          {/* Timesheet opt-out (time-tracking mode only, not for deposit/final) */}
+          {!isFixedPrice && mode === "timetracking" && docType === "invoice" && (
             <div>
               <label className="flex items-start gap-2 cursor-pointer">
                 <input type="checkbox" checked={withTimesheet}
@@ -524,7 +657,7 @@ function CreateInvoiceDialog({ onClose, onCreated }: { onClose: () => void; onCr
               <input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)}
                 className="mt-1 w-full px-2 py-1.5 rounded-md bg-bg-card border border-border-subtle text-xs text-primary" />
             </label>
-            {!isFixedPrice && (
+            {!isFixedPrice && docType === "invoice" && (
               <div>
                 <span className="text-[10px] font-semibold text-muted uppercase">Billing Period<span className="text-accent ml-0.5">*</span></span>
                 <div className="mt-1 flex items-center gap-2">
@@ -552,8 +685,8 @@ function CreateInvoiceDialog({ onClose, onCreated }: { onClose: () => void; onCr
             )}
           </div>
 
-          {/* Line items editor (time-based manual only) */}
-          {!isFixedPrice && mode === "manual" && (
+          {/* Line items editor (time-based manual only, not for deposit/final) */}
+          {!isFixedPrice && mode === "manual" && docType === "invoice" && (
             <div>
               <span className="text-xs font-semibold text-secondary uppercase tracking-wider">Line Items</span>
               <div className="mt-1 space-y-2">
@@ -641,7 +774,10 @@ function CreateInvoiceDialog({ onClose, onCreated }: { onClose: () => void; onCr
           </button>
           <button onClick={submit} disabled={submitting}
             className="px-4 py-1.5 rounded-md text-sm font-medium bg-accent text-white hover:bg-accent/90 transition-colors disabled:opacity-50">
-            {submitting ? "Creating…" : "Create Invoice"}
+            {submitting ? "Creating…"
+              : docType === "final" ? "Create Final Invoice"
+              : docType === "deposit" ? (isLastOpenMilestone ? "Create Final Invoice" : "Create Deposit Invoice")
+              : "Create Invoice"}
           </button>
         </div>
       </div>
@@ -649,18 +785,82 @@ function CreateInvoiceDialog({ onClose, onCreated }: { onClose: () => void; onCr
   );
 }
 
-function InvoiceRow({ invoice, isSelected, isHighlighted, reminderCount, onSelect }: {
-  invoice: Entity; isSelected: boolean; isHighlighted?: boolean; reminderCount?: number; onSelect: () => void;
+function DocumentTypeBadge({ type }: { type: "deposit" | "final" }) {
+  if (type === "deposit") {
+    return (
+      <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-500/15 text-blue-400 shrink-0">
+        Deposit
+      </span>
+    );
+  }
+  return (
+    <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-500/20 text-blue-300 shrink-0">
+      Final
+    </span>
+  );
+}
+
+function chainAccentClass(chain: InvoiceChain): string {
+  if (isFinalInvoice(chain.root) || isDeposit(chain.root) || chain.deposits.length > 0) {
+    return "border-l-2 border-l-blue-400";
+  }
+  return "";
+}
+
+function MilestoneScheduleBadge({ schedule }: { schedule: MilestoneScheduleStatus }) {
+  const { total, invoicedCount, issuedCount, paidCount, hasFinal, settled } = schedule;
+
+  if (settled) {
+    return (
+      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-green-500/10 text-green-400 shrink-0">
+        All settled
+      </span>
+    );
+  }
+  if (hasFinal) {
+    return (
+      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-300 shrink-0">
+        Settlement · {paidCount}/{issuedCount} paid
+      </span>
+    );
+  }
+  return (
+    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded shrink-0 ${
+      invoicedCount === total ? "bg-blue-500/10 text-blue-400" : "bg-amber-500/10 text-amber-400"
+    }`}>
+      {invoicedCount}/{total} milestones invoiced · {paidCount}/{issuedCount} paid
+    </span>
+  );
+}
+
+function InvoiceRow({ invoice, isSelected, isHighlighted, reminderCount, depositCount, schedule, onSelect }: {
+  invoice: Entity; isSelected: boolean; isHighlighted?: boolean;
+  reminderCount?: number; depositCount?: number; schedule?: MilestoneScheduleStatus | null; onSelect: () => void;
 }) {
   const status = invoiceStatus(invoice);
+  const depositLabel = depositMilestoneLabel(invoice);
+  const isFinal = isFinalInvoice(invoice);
   return (
     <button onClick={onSelect}
       className={`w-full text-left ${LIST_ROW_PADDING} border-b transition-colors
         ${isSelected ? "bg-bg-selected border-border-subtle" : isHighlighted ? "bg-accent/10 border-accent/30" : "border-border-subtle hover:bg-bg-hover"}`}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 min-w-0">
-          <span className="text-sm font-medium">{str(invoice, "number") || "Draft"}</span>
-          <span className="text-xs text-tertiary">{formatDate(str(invoice, "date"))}</span>
+          <span className="text-sm font-medium shrink-0">{str(invoice, "number") || "Draft"}</span>
+          {isDeposit(invoice) && depositLabel && (
+            <span className="text-xs font-semibold text-blue-400 truncate">{depositLabel}</span>
+          )}
+          {isFinal && (
+            <span className="text-xs font-semibold text-blue-300 truncate">Settlement</span>
+          )}
+          <span className="text-xs text-tertiary shrink-0">{formatDate(str(invoice, "date"))}</span>
+          {isDeposit(invoice) && <DocumentTypeBadge type="deposit" />}
+          {isFinal && <DocumentTypeBadge type="final" />}
+          {(depositCount ?? 0) > 0 && !isDeposit(invoice) && (
+            <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-500/15 text-blue-400">
+              <Milestone size={10} />{depositCount}
+            </span>
+          )}
           {(reminderCount ?? 0) > 0 && (
             <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/15 text-amber-600">
               <AlertTriangle size={10} />{reminderCount}
@@ -672,12 +872,13 @@ function InvoiceRow({ invoice, isSelected, isHighlighted, reminderCount, onSelec
           <StatusBadge status={status} />
         </div>
       </div>
-      <div className="flex items-center gap-1.5 mt-1 text-secondary">
+      <div className="flex items-center gap-1.5 mt-1 flex-wrap text-secondary">
         <span className="text-xs truncate">{deepStr(invoice, "contract.client.name") || "No client"}</span>
         {deepStr(invoice, "project.title") && (
           <><span className="text-tertiary">·</span>
           <span className="text-xs text-tertiary truncate">{deepStr(invoice, "project.title")}</span></>
         )}
+        {schedule && <MilestoneScheduleBadge schedule={schedule} />}
       </div>
     </button>
   );
@@ -704,12 +905,83 @@ function ReminderRow({ invoice, isSelected, onSelect }: { invoice: Entity; isSel
   );
 }
 
-function InvoiceCard({ invoice, reminderCount }: { invoice: Entity; color: string; reminderCount?: number }) {
+function DepositRow({ invoice, isSelected, onSelect }: { invoice: Entity; isSelected: boolean; onSelect: () => void }) {
+  const status = invoiceStatus(invoice);
+  const depositLabel = depositMilestoneLabel(invoice);
+  return (
+    <button onClick={onSelect}
+      className={`w-full text-left pl-10 pr-4 py-2.5 border-b transition-colors border-l-2 border-l-blue-400
+        ${isSelected ? "bg-bg-selected border-b-border-subtle" : "border-b-border-subtle hover:bg-bg-hover bg-bg-content/50"}`}>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-xs font-semibold text-blue-400 truncate">
+            {depositLabel || "Deposit"}
+          </span>
+          <DocumentTypeBadge type="deposit" />
+          <span className="text-xs text-tertiary shrink-0">{str(invoice, "number")}</span>
+          <span className="text-xs text-tertiary shrink-0">{formatDate(str(invoice, "date"))}</span>
+        </div>
+        <div className="flex items-center gap-2 shrink-0 ml-2">
+          <span className="text-xs font-semibold tabular-nums">{str(invoice, "total_formatted")}</span>
+          <StatusBadge status={status} />
+        </div>
+      </div>
+    </button>
+  );
+}
+
+function InvoiceChainCard({ chain, color, reminderCount, depositCount }: {
+  chain: InvoiceChain; color: string; reminderCount?: number; depositCount?: number;
+}) {
+  const { root, deposits } = chain;
+  const schedule = milestoneScheduleStatus(root, deposits);
+  return (
+    <div className="space-y-1.5">
+      <InvoiceCard invoice={root} color={color} reminderCount={reminderCount} depositCount={depositCount} schedule={schedule} />
+      {deposits.length > 0 && (
+        <div className="ml-2 pl-2 border-l-2 border-blue-400/60 space-y-1.5">
+          {deposits.map((dep) => (
+            <div key={dep.id} className="pt-1 border-t border-border-subtle/60 first:border-t-0 first:pt-0">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1 min-w-0">
+                  <span className="text-xs font-semibold text-blue-400 truncate">
+                    {depositMilestoneLabel(dep) || "Deposit"}
+                  </span>
+                  <DocumentTypeBadge type="deposit" />
+                  <span className="text-[10px] text-tertiary truncate">{str(dep, "number") || "Draft"}</span>
+                </div>
+                <span className="text-xs font-semibold tabular-nums shrink-0">{str(dep, "total_formatted")}</span>
+              </div>
+              <div className="text-[10px] text-tertiary mt-0.5">{formatDate(str(dep, "date"))}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function InvoiceCard({ invoice, reminderCount, depositCount, schedule }: { invoice: Entity; color: string; reminderCount?: number; depositCount?: number; schedule?: MilestoneScheduleStatus | null }) {
+  const depositLabel = depositMilestoneLabel(invoice);
+  const isFinal = isFinalInvoice(invoice);
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
-          <span className="text-sm font-semibold">{str(invoice, "number") || "Draft"}</span>
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className="text-sm font-semibold shrink-0">{str(invoice, "number") || "Draft"}</span>
+          {isDeposit(invoice) && depositLabel && (
+            <span className="text-xs font-semibold text-blue-400 truncate">{depositLabel}</span>
+          )}
+          {isFinal && (
+            <span className="text-xs font-semibold text-blue-300 truncate">Settlement</span>
+          )}
+          {isDeposit(invoice) && <DocumentTypeBadge type="deposit" />}
+          {isFinal && <DocumentTypeBadge type="final" />}
+          {(depositCount ?? 0) > 0 && !isDeposit(invoice) && (
+            <span className="flex items-center gap-0.5 px-1 py-0.5 rounded text-[10px] font-semibold bg-blue-500/15 text-blue-400">
+              <Milestone size={9} />{depositCount}
+            </span>
+          )}
           {(reminderCount ?? 0) > 0 && (
             <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/15 text-amber-600">
               <AlertTriangle size={9} />{reminderCount}
@@ -733,6 +1005,11 @@ function InvoiceCard({ invoice, reminderCount }: { invoice: Entity; color: strin
       <div className="flex items-center gap-1 text-tertiary">
         <Calendar size={12} /><span className="text-xs">{formatDate(str(invoice, "date"))}</span>
       </div>
+      {schedule && (
+        <div className="pt-0.5">
+          <MilestoneScheduleBadge schedule={schedule} />
+        </div>
+      )}
     </div>
   );
 }
@@ -754,6 +1031,7 @@ function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid, onTog
   const tsPath = str(invoice, "timesheet_pdf_path");
   const hasTimesheet = bool(invoice, "has_timesheet");
   const isRem = isReminder(invoice);
+  const depositLabel = depositMilestoneLabel(invoice);
   const showTimesheetTab = hasTimesheet && !isRem;
   const canCreateReminder = status === "Overdue" && !isCancelled;
 
@@ -831,24 +1109,51 @@ function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid, onTog
           <div className="w-10 h-10 rounded-lg bg-bg-card flex items-center justify-center">
             {isRem
               ? <AlertTriangle size={18} className="text-amber-500" />
+              : isFinalInvoice(invoice)
+              ? <FileText size={18} className="text-blue-400" />
+              : isDeposit(invoice)
+              ? <Milestone size={18} className="text-blue-400" />
               : <FileText size={18} className="text-secondary" />}
           </div>
           <div>
             <h1 className="text-lg font-semibold">
-              {isRem ? `Reminder ${reminderLevel(invoice)}` : str(invoice, "number") || "Draft"}
+              {isRem
+                ? `Reminder ${reminderLevel(invoice)}`
+                : isDeposit(invoice)
+                ? (depositLabel ? `Deposit · ${depositLabel}` : `Deposit ${str(invoice, "number") || "Draft"}`)
+                : isFinalInvoice(invoice)
+                ? `Final ${str(invoice, "number") || "Draft"}`
+                : str(invoice, "number") || "Draft"}
             </h1>
-            <div className="flex items-center gap-2">
-              {isRem && <span className="text-xs text-tertiary">Inv. {str(invoice, "number")}</span>}
+            <div className="flex items-center gap-2 flex-wrap">
+              {isDeposit(invoice) && depositLabel && (
+                <span className="text-xs text-tertiary">Inv. {str(invoice, "number") || "Draft"}</span>
+              )}
+              {isFinalInvoice(invoice) && (
+                <span className="text-xs font-medium text-blue-300">Settlement invoice</span>
+              )}
               <span className="text-sm text-secondary">{deepStr(invoice, "contract.client.name") || "No client"}</span>
               <StatusBadge status={status} />
             </div>
           </div>
         </div>
 
+        {/* A final invoice settles the whole contract: what matters is the
+            balance still due after deducting the deposits, not the full total. */}
         <div className="grid grid-cols-3 gap-2">
-          <AmountCard label="Subtotal" value={str(invoice, "sum_formatted")} />
-          <AmountCard label="VAT" value={invoiceTaxCategory === "O" ? "—" : str(invoice, "vat_total_formatted")} color="#f97316" />
-          <AmountCard label="Total" value={str(invoice, "total_formatted")} prominent />
+          {isFinalInvoice(invoice) ? (
+            <>
+              <AmountCard label="Contract total" value={str(invoice, "total_formatted")} />
+              <AmountCard label="Deposits deducted" value={str(invoice, "deposits_deducted_formatted") ? `−${str(invoice, "deposits_deducted_formatted")}` : "—"} color="#3b82f6" />
+              <AmountCard label="Balance due" value={str(invoice, "remaining_balance_formatted")} prominent />
+            </>
+          ) : (
+            <>
+              <AmountCard label="Subtotal" value={str(invoice, "sum_formatted")} />
+              <AmountCard label="VAT" value={invoiceTaxCategory === "O" ? "—" : str(invoice, "vat_total_formatted")} color="#f97316" />
+              <AmountCard label="Total" value={str(invoice, "total_formatted")} prominent />
+            </>
+          )}
         </div>
 
         {/* Actions group */}
@@ -1018,8 +1323,89 @@ function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid, onTog
               {isRem && num(invoice, "reminder_fee") > 0 && (
                 <DRow icon={<Banknote size={14} />} label="Reminder Fee" value={String(num(invoice, "reminder_fee"))} />
               )}
+              {/* A deposit bills one milestone of the contract's schedule —
+                  say which, and how large a share of the contract it is. */}
+              {isDeposit(invoice) && (() => {
+                const contract = subEntity(invoice, "contract");
+                const milestoneId = num(invoice, "milestone_id");
+                const milestone = contract
+                  ? entityList(contract, "payment_milestones").find((m) => m.id === milestoneId)
+                  : undefined;
+                const pct = milestone ? num(milestone, "percentage") : 0;
+                return (
+                  <>
+                    <DRow icon={<Milestone size={14} />} label="Milestone"
+                      value={depositLabel ? `${depositLabel}${pct ? ` — ${pct}%` : ""}` : "—"} />
+                    <DRow icon={<FileText size={14} />} label="Contract total"
+                      value={contract ? str(contract, "fixed_price_formatted") || "—" : "—"} />
+                  </>
+                );
+              })()}
             </div>
           </Section>
+
+          {(() => {
+            const contract = subEntity(invoice, "contract");
+            const milestones = contract ? entityList(contract, "payment_milestones") : [];
+            if (milestones.length === 0) return null;
+
+            const contractId = num(invoice, "contract_id");
+            const projectId = num(invoice, "project_id");
+            const deposits = allInvoices.filter(
+              (i) => isDeposit(i) && num(i, "contract_id") === contractId && num(i, "project_id") === projectId,
+            );
+            const depositByMilestone = new Map<number, Entity>();
+            for (const d of deposits) {
+              const mid = num(d, "milestone_id");
+              if (mid) depositByMilestone.set(mid, d);
+            }
+            const finalInv = allInvoices.find(
+              (i) => isFinalInvoice(i) && num(i, "contract_id") === contractId && num(i, "project_id") === projectId,
+            );
+
+            return (
+              <Section title="Payment Schedule">
+                <div className="space-y-1">
+                  {milestones.map((m) => {
+                    // A milestone with no deposit of its own is covered by the
+                    // final invoice, which settles everything the deposits left.
+                    const dep = depositByMilestone.get(m.id);
+                    const billedBy = dep ?? finalInv;
+                    return (
+                      <div key={m.id} className="flex items-center justify-between px-3 py-2 rounded-md text-xs border bg-bg-card border-border-subtle">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Milestone size={12} className="shrink-0 text-tertiary" />
+                          <span className="font-medium truncate">{str(m, "title") || "Untitled"}</span>
+                          {billedBy && (
+                            <span className="text-tertiary shrink-0">{str(billedBy, "number")}</span>
+                          )}
+                          {!dep && finalInv && (
+                            <span className="text-[10px] font-medium text-blue-300 shrink-0">via final invoice</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="text-secondary tabular-nums">{num(m, "percentage")}%</span>
+                          {billedBy
+                            ? <StatusBadge status={invoiceStatus(billedBy)} />
+                            : <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-bg-hover text-tertiary">Open</span>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {finalInv && (
+                    <div className="flex items-center justify-between px-3 py-2 rounded-md text-xs bg-blue-500/5 border border-blue-500/20">
+                      <div className="flex items-center gap-2">
+                        <FileText size={12} className="text-blue-400" />
+                        <span className="font-medium text-blue-300">Final invoice</span>
+                        <span className="text-tertiary">{str(finalInv, "number")}</span>
+                      </div>
+                      <StatusBadge status={invoiceStatus(finalInv)} />
+                    </div>
+                  )}
+                </div>
+              </Section>
+            );
+          })()}
 
           {chain.length > 1 && (
             <Section title="Reminder Chain">
@@ -1044,6 +1430,56 @@ function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid, onTog
               </div>
             </Section>
           )}
+
+          {/* Deposit chain — final invoice shows its deposits */}
+          {isFinalInvoice(invoice) && (() => {
+            const deposits = allInvoices.filter((i) => isDeposit(i) && depositChainHeadId(i) === invoice.id);
+            if (deposits.length === 0) return null;
+            return (
+              <Section title="Deposit Chain">
+                <div className="space-y-1">
+                  {deposits.map((dep) => (
+                    <div key={dep.id} className="flex items-center justify-between px-3 py-2 rounded-md text-xs bg-bg-card border border-border-subtle">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Milestone size={12} className="text-blue-400 shrink-0" />
+                        <span className="font-medium text-blue-400 truncate">
+                          {depositMilestoneLabel(dep) || "Deposit"}
+                        </span>
+                        <span className="text-tertiary shrink-0">{str(dep, "number")}</span>
+                        <span className="text-tertiary shrink-0">{formatDate(str(dep, "date"))}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-secondary tabular-nums">{str(dep, "total_formatted")}</span>
+                        <StatusBadge status={invoiceStatus(dep)} />
+                      </div>
+                    </div>
+                  ))}
+                  <div className="flex items-center justify-between px-3 py-2 rounded-md text-xs bg-accent/10 border border-accent/30 font-medium">
+                    <span>Remaining balance</span>
+                    <span className="tabular-nums">{str(invoice, "remaining_balance_formatted")}</span>
+                  </div>
+                </div>
+              </Section>
+            );
+          })()}
+
+          {/* Deposit invoice — show which final it belongs to */}
+          {isDeposit(invoice) && (() => {
+            const finalId = depositChainHeadId(invoice);
+            const final_ = finalId ? allInvoices.find((i) => i.id === finalId) : null;
+            return final_ ? (
+              <Section title="Final Invoice">
+                <div className="flex items-center justify-between px-3 py-2 rounded-md text-xs bg-bg-card border border-border-subtle">
+                  <div className="flex items-center gap-2">
+                    <FileText size={12} className="text-blue-400" />
+                    <span className="font-medium">{str(final_, "number")}</span>
+                    <span className="text-tertiary">{formatDate(str(final_, "date"))}</span>
+                  </div>
+                  <StatusBadge status={invoiceStatus(final_)} />
+                </div>
+              </Section>
+            ) : null;
+          })()}
 
         </div>
       )}
@@ -1186,31 +1622,83 @@ function CreateReminderDialog({ invoiceId, invoiceNumber, onClose, onCreated }: 
   );
 }
 
-function buildChains(invoices: Entity[]): InvoiceChain[] {
-  const byId = new Map<number, Entity>();
-  for (const inv of invoices) byId.set(inv.id, inv);
+function depositGroupKey(inv: Entity): string {
+  return `${num(inv, "contract_id")}-${num(inv, "project_id")}`;
+}
 
+function buildChains(invoices: Entity[]): InvoiceChain[] {
   const roots: Entity[] = [];
   const reminders: Entity[] = [];
+  const linkedDeposits: Entity[] = [];
+  const orphanDeposits: Entity[] = [];
+  const finalsByGroup = new Map<string, Entity>();
+
   for (const inv of invoices) {
-    if (isReminder(inv)) reminders.push(inv);
-    else roots.push(inv);
-  }
-
-  const chainMap = new Map<number, Entity[]>();
-  for (const root of roots) chainMap.set(root.id, []);
-
-  for (const rem of reminders) {
-    const headId = rem.reminder_chain_head_id as number | undefined;
-    if (headId != null && chainMap.has(headId)) {
-      chainMap.get(headId)!.push(rem);
+    if (isReminder(inv)) {
+      reminders.push(inv);
+    } else if (isFinalInvoice(inv)) {
+      roots.push(inv);
+      finalsByGroup.set(depositGroupKey(inv), inv);
+    } else if (isDeposit(inv)) {
+      if (depositChainHeadId(inv) != null) linkedDeposits.push(inv);
+      else orphanDeposits.push(inv);
+    } else {
+      roots.push(inv);
     }
   }
 
+  const reminderMap = new Map<number, Entity[]>();
+  const depositMap = new Map<number, Entity[]>();
+  for (const root of roots) {
+    reminderMap.set(root.id, []);
+    depositMap.set(root.id, []);
+  }
+
+  for (const rem of reminders) {
+    const headId = rem.reminder_chain_head_id as number | undefined;
+    if (headId != null && reminderMap.has(headId)) {
+      reminderMap.get(headId)!.push(rem);
+    }
+  }
+
+  for (const dep of linkedDeposits) {
+    const headId = depositChainHeadId(dep);
+    if (headId != null && depositMap.has(headId)) {
+      depositMap.get(headId)!.push(dep);
+    } else {
+      orphanDeposits.push(dep);
+    }
+  }
+
+  const orphanByGroup = new Map<string, Entity[]>();
+  for (const dep of orphanDeposits) {
+    const key = depositGroupKey(dep);
+    if (!orphanByGroup.has(key)) orphanByGroup.set(key, []);
+    orphanByGroup.get(key)!.push(dep);
+  }
+
+  for (const [key, deps] of orphanByGroup) {
+    const sorted = [...deps].sort(
+      (a, b) => str(a, "date").localeCompare(str(b, "date")) || a.id - b.id,
+    );
+    const finalInv = finalsByGroup.get(key);
+    if (finalInv && depositMap.has(finalInv.id)) {
+      depositMap.get(finalInv.id)!.push(...sorted);
+      continue;
+    }
+    const [head, ...rest] = sorted;
+    roots.push(head);
+    reminderMap.set(head.id, []);
+    depositMap.set(head.id, rest);
+  }
+
   return roots.map((root) => {
-    const rems = (chainMap.get(root.id) || []).sort(
+    const rems = (reminderMap.get(root.id) || []).sort(
       (a, b) => num(a, "reminder_level") - num(b, "reminder_level"),
     );
-    return { root, reminders: rems };
+    const deps = (depositMap.get(root.id) || []).sort(
+      (a, b) => str(a, "date").localeCompare(str(b, "date")) || a.id - b.id,
+    );
+    return { root, reminders: rems, deposits: deps };
   });
 }

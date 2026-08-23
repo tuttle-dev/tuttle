@@ -4,7 +4,7 @@ from typing import List, Optional, Set
 import sqlmodel
 from loguru import logger
 
-from ...model import Invoice, InvoiceItem, Timesheet
+from ...model import Invoice, InvoiceItem, PaymentMilestone, Timesheet
 from ..core.abstractions import SQLModelDataSourceMixin
 from ..core.intent_result import IntentResult
 
@@ -174,6 +174,75 @@ class InvoicingDataSource(SQLModelDataSourceMixin):
                 )
             ).all()
         return {row for row in rows if row is not None}
+
+    def link_deposits_to_final(self, final_invoice_id: int, deposit_ids: List[int]) -> IntentResult[None]:
+        """Point each deposit at the final invoice that settles it.
+
+        Written through a single session rather than ``save_invoice`` per
+        deposit: that merges each invoice's whole object graph, and a contract
+        loaded before the settlement existed carries a stale invoice
+        collection whose cascade writes the old ``deposit_for_id`` back —
+        silently dropping deposits from the deduction list.
+        """
+        try:
+            with self.create_session() as session:
+                for deposit_id in deposit_ids:
+                    deposit = session.get(Invoice, deposit_id)
+                    if deposit is None:
+                        continue
+                    deposit.deposit_for_id = final_invoice_id
+                    session.add(deposit)
+                session.commit()
+            return IntentResult(was_intent_successful=True)
+        except Exception as ex:
+            return IntentResult(
+                was_intent_successful=False,
+                error_msg="The deposits could not be linked to the final invoice.",
+                log_message=f"InvoicingDataSource.link_deposits_to_final({final_invoice_id}, {deposit_ids}): {ex}",
+                exception=ex,
+            )
+
+    def mark_milestones_invoiced(self, milestone_ids: List[int]) -> IntentResult[None]:
+        """Flag milestones as invoiced without touching the rest of their graph."""
+        try:
+            with self.create_session() as session:
+                for milestone_id in milestone_ids:
+                    milestone = session.get(PaymentMilestone, milestone_id)
+                    if milestone is None:
+                        continue
+                    milestone.invoiced = True
+                    session.add(milestone)
+                session.commit()
+            return IntentResult(was_intent_successful=True)
+        except Exception as ex:
+            return IntentResult(
+                was_intent_successful=False,
+                error_msg="The payment schedule could not be updated.",
+                log_message=f"InvoicingDataSource.mark_milestones_invoiced({milestone_ids}): {ex}",
+                exception=ex,
+            )
+
+    def get_deposit_invoices(self, contract_id: int, project_id: int) -> IntentResult[List[Invoice]]:
+        """Deposit invoices of one project, oldest first, ready to be settled.
+
+        Cancelled deposits are left out: a voided instalment was never charged,
+        so deducting it on the final invoice would short the total owed.
+        """
+        try:
+            deposits = [
+                inv
+                for inv in self.query(Invoice)
+                if inv.is_deposit and inv.contract_id == contract_id and inv.project_id == project_id and not inv.cancelled
+            ]
+            deposits.sort(key=lambda inv: (inv.date, inv.id or 0))
+            return IntentResult(was_intent_successful=True, data=deposits)
+        except Exception as ex:
+            return IntentResult(
+                was_intent_successful=False,
+                error_msg="Could not load the deposit invoices of this project.",
+                log_message=f"InvoicingDataSource.get_deposit_invoices({contract_id}, {project_id}): {ex}",
+                exception=ex,
+            )
 
     def get_all_reminders_for_invoice(self, invoice_id: int) -> List[Invoice]:
         """Return only the reminders (not the root) for a given root invoice id."""

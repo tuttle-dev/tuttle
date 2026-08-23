@@ -1,0 +1,91 @@
+/* Deposit / final / reminder presentation, shared by every invoice template.
+ *
+ * Understated by design: an invoice is already the document it says it is in
+ * its heading and number, so these blocks only annotate. Colour comes from
+ * the template's own palette through --invoice-accent; a template can
+ * override any rule because its own stylesheet is linked after this one. */
+
+/* A banner only where a template explicitly places one; most templates
+ * instead render a quiet "document type" meta row, or carry the type in the
+ * heading as a qualifier. */
+.document-type-banner {
+  font-size: 9pt;
+  font-weight: 700;
+  letter-spacing: 0.8pt;
+  text-transform: uppercase;
+  padding: 3pt 8pt;
+  margin-bottom: 8pt;
+  color: var(--invoice-accent, #374151);
+  border-left: 2pt solid var(--invoice-accent, #374151);
+}
+
+/* The type in the heading ("Rechnung 2026-042 · Schlussrechnung"), set a
+ * step down so it informs without competing with the number. */
+.document-type-qualifier {
+  font-size: 0.6em;
+  font-weight: 400;
+  color: #555;
+}
+
+/* What a deposit bills: which contract, which milestone, of what total. A
+ * short key/value list, set off only by the rules above and below it. */
+.deposit-context {
+  font-size: 8.5pt;
+  line-height: 1.6;
+  margin: 6pt 0 12pt;
+  padding: 5pt 0;
+  border-top: 0.5pt solid #d1d5db;
+  border-bottom: 0.5pt solid #d1d5db;
+}
+
+.deposit-context .label {
+  color: var(--invoice-accent, #6b7280);
+  font-weight: 600;
+  margin-right: 4pt;
+}
+
+/* A deduction is money already invoiced, so it reads as secondary to the
+ * gross amount above it rather than as another charge. */
+.deposit-deduction,
+.deposit-deduction td {
+  color: #555;
+}
+
+.deposit-deduction-vat,
+.deposit-deduction-vat td {
+  font-size: 0.85em;
+  color: #888;
+  padding-left: 1em;
+}
+
+/* "abzgl. Abschlag lt. Rechnung Nr. 2026-001" is far longer than any other
+ * totals label and has to wrap. In the templates whose totals column is a
+ * flex row, the amount would otherwise be squeezed out of the page. The
+ * element selector keeps this ahead of a template's own class rule. */
+.deposit-deduction > span:last-child,
+.deposit-deduction-vat > span:last-child {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* Standalone settlement breakdown, for templates that lay their totals out
+ * horizontally and have nowhere to append the deduction lines. */
+.settlement-summary {
+  margin-left: auto;
+  margin-top: 10pt;
+  border-collapse: collapse;
+}
+
+.settlement-summary td {
+  padding: 2pt 0 2pt 14pt;
+}
+
+.settlement-summary .settlement-value {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.settlement-summary .settlement-total td {
+  font-weight: 700;
+  border-top: 1pt solid currentColor;
+}

@@ -1,9 +1,11 @@
 <!doctype html>
+{% import "document_type.html" as doc %}
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>{% if is_reminder %}{{ reminder_title }} – {{ invoice.number }}{% else %}{{ l.invoice_no }} {{ invoice.number }}{% endif %}</title>
+  <title>{{ doc.document_title(l, invoice, is_reminder, is_deposit, is_final, reminder_title) }}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="./document-type.css">
   <link rel="stylesheet" href="./invoice.css">
 </head>
 <body>
@@ -43,11 +45,11 @@
     </div>
   </div>
 
-  {% if is_reminder %}
-  <div class="reminder-badge">{{ reminder_title }}</div>
-  {% endif %}
+  {% if is_reminder %}{{ doc.banner(l, is_reminder, is_deposit, is_final, reminder_title) }}{% endif %}
 
-  <h1 class="invoice-title">{{ l.invoice_no }} {{ invoice.number }}</h1>
+  <h1 class="invoice-title">{{ l.invoice_no }} {{ invoice.number }}{% if is_deposit or is_final %} <span class="document-type-qualifier">({% if is_deposit %}{{ l.deposit_invoice }}{% else %}{{ l.final_invoice }}{% endif %})</span>{% endif %}</h1>
+
+  {% if is_deposit %}{{ doc.deposit_context(l, contract_title, milestone_title, milestone_percentage, contract_total) }}{% endif %}
 
   <table class="meta-table">
     <tr>
@@ -89,7 +91,7 @@
 
   <table class="totals-table">
     <tr>
-      <td class="totals-label">{{ l.subtotal }}</td>
+      <td class="totals-label">{% if is_final %}{{ l.total_fee }}{% else %}{{ l.subtotal }}{% endif %}</td>
       <td class="totals-value">{{ invoice.sum | as_currency }}</td>
     </tr>
     {% if not invoice.is_outside_scope %}
@@ -104,9 +106,10 @@
       <td class="totals-value">{{ invoice.reminder_fee | as_currency }}</td>
     </tr>
     {% endif %}
+    {% if is_final %}{{ doc.settlement_lines_table(l, invoice, deposit_deductions) }}{% endif %}
     <tr class="total-due-row">
-      <td class="totals-label"><strong>{{ l.total_due }} (€)</strong></td>
-      <td class="totals-value"><strong>{{ invoice.total | as_currency }}</strong></td>
+      <td class="totals-label"><strong>{{ doc.amount_due_label(l, is_deposit, is_final) }} (€)</strong></td>
+      <td class="totals-value"><strong>{{ remaining_balance | as_currency }}</strong></td>
     </tr>
   </table>
 
@@ -122,7 +125,7 @@
   {% endif %}
 
   <div class="closing">
-    <p>{% if is_reminder %}{{ l.reminder_closing }}{% elif notes %}<span style="white-space:pre-line">{{ notes }}</span>{% else %}{{ l.closing }}{% endif %}</p>
+    <p>{{ doc.closing_text(l, is_reminder, is_deposit, notes) }}</p>
     {% if include_signature and user.signature %}
     <img class="sig-image" src="{{ user.signature }}" alt="">
     {% else %}

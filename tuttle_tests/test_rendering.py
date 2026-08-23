@@ -77,6 +77,24 @@ class TestRenderInvoice:
 
         assert isinstance(result, str)
 
+    def test_deposit_invoice_html_shows_document_type(self, fake):
+        user = demo.create_fake_user(fake)
+        invoice = demo.create_fake_invoice(fake)
+        invoice.document_type = "deposit"
+
+        html = rendering.render_invoice(
+            user=user,
+            invoice=invoice,
+            out_dir=None,
+            document_format="html",
+            only_final=False,
+        )
+
+        # A deposit announces itself in the meta table, not through a banner.
+        assert "document-type-banner" not in html
+        assert "Deposit Invoice" in html
+        assert "Deposit due" in html
+
     def test_creates_only_final_file(self, fake):
         user = demo.create_fake_user(fake)
         invoice = demo.create_fake_invoice(fake)

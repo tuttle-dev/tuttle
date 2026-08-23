@@ -4,7 +4,15 @@ import datetime
 from decimal import Decimal
 from typing import Dict, List, Optional, Sequence
 
-from .model import Contract, ContractCharge, Invoice, InvoiceItem, Project, User
+from .model import (
+    Contract,
+    ContractCharge,
+    Invoice,
+    InvoiceItem,
+    PaymentMilestone,
+    Project,
+    User,
+)
 from .time import ChargeBasis
 from .timetracking import Timesheet
 
@@ -172,6 +180,117 @@ def generate_fixed_price_invoice(
             contract=contract,
         )
     )
+    return invoice
+
+
+def milestone_amount(milestone: PaymentMilestone, contract: Contract) -> Decimal:
+    """The net amount a milestone bills, resolved against the contract total.
+
+    A milestone is expressed either as an absolute amount or as a percentage
+    of the contract's fixed price. Percentages are quantized to cents, so a
+    schedule of thirds bills 3,333.33 rather than a repeating fraction; the
+    resulting rounding difference is absorbed by the final invoice, which
+    deducts the deposits actually issued.
+    """
+    if milestone.amount is not None:
+        return Decimal(str(milestone.amount)).quantize(Decimal("0.01"))
+    if milestone.percentage is None:
+        raise ValueError("Milestone must have either a percentage or an amount.")
+    if contract.fixed_price is None:
+        raise ValueError("Percentage milestones require a fixed-price contract.")
+    total_price = Decimal(str(contract.fixed_price))
+    share = total_price * Decimal(str(milestone.percentage)) / Decimal("100")
+    return share.quantize(Decimal("0.01"))
+
+
+def generate_deposit_invoice(
+    contract: Contract,
+    project: Project,
+    milestone: PaymentMilestone,
+    number: str,
+    date: datetime.date = datetime.date.today(),
+) -> Invoice:
+    """Create a deposit invoice (Abschlagsrechnung) for a payment milestone.
+
+    Contract charges are deliberately not billed here: a handling fee or setup
+    cost belongs on the final settlement, not repeated on every instalment.
+    """
+    if contract.fixed_price is None:
+        raise ValueError("Deposit invoices require a fixed-price contract.")
+
+    invoice = Invoice(
+        date=date,
+        document_type="deposit",
+        contract=contract,
+        contract_id=contract.id,
+        project=project,
+        project_id=project.id,
+        number=number,
+        milestone_id=milestone.id,
+    )
+    item = InvoiceItem(
+        quantity=1,
+        unit="fixed_price",
+        unit_price=milestone_amount(milestone, contract),
+        VAT_rate=_contract_vat_rate(contract),
+        VAT_category=contract.VAT_category,
+        description=milestone.title,
+    )
+    invoice.items.append(item)
+    return invoice
+
+
+def generate_final_invoice(
+    contract: Contract,
+    project: Project,
+    deposit_invoices: List[Invoice],
+    number: str,
+    date: datetime.date = datetime.date.today(),
+    charges: Optional[Sequence[ContractCharge]] = None,
+) -> Invoice:
+    """Create a final invoice (Schlussrechnung) for a fixed-price contract.
+
+    German tax law requires the Schlussrechnung to state the *full* contract
+    amount with its VAT, then deduct the gross amounts already invoiced as
+    deposits — so the line items here carry the whole fixed price, not the
+    remainder. The deduction lines themselves come from the model's
+    ``deposit_deductions``, and ``Invoice.remaining_balance`` is what the
+    client actually owes.
+    """
+    if contract.fixed_price is None:
+        raise ValueError("Final invoices require a fixed-price contract.")
+
+    invoice = Invoice(
+        date=date,
+        document_type="final",
+        contract=contract,
+        contract_id=contract.id,
+        project=project,
+        project_id=project.id,
+        number=number,
+    )
+    item = InvoiceItem(
+        quantity=1,
+        unit="fixed_price",
+        unit_price=Decimal(str(contract.fixed_price)),
+        VAT_rate=_contract_vat_rate(contract),
+        VAT_category=contract.VAT_category,
+        description=contract.title,
+    )
+    invoice.items.append(item)
+    # Charges land on the settlement only — a per-invoice fee must not be
+    # multiplied across the instalments of a single contract.
+    invoice.items.extend(
+        build_charge_items(
+            _applicable_charges(contract, charges),
+            contract=contract,
+        )
+    )
+
+    for dep in deposit_invoices:
+        dep.deposit_for_id = invoice.id
+
+    invoice.deposits = deposit_invoices
     return invoice
 
 

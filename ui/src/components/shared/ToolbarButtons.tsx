@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 
 /* ── Layout constants ─────────────────────────────────────────────────── */
 
-export const LIST_PANEL_WIDTH = "w-[480px]";
+export const LIST_PANEL_WIDTH = "w-[520px]";
 export const LIST_ROW_PADDING = "px-4 py-3.5";
 
 /* ── List / Detail split layout ───────────────────────────────────────── */

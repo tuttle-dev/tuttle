@@ -1,0 +1,138 @@
+{#
+  Deposit and final invoice presentation, shared by every invoice template.
+
+  A Schlussrechnung must state the full contract amount with its VAT and then
+  deduct the gross amounts already invoiced as deposits — getting that wrong
+  overstates what the client owes. Defining it once here means the seven
+  templates cannot drift apart on the part that carries legal weight.
+
+  Templates skin these blocks through their own stylesheets; the markup only
+  provides the class names that `document-type.css` styles.
+#}
+
+{#
+  Banner only for reminders. Deposit and final invoices announce themselves in
+  the meta table and heading of every template — a full-width coloured strip
+  on top of that would be noise.
+#}
+{% macro banner(l, is_reminder=False, is_deposit=False, is_final=False, reminder_title="") %}
+{%- if is_reminder %}
+<div class="document-type-banner reminder">{{ reminder_title }}</div>
+{%- endif %}
+{% endmacro %}
+
+{% macro document_title(l, invoice, is_reminder=False, is_deposit=False, is_final=False, reminder_title="") -%}
+{%- if is_reminder -%}{{ reminder_title }} – {{ invoice.number }}
+{%- elif is_deposit -%}{{ l.deposit_invoice }} {{ invoice.number }}
+{%- elif is_final -%}{{ l.final_invoice }} {{ invoice.number }}
+{%- else -%}{{ l.invoice_no }} {{ invoice.number }}
+{%- endif -%}
+{%- endmacro %}
+
+{% macro number_label(l, is_deposit=False, is_final=False) -%}
+{%- if is_deposit -%}{{ l.deposit_invoice }}
+{%- elif is_final -%}{{ l.final_invoice }}
+{%- else -%}{{ l.invoice_no }}
+{%- endif -%}
+{%- endmacro %}
+
+{# What a deposit bills: which contract, which milestone, and of what total. #}
+{% macro deposit_context(l, contract_title="", milestone_title="", milestone_percentage=None, contract_total=None) %}
+{%- if contract_title or milestone_title %}
+<div class="deposit-context">
+  {%- if contract_title %}
+  <div><span class="label">{{ l.in_respect_of }}</span> {{ contract_title }}</div>
+  {%- endif %}
+  {%- if milestone_title %}
+  <div><span class="label">{{ l.payment_milestone }}</span> {{ milestone_title }}{% if milestone_percentage %} ({{ milestone_percentage }}%){% endif %}</div>
+  {%- endif %}
+  {%- if contract_total %}
+  <div><span class="label">{{ l.contract_total }}</span> {{ contract_total | as_currency }}</div>
+  {%- endif %}
+</div>
+{%- endif %}
+{% endmacro %}
+
+{#
+  Settlement lines for a final invoice, as <div> rows.
+
+  `line` and `amount` name the template's own classes for a totals row and its
+  amount cell, so each skin keeps its own typography.
+#}
+{% macro settlement_lines_div(l, invoice, deposit_deductions, line="totals-line", amount="totals-amount", label="totals-label") %}
+<div class="{{ line }}">
+  <span class="{{ label }}">{{ l.gross }}</span>
+  <span class="{{ amount }}">{{ invoice.total | as_currency }}</span>
+</div>
+{%- for dep in deposit_deductions %}
+<div class="{{ line }} deposit-deduction">
+  <span class="{{ label }}">{{ l.less_deposit }} {{ dep.invoice_number }}</span>
+  <span class="{{ amount }}">−{{ dep.gross | as_currency }}</span>
+</div>
+<div class="{{ line }} deposit-deduction-vat">
+  <span class="{{ label }}">({{ l.vat_included_therein }}: {{ dep.vat | as_currency }})</span>
+  <span class="{{ amount }}"></span>
+</div>
+{%- endfor %}
+{% endmacro %}
+
+{# The same settlement lines for templates whose totals block is a <table>. #}
+{% macro settlement_lines_table(l, invoice, deposit_deductions, label="totals-label", value="totals-value") %}
+<tr>
+  <td class="{{ label }}">{{ l.gross }}</td>
+  <td class="{{ value }}">{{ invoice.total | as_currency }}</td>
+</tr>
+{%- for dep in deposit_deductions %}
+<tr class="deposit-deduction">
+  <td class="{{ label }}">{{ l.less_deposit }} {{ dep.invoice_number }}</td>
+  <td class="{{ value }}">−{{ dep.gross | as_currency }}</td>
+</tr>
+<tr class="deposit-deduction-vat">
+  <td class="{{ label }}">({{ l.vat_included_therein }}: {{ dep.vat | as_currency }})</td>
+  <td class="{{ value }}"></td>
+</tr>
+{%- endfor %}
+{% endmacro %}
+
+{#
+  A self-contained settlement breakdown, for templates whose totals are laid
+  out horizontally and so have nowhere to append the deduction lines.
+#}
+{% macro settlement_summary(l, invoice, deposit_deductions, remaining_balance) %}
+<table class="settlement-summary">
+  <tr>
+    <td class="settlement-label">{{ l.gross }}</td>
+    <td class="settlement-value">{{ invoice.total | as_currency }}</td>
+  </tr>
+  {%- for dep in deposit_deductions %}
+  <tr class="deposit-deduction">
+    <td class="settlement-label">{{ l.less_deposit }} {{ dep.invoice_number }}</td>
+    <td class="settlement-value">−{{ dep.gross | as_currency }}</td>
+  </tr>
+  <tr class="deposit-deduction-vat">
+    <td class="settlement-label">({{ l.vat_included_therein }}: {{ dep.vat | as_currency }})</td>
+    <td class="settlement-value"></td>
+  </tr>
+  {%- endfor %}
+  <tr class="settlement-total">
+    <td class="settlement-label">{{ l.remaining_balance }}</td>
+    <td class="settlement-value">{{ remaining_balance | as_currency }}</td>
+  </tr>
+</table>
+{% endmacro %}
+
+{# The bottom line: remaining balance on a settlement, total due otherwise. #}
+{% macro amount_due_label(l, is_deposit=False, is_final=False) -%}
+{%- if is_final -%}{{ l.remaining_balance }}
+{%- elif is_deposit -%}{{ l.deposit_due }}
+{%- else -%}{{ l.total_due }}
+{%- endif -%}
+{%- endmacro %}
+
+{% macro closing_text(l, is_reminder=False, is_deposit=False, notes="") -%}
+{%- if is_reminder -%}{{ l.reminder_closing }}
+{%- elif is_deposit -%}{{ l.deposit_closing }}
+{%- elif notes -%}<span style="white-space:pre-line">{{ notes }}</span>
+{%- else -%}{{ l.closing }}
+{%- endif -%}
+{%- endmacro %}

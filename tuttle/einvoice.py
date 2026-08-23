@@ -2,6 +2,7 @@
 
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
+from typing import Optional
 
 import pycountry
 from drafthorse.models.accounting import ApplicableTradeTax
@@ -125,6 +126,29 @@ GUIDELINE_IDS = {
     "MINIMUM": "urn:factur-x.eu:1p0:minimum",
     "XRECHNUNG": "urn:cen.eu:en16931:2017#compliant#urn:xeink:spec:XRechnung:3.0",
 }
+
+
+# -- Supported document types --------------------------------------------------
+
+
+def unsupported_reason(invoice: Invoice) -> Optional[str]:
+    """Why *invoice* cannot be expressed as ZUGFeRD XML, or None if it can.
+
+    The builder below writes a plain commercial invoice (type code 380) with
+    the full document totals. EN16931 settles instalments differently: a
+    deposit is a prepayment invoice (type code 386) and a final invoice
+    subtracts what was prepaid via BT-113, leaving a smaller amount due.
+    Emitting 380 with full totals for either would state an amount the client
+    does not owe, so those documents ship as PDF without embedded XML until
+    the prepayment model is implemented.
+    """
+    if invoice.is_reminder:
+        return "a payment reminder is not an invoice in the EN16931 sense"
+    if invoice.is_deposit:
+        return "deposit invoices require the prepayment type code (386), which Tuttle does not emit yet"
+    if invoice.is_final_invoice:
+        return "final invoices require EN16931 prepaid-amount settlement (BT-113), which Tuttle does not emit yet"
+    return None
 
 
 # -- Core builder -------------------------------------------------------------
@@ -350,7 +374,14 @@ def embed_zugferd_in_pdf(
         invoice: A Tuttle Invoice with loaded relationships.
         user: The freelancer / seller.
         profile: ZUGFeRD profile level.
+
+    Raises:
+        ValueError: If the invoice is of a document type the builder cannot
+            represent faithfully (see `unsupported_reason`).
     """
+    reason = unsupported_reason(invoice)
+    if reason:
+        raise ValueError(f"Cannot embed e-invoice XML for invoice {invoice.number or invoice.id}: {reason}.")
     xml = serialize_zugferd_xml(invoice, user, profile=profile)
     with open(pdf_path, "rb") as f:
         original_pdf = f.read()
