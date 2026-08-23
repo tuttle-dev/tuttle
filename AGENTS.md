@@ -1,5 +1,14 @@
 # Agent Instructions
 
+## GitHub
+
+Creating issues and writing PR descriptions is fine — those are
+authored artifacts, not conversations. NEVER post comments, review
+replies, or discussion messages on GitHub. Those are conversations
+between people; posting them under the user's account is impersonation.
+If a comment or reply is needed, draft it in the chat and let the user
+post it themselves.
+
 ## Schema changes
 
 Schema lives in `tuttle/model.py`. Migrations are Alembic in `tuttle/migrations/`.
