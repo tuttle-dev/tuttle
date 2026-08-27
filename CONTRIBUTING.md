@@ -63,6 +63,12 @@ Contributors using AI assistance are expected to:
 -   Test changes locally before opening a pull request
 -   Disclose significant AI assistance in the pull request description
 
+### Discussions are between humans
+
+Issue threads, PR reviews, and GitHub Discussions are conversations between human contributors. Fully AI-generated comments and responses are not acceptable — they amount to impersonation and undermine the trust that open-source collaboration depends on.
+
+If you use AI to help draft a reply, quote the AI-generated parts clearly (e.g. with a blockquote or explicit attribution) so reviewers can distinguish your own reasoning from machine output.
+
 # Pull Request Guidelines
 
 ## PR Template
