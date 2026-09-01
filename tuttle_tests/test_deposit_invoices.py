@@ -13,15 +13,17 @@ import pytest
 
 from tuttle import invoicing
 from tuttle.app.contracts.intent import ContractsIntent
-from tuttle.einvoice import unsupported_reason
+from tuttle.einvoice import serialize_zugferd_xml, unsupported_reason
 from tuttle.model import (
     Address,
+    BankAccount,
     Client,
     Contract,
     Invoice,
     PaymentMilestone,
     Project,
     TaxCategory,
+    User,
 )
 from tuttle.time import ContractType, Cycle
 
@@ -290,18 +292,17 @@ class TestMilestoneScheduleValidation:
 
 
 class TestEInvoiceGuard:
-    """Tuttle writes type code 380 with full totals, which misstates an
-    instalment; deposits and settlements therefore ship as PDF only."""
+    """Only payment reminders are excluded; deposits and finals are supported."""
 
-    def test_a_deposit_is_not_embedded(self):
+    def test_a_deposit_is_supported(self):
         deposits, _ = _settlement("10000", "50", "50")
-        assert "prepayment type code" in unsupported_reason(deposits[0])
+        assert unsupported_reason(deposits[0]) is None
 
-    def test_a_final_invoice_is_not_embedded(self):
+    def test_a_final_invoice_is_supported(self):
         _, final = _settlement("10000", "50", "50")
-        assert "prepaid-amount settlement" in unsupported_reason(final)
+        assert unsupported_reason(final) is None
 
-    def test_an_ordinary_invoice_is_embedded(self):
+    def test_an_ordinary_invoice_is_supported(self):
         project = _fixed_price_project(Decimal("1000"))
         invoice = invoicing.generate_fixed_price_invoice(
             contract=project.contract,
@@ -311,13 +312,153 @@ class TestEInvoiceGuard:
         )
         assert unsupported_reason(invoice) is None
 
-    def test_embedding_a_deposit_is_refused_outright(self, tmp_path):
-        """The guard also protects direct callers of the einvoice module."""
+    def test_a_reminder_is_excluded(self):
+        project = _fixed_price_project(Decimal("1000"))
+        invoice = invoicing.generate_fixed_price_invoice(
+            contract=project.contract,
+            project=project,
+            number="2026-001",
+            date=datetime.date(2026, 2, 1),
+        )
+        invoice.document_type = "reminder"
+        assert unsupported_reason(invoice) is not None
+
+
+# ---------------------------------------------------------------------------
+# E-invoice XML for deposits and finals
+# ---------------------------------------------------------------------------
+
+
+def _make_user() -> User:
+    return User(
+        name="Harry Tuttle",
+        subtitle="Heating Engineer",
+        email="mail@tuttle.example",
+        VAT_number="DE123456789",
+        address=Address(
+            street="Hauptstraße",
+            number="42",
+            postal_code="10115",
+            city="Berlin",
+            country="Germany",
+        ),
+        bank_accounts=[
+            BankAccount(
+                name="Business",
+                IBAN="DE89370400440532013000",
+                BIC="COBADEFFXXX",
+            ),
+        ],
+    )
+
+
+class TestDepositEInvoice:
+    """A deposit invoice (Abschlagsrechnung) uses type code 386."""
+
+    @staticmethod
+    def _xml(deposits=None, user=None, profile="EN16931") -> str:
+        if deposits is None:
+            deposits, _ = _settlement("10000", "50", "50")
+        user = user or _make_user()
+        return serialize_zugferd_xml(deposits[0], user, profile=profile, validate=True).decode("utf-8")
+
+    def test_type_code_is_386(self):
+        xml_str = self._xml()
+        assert "<ram:TypeCode>386</ram:TypeCode>" in xml_str
+
+    def test_totals_reflect_the_milestone_share(self):
+        """50% of 10,000 net = 5,000; 19% VAT = 950; total = 5,950."""
+        xml_str = self._xml()
+        assert "<ram:LineTotalAmount>5000" in xml_str
+        assert "<ram:TaxBasisTotalAmount>5000" in xml_str
+        assert '<ram:TaxTotalAmount currencyID="EUR">950.00</ram:TaxTotalAmount>' in xml_str
+        assert "<ram:GrandTotalAmount>5950" in xml_str
+        assert "<ram:DuePayableAmount>5950" in xml_str
+
+    def test_no_prepaid_amount(self):
+        xml_str = self._xml()
+        assert "TotalPrepaidAmount" not in xml_str
+
+    def test_schema_validation_passes(self):
+        assert len(self._xml()) > 0
+
+    @pytest.mark.parametrize("profile", ["EN16931", "EXTENDED", "BASIC", "MINIMUM"])
+    def test_all_profiles_validate(self, profile):
+        assert len(self._xml(profile=profile)) > 0
+
+
+class TestFinalEInvoice:
+    """A final invoice (Schlussrechnung) uses type code 380 with BT-113."""
+
+    @staticmethod
+    def _xml(user=None, profile="EN16931") -> str:
+        _, final = _settlement("10000", "50", "50")
+        user = user or _make_user()
+        return serialize_zugferd_xml(final, user, profile=profile, validate=True).decode("utf-8")
+
+    def test_type_code_is_380(self):
+        xml_str = self._xml()
+        assert "<ram:TypeCode>380</ram:TypeCode>" in xml_str
+
+    def test_grand_total_is_the_full_contract_amount(self):
+        """10,000 net + 19% = 11,900 gross."""
+        xml_str = self._xml()
+        assert "<ram:GrandTotalAmount>11900" in xml_str
+
+    def test_prepaid_amount_equals_sum_of_deposits(self):
+        """Two deposits of 5,950 each = 11,900 prepaid."""
+        xml_str = self._xml()
+        assert "<ram:TotalPrepaidAmount>11900" in xml_str
+
+    def test_due_amount_is_remaining_balance(self):
+        """Fully deposited → nothing left to pay."""
+        xml_str = self._xml()
+        assert "<ram:DuePayableAmount>0" in xml_str
+
+    def test_partial_deposit_leaves_correct_due_amount(self):
+        """Only one of two 50% deposits → 5,950 remaining."""
+        deposits, final = _settlement("10000", "50", "50")
+        final.deposits = deposits[:1]
+        user = _make_user()
+        xml_str = serialize_zugferd_xml(final, user, profile="EN16931", validate=True).decode("utf-8")
+        assert "<ram:TotalPrepaidAmount>5950" in xml_str
+        assert "<ram:DuePayableAmount>5950" in xml_str
+
+    def test_schema_validation_passes(self):
+        assert len(self._xml()) > 0
+
+    @pytest.mark.parametrize("profile", ["EN16931", "EXTENDED", "BASIC", "MINIMUM"])
+    def test_all_profiles_validate(self, profile):
+        assert len(self._xml(profile=profile)) > 0
+
+    def test_embed_deposit_in_pdf(self, tmp_path):
+        from pypdf import PdfWriter
+
         from tuttle.einvoice import embed_zugferd_in_pdf
-        from tuttle.model import User
 
         deposits, _ = _settlement("10000", "50", "50")
-        pdf = tmp_path / "deposit.pdf"
-        pdf.write_bytes(b"%PDF-1.4")
-        with pytest.raises(ValueError, match="Cannot embed e-invoice XML"):
-            embed_zugferd_in_pdf(pdf_path=str(pdf), invoice=deposits[0], user=User(name="Harry Tuttle"))
+        user = _make_user()
+        pdf_path = tmp_path / "deposit.pdf"
+        writer = PdfWriter()
+        writer.add_blank_page(width=595, height=842)
+        with open(pdf_path, "wb") as f:
+            writer.write(f)
+        original_size = pdf_path.stat().st_size
+        embed_zugferd_in_pdf(str(pdf_path), deposits[0], user, profile="EN16931")
+        assert pdf_path.stat().st_size > original_size
+
+    def test_embed_final_in_pdf(self, tmp_path):
+        from pypdf import PdfWriter
+
+        from tuttle.einvoice import embed_zugferd_in_pdf
+
+        _, final = _settlement("10000", "50", "50")
+        user = _make_user()
+        pdf_path = tmp_path / "final.pdf"
+        writer = PdfWriter()
+        writer.add_blank_page(width=595, height=842)
+        with open(pdf_path, "wb") as f:
+            writer.write(f)
+        original_size = pdf_path.stat().st_size
+        embed_zugferd_in_pdf(str(pdf_path), final, user, profile="EN16931")
+        assert pdf_path.stat().st_size > original_size
