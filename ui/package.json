@@ -84,7 +84,16 @@
     "rpm": {
       "depends": [
         "zlib",
-        "fuse2-libs"
+        "fuse-libs",
+        "nspr",
+        "gtk3",
+        "libnotify",
+        "nss",
+        "libXScrnSaver",
+        "libXtst",
+        "xdg-utils",
+        "at-spi2-core",
+        "libuuid"
       ]
     }
   },
