@@ -1,13 +1,9 @@
----
-description: Database schema changes must go through Alembic
-globs: tuttle/model.py,tuttle/db_schema.py,tuttle/migrations/**/*.py,tuttle/app_db.py
-alwaysApply: false
----
-
 # Database Schema Changes
 
 `tuttle/model.py` is the SINGLE SOURCE OF TRUTH for the database schema.
 Alembic in `tuttle/migrations/` derives all DDL from `SQLModel.metadata`.
+
+Applies to: `tuttle/model.py`, `tuttle/db_schema.py`, `tuttle/migrations/**/*.py`, `tuttle/app_db.py`
 
 ## Critical: versions/*.py are frozen snapshots, NOT source of truth
 

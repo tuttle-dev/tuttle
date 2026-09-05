@@ -1,14 +1,9 @@
----
-name: readme-screenshots
-description: >-
-  Take screenshots of Tuttle app views for the README. Use when the user
-  asks to update, refresh, or regenerate README screenshots.
-disable-model-invocation: true
----
-
 # README Screenshots
 
-## Your job
+Take screenshots of Tuttle app views for the README. Use when updating,
+refreshing, or regenerating README screenshots.
+
+## Steps
 
 1. Read `README.md` and find every `<img>` tag referencing `screenshot-*.png`.
 2. For each screenshot, determine which app view it depicts from context

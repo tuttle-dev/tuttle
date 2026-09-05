@@ -1,9 +1,3 @@
----
-description: Ensure dialogs and modals are scrollable and not too tall
-globs: "**/*.tsx"
-alwaysApply: false
----
-
 # Dialog / Modal Scroll Safety
 
 Every dialog or modal MUST be viewport-safe:
@@ -15,16 +9,17 @@ Every dialog or modal MUST be viewport-safe:
 If a single pane has more than ~6 form fields, split it into multiple wizard steps or tabs instead of a long scrollable form.
 
 ```tsx
-// ❌ BAD — no max-h, body can overflow off-screen
+// BAD — no max-h, body can overflow off-screen
 <div className="bg-bg-sidebar rounded-xl">
   <div className="px-5 py-4">{/* header */}</div>
-  <div className="px-5 py-4">{/* lots of fields */}</div>
+  <div>{/* body with many fields */}</div>
 </div>
 
-// ✅ GOOD — capped height, scrollable body, pinned header/footer
+// GOOD — viewport-capped, scrollable body
 <div className="bg-bg-sidebar rounded-xl max-h-[85vh] flex flex-col overflow-hidden">
-  <div className="px-5 py-4 border-b shrink-0">{/* header */}</div>
-  <div className="flex-1 overflow-y-auto px-5 py-4">{/* body */}</div>
-  <div className="px-5 py-3 border-t shrink-0">{/* footer */}</div>
+  <div className="px-5 py-4 shrink-0">{/* header */}</div>
+  <div className="flex-1 overflow-y-auto">{/* body */}</div>
 </div>
 ```
+
+Applies to all `.tsx` files that render dialogs or modals.
