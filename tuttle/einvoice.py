@@ -134,20 +134,12 @@ GUIDELINE_IDS = {
 def unsupported_reason(invoice: Invoice) -> Optional[str]:
     """Why *invoice* cannot be expressed as ZUGFeRD XML, or None if it can.
 
-    The builder below writes a plain commercial invoice (type code 380) with
-    the full document totals. EN16931 settles instalments differently: a
-    deposit is a prepayment invoice (type code 386) and a final invoice
-    subtracts what was prepaid via BT-113, leaving a smaller amount due.
-    Emitting 380 with full totals for either would state an amount the client
-    does not owe, so those documents ship as PDF without embedded XML until
-    the prepayment model is implemented.
+    Deposit invoices use type code 386 (prepayment); final invoices use 380
+    with BT-113 (prepaid amount) to deduct what the deposits already billed.
+    Payment reminders are not invoices in the EN 16931 sense and are excluded.
     """
     if invoice.is_reminder:
         return "a payment reminder is not an invoice in the EN16931 sense"
-    if invoice.is_deposit:
-        return "deposit invoices require the prepayment type code (386), which Tuttle does not emit yet"
-    if invoice.is_final_invoice:
-        return "final invoices require EN16931 prepaid-amount settlement (BT-113), which Tuttle does not emit yet"
     return None
 
 
@@ -178,7 +170,7 @@ def build_zugferd_document(
 
     # -- Header ---------------------------------------------------------------
     doc.header.id = invoice.number or str(invoice.id)
-    doc.header.type_code = "380"  # commercial invoice
+    doc.header.type_code = "386" if invoice.is_deposit else "380"
     doc.header.issue_date_time = invoice.date
 
     is_minimum = profile == "MINIMUM"
@@ -304,7 +296,16 @@ def build_zugferd_document(
     # -- Monetary summation ---------------------------------------------------
     line_total_sum = invoice.sum
     grand_total = line_total_sum + total_tax
-    due_amount = grand_total
+
+    # BT-113: a final invoice (Schlussrechnung) states the full contract
+    # amount then deducts the gross totals already billed as deposits.
+    prepaid = Decimal("0")
+    if invoice.is_final_invoice:
+        prepaid = sum(
+            (Decimal(str(d["gross"])) for d in invoice.deposit_deductions),
+            Decimal("0"),
+        )
+    due_amount = grand_total - prepaid
 
     if not is_minimum:
         doc.trade.settlement.monetary_summation.line_total = line_total_sum
@@ -326,6 +327,8 @@ def build_zugferd_document(
         )
 
     doc.trade.settlement.monetary_summation.grand_total = grand_total
+    if prepaid and not is_minimum:
+        doc.trade.settlement.monetary_summation.prepaid_total = prepaid
     doc.trade.settlement.monetary_summation.due_amount = due_amount
 
     # -- Payment terms (not in MINIMUM) ----------------------------------------
