@@ -78,6 +78,10 @@ addopts = ""
 [tool.ruff]
 target-version = "py313"
 line-length = 127
+# Python fenced code blocks in docs (.ai/rules/, migrations/README.md, etc.) are
+# illustrative snippets, not standalone modules — they reference names like `op`
+# and `sa` that only exist in context, so linting them as real Python is wrong.
+extend-exclude = ["*.md"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "W"]
