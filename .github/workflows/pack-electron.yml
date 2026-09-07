@@ -18,7 +18,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-latest
+          # Pinned to macos-15 (not macos-latest): on macOS 26.6 the
+          # `security set-key-partition-list` command started verifying its
+          # -k argument, and electron-builder passes the .p12 password there
+          # instead of the keychain password, so signing fails. Stopgap until
+          # we manage the signing keychain ourselves.
+          - os: macos-15
             platform: macos-arm64
           - os: windows-latest
             platform: windows
