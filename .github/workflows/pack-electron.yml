@@ -109,7 +109,9 @@ jobs:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         tag="${GITHUB_REF#refs/tags/}"
-        for f in artifacts/**/*.{dmg,zip,exe,deb,rpm,AppImage,yml,blockmap}; do
+        # Only latest*.yml (the electron-updater manifests) — a bare *.yml
+        # also matches electron-builder's builder-debug.yml dump.
+        for f in artifacts/**/*.{dmg,zip,exe,deb,rpm,AppImage,blockmap} artifacts/**/latest*.yml; do
           [ -f "$f" ] || continue
           echo "Uploading: $f"
           gh release upload "$tag" "$f" --repo "$GITHUB_REPOSITORY" --clobber
