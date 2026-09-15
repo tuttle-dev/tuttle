@@ -1582,8 +1582,41 @@ class RecurringExpense(SQLModel, table=True):
     )
     category: str = Field(
         default="operating",
-        description="Category tag: 'insurance', 'operating', 'professional', 'other'.",
+        description="Category tag: 'insurance', 'health', 'pension', 'operating', 'professional', 'other'.",
     )
+    rate: Optional[Decimal] = Field(
+        default=None,
+        description=(
+            "Percentage of income, for expenses that scale with earnings "
+            "(health insurance, pension). When set, the expense is dynamic and "
+            "``amount`` is ignored."
+        ),
+        sa_column=sqlalchemy.Column(sqlalchemy.Numeric(6, 3), nullable=True),
+    )
+    tax_deductible: bool = Field(
+        default=False,
+        description=(
+            "Whether the expense reduces taxable income. Deductible expenses are "
+            "charged on the taxable profit; the rest come out of post-tax money."
+        ),
+    )
+    min_monthly: Optional[Decimal] = Field(
+        default=None,
+        description="Floor for the computed monthly amount of a dynamic expense.",
+        sa_column=sqlalchemy.Column(sqlalchemy.Numeric(12, 2), nullable=True),
+    )
+    max_monthly: Optional[Decimal] = Field(
+        default=None,
+        description=(
+            "Ceiling for the computed monthly amount of a dynamic expense, e.g. the German Beitragsbemessungsgrenze."
+        ),
+        sa_column=sqlalchemy.Column(sqlalchemy.Numeric(12, 2), nullable=True),
+    )
+
+    @property
+    def is_dynamic(self) -> bool:
+        """Whether this expense is a percentage of income rather than a fixed amount."""
+        return self.rate is not None
 
 
 class Task(RpcMixin, SQLModel, table=True):
