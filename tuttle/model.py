@@ -1578,7 +1578,11 @@ class RecurringExpense(SQLModel, table=True):
     currency: str = Field(default="EUR", description="ISO 4217 currency code.")
     period: Cycle = Field(
         sa_column=sqlalchemy.Column(sqlalchemy.Enum(Cycle), nullable=False),
-        description="How often this expense recurs.",
+        description=(
+            "How often this expense recurs. For a dynamic expense there is no "
+            "recurrence — the rate is charged monthly — so this carries the basis "
+            "``min_base`` and ``max_base`` are entered on instead."
+        ),
     )
     category: str = Field(
         default="operating",
@@ -1600,15 +1604,20 @@ class RecurringExpense(SQLModel, table=True):
             "charged on the taxable profit; the rest come out of post-tax money."
         ),
     )
-    min_monthly: Optional[Decimal] = Field(
-        default=None,
-        description="Floor for the computed monthly amount of a dynamic expense.",
-        sa_column=sqlalchemy.Column(sqlalchemy.Numeric(12, 2), nullable=True),
-    )
-    max_monthly: Optional[Decimal] = Field(
+    min_base: Optional[Decimal] = Field(
         default=None,
         description=(
-            "Ceiling for the computed monthly amount of a dynamic expense, e.g. the German Beitragsbemessungsgrenze."
+            "Floor on the income the rate is charged on — the German Mindestbemessungs"
+            "grundlage, a minimum assumed income. On the basis given by ``period``."
+        ),
+        sa_column=sqlalchemy.Column(sqlalchemy.Numeric(12, 2), nullable=True),
+    )
+    max_base: Optional[Decimal] = Field(
+        default=None,
+        description=(
+            "Ceiling on the income the rate is charged on — the German Beitragsbemessungs"
+            "grenze. Income above it is free of the contribution, so the expense tops out "
+            "at ``max_base * rate``. On the basis given by ``period``."
         ),
         sa_column=sqlalchemy.Column(sqlalchemy.Numeric(12, 2), nullable=True),
     )

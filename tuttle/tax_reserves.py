@@ -388,18 +388,36 @@ def compute_spendable_income(
     )
 
 
-def dynamic_monthly(expense: RecurringExpense, monthly_income: Decimal) -> Decimal:
-    """Monthly amount of a dynamic expense, clamped to its min/max bounds.
+PERIOD_TO_MONTHS = {
+    Cycle.monthly: Decimal(1),
+    Cycle.quarterly: Decimal(3),
+    Cycle.yearly: Decimal(12),
+    Cycle.weekly: Decimal("0.25"),  # ~4.33 weeks/month → approx
+    Cycle.daily: Decimal("30"),
+    Cycle.hourly: Decimal("160"),  # rough ~160 work-hours/month
+}
 
-    A minimum contribution is owed even in a loss-making year, which is why the
-    floor is applied before the amount is held at zero.
+
+def dynamic_monthly(expense: RecurringExpense, monthly_income: Decimal) -> Decimal:
+    """Monthly amount of a dynamic expense, charged on a bounded income base.
+
+    The bounds work like a Beitragsbemessungsgrundlage: they clamp the *income*
+    the rate is charged on, not the resulting contribution. A ceiling of 70,000
+    a year means income above that is free of the contribution, so the expense
+    tops out at 70,000 × rate — and a floor is a minimum assumed income, which
+    is what keeps a contribution owed in a loss-making year.
+
+    The bounds are entered on the basis the expense's ``period`` names, so they
+    are divided down to a monthly figure first. Clamping monthly is the same as
+    clamping the year and dividing, and it keeps a part-year view pro-rata.
     """
-    amount = monthly_income * expense.rate / 100
-    if expense.min_monthly is not None:
-        amount = max(amount, expense.min_monthly)
-    if expense.max_monthly is not None:
-        amount = min(amount, expense.max_monthly)
-    return max(amount, Decimal(0)).quantize(Decimal("0.01"))
+    divisor = PERIOD_TO_MONTHS.get(expense.period, Decimal(1))
+    base = monthly_income
+    if expense.min_base is not None:
+        base = max(base, expense.min_base / divisor)
+    if expense.max_base is not None:
+        base = min(base, expense.max_base / divisor)
+    return max(base * expense.rate / 100, Decimal(0)).quantize(Decimal("0.01"))
 
 
 def _dynamic_lines(
@@ -426,15 +444,7 @@ def _lines_total(lines: List[DynamicExpenseLine]) -> Decimal:
 
 def _normalize_to_monthly(expense: RecurringExpense) -> Decimal:
     """Convert a recurring expense amount to its monthly equivalent."""
-    period_to_months = {
-        Cycle.monthly: Decimal(1),
-        Cycle.quarterly: Decimal(3),
-        Cycle.yearly: Decimal(12),
-        Cycle.weekly: Decimal("0.25"),  # ~4.33 weeks/month → approx
-        Cycle.daily: Decimal("30"),
-        Cycle.hourly: Decimal("160"),  # rough ~160 work-hours/month
-    }
-    divisor = period_to_months.get(expense.period, Decimal(1))
+    divisor = PERIOD_TO_MONTHS.get(expense.period, Decimal(1))
     return (expense.amount / divisor).quantize(Decimal("0.01"))
 
 

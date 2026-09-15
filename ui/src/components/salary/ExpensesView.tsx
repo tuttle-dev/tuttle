@@ -36,6 +36,16 @@ function fmtRate(rate: number): string {
   return `${rate}% of income`;
 }
 
+/** A dynamic expense has no recurrence, so `period` carries the basis of its min/max. */
+const BOUNDS_BASIS_OPTIONS = [
+  { value: "yearly", label: "Per year" },
+  { value: "monthly", label: "Per month" },
+];
+
+function basisSuffix(period: string): string {
+  return period === "yearly" ? "/yr" : "/mo";
+}
+
 /** Normalize a recurring amount to its monthly equivalent (mirrors backend `_normalize_to_monthly`). */
 const PERIOD_TO_MONTHLY_DIVISOR: Record<string, number> = {
   monthly: 1,
@@ -108,8 +118,8 @@ export function ExpensesView() {
       category: data.category,
       rate: data.rate,
       tax_deductible: data.taxDeductible,
-      min_monthly: data.minMonthly,
-      max_monthly: data.maxMonthly,
+      min_base: data.minBase,
+      max_base: data.maxBase,
     };
     if (mode === "edit" && selected) {
       expense.id = selected.id;
@@ -290,8 +300,8 @@ function ExpenseDetail({ expense, onEdit, onDelete, deleteError }: {
   const dynamic = isDynamic(expense);
   const rate = num(expense, "rate");
   const deductible = expense.tax_deductible === true;
-  const minMonthly = expense.min_monthly != null ? num(expense, "min_monthly") : null;
-  const maxMonthly = expense.max_monthly != null ? num(expense, "max_monthly") : null;
+  const minBase = expense.min_base != null ? num(expense, "min_base") : null;
+  const maxBase = expense.max_base != null ? num(expense, "max_base") : null;
 
   return (
     <div className="p-6 space-y-6 max-w-xl">
@@ -360,11 +370,17 @@ function ExpenseDetail({ expense, onEdit, onDelete, deleteError }: {
             ? `${rate}% of ${deductible ? "your taxable profit" : "what is left after tax"}`
             : `${fmt(monthly, currency)}/mo`}
         </div>
-        {dynamic && (minMonthly != null || maxMonthly != null) && (
+        {dynamic && (minBase != null || maxBase != null) && (
           <div className="text-xs text-tertiary mt-1">
-            {minMonthly != null && `min ${fmt(minMonthly, currency)}/mo`}
-            {minMonthly != null && maxMonthly != null && " · "}
-            {maxMonthly != null && `max ${fmt(maxMonthly, currency)}/mo`}
+            {minBase != null && `charged on at least ${fmt(minBase, currency)}${basisSuffix(period)}`}
+            {minBase != null && maxBase != null && ", "}
+            {maxBase != null && (
+              <>
+                {minBase == null && "charged on "}
+                {`income up to ${fmt(maxBase, currency)}${basisSuffix(period)}`}
+                {` — at most ${fmt((maxBase * rate) / 100, currency)}${basisSuffix(period)}`}
+              </>
+            )}
           </div>
         )}
       </div>
@@ -394,8 +410,8 @@ interface ExpenseFormData {
   category: string;
   rate: number | null;
   taxDeductible: boolean;
-  minMonthly: number | null;
-  maxMonthly: number | null;
+  minBase: number | null;
+  maxBase: number | null;
 }
 
 /** Optional numeric input -> number, or null when left blank. */
@@ -419,8 +435,8 @@ function ExpenseForm({ expense, onSave, onCancel, error }: {
   const [dynamic, setDynamic] = useState(expense ? isDynamic(expense) : false);
   const [rateStr, setRateStr] = useState(expense && expense.rate != null ? str(expense, "rate") : "");
   const [taxDeductible, setTaxDeductible] = useState(expense ? expense.tax_deductible === true : false);
-  const [minStr, setMinStr] = useState(expense && expense.min_monthly != null ? str(expense, "min_monthly") : "");
-  const [maxStr, setMaxStr] = useState(expense && expense.max_monthly != null ? str(expense, "max_monthly") : "");
+  const [minStr, setMinStr] = useState(expense && expense.min_base != null ? str(expense, "min_base") : "");
+  const [maxStr, setMaxStr] = useState(expense && expense.max_base != null ? str(expense, "max_base") : "");
   const [saving, setSaving] = useState(false);
   const isNew = !expense;
 
@@ -435,8 +451,8 @@ function ExpenseForm({ expense, onSave, onCancel, error }: {
       category,
       rate: dynamic ? optionalNum(rateStr) : null,
       taxDeductible,
-      minMonthly: dynamic ? optionalNum(minStr) : null,
-      maxMonthly: dynamic ? optionalNum(maxStr) : null,
+      minBase: dynamic ? optionalNum(minStr) : null,
+      maxBase: dynamic ? optionalNum(maxStr) : null,
     });
     setSaving(false);
   }
@@ -487,7 +503,12 @@ function ExpenseForm({ expense, onSave, onCancel, error }: {
               <button
                 key={String(opt.value)}
                 type="button"
-                onClick={() => setDynamic(opt.value)}
+                onClick={() => {
+                  setDynamic(opt.value);
+                  // `period` means recurrence for a fixed expense and the min/max
+                  // basis for a dynamic one, so the default follows the mode.
+                  setPeriod(opt.value ? "yearly" : "monthly");
+                }}
                 className={`flex-1 px-3 py-2 rounded-md text-left border transition-colors
                   ${dynamic === opt.value ? "border-accent bg-accent/10" : "border-border-subtle hover:bg-bg-hover"}`}
               >
@@ -553,31 +574,41 @@ function ExpenseForm({ expense, onSave, onCancel, error }: {
         </div>
 
         {dynamic && (
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs text-tertiary mb-1">Minimum / month</label>
+          <div className="space-y-1.5">
+            <label className="block text-xs text-tertiary">Income the rate is charged on</label>
+            <div className="grid grid-cols-3 gap-3">
               <input
                 type="number"
                 step="0.01"
                 min="0"
                 value={minStr}
                 onChange={(e) => setMinStr(e.target.value)}
-                placeholder="optional"
+                placeholder="min, optional"
                 className="w-full px-3 py-2 rounded-md text-sm bg-bg-card text-primary border border-border-subtle outline-none focus:border-accent transition-colors placeholder:text-muted"
               />
-            </div>
-            <div>
-              <label className="block text-xs text-tertiary mb-1">Maximum / month</label>
               <input
                 type="number"
                 step="0.01"
                 min="0"
                 value={maxStr}
                 onChange={(e) => setMaxStr(e.target.value)}
-                placeholder="optional"
+                placeholder="max, optional"
                 className="w-full px-3 py-2 rounded-md text-sm bg-bg-card text-primary border border-border-subtle outline-none focus:border-accent transition-colors placeholder:text-muted"
               />
+              <select
+                value={period}
+                onChange={(e) => setPeriod(e.target.value)}
+                className="w-full px-3 py-2 rounded-md text-sm bg-bg-card text-primary border border-border-subtle outline-none focus:border-accent transition-colors"
+              >
+                {BOUNDS_BASIS_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
             </div>
+            <p className="text-xs text-tertiary">
+              A Bemessungsgrenze bounds the income, not the cost: a maximum of 70,000/yr means
+              income above that is free of the contribution, capping it at 70,000 × the rate.
+            </p>
           </div>
         )}
 

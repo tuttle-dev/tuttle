@@ -25,12 +25,13 @@ from tuttle.time import Cycle
 from .test_tax import _make_invoice
 
 
-def _health(rate="19.6", deductible=True, **kwargs):
+def _health(rate="19.6", deductible=True, basis=Cycle.monthly, **kwargs):
+    """A dynamic health insurance expense. `basis` is what min/max are entered on."""
     return RecurringExpense(
         title="Health Insurance",
         amount=Decimal(0),
         currency="EUR",
-        period=Cycle.monthly,
+        period=basis,
         category="health",
         rate=Decimal(rate),
         tax_deductible=deductible,
@@ -49,17 +50,35 @@ class TestDynamicMonthly:
     def test_rate_applies_to_the_income(self):
         assert dynamic_monthly(_health(), Decimal("1000")) == Decimal("196.00")
 
-    def test_max_monthly_caps_the_amount(self):
-        expense = _health(max_monthly=Decimal("500"))
-        assert dynamic_monthly(expense, Decimal("10000")) == Decimal("500.00")
+    def test_max_base_caps_the_income_the_rate_is_charged_on(self):
+        """The ceiling bounds the base, not the contribution: 5000 x 19.6%, not 5000."""
+        expense = _health(max_base=Decimal("5000"))
+        assert dynamic_monthly(expense, Decimal("10000")) == Decimal("980.00")
+        # Income below the ceiling is charged in full.
+        assert dynamic_monthly(expense, Decimal("1000")) == Decimal("196.00")
 
-    def test_min_monthly_is_owed_in_a_bad_year(self):
-        expense = _health(min_monthly=Decimal("200"))
-        assert dynamic_monthly(expense, Decimal("100")) == Decimal("200.00")
-        assert dynamic_monthly(expense, Decimal("-5000")) == Decimal("200.00")
+    def test_income_above_the_ceiling_costs_nothing_extra(self):
+        expense = _health(max_base=Decimal("5000"))
+        assert dynamic_monthly(expense, Decimal("5000")) == dynamic_monthly(expense, Decimal("999999"))
+
+    def test_min_base_is_a_minimum_assumed_income(self):
+        expense = _health(min_base=Decimal("1000"))
+        assert dynamic_monthly(expense, Decimal("100")) == Decimal("196.00")
+        assert dynamic_monthly(expense, Decimal("-5000")) == Decimal("196.00")
 
     def test_negative_income_without_a_floor_owes_nothing(self):
         assert dynamic_monthly(_health(), Decimal("-5000")) == Decimal(0)
+
+    def test_a_yearly_bound_is_divided_down_to_the_month(self):
+        """A Beitragsbemessungsgrenze is an annual figure: 60000/yr is 5000/mo."""
+        yearly = _health(basis=Cycle.yearly, max_base=Decimal("60000"))
+        monthly = _health(basis=Cycle.monthly, max_base=Decimal("5000"))
+        assert dynamic_monthly(yearly, Decimal("10000")) == dynamic_monthly(monthly, Decimal("10000"))
+        assert dynamic_monthly(yearly, Decimal("10000")) == Decimal("980.00")
+
+    def test_a_yearly_floor_is_divided_down_to_the_month(self):
+        expense = _health(basis=Cycle.yearly, min_base=Decimal("12000"))
+        assert dynamic_monthly(expense, Decimal("100")) == Decimal("196.00")
 
 
 class TestSpendableIncome:
@@ -132,7 +151,7 @@ class TestSpendableIncome:
 
     def test_cap_limits_a_strong_year(self, invoices):
         uncapped = compute_spendable_income(invoices, "Germany", expenses=[_health()])
-        capped = compute_spendable_income(invoices, "Germany", expenses=[_health(max_monthly=Decimal("50"))])
+        capped = compute_spendable_income(invoices, "Germany", expenses=[_health(max_base=Decimal("50"))])
         assert capped.dynamic_expenses_deductible < uncapped.dynamic_expenses_deductible
         assert capped.spendable > uncapped.spendable
 

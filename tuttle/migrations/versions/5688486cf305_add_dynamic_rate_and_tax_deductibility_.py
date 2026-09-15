@@ -58,8 +58,8 @@ def upgrade() -> None:
     with op.batch_alter_table("recurringexpense", schema=None) as batch_op:
         batch_op.add_column(sa.Column("rate", sa.Numeric(precision=6, scale=3), nullable=True))
         batch_op.add_column(sa.Column("tax_deductible", sa.Boolean(), nullable=False, server_default=sa.text("0")))
-        batch_op.add_column(sa.Column("min_monthly", sa.Numeric(precision=12, scale=2), nullable=True))
-        batch_op.add_column(sa.Column("max_monthly", sa.Numeric(precision=12, scale=2), nullable=True))
+        batch_op.add_column(sa.Column("min_base", sa.Numeric(precision=12, scale=2), nullable=True))
+        batch_op.add_column(sa.Column("max_base", sa.Numeric(precision=12, scale=2), nullable=True))
 
     # ### end Alembic commands ###
 
