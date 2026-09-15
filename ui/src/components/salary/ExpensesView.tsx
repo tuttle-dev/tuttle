@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { ReceiptText, Plus, Trash2, Save, X, Info } from "lucide-react";
+import { ReceiptText, Plus, Trash2, Save, X, Info, Percent } from "lucide-react";
 import { rpc } from "../../api/rpc";
 import { str, num } from "../../api/entity";
 import { Toolbar, ToolbarButtonPrimary, ListDetailLayout, LIST_ROW_PADDING } from "../shared/ToolbarButtons";
@@ -21,9 +21,20 @@ const CYCLE_OPTIONS = [
 const CATEGORY_OPTIONS = [
   { value: "operating", label: "Operating" },
   { value: "insurance", label: "Insurance" },
+  { value: "health", label: "Health Care" },
+  { value: "pension", label: "Pension" },
   { value: "professional", label: "Professional" },
   { value: "other", label: "Other" },
 ];
+
+/** A dynamic expense is a percentage of income; `rate` is what distinguishes it. */
+function isDynamic(expense: Entity): boolean {
+  return expense.rate != null;
+}
+
+function fmtRate(rate: number): string {
+  return `${rate}% of income`;
+}
 
 /** Normalize a recurring amount to its monthly equivalent (mirrors backend `_normalize_to_monthly`). */
 const PERIOD_TO_MONTHLY_DIVISOR: Record<string, number> = {
@@ -95,6 +106,10 @@ export function ExpensesView() {
       currency: data.currency,
       period: data.period,
       category: data.category,
+      rate: data.rate,
+      tax_deductible: data.taxDeductible,
+      min_monthly: data.minMonthly,
+      max_monthly: data.maxMonthly,
     };
     if (mode === "edit" && selected) {
       expense.id = selected.id;
@@ -144,10 +159,12 @@ export function ExpensesView() {
     grouped.get(label)!.push(e);
   }
 
-  // Monthly total (all expenses, not just filtered)
+  // Monthly total of the fixed expenses. Dynamic ones depend on income the
+  // backend knows about, so they are only counted, not summed, here.
   const monthlyTotal = expenses.reduce((sum, e) => {
-    return sum + toMonthly(num(e, "amount"), str(e, "period"));
+    return isDynamic(e) ? sum : sum + toMonthly(num(e, "amount"), str(e, "period"));
   }, 0);
+  const dynamicCount = expenses.filter(isDynamic).length;
   const totalCurrency = expenses.length > 0 ? str(expenses[0], "currency") : "EUR";
 
   if (loading && expenses.length === 0) {
@@ -175,6 +192,7 @@ export function ExpensesView() {
               {expenses.length > 0 && (
                 <span className="ml-2 text-tertiary">
                   · {fmt(monthlyTotal, totalCurrency)}/mo
+                  {dynamicCount > 0 && ` + ${dynamicCount} income-dependent`}
                 </span>
               )}
             </>
@@ -234,18 +252,19 @@ function ExpenseRow({ expense, isSelected, onSelect }: {
   const amount = num(expense, "amount");
   const currency = str(expense, "currency");
   const period = str(expense, "period");
+  const dynamic = isDynamic(expense);
 
   return (
     <button onClick={onSelect}
       className={`w-full text-left ${LIST_ROW_PADDING} border-b border-border-subtle transition-colors flex items-center gap-3
         ${isSelected ? "bg-bg-selected" : "hover:bg-bg-hover"}`}>
       <div className="w-9 h-9 rounded-full bg-bg-card flex items-center justify-center text-sm font-semibold text-secondary shrink-0">
-        <ReceiptText size={16} />
+        {dynamic ? <Percent size={16} /> : <ReceiptText size={16} />}
       </div>
       <div className="min-w-0 flex-1">
         <div className="text-sm font-medium truncate">{title}</div>
         <div className="text-xs text-tertiary truncate">
-          {fmt(amount, currency)} / {period}
+          {dynamic ? fmtRate(num(expense, "rate")) : `${fmt(amount, currency)} / ${period}`}
         </div>
       </div>
     </button>
@@ -268,6 +287,11 @@ function ExpenseDetail({ expense, onEdit, onDelete, deleteError }: {
   const period = str(expense, "period");
   const category = str(expense, "category");
   const monthly = toMonthly(amount, period);
+  const dynamic = isDynamic(expense);
+  const rate = num(expense, "rate");
+  const deductible = expense.tax_deductible === true;
+  const minMonthly = expense.min_monthly != null ? num(expense, "min_monthly") : null;
+  const maxMonthly = expense.max_monthly != null ? num(expense, "max_monthly") : null;
 
   return (
     <div className="p-6 space-y-6 max-w-xl">
@@ -310,14 +334,43 @@ function ExpenseDetail({ expense, onEdit, onDelete, deleteError }: {
       )}
 
       <div className="grid grid-cols-2 gap-4">
-        <InfoRow icon={<ReceiptText size={14} />} label="Amount" value={fmt(amount, currency)} />
-        <InfoRow icon={<Info size={14} />} label="Period" value={period.charAt(0).toUpperCase() + period.slice(1)} />
+        {dynamic ? (
+          <>
+            <InfoRow icon={<Percent size={14} />} label="Rate" value={fmtRate(rate)} />
+            <InfoRow
+              icon={<Info size={14} />}
+              label="Tax Treatment"
+              value={deductible ? "Deductible" : "Paid from taxed income"}
+            />
+          </>
+        ) : (
+          <>
+            <InfoRow icon={<ReceiptText size={14} />} label="Amount" value={fmt(amount, currency)} />
+            <InfoRow icon={<Info size={14} />} label="Period" value={period.charAt(0).toUpperCase() + period.slice(1)} />
+          </>
+        )}
       </div>
 
-      <div className="p-3 rounded-lg bg-bg-card border border-border-subtle">
-        <div className="text-xs font-semibold uppercase tracking-wider text-tertiary">Monthly Equivalent</div>
-        <div className="text-sm font-medium mt-0.5">{fmt(monthly, currency)}/mo</div>
-      </div>
+      {dynamic ? (
+        <div className="p-3 rounded-lg bg-bg-card border border-border-subtle">
+          <div className="text-xs font-semibold uppercase tracking-wider text-tertiary">Monthly Amount</div>
+          <div className="text-sm font-medium mt-0.5">
+            {rate}% of {deductible ? "your taxable profit" : "what is left after tax"}
+          </div>
+          {(minMonthly != null || maxMonthly != null) && (
+            <div className="text-xs text-tertiary mt-1">
+              {minMonthly != null && `min ${fmt(minMonthly, currency)}/mo`}
+              {minMonthly != null && maxMonthly != null && " · "}
+              {maxMonthly != null && `max ${fmt(maxMonthly, currency)}/mo`}
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="p-3 rounded-lg bg-bg-card border border-border-subtle">
+          <div className="text-xs font-semibold uppercase tracking-wider text-tertiary">Monthly Equivalent</div>
+          <div className="text-sm font-medium mt-0.5">{fmt(monthly, currency)}/mo</div>
+        </div>
+      )}
     </div>
   );
 }
@@ -342,6 +395,16 @@ interface ExpenseFormData {
   currency: string;
   period: string;
   category: string;
+  rate: number | null;
+  taxDeductible: boolean;
+  minMonthly: number | null;
+  maxMonthly: number | null;
+}
+
+/** Optional numeric input -> number, or null when left blank. */
+function optionalNum(value: string): number | null {
+  const parsed = parseFloat(value);
+  return value.trim() === "" || Number.isNaN(parsed) ? null : parsed;
 }
 
 function ExpenseForm({ expense, onSave, onCancel, error }: {
@@ -356,16 +419,32 @@ function ExpenseForm({ expense, onSave, onCancel, error }: {
   const [currency, setCurrency] = useState(expense ? str(expense, "currency") : "EUR");
   const [period, setPeriod] = useState(expense ? str(expense, "period") : "monthly");
   const [category, setCategory] = useState(expense ? str(expense, "category") : "operating");
+  const [dynamic, setDynamic] = useState(expense ? isDynamic(expense) : false);
+  const [rateStr, setRateStr] = useState(expense && expense.rate != null ? str(expense, "rate") : "");
+  const [taxDeductible, setTaxDeductible] = useState(expense ? expense.tax_deductible === true : false);
+  const [minStr, setMinStr] = useState(expense && expense.min_monthly != null ? str(expense, "min_monthly") : "");
+  const [maxStr, setMaxStr] = useState(expense && expense.max_monthly != null ? str(expense, "max_monthly") : "");
   const [saving, setSaving] = useState(false);
   const isNew = !expense;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
-    const amountVal = parseFloat(amountStr) || 0;
-    await onSave({ title, amount: amountVal, currency, period, category });
+    await onSave({
+      title,
+      amount: dynamic ? 0 : parseFloat(amountStr) || 0,
+      currency,
+      period,
+      category,
+      rate: dynamic ? optionalNum(rateStr) : null,
+      taxDeductible,
+      minMonthly: dynamic ? optionalNum(minStr) : null,
+      maxMonthly: dynamic ? optionalNum(maxStr) : null,
+    });
     setSaving(false);
   }
+
+  const canSave = title.trim() !== "" && (dynamic ? rateStr.trim() !== "" : amountStr.trim() !== "");
 
   return (
     <form onSubmit={handleSubmit} className="p-5 space-y-5">
@@ -376,7 +455,7 @@ function ExpenseForm({ expense, onSave, onCancel, error }: {
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm text-secondary hover:text-primary hover:bg-bg-hover transition-colors">
             <X size={14} /> Cancel
           </button>
-          <button type="submit" disabled={saving || !title.trim() || !amountStr.trim()}
+          <button type="submit" disabled={saving || !canSave}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium text-primary hover:bg-bg-hover transition-colors disabled:opacity-40">
             <Save size={14} /> {saving ? "Saving…" : "Save"}
           </button>
@@ -401,22 +480,65 @@ function ExpenseForm({ expense, onSave, onCancel, error }: {
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs text-tertiary mb-1">
-              Amount{isRequired("amount") && <span className="text-accent ml-0.5">*</span>}
-            </label>
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              value={amountStr}
-              onChange={(e) => setAmountStr(e.target.value)}
-              required
-              placeholder="e.g. 350.00"
-              className="w-full px-3 py-2 rounded-md text-sm bg-bg-card text-primary border border-border-subtle outline-none focus:border-accent transition-colors placeholder:text-muted"
-            />
+        <div>
+          <label className="block text-xs text-tertiary mb-1">Cost</label>
+          <div className="flex gap-2">
+            {[
+              { value: false, label: "Fixed amount", hint: "Same every period" },
+              { value: true, label: "Percentage of income", hint: "Health care, pension" },
+            ].map((opt) => (
+              <button
+                key={String(opt.value)}
+                type="button"
+                onClick={() => setDynamic(opt.value)}
+                className={`flex-1 px-3 py-2 rounded-md text-left border transition-colors
+                  ${dynamic === opt.value ? "border-accent bg-accent/10" : "border-border-subtle hover:bg-bg-hover"}`}
+              >
+                <div className="text-sm font-medium">{opt.label}</div>
+                <div className="text-xs text-tertiary">{opt.hint}</div>
+              </button>
+            ))}
           </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          {dynamic ? (
+            <div>
+              <label className="block text-xs text-tertiary mb-1">
+                Rate<span className="text-accent ml-0.5">*</span>
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  step="0.001"
+                  min="0"
+                  max="100"
+                  value={rateStr}
+                  onChange={(e) => setRateStr(e.target.value)}
+                  required
+                  placeholder="e.g. 19.6"
+                  className="w-full px-3 py-2 pr-8 rounded-md text-sm bg-bg-card text-primary border border-border-subtle outline-none focus:border-accent transition-colors placeholder:text-muted"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-tertiary">%</span>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <label className="block text-xs text-tertiary mb-1">
+                Amount{isRequired("amount") && <span className="text-accent ml-0.5">*</span>}
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={amountStr}
+                onChange={(e) => setAmountStr(e.target.value)}
+                required
+                placeholder="e.g. 350.00"
+                className="w-full px-3 py-2 rounded-md text-sm bg-bg-card text-primary border border-border-subtle outline-none focus:border-accent transition-colors placeholder:text-muted"
+              />
+            </div>
+          )}
 
           <div>
             <label className="block text-xs text-tertiary mb-1">
@@ -433,21 +555,52 @@ function ExpenseForm({ expense, onSave, onCancel, error }: {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs text-tertiary mb-1">
-              Recurrence Period{isRequired("period") && <span className="text-accent ml-0.5">*</span>}
-            </label>
-            <select
-              value={period}
-              onChange={(e) => setPeriod(e.target.value)}
-              className="w-full px-3 py-2 rounded-md text-sm bg-bg-card text-primary border border-border-subtle outline-none focus:border-accent transition-colors"
-            >
-              {CYCLE_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
+        {dynamic && (
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-tertiary mb-1">Minimum / month</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={minStr}
+                onChange={(e) => setMinStr(e.target.value)}
+                placeholder="optional"
+                className="w-full px-3 py-2 rounded-md text-sm bg-bg-card text-primary border border-border-subtle outline-none focus:border-accent transition-colors placeholder:text-muted"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-tertiary mb-1">Maximum / month</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={maxStr}
+                onChange={(e) => setMaxStr(e.target.value)}
+                placeholder="optional"
+                className="w-full px-3 py-2 rounded-md text-sm bg-bg-card text-primary border border-border-subtle outline-none focus:border-accent transition-colors placeholder:text-muted"
+              />
+            </div>
           </div>
+        )}
+
+        <div className="grid grid-cols-2 gap-3">
+          {!dynamic && (
+            <div>
+              <label className="block text-xs text-tertiary mb-1">
+                Recurrence Period{isRequired("period") && <span className="text-accent ml-0.5">*</span>}
+              </label>
+              <select
+                value={period}
+                onChange={(e) => setPeriod(e.target.value)}
+                className="w-full px-3 py-2 rounded-md text-sm bg-bg-card text-primary border border-border-subtle outline-none focus:border-accent transition-colors"
+              >
+                {CYCLE_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div>
             <label className="block text-xs text-tertiary mb-1">
@@ -464,6 +617,23 @@ function ExpenseForm({ expense, onSave, onCancel, error }: {
             </select>
           </div>
         </div>
+
+        <label className="flex items-start gap-2.5 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={taxDeductible}
+            onChange={(e) => setTaxDeductible(e.target.checked)}
+            className="mt-0.5 accent-accent"
+          />
+          <span>
+            <span className="text-sm">Tax deductible</span>
+            <span className="block text-xs text-tertiary">
+              {taxDeductible
+                ? "Reduces your taxable income, and is charged on the taxable profit."
+                : "Paid out of income that has already been taxed."}
+            </span>
+          </span>
+        </label>
       </div>
 
       {error && <p className="text-xs text-red-400">{error}</p>}
