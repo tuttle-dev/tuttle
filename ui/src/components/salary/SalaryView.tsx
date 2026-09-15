@@ -3,7 +3,7 @@ import { Wallet, BarChart3 } from "lucide-react";
 import { rpc } from "../../api/rpc";
 import { EmptyStateIntro } from "../shared/EmptyStateIntro";
 import type { Entity } from "../../api/types";
-import { num } from "../../api/entity";
+import { num, type DynamicLine } from "../../api/entity";
 
 function fmt(value: number, currency = "EUR"): string {
   try {
@@ -15,6 +15,7 @@ type SalaryData = {
   conservative: number;
   optimistic: number;
   monthlyExpenses: number;
+  dynamicLines: DynamicLine[];
   incomeTaxReserve: number;
   vatReserve: number;
   currency: string;
@@ -45,6 +46,7 @@ export function SalaryView() {
           conservative: con,
           optimistic: opt,
           monthlyExpenses: num(sal, "monthly_expenses"),
+          dynamicLines: (sal.dynamic_expenses as DynamicLine[]) || [],
           incomeTaxReserve: num(sal, "income_tax_reserve_monthly"),
           vatReserve: num(sal, "vat_reserve_monthly"),
           currency: cur,
@@ -144,15 +146,23 @@ function SalaryDial({ salary, target, onTargetChange }: {
 }
 
 function MonthlyBreakdown({ salary, countrySupported, taxCountry }: { salary: SalaryData; countrySupported: boolean; taxCountry: string }) {
-  const { optimistic, vatReserve, incomeTaxReserve, monthlyExpenses, currency } = salary;
-  const gross = optimistic + incomeTaxReserve + vatReserve + monthlyExpenses;
+  const { optimistic, vatReserve, incomeTaxReserve, monthlyExpenses, dynamicLines, currency } = salary;
+  const dynamicTotal = dynamicLines.reduce((sum, line) => sum + line.amount, 0);
+  const gross = optimistic + incomeTaxReserve + vatReserve + monthlyExpenses + dynamicTotal;
   if (gross <= 0) return null;
 
   const items: { label: string; amount: number; color: string; bold?: boolean; muted?: boolean }[] = [
     { label: "Gross Revenue / month", amount: gross, color: "var(--color-status-info)" },
     { label: "VAT (to remit)", amount: vatReserve, color: "var(--color-status-warning)" },
     { label: "Est. Income Tax", amount: incomeTaxReserve, color: "var(--color-status-warning)", muted: !countrySupported },
-    { label: "Recurring Expenses", amount: monthlyExpenses, color: "var(--color-status-warning)" },
+    ...(monthlyExpenses > 0
+      ? [{ label: "Fixed Recurring Expenses", amount: monthlyExpenses, color: "var(--color-status-warning)" }]
+      : []),
+    ...dynamicLines.map((line) => ({
+      label: `${line.title} (${line.rate}%)`,
+      amount: line.amount,
+      color: "var(--color-status-warning)",
+    })),
     { label: "= Available Salary", amount: optimistic, color: optimistic >= 0 ? "var(--color-status-success)" : "var(--color-status-danger)", bold: true },
   ];
 
