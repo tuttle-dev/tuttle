@@ -1,6 +1,7 @@
 """Business logic for the dashboard view."""
 
 import datetime
+from decimal import Decimal
 
 from ...forecasting import (
     cash_flow_projection,
@@ -8,6 +9,7 @@ from ...forecasting import (
     revenue_curve_with_calendar,
     revenue_series,
 )
+from ...fx import primary_currency
 from ...kpi import (
     compute_kpis,
     monthly_revenue_breakdown,
@@ -15,6 +17,7 @@ from ...kpi import (
     project_budget_status,
 )
 from ...model import Contract, FinancialGoal, Invoice, Project, User
+from ...tax_reserves import convert_invoice
 from ..core.abstractions import Intent, SQLModelDataSourceMixin
 from ..core.intent_result import IntentResult
 from ..timetracking.data_source import TimeTrackingDataFrameSource
@@ -189,32 +192,51 @@ class DashboardIntent(SQLModelDataSourceMixin, Intent):
                 exception=e,
             )
 
+    def _revenue_by_target_year(self, invoices, currency: str) -> dict:
+        """Paid revenue accumulated from Jan 1 of each year up to today.
+
+        A goal is measured against its own target year, not the current one,
+        so a goal due in a future year does not inherit this year's revenue.
+        """
+        today = datetime.date.today()
+        totals: dict = {}
+        for inv in invoices:
+            if inv.cancelled or not inv.paid or inv.date > today:
+                continue
+            converted = convert_invoice(inv, currency)
+            if converted is None:
+                # No resolvable FX rate — leave it out rather than count it as zero.
+                continue
+            year = inv.date.year
+            totals[year] = totals.get(year, Decimal(0)) + converted[0]
+        return totals
+
     def get_financial_goals(self) -> IntentResult:
-        """Load all financial goals with progress calculated against YTD revenue."""
+        """Load all financial goals with progress against their target year's revenue."""
         try:
             goals = self.query(FinancialGoal)
             invoices = self.query(Invoice)
             country = self._get_country()
-            time_data = self._time_data_source.get_data_frame()
-            kpis = compute_kpis(
-                invoices,
-                self.query(Contract),
-                self.query(Project),
-                country=country,
-                time_data=time_data,
-            )
-            ytd_revenue = float(kpis.total_revenue_ytd)
+            currency = primary_currency(country)
+            revenue_by_year = self._revenue_by_target_year(invoices, currency)
 
             goals_with_progress = []
             for g in goals:
+                revenue = float(revenue_by_year.get(g.target_date.year, Decimal(0)))
                 target = float(g.target_amount)
-                progress = min(ytd_revenue / target, 1.0) if target > 0 else 0.0
+                progress = min(revenue / target, 1.0) if target > 0 else 0.0
+
+                # A met goal is a historical fact: set the flag, never clear it.
+                if progress >= 1.0 and not g.is_reached:
+                    g.is_reached = True
+                    self.store(g)
+
                 goals_with_progress.append(
                     {
                         "goal": g,
                         "progress": progress,
-                        "ytd_revenue": ytd_revenue,
-                        "currency": kpis.tax_currency,
+                        "ytd_revenue": revenue,
+                        "currency": currency,
                     }
                 )
             return IntentResult(was_intent_successful=True, data=goals_with_progress)
@@ -238,6 +260,23 @@ class DashboardIntent(SQLModelDataSourceMixin, Intent):
                 log_message=f"DashboardIntent.save_financial_goal: {e}",
                 exception=e,
             )
+
+    def save_financial_goal_from_dict(self, data: dict) -> IntentResult:
+        """Create or update a financial goal from a plain dict."""
+        clean = {k: v for k, v in data.items() if k != "id" and not k.startswith("_")}
+        # The update path bypasses Pydantic validation, so coerce the date here.
+        target_date = clean.get("target_date")
+        if isinstance(target_date, str):
+            clean["target_date"] = datetime.date.fromisoformat(target_date)
+
+        goal_id = data.get("id")
+        if goal_id:
+            existing = next((g for g in self.query(FinancialGoal) if g.id == goal_id), None)
+            if existing:
+                for k, v in clean.items():
+                    setattr(existing, k, v)
+                return self.save_financial_goal(existing)
+        return self.save_financial_goal(FinancialGoal(**clean))
 
     def delete_financial_goal(self, goal_id: int) -> IntentResult:
         """Delete a financial goal by ID."""
