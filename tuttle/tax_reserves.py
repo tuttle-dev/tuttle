@@ -333,7 +333,8 @@ def compute_spendable_income(
         )
 
     # Compute YTD business expenses from the fixed-amount recurring expenses
-    fixed_expenses, dynamic_expenses = split_expenses(expenses or [])
+    fixed_expenses = [e for e in (expenses or []) if e.rate is None]
+    dynamic_expenses = [e for e in (expenses or []) if e.rate is not None]
     biz_expenses_ytd = (_monthly_expenses_total(fixed_expenses) * months_elapsed).quantize(Decimal("0.01"))
 
     taxable_profit = net_ytd + planned - biz_expenses_ytd
@@ -385,15 +386,6 @@ def compute_spendable_income(
         tax_base=tax_base,
         dynamic_expenses=dynamic_lines,
     )
-
-
-def split_expenses(
-    expenses: List[RecurringExpense],
-) -> tuple[List[RecurringExpense], List[RecurringExpense]]:
-    """Partition recurring expenses into fixed-amount and income-dependent ones."""
-    fixed = [e for e in expenses if e.rate is None]
-    dynamic = [e for e in expenses if e.rate is not None]
-    return fixed, dynamic
 
 
 def dynamic_monthly(expense: RecurringExpense, monthly_income: Decimal) -> Decimal:
@@ -459,7 +451,7 @@ class EffectiveSalary(NamedTuple):
     monthly_expenses     — normalized total of the fixed recurring expenses
     income_tax_reserve_monthly — prorated income-tax reserve per month
     vat_reserve_monthly        — prorated VAT reserve per month
-    dynamic_expenses_monthly   — income-dependent expenses (health, pension) per month
+    dynamic_expenses     — income-dependent expenses (health, pension), one line each
     currency             — ISO 4217 currency code
     """
 
@@ -469,7 +461,6 @@ class EffectiveSalary(NamedTuple):
     income_tax_reserve_monthly: Decimal
     vat_reserve_monthly: Decimal
     currency: str
-    dynamic_expenses_monthly: Decimal = Decimal(0)
     dynamic_expenses: list = []  # per-expense DynamicExpenseLine, never mutated
 
 
@@ -525,8 +516,8 @@ def compute_effective_salary(
     monthly_vat_conservative = (vat_paid / months_elapsed).quantize(Decimal("0.01"))
     monthly_vat_optimistic = ((vat_paid + vat_outstanding) / months_elapsed).quantize(Decimal("0.01"))
 
-    fixed_expenses, dynamic_expenses = split_expenses(expenses)
-    monthly_exp = _monthly_expenses_total(fixed_expenses)
+    dynamic_expenses = [e for e in expenses if e.rate is not None]
+    monthly_exp = _monthly_expenses_total([e for e in expenses if e.rate is None])
 
     def scenario(net: Decimal) -> tuple[Decimal, Decimal, List[DynamicExpenseLine]]:
         """Monthly salary, income-tax reserve and dynamic expense lines for a revenue basis."""
@@ -549,13 +540,9 @@ def compute_effective_salary(
         con._replace(amount=((con.amount + opt.amount) / 2).quantize(Decimal("0.01")))
         for con, opt in zip(lines_conservative, lines_optimistic)
     ]
-    dyn_conservative = _lines_total(lines_conservative)
-    dyn_optimistic = _lines_total(lines_optimistic)
-
     # Use the average monthly figures for display breakdown
     avg_monthly_vat = ((monthly_vat_conservative + monthly_vat_optimistic) / 2).quantize(Decimal("0.01"))
     avg_monthly_tax = ((monthly_tax_conservative + monthly_tax_optimistic) / 2).quantize(Decimal("0.01"))
-    avg_monthly_dynamic = ((dyn_conservative + dyn_optimistic) / 2).quantize(Decimal("0.01"))
 
     return EffectiveSalary(
         conservative_monthly=conservative,
@@ -564,7 +551,6 @@ def compute_effective_salary(
         income_tax_reserve_monthly=avg_monthly_tax,
         vat_reserve_monthly=avg_monthly_vat,
         currency=currency,
-        dynamic_expenses_monthly=avg_monthly_dynamic,
         dynamic_expenses=dynamic_lines,
     )
 

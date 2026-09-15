@@ -4,6 +4,9 @@
 
 import type { Entity } from "./types";
 
+/** One income-dependent recurring expense, already resolved to an amount. */
+export type DynamicLine = { title: string; rate: number; amount: number; tax_deductible: boolean };
+
 export function str(e: Entity, key: string): string {
   const v = e[key];
   if (v == null) return "";

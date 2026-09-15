@@ -175,8 +175,8 @@ class TestEffectiveSalary:
         plain = compute_effective_salary(invoices, [], "Germany")
         dynamic = compute_effective_salary(invoices, [_health()], "Germany")
 
-        assert plain.dynamic_expenses_monthly == 0
-        assert dynamic.dynamic_expenses_monthly > 0
+        assert plain.dynamic_expenses == []
+        assert sum(line.amount for line in dynamic.dynamic_expenses) > 0
         assert dynamic.conservative_monthly < plain.conservative_monthly
         assert dynamic.optimistic_monthly < plain.optimistic_monthly
 
@@ -184,4 +184,4 @@ class TestEffectiveSalary:
         fixed = RecurringExpense(title="Software", amount=Decimal("100"), currency="EUR", period=Cycle.monthly)
         result = compute_effective_salary(invoices, [fixed], "Germany")
         assert result.monthly_expenses == Decimal("100.00")
-        assert result.dynamic_expenses_monthly == 0
+        assert result.dynamic_expenses == []

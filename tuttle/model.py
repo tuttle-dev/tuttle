@@ -1613,11 +1613,6 @@ class RecurringExpense(SQLModel, table=True):
         sa_column=sqlalchemy.Column(sqlalchemy.Numeric(12, 2), nullable=True),
     )
 
-    @property
-    def is_dynamic(self) -> bool:
-        """Whether this expense is a percentage of income rather than a fixed amount."""
-        return self.rate is not None
-
 
 class Task(RpcMixin, SQLModel, table=True):
     """A user-facing action item (tutorial step or business task)."""

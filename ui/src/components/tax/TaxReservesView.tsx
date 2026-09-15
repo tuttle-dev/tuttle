@@ -3,7 +3,7 @@ import { BarChart3, ReceiptText, Calculator, ChevronDown } from "lucide-react";
 import { rpc } from "../../api/rpc";
 import { EmptyStateIntro } from "../shared/EmptyStateIntro";
 import type { Entity } from "../../api/types";
-import { str, num, bool } from "../../api/entity";
+import { str, num, bool, type DynamicLine } from "../../api/entity";
 
 function fmt(value: number, currency = "EUR"): string {
   try {
@@ -14,9 +14,6 @@ function fmt(value: number, currency = "EUR"): string {
 function fmtPct(value: number): string {
   return `${(value * 100).toFixed(1)}%`;
 }
-
-/** One income-dependent expense, already resolved to an amount for the period. */
-type DynamicLine = { title: string; rate: number; amount: number; tax_deductible: boolean };
 
 export function TaxReservesView() {
   const [spending, setSpending] = useState<Entity | null>(null);
@@ -104,10 +101,9 @@ export function TaxReservesView() {
           const vat = num(sp!, "vat_reserve");
           const bizExpenses = num(sp!, "business_expenses");
           const taxableProfit = num(sp!, "taxable_profit");
-          const dynDeductible = num(sp!, "dynamic_expenses_deductible");
           const taxBase = num(sp!, "tax_base");
-          const dynPostTax = num(sp!, "dynamic_expenses_post_tax");
           const dynLines = (sp!.dynamic_expenses as DynamicLine[]) || [];
+          const deductibleLines = dynLines.filter((l) => l.tax_deductible);
           const tax = num(sp!, "income_tax_reserve");
           const spendable = num(sp!, "spendable");
           return (
@@ -124,9 +120,9 @@ export function TaxReservesView() {
                 <WaterfallBar label="Fixed Recurring Expenses" amount={bizExpenses} total={totalBase} color="var(--color-status-warning)" currency={currency} />
               )}
               <WaterfallBar label="= Taxable Profit" amount={taxableProfit} total={totalBase} color="var(--color-status-info)" currency={currency} />
-              {dynDeductible > 0 && (
+              {deductibleLines.length > 0 && (
                 <>
-                  {dynLines.filter((l) => l.tax_deductible).map((line) => (
+                  {deductibleLines.map((line) => (
                     <WaterfallBar key={line.title} label={`${line.title} (${line.rate}%, deductible)`} amount={line.amount} total={totalBase} color="var(--color-status-warning)" currency={currency} />
                   ))}
                   <WaterfallBar label="= Tax Base" amount={taxBase} total={totalBase} color="var(--color-status-info)" currency={currency} />
@@ -135,7 +131,7 @@ export function TaxReservesView() {
               <div className={countrySupported ? "" : "opacity-40"}>
                 <WaterfallBar label="Est. Income Tax" amount={tax} total={totalBase} color="var(--color-status-warning)" currency={currency} />
               </div>
-              {dynPostTax > 0 && dynLines.filter((l) => !l.tax_deductible).map((line) => (
+              {dynLines.filter((l) => !l.tax_deductible).map((line) => (
                 <WaterfallBar key={line.title} label={`${line.title} (${line.rate}%, from taxed income)`} amount={line.amount} total={totalBase} color="var(--color-status-warning)" currency={currency} />
               ))}
               {!countrySupported && (

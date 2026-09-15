@@ -351,26 +351,23 @@ function ExpenseDetail({ expense, onEdit, onDelete, deleteError }: {
         )}
       </div>
 
-      {dynamic ? (
-        <div className="p-3 rounded-lg bg-bg-card border border-border-subtle">
-          <div className="text-xs font-semibold uppercase tracking-wider text-tertiary">Monthly Amount</div>
-          <div className="text-sm font-medium mt-0.5">
-            {rate}% of {deductible ? "your taxable profit" : "what is left after tax"}
+      <div className="p-3 rounded-lg bg-bg-card border border-border-subtle">
+        <div className="text-xs font-semibold uppercase tracking-wider text-tertiary">
+          {dynamic ? "Monthly Amount" : "Monthly Equivalent"}
+        </div>
+        <div className="text-sm font-medium mt-0.5">
+          {dynamic
+            ? `${rate}% of ${deductible ? "your taxable profit" : "what is left after tax"}`
+            : `${fmt(monthly, currency)}/mo`}
+        </div>
+        {dynamic && (minMonthly != null || maxMonthly != null) && (
+          <div className="text-xs text-tertiary mt-1">
+            {minMonthly != null && `min ${fmt(minMonthly, currency)}/mo`}
+            {minMonthly != null && maxMonthly != null && " · "}
+            {maxMonthly != null && `max ${fmt(maxMonthly, currency)}/mo`}
           </div>
-          {(minMonthly != null || maxMonthly != null) && (
-            <div className="text-xs text-tertiary mt-1">
-              {minMonthly != null && `min ${fmt(minMonthly, currency)}/mo`}
-              {minMonthly != null && maxMonthly != null && " · "}
-              {maxMonthly != null && `max ${fmt(maxMonthly, currency)}/mo`}
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="p-3 rounded-lg bg-bg-card border border-border-subtle">
-          <div className="text-xs font-semibold uppercase tracking-wider text-tertiary">Monthly Equivalent</div>
-          <div className="text-sm font-medium mt-0.5">{fmt(monthly, currency)}/mo</div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

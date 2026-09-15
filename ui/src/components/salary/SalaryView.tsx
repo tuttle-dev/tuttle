@@ -3,7 +3,7 @@ import { Wallet, BarChart3 } from "lucide-react";
 import { rpc } from "../../api/rpc";
 import { EmptyStateIntro } from "../shared/EmptyStateIntro";
 import type { Entity } from "../../api/types";
-import { num } from "../../api/entity";
+import { num, type DynamicLine } from "../../api/entity";
 
 function fmt(value: number, currency = "EUR"): string {
   try {
@@ -15,15 +15,11 @@ type SalaryData = {
   conservative: number;
   optimistic: number;
   monthlyExpenses: number;
-  dynamicExpenses: number;
   dynamicLines: DynamicLine[];
   incomeTaxReserve: number;
   vatReserve: number;
   currency: string;
 };
-
-/** One income-dependent expense, already resolved to a monthly amount. */
-type DynamicLine = { title: string; rate: number; amount: number; tax_deductible: boolean };
 
 export function SalaryView() {
   const [salary, setSalary] = useState<SalaryData | null>(null);
@@ -50,7 +46,6 @@ export function SalaryView() {
           conservative: con,
           optimistic: opt,
           monthlyExpenses: num(sal, "monthly_expenses"),
-          dynamicExpenses: num(sal, "dynamic_expenses_monthly"),
           dynamicLines: (sal.dynamic_expenses as DynamicLine[]) || [],
           incomeTaxReserve: num(sal, "income_tax_reserve_monthly"),
           vatReserve: num(sal, "vat_reserve_monthly"),
@@ -151,8 +146,9 @@ function SalaryDial({ salary, target, onTargetChange }: {
 }
 
 function MonthlyBreakdown({ salary, countrySupported, taxCountry }: { salary: SalaryData; countrySupported: boolean; taxCountry: string }) {
-  const { optimistic, vatReserve, incomeTaxReserve, monthlyExpenses, dynamicExpenses, dynamicLines, currency } = salary;
-  const gross = optimistic + incomeTaxReserve + vatReserve + monthlyExpenses + dynamicExpenses;
+  const { optimistic, vatReserve, incomeTaxReserve, monthlyExpenses, dynamicLines, currency } = salary;
+  const dynamicTotal = dynamicLines.reduce((sum, line) => sum + line.amount, 0);
+  const gross = optimistic + incomeTaxReserve + vatReserve + monthlyExpenses + dynamicTotal;
   if (gross <= 0) return null;
 
   const items: { label: string; amount: number; color: string; bold?: boolean; muted?: boolean }[] = [
