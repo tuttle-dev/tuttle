@@ -8,6 +8,7 @@ Catches detached-instance errors, missing modules, serialisation bugs, and
 data-shape mismatches between the Python core and the frontend.
 """
 
+import datetime
 import importlib
 import json
 from decimal import Decimal
@@ -636,6 +637,92 @@ class TestCrudSaveBehavior:
         )
         assert_ok(result)
         assert result["data"]["end_date"] is None
+
+
+class TestFinancialGoals:
+    """CRUD and progress rules for financial goals (issue #499)."""
+
+    @pytest.fixture(autouse=True)
+    def _demo_db(self, rpc_env):
+        """Work against the demo user's database regardless of test ordering."""
+        assert_ok(dispatch("users.switch", {"db_file": "harry-tuttle.db"}))
+
+    def _goals(self) -> list:
+        return assert_ok(dispatch("dashboard.get_financial_goals", {}))["data"]
+
+    def _create(self, title: str, amount: float, target_date: str) -> dict:
+        result = dispatch(
+            "dashboard.save_financial_goal",
+            {"title": title, "target_amount": amount, "target_date": target_date},
+        )
+        return assert_ok(result)["data"]
+
+    def test_create_goal(self, rpc_env):
+        saved = self._create("Test goal", 50000, "2027-12-31")
+        assert saved["id"] is not None
+        assert saved["title"] == "Test goal"
+        assert saved["target_date"] == "2027-12-31"
+
+    def test_update_goal_in_place(self, rpc_env):
+        saved = self._create("Original title", 10000, "2027-06-30")
+        goal_id = saved["id"]
+        before = len(self._goals())
+
+        updated = assert_ok(
+            dispatch(
+                "dashboard.save_financial_goal",
+                {
+                    "id": goal_id,
+                    "title": "Renamed",
+                    "target_amount": 20000,
+                    "target_date": "2027-09-30",
+                },
+            )
+        )["data"]
+
+        assert updated["id"] == goal_id, "Update must not create a new row"
+        assert updated["title"] == "Renamed"
+        assert len(self._goals()) == before, "Update must not add a goal"
+
+    def test_update_coerces_iso_date_string(self, rpc_env):
+        """The update path bypasses Pydantic, so the date needs explicit coercion."""
+        saved = self._create("Date coercion", 1000, "2027-01-31")
+        assert_ok(
+            dispatch(
+                "dashboard.save_financial_goal",
+                {"id": saved["id"], "target_date": "2027-11-30"},
+            )
+        )
+        entry = next(e for e in self._goals() if e["goal"]["id"] == saved["id"])
+        # A raw string written to a date column round-trips as something else.
+        assert entry["goal"]["target_date"] == "2027-11-30"
+
+    def test_progress_uses_goal_target_year_not_current_ytd(self, rpc_env):
+        """A goal due in a future year must not inherit this year's revenue."""
+        far_year = datetime.date.today().year + 5
+        saved = self._create("Far future goal", 1000, f"{far_year}-12-31")
+
+        entry = next(e for e in self._goals() if e["goal"]["id"] == saved["id"])
+        assert entry["ytd_revenue"] == 0, "No invoices exist in that year"
+        assert entry["progress"] == 0.0
+        assert entry["goal"]["is_reached"] is False
+
+    def test_is_reached_set_once_progress_complete(self, rpc_env):
+        """Reaching 100% persists the flag that drives the timeline's success event."""
+        this_year = datetime.date.today().year
+        probe = self._create("Revenue probe", 1_000_000_000, f"{this_year}-12-31")
+        revenue = next(e for e in self._goals() if e["goal"]["id"] == probe["id"])["ytd_revenue"]
+        assert revenue > 0, "Demo data should have paid invoices in the current year"
+
+        saved = self._create("Easily reached", revenue / 2, f"{this_year}-12-31")
+        entry = next(e for e in self._goals() if e["goal"]["id"] == saved["id"])
+        assert entry["progress"] == 1.0
+        assert entry["goal"]["is_reached"] is True, "Flag must be set and persisted"
+
+    def test_delete_goal(self, rpc_env):
+        saved = self._create("Doomed goal", 5000, "2027-12-31")
+        assert_ok(dispatch("dashboard.delete_financial_goal", {"goal_id": saved["id"]}))
+        assert all(e["goal"]["id"] != saved["id"] for e in self._goals())
 
 
 # ---------------------------------------------------------------------------

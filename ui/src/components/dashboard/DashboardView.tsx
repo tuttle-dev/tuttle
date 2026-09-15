@@ -8,6 +8,7 @@ import { str, num, int } from "../../api/entity";
 import { KPICard } from "../shared/KPICard";
 import { EmptyStateIntro } from "../shared/EmptyStateIntro";
 import { RevenueChart } from "./RevenueChart";
+import { FinancialGoalsCard } from "./FinancialGoalsCard";
 import type { Entity } from "../../api/types";
 
 interface BudgetEntry {
@@ -70,6 +71,8 @@ export function DashboardView() {
       </div>
 
       <RevenueChart />
+
+      <FinancialGoalsCard />
 
       {budgets.length > 0 && (
         <div className="rounded-lg bg-bg-card border border-border-subtle p-4 space-y-3">
