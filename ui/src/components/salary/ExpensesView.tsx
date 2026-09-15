@@ -420,6 +420,12 @@ function optionalNum(value: string): number | null {
   return value.trim() === "" || Number.isNaN(parsed) ? null : parsed;
 }
 
+/** An income bound of 0 means unbounded, and is stored as null so the clamp is skipped. */
+function boundOrNull(value: string): number | null {
+  const parsed = optionalNum(value);
+  return parsed === 0 ? null : parsed;
+}
+
 function ExpenseForm({ expense, onSave, onCancel, error }: {
   expense?: Entity;
   onSave: (data: ExpenseFormData) => void;
@@ -435,8 +441,8 @@ function ExpenseForm({ expense, onSave, onCancel, error }: {
   const [dynamic, setDynamic] = useState(expense ? isDynamic(expense) : false);
   const [rateStr, setRateStr] = useState(expense && expense.rate != null ? str(expense, "rate") : "");
   const [taxDeductible, setTaxDeductible] = useState(expense ? expense.tax_deductible === true : false);
-  const [minStr, setMinStr] = useState(expense && expense.min_base != null ? str(expense, "min_base") : "");
-  const [maxStr, setMaxStr] = useState(expense && expense.max_base != null ? str(expense, "max_base") : "");
+  const [minStr, setMinStr] = useState(expense && expense.min_base != null ? str(expense, "min_base") : "0");
+  const [maxStr, setMaxStr] = useState(expense && expense.max_base != null ? str(expense, "max_base") : "0");
   const [saving, setSaving] = useState(false);
   const isNew = !expense;
 
@@ -451,8 +457,8 @@ function ExpenseForm({ expense, onSave, onCancel, error }: {
       category,
       rate: dynamic ? optionalNum(rateStr) : null,
       taxDeductible,
-      minBase: dynamic ? optionalNum(minStr) : null,
-      maxBase: dynamic ? optionalNum(maxStr) : null,
+      minBase: dynamic ? boundOrNull(minStr) : null,
+      maxBase: dynamic ? boundOrNull(maxStr) : null,
     });
     setSaving(false);
   }
@@ -583,7 +589,7 @@ function ExpenseForm({ expense, onSave, onCancel, error }: {
                 min="0"
                 value={minStr}
                 onChange={(e) => setMinStr(e.target.value)}
-                placeholder="min, optional"
+                placeholder="min"
                 className="w-full px-3 py-2 rounded-md text-sm bg-bg-card text-primary border border-border-subtle outline-none focus:border-accent transition-colors placeholder:text-muted"
               />
               <input
@@ -592,7 +598,7 @@ function ExpenseForm({ expense, onSave, onCancel, error }: {
                 min="0"
                 value={maxStr}
                 onChange={(e) => setMaxStr(e.target.value)}
-                placeholder="max, optional"
+                placeholder="max"
                 className="w-full px-3 py-2 rounded-md text-sm bg-bg-card text-primary border border-border-subtle outline-none focus:border-accent transition-colors placeholder:text-muted"
               />
               <select
@@ -606,8 +612,7 @@ function ExpenseForm({ expense, onSave, onCancel, error }: {
               </select>
             </div>
             <p className="text-xs text-tertiary">
-              A Bemessungsgrenze bounds the income, not the cost: a maximum of 70,000/yr means
-              income above that is free of the contribution, capping it at 70,000 × the rate.
+              Bounds the income, not the cost. Income above the maximum is free of the contribution.
             </p>
           </div>
         )}
