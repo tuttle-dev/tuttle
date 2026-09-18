@@ -411,6 +411,9 @@ class InvoicingIntent(Intent):
     def delete_invoice_by_id(self, invoice_id) -> IntentResult[None]:
         """Delete an invoice by id (cascades to timesheets and invoice items)."""
         try:
+            result = self._invoicing_data_source.get_invoice_by_id(invoice_id)
+            if result.was_intent_successful and result.data and result.data.milestone is not None:
+                self._unmark_milestones_invoiced([result.data.milestone])
             self._invoicing_data_source.delete_invoice_by_id(invoice_id)
             return IntentResult(was_intent_successful=True)
         except Exception as ex:
@@ -986,6 +989,14 @@ Best regards,
                 error_msg=f"Failed to toggle the invoice paid status: {ex}",
             )
 
+    def _unmark_milestones_invoiced(self, milestones) -> None:
+        ids = [m.id for m in milestones if m.id is not None]
+        if not ids:
+            return
+        self._invoicing_data_source.unmark_milestones_invoiced(ids)
+        for milestone in milestones:
+            milestone.invoiced = False
+
     def toggle_invoice_cancelled_status(self, invoice: Invoice) -> IntentResult[Invoice]:
         """
         Toggles the "cancelled" status of an invoice and updates it in the data source.
@@ -1001,6 +1012,11 @@ Best regards,
         try:
             invoice.cancelled = not invoice.cancelled
             self._invoicing_data_source.save_invoice(invoice)
+            if invoice.milestone is not None:
+                if invoice.cancelled:
+                    self._unmark_milestones_invoiced([invoice.milestone])
+                else:
+                    self._mark_milestones_invoiced([invoice.milestone])
             return IntentResult(
                 was_intent_successful=True,
                 data=invoice,
