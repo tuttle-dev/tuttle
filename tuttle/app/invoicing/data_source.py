@@ -222,6 +222,26 @@ class InvoicingDataSource(SQLModelDataSourceMixin):
                 exception=ex,
             )
 
+    def unmark_milestones_invoiced(self, milestone_ids: List[int]) -> IntentResult[None]:
+        """Clear the invoiced flag on milestones so they become available again."""
+        try:
+            with self.create_session() as session:
+                for milestone_id in milestone_ids:
+                    milestone = session.get(PaymentMilestone, milestone_id)
+                    if milestone is None:
+                        continue
+                    milestone.invoiced = False
+                    session.add(milestone)
+                session.commit()
+            return IntentResult(was_intent_successful=True)
+        except Exception as ex:
+            return IntentResult(
+                was_intent_successful=False,
+                error_msg="The payment schedule could not be updated.",
+                log_message=f"InvoicingDataSource.unmark_milestones_invoiced({milestone_ids}): {ex}",
+                exception=ex,
+            )
+
     def get_deposit_invoices(self, contract_id: int, project_id: int) -> IntentResult[List[Invoice]]:
         """Deposit invoices of one project, oldest first, ready to be settled.
 
