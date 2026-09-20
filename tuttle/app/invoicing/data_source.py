@@ -222,15 +222,28 @@ class InvoicingDataSource(SQLModelDataSourceMixin):
                 exception=ex,
             )
 
-    def unmark_milestones_invoiced(self, milestone_ids: List[int]) -> IntentResult[None]:
-        """Clear the invoiced flag on milestones so they become available again."""
+    def reconcile_milestones_invoiced(self, contract_id: int) -> IntentResult[None]:
+        """Derive each milestone's invoiced flag of a contract from its live invoices.
+
+        A milestone is invoiced while a non-cancelled deposit references it or a
+        non-cancelled final invoice settles the contract. Cancelled and deleted
+        documents no longer count, so their milestones become billable again.
+        """
         try:
             with self.create_session() as session:
-                for milestone_id in milestone_ids:
-                    milestone = session.get(PaymentMilestone, milestone_id)
-                    if milestone is None:
-                        continue
-                    milestone.invoiced = False
+                live = session.exec(
+                    sqlmodel.select(Invoice).where(
+                        Invoice.contract_id == contract_id,
+                        sqlmodel.col(Invoice.cancelled).is_not(True),
+                    )
+                ).all()
+                deposited = {inv.milestone_id for inv in live if inv.is_deposit and inv.milestone_id is not None}
+                settled = any(inv.is_final_invoice for inv in live)
+                milestones = session.exec(
+                    sqlmodel.select(PaymentMilestone).where(PaymentMilestone.contract_id == contract_id)
+                ).all()
+                for milestone in milestones:
+                    milestone.invoiced = settled or milestone.id in deposited
                     session.add(milestone)
                 session.commit()
             return IntentResult(was_intent_successful=True)
@@ -238,7 +251,7 @@ class InvoicingDataSource(SQLModelDataSourceMixin):
             return IntentResult(
                 was_intent_successful=False,
                 error_msg="The payment schedule could not be updated.",
-                log_message=f"InvoicingDataSource.unmark_milestones_invoiced({milestone_ids}): {ex}",
+                log_message=f"InvoicingDataSource.reconcile_milestones_invoiced({contract_id}): {ex}",
                 exception=ex,
             )
 

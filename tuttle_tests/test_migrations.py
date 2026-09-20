@@ -523,6 +523,89 @@ def test_unreferenced_account_is_kept_but_not_default(bank_accounts_db):
     assert row == (None, 0)
 
 
+# -- Stale milestone invoiced flags (revision 6d26f3f69526) -------------------
+
+_MILESTONE_REPAIR_REVISION = "6d26f3f69526"
+_BEFORE_MILESTONE_REPAIR = "5688486cf305"
+
+
+@pytest.fixture
+def milestone_repair_db(tmp_db: tuple[Path, str]):
+    """Milestones flagged invoiced whose invoices were since cancelled or deleted.
+
+    Before the repair, cancelling or deleting a deposit or final invoice left
+    its milestones flagged, so they could never be invoiced again.
+    """
+    db, url = tmp_db
+    cfg = _alembic_config_for(url)
+    command.upgrade(cfg, _BEFORE_MILESTONE_REPAIR)
+
+    con = sqlite3.connect(db)
+    cur = con.cursor()
+    _insert(cur, "client", id=1, name="ACME")
+    for cid in (1, 2, 3):
+        _insert(
+            cur,
+            "contract",
+            id=cid,
+            title=f"c{cid}",
+            client_id=1,
+            currency="EUR",
+            unit="hour",
+            type="fixed_price",
+            fixed_price=10000,
+            start_date="2026-01-01",
+        )
+        _insert(cur, "project", id=cid, title=f"p{cid}", tag=f"#t{cid}", contract_id=cid, start_date="2026-01-01")
+    for mid, cid in [(1, 1), (2, 1), (3, 1), (4, 1), (5, 2), (6, 3)]:
+        _insert(cur, "paymentmilestone", id=mid, contract_id=cid, title=f"m{mid}", position=mid, invoiced=1)
+    _insert(cur, "paymentmilestone", id=7, contract_id=1, title="m7", position=7, invoiced=0)
+
+    def invoice(iid, cid, document_type, **extra):
+        _insert(
+            cur,
+            "invoice",
+            id=iid,
+            number=f"INV{iid}",
+            date="2026-02-01",
+            contract_id=cid,
+            project_id=cid,
+            document_type=document_type,
+            **extra,
+        )
+
+    invoice(1, 1, "deposit", milestone_id=1)  # live; cancelled left NULL
+    invoice(2, 1, "deposit", milestone_id=2, cancelled=1)
+    # Milestone 3's deposit was deleted: no invoice row remains.
+    invoice(3, 1, "deposit", milestone_id=4, cancelled=0)
+    invoice(4, 2, "final", cancelled=0)
+    invoice(5, 3, "final", cancelled=1)
+    con.commit()
+    con.close()
+
+    command.upgrade(cfg, _MILESTONE_REPAIR_REVISION)
+    con = sqlite3.connect(db)
+    yield con
+    con.close()
+
+
+@pytest.mark.parametrize(
+    "milestone_id,expected",
+    [
+        (1, 1),  # live deposit with cancelled NULL
+        (4, 1),  # live deposit with cancelled 0
+        (2, 0),  # its only deposit was cancelled
+        (3, 0),  # its deposit was deleted
+        (5, 1),  # no deposit of its own, but a live final settles the contract
+        (6, 0),  # only a cancelled final ever covered it
+        (7, 0),  # never invoiced; must not be touched
+    ],
+)
+def test_milestone_flag_follows_the_live_invoices(milestone_repair_db, milestone_id, expected):
+    row = milestone_repair_db.execute("SELECT invoiced FROM paymentmilestone WHERE id = ?", (milestone_id,)).fetchone()
+    assert row[0] == expected
+
+
 def test_user_bank_account_id_is_dropped(bank_accounts_db):
     cols = {r[1] for r in bank_accounts_db.execute("PRAGMA table_info(user)")}
     assert "bank_account_id" not in cols

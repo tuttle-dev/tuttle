@@ -1,8 +1,8 @@
 """repair stale milestone invoiced flags
 
-Revision ID: 32f41850af7f
+Revision ID: 6d26f3f69526
 Revises: 5688486cf305
-Create Date: 2026-09-20 21:11:19.384530
+Create Date: 2026-09-20 21:20:24.302938
 
 ======================================================================
 FROZEN HISTORICAL SNAPSHOT — NOT THE SCHEMA SOURCE OF TRUTH.
@@ -46,41 +46,47 @@ import sqlmodel
 import sqlmodel.sql.sqltypes  # noqa: F401 — ensures runtime resolution of AutoString
 from alembic import op
 
-revision: str = "32f41850af7f"
+revision: str = "6d26f3f69526"
 down_revision: Union[str, Sequence[str], None] = "5688486cf305"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    """Repair milestones that are marked invoiced but have no live deposit invoice."""
+    """Reopen milestones whose invoices were all cancelled or deleted.
+
+    Cancelling or deleting a deposit or final invoice used to leave its
+    milestones flagged as invoiced, so they could never be billed again. A
+    milestone stays invoiced only while a live deposit references it or a
+    live final invoice settles its contract.
+    """
     milestone = sa.table(
         "paymentmilestone",
         sa.column("id", sa.Integer),
+        sa.column("contract_id", sa.Integer),
         sa.column("invoiced", sa.Boolean),
     )
     invoice = sa.table(
         "invoice",
-        sa.column("id", sa.Integer),
+        sa.column("contract_id", sa.Integer),
         sa.column("milestone_id", sa.Integer),
+        sa.column("document_type", sa.String),
         sa.column("cancelled", sa.Boolean),
     )
 
-    # A milestone is stale-invoiced when invoiced=True but no non-cancelled
-    # deposit invoice references it.
-    stale_ids = (
-        sa.select(milestone.c.id)
-        .where(milestone.c.invoiced == True)  # noqa: E712
-        .where(
-            ~sa.exists(
-                sa.select(sa.literal(1))
-                .where(invoice.c.milestone_id == milestone.c.id)
-                .where(sa.or_(invoice.c.cancelled == False, invoice.c.cancelled.is_(None)))  # noqa: E712
-            )
-        )
+    live = sa.or_(invoice.c.cancelled.is_(None), invoice.c.cancelled == sa.false())
+    covered_by_deposit = sa.exists().where(invoice.c.milestone_id == milestone.c.id, live)
+    settled_by_final = sa.exists().where(
+        invoice.c.contract_id == milestone.c.contract_id,
+        invoice.c.document_type == "final",
+        live,
     )
 
-    op.execute(milestone.update().where(milestone.c.id.in_(stale_ids)).values(invoiced=False))
+    op.execute(
+        milestone.update()
+        .where(milestone.c.invoiced == sa.true(), ~covered_by_deposit, ~settled_by_final)
+        .values(invoiced=False)
+    )
 
 
 def downgrade() -> None:
@@ -91,7 +97,7 @@ def downgrade() -> None:
     timestamped backup from ensure_schema()'s pre-upgrade snapshot.
 
     If you need to iterate on a migration during development:
-    1. Delete this revision file (versions/32f41850af7f_*.py)
+    1. Delete this revision file (versions/6d26f3f69526_*.py)
     2. Run `just reset` to wipe ~/.tuttle
     3. Edit model.py, run `just migrate` again
     """
