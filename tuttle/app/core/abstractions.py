@@ -493,13 +493,21 @@ class CrudIntent(SQLModelDataSourceMixin, Intent):
                 )
 
         try:
-            self.entity_type.model_validate(entity.model_dump())
+            validated = self.entity_type.model_validate(entity.model_dump())
         except ValidationError as exc:
             return IntentResult(
                 was_intent_successful=False,
                 error_msg=_validation_error_message(exc),
                 exception=exc,
             )
+        if entity_id:
+            # setattr left the payload's raw values on the tracked entity, so an
+            # enum field holds e.g. "fixed_price" rather than the member. SQLAlchemy
+            # would accept that on flush, but the validators run first and compare
+            # against enum members, so take the coerced values instead.
+            for k in clean:
+                if k in self.entity_type.model_fields:
+                    setattr(entity, k, getattr(validated, k))
 
         return self._validated_save(entity)
 
