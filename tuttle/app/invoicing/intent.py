@@ -234,7 +234,11 @@ class InvoicingIntent(Intent):
             return deposits_result
         deposit_invoices = deposits_result.data or []
 
-        already_settled = [d for d in deposit_invoices if d.deposit_for_id is not None]
+        # A cancelled settlement is void, so its deposits are open to be settled again.
+        invoices = self.get_invoices_for_project_as_map(project.id) or {}
+        already_settled = [
+            d for d in deposit_invoices if d.deposit_for_id in invoices and not invoices[d.deposit_for_id].cancelled
+        ]
         if already_settled:
             return IntentResult(
                 was_intent_successful=False,
@@ -412,9 +416,10 @@ class InvoicingIntent(Intent):
         """Delete an invoice by id (cascades to timesheets and invoice items)."""
         try:
             result = self._invoicing_data_source.get_invoice_by_id(invoice_id)
-            if result.was_intent_successful and result.data and result.data.milestone is not None:
-                self._unmark_milestones_invoiced([result.data.milestone])
+            invoice = result.data if result.was_intent_successful else None
             self._invoicing_data_source.delete_invoice_by_id(invoice_id)
+            if invoice is not None and (invoice.is_deposit or invoice.is_final_invoice):
+                self._invoicing_data_source.reconcile_milestones_invoiced(invoice.contract_id)
             return IntentResult(was_intent_successful=True)
         except Exception as ex:
             logger.error(f"Could not delete invoice with id {invoice_id}: {ex}")
@@ -989,14 +994,6 @@ Best regards,
                 error_msg=f"Failed to toggle the invoice paid status: {ex}",
             )
 
-    def _unmark_milestones_invoiced(self, milestones) -> None:
-        ids = [m.id for m in milestones if m.id is not None]
-        if not ids:
-            return
-        self._invoicing_data_source.unmark_milestones_invoiced(ids)
-        for milestone in milestones:
-            milestone.invoiced = False
-
     def toggle_invoice_cancelled_status(self, invoice: Invoice) -> IntentResult[Invoice]:
         """
         Toggles the "cancelled" status of an invoice and updates it in the data source.
@@ -1012,11 +1009,8 @@ Best regards,
         try:
             invoice.cancelled = not invoice.cancelled
             self._invoicing_data_source.save_invoice(invoice)
-            if invoice.milestone is not None:
-                if invoice.cancelled:
-                    self._unmark_milestones_invoiced([invoice.milestone])
-                else:
-                    self._mark_milestones_invoiced([invoice.milestone])
+            if invoice.is_deposit or invoice.is_final_invoice:
+                self._invoicing_data_source.reconcile_milestones_invoiced(invoice.contract_id)
             return IntentResult(
                 was_intent_successful=True,
                 data=invoice,
