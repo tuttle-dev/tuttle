@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import {
   FolderKanban, Building2, FileSignature, Calendar, Clock, FileText,
   Plus, Trash2, Save, X, FileUp, Sparkles, Check, CheckCheck, Loader2, CheckCircle2,
-  AlertTriangle,
+  AlertTriangle, Copy,
 } from "lucide-react";
 import { rpc } from "../../api/rpc";
 import { str, int, num, bool, entity, dateRange, projectStatus } from "../../api/entity";
@@ -62,6 +62,7 @@ export function ProjectsView() {
   const [parsedProjects, setParsedProjects] = useState<ParsedProject[]>([]);
   const [parsing, setParsing] = useState(false);
   const [parseError, setParseError] = useState<string | null>(null);
+  const [duplicateSource, setDuplicateSource] = useState<Entity | null>(null);
   const selectedIdRef = useRef<number | null>(null);
 
   useEffect(() => { selectedIdRef.current = selected?.id ?? null; }, [selected]);
@@ -99,7 +100,8 @@ export function ProjectsView() {
     setLoading(false);
   }
 
-  function startCreate() { setSelected(null); setMode("create"); setDeleteError(null); }
+  function startCreate() { setSelected(null); setDuplicateSource(null); setMode("create"); setDeleteError(null); }
+  function startDuplicate(p: Entity) { setSelected(null); setDuplicateSource(p); setMode("create"); setDeleteError(null); setSaveError(null); }
   function startImport() { setSelected(null); setParsedProjects([]); setParseError(null); setMode("import"); }
   function selectProject(p: Entity) { setSelected(p); setMode("view"); setDeleteError(null); }
 
@@ -257,7 +259,7 @@ export function ProjectsView() {
                 onDiscard={discardProject} onUpdate={updateParsedProject} onClose={() => setMode("view")}
               />
             ) : mode === "create" ? (
-              <ProjectForm contracts={contractsMap} onSave={handleSave} onCancel={() => setMode("view")} error={saveError} />
+              <ProjectForm key={duplicateSource?.id ?? "new"} project={duplicateSource ?? undefined} isDuplicate={duplicateSource != null} contracts={contractsMap} onSave={handleSave} onCancel={() => setMode("view")} error={saveError} />
             ) : mode === "edit" && selected ? (
               <ProjectForm project={selected} contracts={contractsMap} onSave={handleSave} onCancel={() => setMode("view")} error={saveError} />
             ) : selected ? (
@@ -281,6 +283,10 @@ export function ProjectsView() {
                   <button onClick={() => setMode("edit")}
                     className="px-3 py-1.5 rounded text-sm font-medium bg-bg-card text-secondary hover:text-primary border border-border-subtle transition-colors">
                     Edit
+                  </button>
+                  <button onClick={() => startDuplicate(selected)} title="Create a new project based on this one"
+                    className="flex items-center gap-1 px-3 py-1.5 rounded text-sm font-medium bg-bg-card text-secondary hover:text-primary border border-border-subtle transition-colors">
+                    <Copy size={13} /> Duplicate
                   </button>
                   <button onClick={() => handleDelete(selected.id)}
                     className="p-1.5 rounded text-secondary hover:text-red-400 border border-border-subtle transition-colors">
@@ -429,8 +435,9 @@ interface ProjectFormData {
   contractId: number | null;
 }
 
-function ProjectForm({ project, contracts, onSave, onCancel, error }: {
+function ProjectForm({ project, isDuplicate = false, contracts, onSave, onCancel, error }: {
   project?: Entity;
+  isDuplicate?: boolean;
   contracts: Record<string, Entity>;
   onSave: (data: ProjectFormData) => void;
   onCancel: () => void;
@@ -440,18 +447,19 @@ function ProjectForm({ project, contracts, onSave, onCancel, error }: {
   const existingContract = project ? entity(project, "contract") : null;
   const [form, setForm] = useState<ProjectFormData>(() => {
     if (project) return {
-      title: str(project, "title"),
-      tag: str(project, "tag"),
+      title: isDuplicate ? `${str(project, "title")} (Copy)` : str(project, "title"),
+      tag: isDuplicate ? `${str(project, "tag")}-copy` : str(project, "tag"),
       description: str(project, "description"),
-      startDate: str(project, "start_date"),
-      endDate: str(project, "end_date"),
+      // A copy is a new engagement and gets its own timeframe.
+      startDate: isDuplicate ? "" : str(project, "start_date"),
+      endDate: isDuplicate ? "" : str(project, "end_date"),
       contractId: existingContract?.id ?? null,
     };
     return { title: "", tag: "#", description: "", startDate: "", endDate: "", contractId: null };
   });
   const [saving, setSaving] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
-  const isNew = !project;
+  const isNew = !project || isDuplicate;
   const contractList = Object.values(contracts);
 
   function update<K extends keyof ProjectFormData>(field: K, value: ProjectFormData[K]) {

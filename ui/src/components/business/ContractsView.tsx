@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import {
   FileText, FileSignature, Plus, Trash2, Save, X, DollarSign, Calendar,
   FileUp, Sparkles, Check, CheckCheck, Loader2, CheckCircle2,
-  FolderKanban, ReceiptText, ArrowRight, ChevronDown, ChevronRight, XCircle, Milestone,
+  FolderKanban, ReceiptText, ArrowRight, ChevronDown, ChevronRight, XCircle, Milestone, Copy,
 } from "lucide-react";
 import { rpc } from "../../api/rpc";
 import { str, num, bool, entity as subEntity, list as entityList, displayName, formatDate } from "../../api/entity";
@@ -44,6 +44,7 @@ export function ContractsView() {
   const [parsing, setParsing] = useState(false);
   const [parseError, setParseError] = useState<string | null>(null);
   const [bankAccounts, setBankAccounts] = useState<Entity[]>([]);
+  const [duplicateSource, setDuplicateSource] = useState<Entity | null>(null);
   const selectedIdRef = useRef<number | null>(null);
 
   useEffect(() => { selectedIdRef.current = selected?.id ?? null; }, [selected]);
@@ -74,7 +75,8 @@ export function ContractsView() {
     setLoading(false);
   }
 
-  function startCreate() { setSelected(null); setMode("create"); setDeleteError(null); }
+  function startCreate() { setSelected(null); setDuplicateSource(null); setMode("create"); setDeleteError(null); }
+  function startDuplicate(c: Entity) { setSelected(null); setDuplicateSource(c); setMode("create"); setDeleteError(null); setSaveError(null); }
   function startImport() { setSelected(null); setParsedContracts([]); setParseError(null); setMode("import"); }
   function selectContract(c: Entity) { setSelected(c); setMode("view"); setDeleteError(null); }
 
@@ -247,12 +249,13 @@ export function ContractsView() {
               onDiscard={discardContract} onUpdate={updateParsedContract} onClose={() => setMode("view")}
             />
           ) : mode === "create" ? (
-            <ContractForm contract={null} clients={clients} defaultCurrency={defaultCurrency} currencies={currencies} bankAccounts={bankAccounts} onSave={handleSave} onCancel={() => setMode("view")} error={saveError} />
+            <ContractForm key={duplicateSource?.id ?? "new"} contract={duplicateSource} isDuplicate={duplicateSource != null} clients={clients} defaultCurrency={defaultCurrency} currencies={currencies} bankAccounts={bankAccounts} onSave={handleSave} onCancel={() => setMode("view")} error={saveError} />
           ) : mode === "edit" && selected ? (
             <ContractForm contract={selected} clients={clients} defaultCurrency={defaultCurrency} currencies={currencies} bankAccounts={bankAccounts} onSave={handleSave} onCancel={() => setMode("view")} error={saveError} />
           ) : selected ? (
             <ContractDetail contract={selected}
               onEdit={() => setMode("edit")}
+              onDuplicate={() => startDuplicate(selected)}
               onDelete={() => handleDelete(selected.id)}
               onToggle={() => handleToggle(selected.id)}
               deleteError={deleteError} />
@@ -309,8 +312,8 @@ function ContractRow({ contract, isSelected, onSelect }: {
 
 /* ---------- Detail ---------- */
 
-function ContractDetail({ contract, onEdit, onDelete, onToggle, deleteError }: {
-  contract: Entity; onEdit: () => void; onDelete: () => void; onToggle: () => void; deleteError: string | null;
+function ContractDetail({ contract, onEdit, onDuplicate, onDelete, onToggle, deleteError }: {
+  contract: Entity; onEdit: () => void; onDuplicate: () => void; onDelete: () => void; onToggle: () => void; deleteError: string | null;
 }) {
   const { navigate } = useNavigation();
   const title = str(contract, "title");
@@ -352,6 +355,10 @@ function ContractDetail({ contract, onEdit, onDelete, onToggle, deleteError }: {
         <button onClick={onEdit}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium bg-bg-card text-secondary hover:text-primary border border-border-subtle transition-colors">
           Edit
+        </button>
+        <button onClick={onDuplicate} title="Create a new contract based on this one"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium bg-bg-card text-secondary hover:text-primary border border-border-subtle transition-colors">
+          <Copy size={13} /> Duplicate
         </button>
         <button onClick={onDelete}
           className="p-1.5 rounded-md text-secondary hover:text-red-400 border border-border-subtle transition-colors">
@@ -563,8 +570,9 @@ function isBlankMilestone(row: MilestoneRow): boolean {
   return !row.title.trim() && !row.percentage.trim();
 }
 
-function ContractForm({ contract, clients, defaultCurrency, currencies, bankAccounts, onSave, onCancel, error }: {
+function ContractForm({ contract, isDuplicate = false, clients, defaultCurrency, currencies, bankAccounts, onSave, onCancel, error }: {
   contract: Entity | null;
+  isDuplicate?: boolean;
   clients: Record<string, Entity>;
   defaultCurrency: string;
   currencies: string[];
@@ -582,7 +590,7 @@ function ContractForm({ contract, clients, defaultCurrency, currencies, bankAcco
   const contractBankId: number | "" = contract ? (subEntity(contract, "bank_account")?.id ?? "") : "";
   const [form, setForm] = useState<ContractFormData>(() => {
     if (contract) return {
-      title: str(contract, "title"),
+      title: isDuplicate ? `${str(contract, "title")} (Copy)` : str(contract, "title"),
       clientId: cl?.id ?? null,
       type: initType,
       fixedPrice: initFixed,
@@ -597,13 +605,14 @@ function ContractForm({ contract, clients, defaultCurrency, currencies, bankAcco
         return v > 1 ? v / 100 : v;
       })(),
       vatCategory: taxCategory(str(contract, "VAT_category")),
-      signatureDate: str(contract, "signature_date"),
-      startDate: str(contract, "start_date"),
-      endDate: str(contract, "end_date"),
+      // A copy is a new agreement: it gets its own dates and signature.
+      signatureDate: isDuplicate ? "" : str(contract, "signature_date"),
+      startDate: isDuplicate ? "" : str(contract, "start_date"),
+      endDate: isDuplicate ? "" : str(contract, "end_date"),
       termOfPayment: num(contract, "term_of_payment") || null,
       unitsPerWorkday: num(contract, "units_per_workday") || 8,
       bankAccountId: contractBankId,
-      charges: chargeRowsFrom(contract),
+      charges: chargeRowsFrom(contract).map((c) => (isDuplicate ? { ...c, id: null } : c)),
     };
     return {
       title: "", clientId: null, type: "time_based", fixedPrice: null, rate: null, currency: defaultCurrency,
@@ -619,7 +628,7 @@ function ContractForm({ contract, clients, defaultCurrency, currencies, bankAcco
   // Additional charges are an advanced option: kept out of sight unless this
   // contract already uses them or the user asks for them.
   const [showCharges, setShowCharges] = useState(chargeRowsFrom(contract).length > 0);
-  const isNew = !contract;
+  const isNew = !contract || isDuplicate;
   const isFixed = pricingMode === "fixed_price";
 
   // Whether this contract carries a payment schedule at all — distinct from
@@ -633,10 +642,10 @@ function ContractForm({ contract, clients, defaultCurrency, currencies, bankAcco
   const [milestones, setMilestones] = useState<MilestoneRow[]>(() => {
     if (!contract) return [];
     return entityList(contract, "payment_milestones").map((m) => ({
-      id: m.id,
+      id: isDuplicate ? undefined : m.id,
       title: str(m, "title"),
       percentage: String(num(m, "percentage") || ""),
-      invoiced: bool(m, "invoiced"),
+      invoiced: isDuplicate ? false : bool(m, "invoiced"),
     }));
   });
 
