@@ -41,6 +41,9 @@ def df_to_records(df: DataFrame, tag_to_workday: Optional[dict] = None) -> list:
         tag = str(row.get("tag", ""))
         workday = tag_to_workday.get(tag, DEFAULT_WORKDAY_HOURS)
         dur_hours = event_hours(row, workday)
+        entry_id = row.get("entry_id")
+        # Calendar rows carry NaN here once frames are merged.
+        entry_id = int(entry_id) if entry_id is not None and entry_id == entry_id else None
         if begin_dt is not None:
             cmp_dt = begin_dt if begin_dt.tzinfo else begin_dt.replace(tzinfo=datetime.timezone.utc)
             is_future = cmp_dt >= now
@@ -57,9 +60,25 @@ def df_to_records(df: DataFrame, tag_to_workday: Optional[dict] = None) -> list:
                 "all_day": bool(row.get("all_day", False)),
                 "date": str(begin)[:10],
                 "is_future": is_future,
+                "source": str(row.get("source", "calendar")),
+                "entry_id": entry_id,
             }
         )
     return records
+
+
+def empty_calendar_data(year: int, month: int) -> dict:
+    _, last_day = cal_mod.monthrange(year, month)
+    return {
+        "year": year,
+        "month": month,
+        "first_weekday": datetime.date(year, month, 1).weekday(),
+        "days_in_month": last_day,
+        "events": [],
+        "projects": [],
+        "days": {},
+        "summary": {"total_events": 0, "total_hours": 0, "planned_hours": 0, "planned_events": 0},
+    }
 
 
 def build_calendar_data(
@@ -88,7 +107,7 @@ def build_calendar_data(
 
     events = df_to_records(month_df, tag_to_workday)
 
-    by_tag = {t: round(h, 1) for t, h in sum_hours_by_tag(month_df, tag_to_workday).items()}
+    by_tag = {t: round(h, 2) for t, h in sum_hours_by_tag(month_df, tag_to_workday).items()}
     count_by_tag = month_df.groupby("tag").size().to_dict()
     projects = [
         {
@@ -191,11 +210,19 @@ def build_summary(
 
 
 def merge_dataframes(existing: Optional[DataFrame], new_df: DataFrame) -> DataFrame:
-    """Merge *new_df* into *existing*, deduplicating by index."""
-    if existing is not None and not existing.empty:
-        import pandas
+    """Merge *new_df* into *existing*.
 
-        combined = pandas.concat([existing, new_df])
-        combined = combined[~combined.index.duplicated(keep="last")]
-        return combined
-    return new_df
+    Rows are deduplicated by begin timestamp *within each source*: a re-imported
+    calendar event replaces its earlier copy, while a manual entry that happens
+    to start at the same moment as a calendar event is kept.
+    """
+    if existing is None or existing.empty:
+        return new_df
+    import pandas
+
+    combined = pandas.concat([existing, new_df])
+    if "source" not in combined.columns:
+        combined["source"] = "calendar"
+    combined["source"] = combined["source"].fillna("calendar")
+    key = pandas.MultiIndex.from_arrays([combined.index, combined["source"].to_numpy()])
+    return combined[~key.duplicated(keep="last")]
