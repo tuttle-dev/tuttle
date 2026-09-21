@@ -1138,6 +1138,36 @@ class TestManualTimeTracking:
         assert r["data"]["first_weekday"] == 6
         assert r["data"]["summary"]["total_events"] == 0
 
+    def test_calendar_cache_round_trips(self, rpc_env, tmp_path, monkeypatch):
+        import pandas
+
+        from tuttle.app.timetracking import data_source
+        from tuttle.app.timetracking.data_source import TimeTrackingDataFrameSource
+
+        monkeypatch.setattr(data_source, "get_data_dir", lambda: tmp_path)
+        row = pandas.DataFrame(
+            [
+                {
+                    "title": "Cached",
+                    "tag": "#cache",
+                    "description": "",
+                    "duration": pandas.Timedelta(hours=1),
+                    "all_day": False,
+                    "end": pandas.Timestamp("2026-09-16T10:00", tz="CET"),
+                    "source": "calendar",
+                }
+            ],
+            index=pandas.DatetimeIndex([pandas.Timestamp("2026-09-16T09:00", tz="CET")], name="begin"),
+        )
+        ds = TimeTrackingDataFrameSource()
+        ds.store_data_frame(row)
+        ds.save_to_cache()
+        assert (tmp_path / "cache" / "timetracking_events.parquet").exists()
+        ds.clear()
+        assert ds.load_from_cache()
+        assert ds.has_calendar_rows()
+        assert ds.calendar_rows().index.tz is not None
+
     def test_get_project_tags(self, rpc_env):
         r = assert_ok(dispatch("timetracking.get_project_tags", {}))
         assert isinstance(r["data"], list)

@@ -43,6 +43,7 @@ dependencies = [
     "drafthorse",
     "alembic>=1.18.4",
     "segno>=1.6.6",
+    "fastparquet>=2026.5.0",
 ]
 
 [project.scripts]

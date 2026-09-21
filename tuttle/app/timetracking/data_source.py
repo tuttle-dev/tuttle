@@ -42,7 +42,7 @@ def _naive_cet(dt):
 def _cache_path() -> Path:
     d = get_data_dir() / "cache"
     d.mkdir(parents=True, exist_ok=True)
-    return d / "timetracking_events.pkl"
+    return d / "timetracking_events.parquet"
 
 
 @singleton
@@ -101,7 +101,7 @@ class TimeTrackingDataFrameSource:
             return
         path = _cache_path()
         try:
-            calendar.to_pickle(path)
+            calendar.to_parquet(path)
             logger.info(f"Persisted {len(calendar)} calendar events to {path}")
         except Exception as ex:
             logger.warning(f"Failed to persist time-tracking cache: {ex}")
@@ -111,7 +111,7 @@ class TimeTrackingDataFrameSource:
         if not path.exists():
             return False
         try:
-            df = pandas.read_pickle(path)
+            df = pandas.read_parquet(path)
             if "source" not in df.columns:
                 df["source"] = "calendar"
             self.store_data_frame(df)
