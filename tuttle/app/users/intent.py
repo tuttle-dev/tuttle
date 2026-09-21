@@ -130,19 +130,23 @@ class UsersIntent:
 
     # -- helpers ---------------------------------------------------------------
 
-    def _ensure_user_db(self, db_path: Path):
-        ensure_schema(f"sqlite:///{db_path}")
+    def _ensure_user_db(self, db_path: Path) -> list[str]:
+        return ensure_schema(f"sqlite:///{db_path}")
 
-    def _switch_to_user_db(self, db_file: str):
-        """Switch the active per-user database and flush intent caches."""
+    def _switch_to_user_db(self, db_file: str) -> list[str]:
+        """Switch the active per-user database and flush intent caches.
+
+        Returns the migration notices the user should see for that database.
+        """
         db_path = self._app_db.get_user_db_path(db_file)
         reg = self._app_db.get_user_by_db_file(db_file)
         is_demo = reg and reg.is_demo if reg else False
-        self._ensure_user_db(db_path)
+        notices = self._ensure_user_db(db_path)
         set_active_db(db_path)
         self._app_db.set_active(db_file)
         reset_all()
         logger.info(f"Switched to user DB: {db_file}")
+        return notices
 
         if is_demo:
             self._ensure_demo_timetracking(db_path)
@@ -190,8 +194,8 @@ class UsersIntent:
     list_users = list
 
     def switch(self, db_file: str, **_kw) -> IntentResult:
-        self._switch_to_user_db(db_file)
-        return IntentResult(was_intent_successful=True, data=None)
+        notices = self._switch_to_user_db(db_file)
+        return IntentResult(was_intent_successful=True, data=None, warning="\n\n".join(notices))
 
     def delete(self, db_file: str, **_kw) -> IntentResult:
         """Delete a user, their database, and all rendered output files."""
@@ -526,11 +530,12 @@ class UsersIntent:
         self._app_db.ensure()
         self._app_db.migrate_llm_config_from_json()
 
+        notices: list[str] = []
         last = self._app_db.get_last_active()
         if last:
-            self._switch_to_user_db(last.db_file)
+            notices = self._switch_to_user_db(last.db_file)
         else:
             users = self._app_db.list_users()
             if users:
-                self._switch_to_user_db(users[0].db_file)
-        return IntentResult(was_intent_successful=True, data=None)
+                notices = self._switch_to_user_db(users[0].db_file)
+        return IntentResult(was_intent_successful=True, data=None, warning="\n\n".join(notices))

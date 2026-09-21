@@ -34,9 +34,14 @@ from ..timetracking.intent import TimeTrackingIntent
 from .data_source import InvoicingDataSource
 
 
-def _as_date(value) -> date:
+def _as_date(value, what: str) -> date:
     """Coerce an RPC date argument, which arrives as an ISO string, to a date."""
-    return value if isinstance(value, date) else _dt.date.fromisoformat(value)
+    if isinstance(value, date):
+        return value
+    try:
+        return _dt.date.fromisoformat(value)
+    except (TypeError, ValueError):
+        raise ValueError(f"Enter a valid {what}.") from None
 
 
 class InvoicingIntent(Intent):
@@ -72,6 +77,14 @@ class InvoicingIntent(Intent):
         notes=None,
     ) -> IntentResult:
         """Orchestrates invoice creation: resolve project, read prefs, delegate."""
+        try:
+            invoice_date = _as_date(invoice_date, "invoice date")
+            from_date = _as_date(from_date, "billing period start")
+            to_date = _as_date(to_date, "billing period end")
+        except ValueError as ex:
+            return IntentResult(was_intent_successful=False, error_msg=str(ex))
+        if to_date < from_date:
+            return IntentResult(was_intent_successful=False, error_msg="The billing period ends before it starts.")
         proj_result = self._projects_intent.get_by_id(project_id)
         if not proj_result.was_intent_successful:
             return proj_result
@@ -83,14 +96,11 @@ class InvoicingIntent(Intent):
         )
         e_invoice_profile = app_db.get_setting(PreferencesStorageKeys.e_invoice_profile_key.value) or DEFAULT_E_INVOICE_PROFILE
 
-        def _to_date(v):
-            return v if isinstance(v, date) else _dt.date.fromisoformat(v)
-
         return self.create_invoice(
-            invoice_date=_to_date(invoice_date),
+            invoice_date=invoice_date,
             project=proj_result.data,
-            from_date=_to_date(from_date),
-            to_date=_to_date(to_date),
+            from_date=from_date,
+            to_date=to_date,
             render=render,
             manual_quantity=manual_quantity,
             manual_items=manual_items,
@@ -157,6 +167,10 @@ class InvoicingIntent(Intent):
         a plain deposit would leave the contract without the Schlussrechnung
         that German tax law expects.
         """
+        try:
+            invoice_date = _as_date(invoice_date, "invoice date")
+        except ValueError as ex:
+            return IntentResult(was_intent_successful=False, error_msg=str(ex))
         proj_result = self._projects_intent.get_by_id(project_id)
         if not proj_result.was_intent_successful or proj_result.data is None:
             return IntentResult(was_intent_successful=False, error_msg="Project not found.")
@@ -189,7 +203,7 @@ class InvoicingIntent(Intent):
                 project=project,
                 milestone=milestone,
                 number=self._next_invoice_number(invoice_date),
-                date=_as_date(invoice_date),
+                date=invoice_date,
             )
             for item in invoice.items:
                 item.validate_vat()
@@ -217,6 +231,10 @@ class InvoicingIntent(Intent):
         invoice_date,
     ) -> IntentResult[Invoice]:
         """Create a final invoice (Schlussrechnung) settling a contract's deposits."""
+        try:
+            invoice_date = _as_date(invoice_date, "invoice date")
+        except ValueError as ex:
+            return IntentResult(was_intent_successful=False, error_msg=str(ex))
         proj_result = self._projects_intent.get_by_id(project_id)
         if not proj_result.was_intent_successful or proj_result.data is None:
             return IntentResult(was_intent_successful=False, error_msg="Project not found.")
@@ -251,7 +269,7 @@ class InvoicingIntent(Intent):
                 project=project,
                 deposit_invoices=deposit_invoices,
                 number=self._next_invoice_number(invoice_date),
-                date=_as_date(invoice_date),
+                date=invoice_date,
                 charges=self._eligible_charges(contract),
             )
             for item in invoice.items:
@@ -297,10 +315,10 @@ class InvoicingIntent(Intent):
         for milestone in milestones:
             milestone.invoiced = True
 
-    def _next_invoice_number(self, invoice_date) -> str:
+    def _next_invoice_number(self, invoice_date: date) -> str:
         app_db = AppDatabase()
         scheme = app_db.get_setting(PreferencesStorageKeys.invoice_number_scheme_key.value) or DEFAULT_INVOICE_NUMBER_SCHEME
-        return self._invoicing_data_source.generate_invoice_number(_as_date(invoice_date), scheme=scheme)
+        return self._invoicing_data_source.generate_invoice_number(invoice_date, scheme=scheme)
 
     def _render_saved_invoice(self, invoice_id: int, description: str) -> tuple[Invoice, list[str]]:
         """Render a persisted invoice's PDF, returning it and any warnings.
@@ -485,18 +503,24 @@ class InvoicingIntent(Intent):
         Otherwise the existing time-tracking flow is used.
         """
         logger.info(f"Creating invoice for {project.title}...")
+        contract = project.contract
+        if contract is None:
+            return IntentResult(
+                was_intent_successful=False,
+                error_msg=f"Project “{project.title}” has no contract. Create a contract and assign it to the project before invoicing.",
+            )
         user = self._user_data_source.get_user()
         try:
             invoice_number = self._invoicing_data_source.generate_invoice_number(invoice_date, scheme=number_scheme)
 
             if manual_items is not None:
-                contract = project.contract
+                unit_fallback = contract.unit.value if contract.unit else "hour"
                 items = [
                     InvoiceItem(
                         start_date=from_date,
                         end_date=to_date,
                         quantity=float(it["quantity"]),
-                        unit=it.get("unit", contract.unit.value if contract.unit else "hour"),
+                        unit=it.get("unit") or unit_fallback,
                         unit_price=it["unit_price"],
                         description=it.get("description", project.title),
                         VAT_rate=contract.VAT_rate,
@@ -514,7 +538,6 @@ class InvoicingIntent(Intent):
                     items=items,
                 )
             elif manual_quantity is not None:
-                contract = project.contract
                 item = InvoiceItem(
                     start_date=from_date,
                     end_date=to_date,
@@ -546,12 +569,21 @@ class InvoicingIntent(Intent):
             else:
                 # ── Time-tracking path (existing) ─────────────────
                 timetracking_data = self._timetracking_data_source.get_data_frame()
-                timesheet: Timesheet = timetracking.generate_timesheet(
-                    timetracking_data,
-                    project,
-                    from_date,
-                    to_date,
-                )
+                try:
+                    timesheet: Timesheet = timetracking.generate_timesheet(
+                        timetracking_data,
+                        project,
+                        from_date,
+                        to_date,
+                    )
+                except ValueError:
+                    return IntentResult(
+                        was_intent_successful=False,
+                        error_msg=(
+                            f"No time tracking data found for project '{project.title}' between {from_date} and {to_date}. "
+                            "Track or import time for this period, or create a manual invoice instead."
+                        ),
+                    )
                 invoice: Invoice = invoicing.generate_invoice(
                     date=invoice_date,
                     number=invoice_number,
@@ -562,8 +594,17 @@ class InvoicingIntent(Intent):
                 )
                 timesheet.invoice = invoice
 
-            for item in invoice.items:
-                item.validate_vat()
+            try:
+                for item in invoice.items:
+                    item.validate_vat()
+            except ValueError as ex:
+                return IntentResult(
+                    was_intent_successful=False,
+                    error_msg=(
+                        f"The contract's tax settings are inconsistent ({ex}). "
+                        "Correct the VAT rate or tax category on the contract, then try again."
+                    ),
+                )
             categories = {item.VAT_category for item in invoice.items}
             if len(categories) > 1:
                 # EN16931 BR-O-11/12: category O may not be mixed with any other
@@ -646,19 +687,12 @@ class InvoicingIntent(Intent):
                 data=invoice,
                 warning=warning_msg,
             )
-        except ValueError:
-            error_message = f"No time tracking data found for project '{project.title}' between {from_date} and {to_date}."
-            logger.error(error_message)
-            return IntentResult(
-                was_intent_successful=False,
-                error_msg=error_message,
-            )
         except Exception as ex:
-            logger.error(f"Failed to create invoice: {ex}")
+            logger.error(f"Failed to create invoice for {project.title}: {ex}")
             logger.exception(ex)
             return IntentResult(
                 was_intent_successful=False,
-                error_msg=f"Failed to create invoice: {ex}",
+                error_msg="The invoice could not be created because of an unexpected error. Details are in the application log.",
             )
 
     def _create_reminder(

@@ -35,11 +35,15 @@ def _validation_error_message(exc: ValidationError) -> str:
     parts = []
     for err in exc.errors():
         loc = err.get("loc") or ()
-        field = loc[0] if loc else "field"
+        field = str(loc[0]) if loc else "field"
+        label = field.removesuffix("_id").replace("_", " ").capitalize()
+        if err.get("type") == "missing" or err.get("input", ...) is None:
+            parts.append(f"{label} is required.")
+            continue
         msg = err.get("msg", "invalid value")
         if msg.startswith("Value error, "):
             msg = msg.removeprefix("Value error, ")
-        parts.append(f"{field}: {msg}")
+        parts.append(f"{label}: {msg}")
     return "; ".join(parts) or "Validation failed."
 
 

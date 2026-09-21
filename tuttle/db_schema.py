@@ -17,6 +17,9 @@ Failure model:
   <db>.broken-<ts>, the most recent backup is restored in its place,
   and a SchemaMigrationError is raised so the UI/RPC layer can surface
   it. The app must not continue with a corrupt DB.
+- A migration that has to remove records the new schema cannot hold
+  appends a plain-language notice to ``config.attributes["notices"]``;
+  ensure_schema returns those so the UI can tell the user what to recreate.
 """
 
 from __future__ import annotations
@@ -134,8 +137,11 @@ def _get_current_revision(db_url: str) -> str | None:
         engine.dispose()
 
 
-def ensure_schema(db_url: str) -> None:
+def ensure_schema(db_url: str) -> list[str]:
     """Upgrade the database at db_url to the current head revision.
+
+    Returns the notices migrations recorded for the user (records that had
+    to be removed and should be recreated); empty when nothing happened.
 
     For SQLite URLs, takes a timestamped backup before upgrading. If
     upgrade fails AND the migration partially applied (alembic_version
@@ -190,3 +196,8 @@ def ensure_schema(db_url: str) -> None:
             broken_db=broken_path,
             restored_from=backup_path,
         ) from exc
+
+    notices = [str(n) for n in cfg.attributes.get("notices", [])]
+    for notice in notices:
+        logger.warning(f"Schema migration notice for {db_url}: {notice}")
+    return notices

@@ -433,6 +433,11 @@ function CreateInvoiceDialog({ onClose, onCreated }: { onClose: () => void; onCr
 
   async function submit() {
     if (!projectId) { setError("Select a project"); return; }
+    if (!invoiceDate) { setError("Enter an invoice date"); return; }
+    if (docType !== "deposit" && docType !== "final") {
+      if (!fromDate || !toDate) { setError("Enter the billing period"); return; }
+      if (toDate < fromDate) { setError("The billing period ends before it starts"); return; }
+    }
     setSubmitting(true);
     setError("");
 

@@ -867,8 +867,8 @@ class Project(RpcMixin, SQLModel, table=True):
         description="Explicit pipeline stage override: Lead, Offer, Upcoming, Active, or Completed. "
         "When set, takes precedence over the date-derived status.",
     )
-    # Project m:n Contract
-    contract_id: Optional[int] = Field(default=None, foreign_key="contract.id", ondelete="RESTRICT")
+    # Project n:1 Contract
+    contract_id: int = Field(foreign_key="contract.id", ondelete="RESTRICT")
     contract: Contract = Relationship(
         back_populates="projects",
         sa_relationship_kwargs={"lazy": "subquery"},
