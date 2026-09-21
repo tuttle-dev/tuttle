@@ -18,6 +18,7 @@ import { DocumentImportView } from "../import/DocumentImportView";
 import { PlaceholderView } from "../shared/PlaceholderView";
 import { ViewErrorBoundary } from "../shared/ViewErrorBoundary";
 import { UpdateBanner } from "./UpdateBanner";
+import { MigrationNoticeBanner, MIGRATION_NOTICE_KEY } from "./MigrationNoticeBanner";
 import { StatusBar } from "./StatusBar";
 import { StatusBarProvider } from "../shared/status-bar-context";
 import { NavigationContext, type NavigationFilter } from "../shared/NavigationContext";
@@ -55,6 +56,7 @@ export function Shell() {
   const [regDialogOpen, setRegDialogOpen] = useState(false);
   const [regLoading, setRegLoading] = useState(false);
   const [bootError, setBootError] = useState<string | null>(null);
+  const [bootNotice, setBootNotice] = useState<string | null>(null);
 
   const navigate = useCallback((view: string, filter?: NavigationFilter) => {
     setNavFilter(filter || {});
@@ -93,6 +95,11 @@ export function Shell() {
         failBoot(ensured.error ?? "The database could not be prepared.");
         return;
       }
+      // A notice from users.switch is stashed because the switch reloads the window.
+      const stashed = sessionStorage.getItem(MIGRATION_NOTICE_KEY);
+      sessionStorage.removeItem(MIGRATION_NOTICE_KEY);
+      const notice = [stashed, ensured.warning].filter(Boolean).join("\n\n");
+      if (notice) setBootNotice(notice);
       setBootPhase("users");
       const usersRes = await rpc<RegisteredUser[]>("users.list");
       if (!usersRes.ok) {
@@ -144,7 +151,8 @@ export function Shell() {
   async function handleSwitchUser(dbFile: string) {
     setBootPhase("switching");
     setBootState("loading");
-    await rpc("users.switch", { db_file: dbFile });
+    const res = await rpc("users.switch", { db_file: dbFile });
+    if (res.warning) sessionStorage.setItem(MIGRATION_NOTICE_KEY, res.warning);
     await refreshActiveUser();
     setSelected("dashboard");
     window.location.reload();
@@ -263,6 +271,7 @@ export function Shell() {
             <main className="flex-1 flex flex-col overflow-hidden">
               <div className="drag-region h-13 shrink-0" />
               <UpdateBanner />
+              <MigrationNoticeBanner notice={bootNotice} onDismiss={() => setBootNotice(null)} />
               <div className="flex-1 overflow-y-auto">
                 <ViewErrorBoundary key={selected} viewName={selected}>
                   <DetailView id={selected} />

@@ -26,7 +26,7 @@ from sqlalchemy import create_engine, inspect, text
 from sqlmodel import SQLModel
 
 import tuttle.model  # noqa: F401 — ensure tables register on SQLModel.metadata
-from tuttle.db_schema import SchemaMigrationError, _alembic_config_for, _get_current_revision, ensure_schema
+from tuttle.db_schema import _alembic_config_for, _get_current_revision, ensure_schema
 
 
 def _seed_value(col_type: object) -> object:
@@ -641,15 +641,14 @@ def test_foreign_keys_survive_the_batch_rebuild(bank_accounts_db, table, column,
 
 # -- Required contract on project (revision 386a8e1294ef) ---------------------
 
+_REQUIRE_CONTRACT_REVISION = "386a8e1294ef"
 _BEFORE_REQUIRE_CONTRACT = "6d26f3f69526"
 
 
-def test_project_without_contract_blocks_the_upgrade(tmp_db: tuple[Path, str]) -> None:
-    """The migration must refuse rather than guess a contract, and leave the DB untouched.
-
-    A contract exists that the migration *could* have borrowed; refusing anyway
-    is the point.
-    """
+def test_project_without_contract_is_removed_and_reported(tmp_db: tuple[Path, str]) -> None:
+    """A contractless project is dropped — never re-homed onto a contract that
+    happens to exist — and the user is told which one to recreate. An invoice
+    that pointed at it is detached, not deleted."""
     db, url = tmp_db
     cfg = _alembic_config_for(url)
     command.upgrade(cfg, _BEFORE_REQUIRE_CONTRACT)
@@ -659,17 +658,21 @@ def test_project_without_contract_blocks_the_upgrade(tmp_db: tuple[Path, str]) -
     _insert(cur, "client", id=1, name="ACME")
     _insert(cur, "contract", id=1, title="c1", client_id=1, currency="EUR", unit="hour", type="time_based")
     _insert(cur, "project", id=1, title="Chaos Coordinator", tag="#chaos", start_date="2026-01-01")
+    _insert(cur, "project", id=2, title="Kept", tag="#kept", contract_id=1, start_date="2026-01-01")
+    _insert(cur, "invoice", id=1, number="INV1", date="2026-02-01", contract_id=1, project_id=1, document_type="invoice")
     con.commit()
     con.close()
 
-    with pytest.raises(SchemaMigrationError, match="Chaos Coordinator") as excinfo:
-        ensure_schema(url)
-    assert "transient" not in str(excinfo.value)
-    assert excinfo.value.broken_db is None
-    assert _get_current_revision(url) == _BEFORE_REQUIRE_CONTRACT
+    notices = ensure_schema(url)
 
+    assert len(notices) == 1
+    assert "Chaos Coordinator" in notices[0]
+    assert "Kept" not in notices[0]
+    assert _get_current_revision(url) == _REQUIRE_CONTRACT_REVISION
     con = sqlite3.connect(db)
     try:
-        assert con.execute("SELECT contract_id FROM project WHERE id = 1").fetchone() == (None,)
+        assert con.execute("SELECT title FROM project ORDER BY id").fetchall() == [("Kept",)]
+        assert con.execute("SELECT COUNT(*) FROM contract").fetchone() == (1,)
+        assert con.execute("SELECT project_id FROM invoice WHERE id = 1").fetchone() == (None,)
     finally:
         con.close()

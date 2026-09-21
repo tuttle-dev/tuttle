@@ -44,9 +44,7 @@ from typing import Sequence, Union
 import sqlalchemy as sa
 import sqlmodel
 import sqlmodel.sql.sqltypes  # noqa: F401 — ensures runtime resolution of AutoString
-from alembic import op
-
-from tuttle.db_schema import MigrationBlocked
+from alembic import context, op
 
 revision: str = "386a8e1294ef"
 down_revision: Union[str, Sequence[str], None] = "6d26f3f69526"
@@ -57,8 +55,9 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     """Upgrade schema.
 
-    Refuses, before touching the schema, if any project has no contract:
-    picking one on the user's behalf would silently corrupt their books.
+    A project without a contract cannot be invoiced, forecast or reported on,
+    and guessing a contract for it would corrupt the user's books, so such
+    projects are removed and the user is told which ones to recreate.
     """
     conn = op.get_bind()
 
@@ -66,14 +65,31 @@ def upgrade() -> None:
     if orphans:
         titles = ", ".join(f"'{row[0]}'" for row in orphans)
         if len(orphans) == 1:
-            count, fix = "1 project has", "assign it a contract (or delete it)"
+            notice = (
+                f"During the update, the project {titles} was removed because it had no contract. "
+                "Every project must belong to a contract: create the contract, then add the project again. "
+                "Its details are still in the pre-update backup in the Tuttle data folder."
+            )
         else:
-            count, fix = f"{len(orphans)} projects have", "assign each a contract (or delete it)"
-        raise MigrationBlocked(
-            f"Tuttle can't update this database: {count} no contract: {titles}. "
-            f"Every project must belong to a contract. In the previous version of Tuttle, {fix}, "
-            "then update again."
+            notice = (
+                f"During the update, {len(orphans)} projects were removed because they had no contract: {titles}. "
+                "Every project must belong to a contract: create their contracts, then add the projects again. "
+                "Their details are still in the pre-update backup in the Tuttle data folder."
+            )
+        context.config.attributes.setdefault("notices", []).append(notice)
+
+        # Invoices and timesheets are financial records: detach them rather than delete them.
+        conn.execute(
+            sa.text(
+                "UPDATE invoice SET project_id = NULL WHERE project_id IN (SELECT id FROM project WHERE contract_id IS NULL)"
+            )
         )
+        conn.execute(
+            sa.text(
+                "UPDATE timesheet SET project_id = NULL WHERE project_id IN (SELECT id FROM project WHERE contract_id IS NULL)"
+            )
+        )
+        conn.execute(sa.text("DELETE FROM project WHERE contract_id IS NULL"))
 
     with op.batch_alter_table("project", schema=None) as batch_op:
         batch_op.alter_column("contract_id", existing_type=sa.INTEGER(), nullable=False)
