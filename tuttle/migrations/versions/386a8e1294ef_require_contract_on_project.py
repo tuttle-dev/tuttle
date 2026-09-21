@@ -46,6 +46,8 @@ import sqlmodel
 import sqlmodel.sql.sqltypes  # noqa: F401 — ensures runtime resolution of AutoString
 from alembic import op
 
+from tuttle.db_schema import MigrationBlocked
+
 revision: str = "386a8e1294ef"
 down_revision: Union[str, Sequence[str], None] = "6d26f3f69526"
 branch_labels: Union[str, Sequence[str], None] = None
@@ -53,19 +55,25 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    """Upgrade schema."""
+    """Upgrade schema.
+
+    Refuses, before touching the schema, if any project has no contract:
+    picking one on the user's behalf would silently corrupt their books.
+    """
     conn = op.get_bind()
 
-    orphan_count = conn.execute(sa.text("SELECT COUNT(*) FROM project WHERE contract_id IS NULL")).scalar()
-    if orphan_count:
-        fallback = conn.execute(sa.text("SELECT id FROM contract ORDER BY id LIMIT 1")).fetchone()
-        if fallback:
-            conn.execute(
-                sa.text("UPDATE project SET contract_id = :cid WHERE contract_id IS NULL"),
-                {"cid": fallback[0]},
-            )
+    orphans = conn.execute(sa.text("SELECT title FROM project WHERE contract_id IS NULL ORDER BY title")).fetchall()
+    if orphans:
+        titles = ", ".join(f"'{row[0]}'" for row in orphans)
+        if len(orphans) == 1:
+            count, fix = "1 project has", "assign it a contract (or delete it)"
         else:
-            conn.execute(sa.text("DELETE FROM project WHERE contract_id IS NULL"))
+            count, fix = f"{len(orphans)} projects have", "assign each a contract (or delete it)"
+        raise MigrationBlocked(
+            f"Tuttle can't update this database: {count} no contract: {titles}. "
+            f"Every project must belong to a contract. In the previous version of Tuttle, {fix}, "
+            "then update again."
+        )
 
     with op.batch_alter_table("project", schema=None) as batch_op:
         batch_op.alter_column("contract_id", existing_type=sa.INTEGER(), nullable=False)

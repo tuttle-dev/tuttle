@@ -26,7 +26,7 @@ from sqlalchemy import create_engine, inspect, text
 from sqlmodel import SQLModel
 
 import tuttle.model  # noqa: F401 — ensure tables register on SQLModel.metadata
-from tuttle.db_schema import _alembic_config_for
+from tuttle.db_schema import SchemaMigrationError, _alembic_config_for, _get_current_revision, ensure_schema
 
 
 def _seed_value(col_type: object) -> object:
@@ -133,11 +133,18 @@ def test_upgrade_chain_is_non_destructive(tmp_db: tuple[Path, str]) -> None:
                 col_names = {c["name"] for c in cols_info}
                 if "id" not in col_names:
                     continue
+                # FK columns point at the sentinel row this loop inserts into every
+                # table, so a migration that tightens a nullable FK meets valid data
+                # rather than a NULL it must refuse.
+                fk_columns = {c for fk in inspect(conn).get_foreign_keys(table_name) for c in fk["constrained_columns"]}
                 values: dict[str, object] = {"id": 9999}
                 for col in cols_info:
-                    if col["name"] == "id" or col.get("nullable", True):
+                    if col["name"] == "id":
                         continue
-                    values[col["name"]] = _seed_value(col["type"])
+                    if col["name"] in fk_columns:
+                        values[col["name"]] = 9999
+                    elif not col.get("nullable", True):
+                        values[col["name"]] = _seed_value(col["type"])
                 placeholders = ", ".join(f":{k}" for k in values)
                 cols_str = ", ".join(values)
                 conn.execute(
@@ -630,3 +637,39 @@ def test_foreign_keys_survive_the_batch_rebuild(bank_accounts_db, table, column,
     fks = [f for f in bank_accounts_db.execute(f"PRAGMA foreign_key_list({table})") if f[3] == column]
     assert len(fks) == 1, f"{table}.{column} has no foreign key after the rebuild"
     assert fks[0][6] == on_delete
+
+
+# -- Required contract on project (revision 386a8e1294ef) ---------------------
+
+_BEFORE_REQUIRE_CONTRACT = "6d26f3f69526"
+
+
+def test_project_without_contract_blocks_the_upgrade(tmp_db: tuple[Path, str]) -> None:
+    """The migration must refuse rather than guess a contract, and leave the DB untouched.
+
+    A contract exists that the migration *could* have borrowed; refusing anyway
+    is the point.
+    """
+    db, url = tmp_db
+    cfg = _alembic_config_for(url)
+    command.upgrade(cfg, _BEFORE_REQUIRE_CONTRACT)
+
+    con = sqlite3.connect(db)
+    cur = con.cursor()
+    _insert(cur, "client", id=1, name="ACME")
+    _insert(cur, "contract", id=1, title="c1", client_id=1, currency="EUR", unit="hour", type="time_based")
+    _insert(cur, "project", id=1, title="Chaos Coordinator", tag="#chaos", start_date="2026-01-01")
+    con.commit()
+    con.close()
+
+    with pytest.raises(SchemaMigrationError, match="Chaos Coordinator") as excinfo:
+        ensure_schema(url)
+    assert "transient" not in str(excinfo.value)
+    assert excinfo.value.broken_db is None
+    assert _get_current_revision(url) == _BEFORE_REQUIRE_CONTRACT
+
+    con = sqlite3.connect(db)
+    try:
+        assert con.execute("SELECT contract_id FROM project WHERE id = 1").fetchone() == (None,)
+    finally:
+        con.close()

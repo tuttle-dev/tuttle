@@ -17,6 +17,10 @@ Failure model:
   <db>.broken-<ts>, the most recent backup is restored in its place,
   and a SchemaMigrationError is raised so the UI/RPC layer can surface
   it. The app must not continue with a corrupt DB.
+- A migration that would have to guess or discard user data to satisfy a
+  new constraint raises MigrationBlocked before touching the schema. The
+  DB is left exactly as it was and the message names what the user must
+  fix in the previous version.
 """
 
 from __future__ import annotations
@@ -52,6 +56,12 @@ class SchemaMigrationError(RuntimeError):
         super().__init__(message)
         self.broken_db = broken_db
         self.restored_from = restored_from
+
+
+class MigrationBlocked(RuntimeError):
+    """Raised by a migration that refuses to run because existing rows violate
+    the constraint it introduces. Must be raised before any ``op.*`` call so
+    the database is left untouched; the message is shown to the user as-is."""
 
 
 def _project_root() -> Path:
@@ -155,6 +165,9 @@ def ensure_schema(db_url: str) -> None:
     try:
         command.upgrade(cfg, "head")
         logger.debug(f"Schema ensured for {db_url}")
+    except MigrationBlocked as exc:
+        logger.warning(f"Schema migration refused for {db_url}: {exc}")
+        raise SchemaMigrationError(str(exc), broken_db=None, restored_from=None) from exc
     except Exception as exc:
         logger.exception(f"Schema migration failed for {db_url}")
 
