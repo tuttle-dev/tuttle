@@ -638,6 +638,42 @@ class TestCrudSaveBehavior:
         assert_ok(result)
         assert result["data"]["end_date"] is None
 
+    def test_project_save_without_contract_is_rejected_plainly(self, rpc_env):
+        """The form sends contract_id: null; the user must not see pydantic-speak."""
+        result = dispatch(
+            "projects.save",
+            {
+                "project": {
+                    "title": "Contractless test project",
+                    "tag": "#contractless",
+                    "description": "Must be rejected",
+                    "start_date": "2026-01-01",
+                    "end_date": None,
+                    "contract_id": None,
+                }
+            },
+        )
+        assert result["ok"] is False
+        assert result["error"] == "Contract is required."
+
+    def test_invoice_create_rejects_missing_invoice_date(self, rpc_env):
+        project_id = assert_ok(dispatch("projects.get_all", {}))["data"][0]["id"]
+        result = dispatch(
+            "invoicing.create",
+            {"project_id": project_id, "invoice_date": "", "from_date": "2026-08-01", "to_date": "2026-08-31"},
+        )
+        assert result["ok"] is False
+        assert result["error"] == "Enter a valid invoice date."
+
+    def test_invoice_create_rejects_inverted_billing_period(self, rpc_env):
+        project_id = assert_ok(dispatch("projects.get_all", {}))["data"][0]["id"]
+        result = dispatch(
+            "invoicing.create",
+            {"project_id": project_id, "invoice_date": "2026-09-21", "from_date": "2026-08-31", "to_date": "2026-08-01"},
+        )
+        assert result["ok"] is False
+        assert result["error"] == "The billing period ends before it starts."
+
 
 class TestFinancialGoals:
     """CRUD and progress rules for financial goals (issue #499)."""
