@@ -391,15 +391,13 @@ class TestProject:
             term_of_payment=31,
             billing_cycle=Cycle.monthly,
         )
-        project = Project.validate(
-            dict(
-                title="Project X",
-                description="The description of Project X",
-                tag="#project_x",
-                start_date=datetime.date(2022, 10, 2),
-                end_date=datetime.date(2022, 12, 31),
-                contract=contract,
-            )
+        project = Project(
+            title="Project X",
+            description="The description of Project X",
+            tag="#project_x",
+            start_date=datetime.date(2022, 10, 2),
+            end_date=datetime.date(2022, 12, 31),
+            contract=contract,
         )
         assert store_and_retrieve(project)
 

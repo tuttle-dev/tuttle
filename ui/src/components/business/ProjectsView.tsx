@@ -472,6 +472,7 @@ function ProjectForm({ project, isDuplicate = false, contracts, onSave, onCancel
     if (!form.title.trim()) { setValidationError("Title is required"); return; }
     if (!form.tag.match(/^#\S+$/)) { setValidationError("Tag must start with # and contain no spaces"); return; }
     if (!form.startDate) { setValidationError("Start date is required"); return; }
+    if (!form.contractId) { setValidationError("A contract is required. Create a contract first, then assign it here."); return; }
     setSaving(true);
     await onSave(form);
     setSaving(false);
@@ -526,7 +527,7 @@ function ProjectForm({ project, isDuplicate = false, contracts, onSave, onCancel
         </div>
       </Section>
 
-      <Section title="Contract">
+      <Section title={<>Contract<span className="text-accent ml-0.5">*</span></>}>
         <select value={form.contractId ?? ""} onChange={(e) => update("contractId", e.target.value ? Number(e.target.value) : null)}
           className="w-full px-3 py-2 rounded-md text-sm bg-bg-card text-primary border border-border-subtle outline-none focus:border-accent transition-colors">
           <option value="">— Select a contract —</option>
@@ -539,7 +540,7 @@ function ProjectForm({ project, isDuplicate = false, contracts, onSave, onCancel
 
 /* ---------- Shared UI ---------- */
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ title, children }: { title: React.ReactNode; children: React.ReactNode }) {
   return (
     <div>
       <div className="text-xs font-semibold uppercase tracking-wider text-secondary mb-2">{title}</div>

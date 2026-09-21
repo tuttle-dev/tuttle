@@ -485,18 +485,24 @@ class InvoicingIntent(Intent):
         Otherwise the existing time-tracking flow is used.
         """
         logger.info(f"Creating invoice for {project.title}...")
+        contract = project.contract
+        if contract is None:
+            return IntentResult(
+                was_intent_successful=False,
+                error_msg=f"Project “{project.title}” has no contract. Create a contract and assign it to the project before invoicing.",
+            )
         user = self._user_data_source.get_user()
         try:
             invoice_number = self._invoicing_data_source.generate_invoice_number(invoice_date, scheme=number_scheme)
 
             if manual_items is not None:
-                contract = project.contract
+                unit_fallback = contract.unit.value if contract.unit else "hour"
                 items = [
                     InvoiceItem(
                         start_date=from_date,
                         end_date=to_date,
                         quantity=float(it["quantity"]),
-                        unit=it.get("unit", contract.unit.value if contract.unit else "hour"),
+                        unit=it.get("unit") or unit_fallback,
                         unit_price=it["unit_price"],
                         description=it.get("description", project.title),
                         VAT_rate=contract.VAT_rate,
@@ -514,7 +520,6 @@ class InvoicingIntent(Intent):
                     items=items,
                 )
             elif manual_quantity is not None:
-                contract = project.contract
                 item = InvoiceItem(
                     start_date=from_date,
                     end_date=to_date,
