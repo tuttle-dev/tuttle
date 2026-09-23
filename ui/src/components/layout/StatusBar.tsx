@@ -1,6 +1,8 @@
-import { AlertCircle, CheckCircle2, Info, MessageCircleQuestion, Bug } from "lucide-react";
+import { AlertCircle, CheckCircle2, Info, MessageCircleQuestion, Bug, Pause, Square } from "lucide-react";
 import { useStatusBar, type MessageType } from "../shared/status-bar-context";
 import { useNavigation } from "../shared/NavigationContext";
+import { useTimer } from "../timetracking/timer-context";
+import { formatElapsed } from "../timetracking/format";
 
 const REPO = "https://github.com/tuttle-dev/tuttle";
 
@@ -22,6 +24,8 @@ const linkCls =
 export function StatusBar() {
   const { active, dismiss } = useStatusBar();
   const { navigate } = useNavigation();
+  const timer = useTimer();
+  const { status, elapsed, tag } = timer.state;
 
   function handleClick() {
     if (active?.type === "error") {
@@ -37,6 +41,38 @@ export function StatusBar() {
       window.open(url, "_blank");
     }
   }
+
+  async function handleStop() {
+    const outcome = await timer.stop();
+    if (!outcome.saved) navigate("timetracking", {});
+  }
+
+  const timerIndicator = status !== "idle" ? (
+    <div className="flex items-center gap-2 shrink-0">
+      <button
+        onClick={() => navigate("timetracking", {})}
+        className="flex items-center gap-1.5 text-primary hover:text-accent transition-colors"
+        title="Open time tracking"
+      >
+        {status === "running"
+          ? <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+          : <Pause size={11} className="text-status-warning" />}
+        <span className="tabular-nums font-medium">{formatElapsed(elapsed)}</span>
+        <span className={tag ? "text-secondary" : "text-muted italic"}>
+          {tag || (status === "pending" ? "choose a project to save" : "no project")}
+        </span>
+      </button>
+      {status === "running" && (
+        <button
+          onClick={handleStop}
+          className="p-1 rounded text-muted hover:text-red-400 hover:bg-bg-hover transition-colors"
+          title="Stop timer"
+        >
+          <Square size={10} fill="currentColor" />
+        </button>
+      )}
+    </div>
+  ) : null;
 
   const idleContent = (
     <div className="flex items-center gap-3 ml-auto">
@@ -63,6 +99,8 @@ export function StatusBar() {
           active.type === "error" ? "cursor-pointer hover:bg-bg-hover" : ""
         }`}
       >
+        {timerIndicator}
+        {timerIndicator && <div className="w-px h-3.5 bg-border-subtle" />}
         <Icon size={13} className={TYPE_STYLES[active.type]} />
         <span className={`truncate ${TYPE_STYLES[active.type]}`}>
           {active.text}
@@ -73,6 +111,7 @@ export function StatusBar() {
 
   return (
     <div className="shrink-0 flex items-center gap-2 px-4 h-7 border-t border-border-subtle bg-bg-sidebar text-xs select-none">
+      {timerIndicator}
       {idleContent}
     </div>
   );

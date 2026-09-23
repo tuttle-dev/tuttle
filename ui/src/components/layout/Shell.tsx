@@ -14,6 +14,7 @@ import { TaxReservesView } from "../tax/TaxReservesView";
 import { SalaryView } from "../salary/SalaryView";
 import { ExpensesView } from "../salary/ExpensesView";
 import { TimeTrackingView } from "../timetracking/TimeTrackingView";
+import { TimerProvider } from "../timetracking/timer-context";
 import { DocumentImportView } from "../import/DocumentImportView";
 import { PlaceholderView } from "../shared/PlaceholderView";
 import { ViewErrorBoundary } from "../shared/ViewErrorBoundary";
@@ -256,6 +257,7 @@ export function Shell() {
     <ThemeContext.Provider value={theme}>
       <NavigationContext.Provider value={navContext}>
         <StatusBarProvider>
+          <TimerProvider>
           <div className="flex h-screen w-screen bg-bg-content text-primary">
             <Sidebar
               selected={selected}
@@ -288,6 +290,7 @@ export function Shell() {
             onDemo={handleWelcomeDemo}
             loading={regLoading}
           />
+          </TimerProvider>
         </StatusBarProvider>
       </NavigationContext.Provider>
     </ThemeContext.Provider>

@@ -64,7 +64,7 @@ Get an overview of your freelance business at a glance: revenue, outstanding inv
 
 ### Time Tracking
 
-Track the time you spend on your projects. Import directly from your calendar, from a calendar file, or from an export of your favorite time tracking tool.
+Track the time you spend on your projects with the built-in timer, log entries by hand, or import from your calendar, a calendar file, or an export of your favorite time tracking tool.
 
 <img src="assets/images/screenshot-timetracking.png" width=768 />
 

@@ -823,3 +823,354 @@ class TestDomainPackaging:
             f"bundled into the frozen tuttle-rpc binary: {missing}. "
             f"Check tuttle-rpc.spec and the domain's __init__.py."
         )
+
+
+# ---------------------------------------------------------------------------
+# Timer and manual time tracking
+# ---------------------------------------------------------------------------
+
+
+class TestManualTimeTracking:
+    """Start/Stop timer and manual entries, with the exact payloads the UI sends."""
+
+    @pytest.fixture(autouse=True, scope="class")
+    def demo_user(self, rpc_env):
+        # Manual entries live in the active user's database, so run against the demo user.
+        assert_ok(dispatch("users.switch", {"db_file": "harry-tuttle.db"}))
+
+    def test_get_timer_state_initially_stopped(self, rpc_env):
+        r = assert_ok(dispatch("timetracking.get_timer_state", {}))
+        assert r["data"]["running"] is False
+
+    def test_start_timer(self, rpc_env):
+        r = assert_ok(dispatch("timetracking.start_timer", {"tag": "#demo", "title": None}))
+        assert r["data"]["started"] is True
+        assert "start_time" in r["data"]
+
+    def test_timer_state_while_running(self, rpc_env):
+        r = assert_ok(dispatch("timetracking.get_timer_state", {}))
+        assert r["data"]["running"] is True
+        assert r["data"]["tag"] == "#demo"
+
+    def test_start_while_running_fails(self, rpc_env):
+        r = dispatch("timetracking.start_timer", {"tag": "#other"})
+        assert r["ok"] is False
+        assert "already running" in r["error"].lower()
+
+    def test_stop_timer(self, rpc_env):
+        r = assert_ok(dispatch("timetracking.stop_timer", {"tag": "#demo", "title": "", "end_time": None}))
+        assert r["data"]["stopped"] is True
+        assert r["data"]["duration_hours"] >= 0
+        assert r["data"]["entry"]["tag"] == "#demo"
+        assert r["data"]["entry"]["source"] == "manual"
+        assert r["data"]["entry"]["entry_id"] is not None
+
+    def test_timer_state_after_stop(self, rpc_env):
+        r = assert_ok(dispatch("timetracking.get_timer_state", {}))
+        assert r["data"]["running"] is False
+
+    def test_stop_when_not_running_fails(self, rpc_env):
+        r = dispatch("timetracking.stop_timer", {})
+        assert r["ok"] is False
+        assert "no timer" in r["error"].lower()
+
+    def test_start_and_discard(self, rpc_env):
+        assert_ok(dispatch("timetracking.start_timer", {"tag": "#discard"}))
+        r = assert_ok(dispatch("timetracking.discard_timer", {}))
+        assert r["data"]["discarded"] is True
+        state = assert_ok(dispatch("timetracking.get_timer_state", {}))
+        assert state["data"]["running"] is False
+
+    def test_stop_without_project_needs_a_project(self, rpc_env):
+        assert_ok(dispatch("timetracking.start_timer", {"tag": None, "title": None}))
+        r = dispatch("timetracking.stop_timer", {"tag": "", "title": "", "end_time": None})
+        assert r["ok"] is False
+        assert "choose a project" in r["error"].lower()
+        # The timer keeps running; assigning the project while running is enough.
+        upd = assert_ok(dispatch("timetracking.update_timer", {"tag": "#late"}))
+        assert upd["data"]["running"] is True and upd["data"]["tag"] == "#late"
+        r = assert_ok(dispatch("timetracking.stop_timer", {"tag": "#late", "title": "Assigned late", "end_time": None}))
+        assert r["data"]["entry"]["tag"] == "#late"
+        assert r["data"]["entry"]["title"] == "Assigned late"
+
+    def test_stop_with_explicit_end_time(self, rpc_env):
+        from datetime import datetime, timedelta
+
+        start = assert_ok(dispatch("timetracking.start_timer", {"tag": "#timed"}))["data"]["start_time"]
+        end = (datetime.fromisoformat(start) + timedelta(hours=2)).isoformat()
+        r = assert_ok(dispatch("timetracking.stop_timer", {"tag": "#timed", "title": "", "end_time": end}))
+        assert r["data"]["duration_hours"] == 2.0
+
+    def test_stop_with_tag_override(self, rpc_env):
+        assert_ok(dispatch("timetracking.start_timer", {"tag": "#original"}))
+        r = assert_ok(dispatch("timetracking.stop_timer", {"tag": "#override"}))
+        assert r["data"]["entry"]["tag"] == "#override"
+
+    def test_add_manual_entry(self, rpc_env):
+        r = assert_ok(
+            dispatch(
+                "timetracking.add_manual_entry",
+                {
+                    "tag": "#manual",
+                    "title": "Client meeting",
+                    "date": "2026-09-20",
+                    "start_time": "09:00",
+                    "end_time": "11:30",
+                },
+            )
+        )
+        assert r["data"]["added"] is True
+        entry = r["data"]["entry"]
+        assert entry["tag"] == "#manual"
+        assert entry["duration_hours"] == 2.5
+        assert entry["source"] == "manual"
+        assert entry["date"] == "2026-09-20"
+
+    def test_add_manual_entry_same_start_is_rejected(self, rpc_env):
+        r = dispatch(
+            "timetracking.add_manual_entry",
+            {
+                "tag": "#manual",
+                "title": None,
+                "date": "2026-09-20",
+                "start_time": "09:00",
+                "end_time": "10:00",
+            },
+        )
+        assert r["ok"] is False
+        assert "already have an entry" in r["error"].lower()
+
+    def test_add_manual_entry_without_project_fails(self, rpc_env):
+        r = dispatch(
+            "timetracking.add_manual_entry",
+            {
+                "tag": "",
+                "title": None,
+                "date": "2026-09-20",
+                "start_time": "13:00",
+                "end_time": "14:00",
+            },
+        )
+        assert r["ok"] is False
+        assert "choose a project" in r["error"].lower()
+
+    def test_add_manual_entry_end_before_start_fails(self, rpc_env):
+        r = dispatch(
+            "timetracking.add_manual_entry",
+            {
+                "tag": "#fail",
+                "title": None,
+                "date": "2026-09-20",
+                "start_time": "14:00",
+                "end_time": "09:00",
+            },
+        )
+        assert r["ok"] is False
+        assert "after the start time" in r["error"].lower()
+
+    def test_update_manual_entry(self, rpc_env):
+        add_r = assert_ok(
+            dispatch(
+                "timetracking.add_manual_entry",
+                {
+                    "tag": "#edit",
+                    "title": "Original",
+                    "date": "2026-09-19",
+                    "start_time": "10:00",
+                    "end_time": "12:00",
+                },
+            )
+        )
+        entry_id = add_r["data"]["entry"]["entry_id"]
+        r = assert_ok(
+            dispatch(
+                "timetracking.update_manual_entry",
+                {
+                    "entry_id": entry_id,
+                    "tag": "#edited",
+                    "title": "Updated",
+                    "date": "2026-09-19",
+                    "start_time": "10:30",
+                    "end_time": "12:00",
+                },
+            )
+        )
+        assert r["data"]["updated"] is True
+        assert r["data"]["entry"]["entry_id"] == entry_id
+        assert r["data"]["entry"]["tag"] == "#edited"
+        assert r["data"]["entry"]["title"] == "Updated"
+        assert r["data"]["entry"]["duration_hours"] == 1.5
+        events = assert_ok(dispatch("timetracking.get_events", {"project_tag": "#edit"}))
+        assert events["data"] == []
+
+    def test_delete_manual_entry(self, rpc_env):
+        add_r = assert_ok(
+            dispatch(
+                "timetracking.add_manual_entry",
+                {
+                    "tag": "#delete",
+                    "title": None,
+                    "date": "2026-09-18",
+                    "start_time": "08:00",
+                    "end_time": "09:00",
+                },
+            )
+        )
+        entry_id = add_r["data"]["entry"]["entry_id"]
+        r = assert_ok(dispatch("timetracking.delete_manual_entry", {"entry_id": entry_id}))
+        assert r["data"]["deleted"] is True
+        events = assert_ok(dispatch("timetracking.get_events", {"project_tag": "#delete"}))
+        assert events["data"] == []
+        r = dispatch("timetracking.delete_manual_entry", {"entry_id": entry_id})
+        assert r["ok"] is False
+        assert "no longer exists" in r["error"].lower()
+
+    def test_calendar_data_mixes_timer_and_manual_rows(self, rpc_env):
+        r = assert_ok(dispatch("timetracking.get_calendar_data", {"year": 2026, "month": 9, "project_tag": None}))
+        data = r["data"]
+        assert data["days_in_month"] == 30
+        assert "2026-09-20" in data["days"]
+        assert all("source" in ev for ev in data["events"])
+
+    def test_imported_entries_have_no_entry_id(self, rpc_env):
+        import pandas
+
+        from tuttle.app.timetracking.aggregation import merge_dataframes
+        from tuttle.app.timetracking.data_source import TimeTrackingDataFrameSource
+
+        row = pandas.DataFrame(
+            [
+                {
+                    "title": "Standup",
+                    "tag": "#cal",
+                    "description": "",
+                    "duration": pandas.Timedelta(hours=1),
+                    "all_day": False,
+                    "end": pandas.Timestamp("2026-09-15T10:00", tz="CET"),
+                    "source": "calendar",
+                }
+            ],
+            index=pandas.DatetimeIndex([pandas.Timestamp("2026-09-15T09:00", tz="CET")], name="begin"),
+        )
+        ds = TimeTrackingDataFrameSource()
+        ds.store_data_frame(merge_dataframes(ds.calendar_rows(), row))
+        events = assert_ok(dispatch("timetracking.get_events", {"project_tag": "#cal"}))["data"]
+        assert len(events) == 1
+        assert events[0]["source"] == "calendar"
+        assert events[0]["entry_id"] is None
+
+        r = dispatch(
+            "timetracking.update_manual_entry",
+            {
+                "entry_id": 999999,
+                "tag": "#cal",
+                "title": None,
+                "date": "2026-09-15",
+                "start_time": "09:00",
+                "end_time": "11:00",
+            },
+        )
+        assert r["ok"] is False
+        assert "no longer exists" in r["error"].lower()
+
+    def test_manual_entry_may_share_a_start_with_a_calendar_event(self, rpc_env):
+        r = assert_ok(
+            dispatch(
+                "timetracking.add_manual_entry",
+                {
+                    "tag": "#manual",
+                    "title": None,
+                    "date": "2026-09-15",
+                    "start_time": "09:00",
+                    "end_time": "09:30",
+                },
+            )
+        )
+        assert r["data"]["added"] is True
+        cal = assert_ok(dispatch("timetracking.get_events", {"project_tag": "#cal"}))["data"]
+        assert len(cal) == 1
+
+    def test_disconnecting_calendar_keeps_manual_entries(self, rpc_env):
+        assert_ok(dispatch("timetracking.clear", {}))
+        events = assert_ok(dispatch("timetracking.get_events", {}))["data"]
+        assert events
+        assert all(ev["source"] == "manual" for ev in events)
+
+    def test_manual_entries_survive_a_backend_restart(self, rpc_env):
+        from tuttle.app.timetracking.data_source import TimeTrackingDataFrameSource
+
+        # A user switch or process restart leaves the in-memory frame empty.
+        TimeTrackingDataFrameSource().clear()
+        events = assert_ok(dispatch("timetracking.get_events", {}))["data"]
+        manual = [ev for ev in events if ev["source"] == "manual"]
+        assert manual
+        assert all(ev["entry_id"] is not None for ev in manual)
+
+    def test_timesheet_generation_includes_manual_entries(self, rpc_env):
+        import datetime
+
+        from tuttle import timetracking
+        from tuttle.app.projects.intent import ProjectsIntent
+        from tuttle.app.timetracking.intent import TimeTrackingIntent
+
+        project = next(p for p in ProjectsIntent().get_all().data if p.tag and p.contract)
+        assert_ok(
+            dispatch(
+                "timetracking.add_manual_entry",
+                {
+                    "tag": project.tag,
+                    "title": "Manual for invoice",
+                    "date": "2026-09-11",
+                    "start_time": "09:00",
+                    "end_time": "11:00",
+                },
+            )
+        )
+        df = TimeTrackingIntent().get_timetracking_data().data
+        sheet = timetracking.generate_timesheet(df, project, datetime.date(2026, 9, 1), datetime.date(2026, 9, 30))
+        manual_items = [item for item in sheet.items if item.title == "Manual for invoice"]
+        assert len(manual_items) == 1
+        assert manual_items[0].duration == datetime.timedelta(hours=2)
+
+    def test_empty_month_has_full_calendar_shape(self, rpc_env):
+        r = assert_ok(dispatch("timetracking.get_calendar_data", {"year": 2026, "month": 2, "project_tag": None}))
+        assert r["data"]["days_in_month"] == 28
+        assert r["data"]["first_weekday"] == 6
+        assert r["data"]["summary"]["total_events"] == 0
+
+    def test_calendar_cache_round_trips(self, rpc_env, tmp_path, monkeypatch):
+        import pandas
+
+        from tuttle.app.timetracking import data_source
+        from tuttle.app.timetracking.data_source import TimeTrackingDataFrameSource
+
+        monkeypatch.setattr(data_source, "get_data_dir", lambda: tmp_path)
+        row = pandas.DataFrame(
+            [
+                {
+                    "title": "Cached",
+                    "tag": "#cache",
+                    "description": "",
+                    "duration": pandas.Timedelta(hours=1),
+                    "all_day": False,
+                    "end": pandas.Timestamp("2026-09-16T10:00", tz="CET"),
+                    "source": "calendar",
+                }
+            ],
+            index=pandas.DatetimeIndex([pandas.Timestamp("2026-09-16T09:00", tz="CET")], name="begin"),
+        )
+        ds = TimeTrackingDataFrameSource()
+        ds.store_data_frame(row)
+        ds.save_to_cache()
+        assert (tmp_path / "cache" / "timetracking_events.parquet").exists()
+        ds.clear()
+        assert ds.load_from_cache()
+        assert ds.has_calendar_rows()
+        assert ds.calendar_rows().index.tz is not None
+
+    def test_get_project_tags(self, rpc_env):
+        r = assert_ok(dispatch("timetracking.get_project_tags", {}))
+        assert isinstance(r["data"], list)
+        for item in r["data"]:
+            assert "tag" in item
+            assert "title" in item
