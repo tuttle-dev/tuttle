@@ -238,6 +238,51 @@ class AppDatabase:
             if short_key in config:
                 self.set_setting(f"llm.{short_key}", str(config[short_key]))
 
+    # -- Removal of app-wide time-tracking state ----------------------------
+
+    def drop_shared_timetracking_state(self) -> List[str]:
+        """Delete time-tracking state that used to be shared by all users.
+
+        The calendar connection, the running timer and the calendar cache were
+        once kept app-wide, so switching users could show one user's calendar
+        events to another. They now live in each user's own database. The old
+        copies cannot be attributed to a user safely, so they are deleted and
+        the user is told what to redo.
+
+        Returns the notices to show; empty when there was nothing to remove.
+        """
+        settings = self.get_all_settings(prefix="timetracking.")
+        notices: List[str] = []
+        source = settings.get("timetracking.source_type", "")
+        if source == "system":
+            notices.append(
+                "Your calendar has been disconnected from Time Tracking, because the connection was shared "
+                "between all users on this device. Open Time Tracking and connect your calendar again."
+            )
+        elif source == "ics":
+            notices.append(
+                "Your imported calendar file has been removed from Time Tracking, because it was shared "
+                "between all users on this device. Open Time Tracking and import the file again."
+            )
+        timer_start = settings.get("timetracking.timer_start", "")
+        if timer_start:
+            try:
+                started = datetime.datetime.fromisoformat(timer_start).astimezone().strftime("%Y-%m-%d %H:%M")
+            except ValueError:
+                started = "earlier"
+            notices.append(
+                f"A running timer (started {started}) was stopped without saving. "
+                "If you need that time, add it as an entry in Time Tracking."
+            )
+        for key in settings:
+            self.delete_setting(key)
+        for name in ("timetracking_events.parquet", "timetracking_events.pkl"):
+            legacy = self.app_dir / "cache" / name
+            if legacy.exists():
+                legacy.unlink()
+                logger.info(f"Deleted shared time-tracking cache: {legacy}")
+        return notices
+
     # -- Migration from legacy llm_config.json ------------------------------
 
     def migrate_llm_config_from_json(self):
