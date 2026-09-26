@@ -641,7 +641,6 @@ def test_foreign_keys_survive_the_batch_rebuild(bank_accounts_db, table, column,
 
 # -- Required contract on project (revision 386a8e1294ef) ---------------------
 
-_REQUIRE_CONTRACT_REVISION = "386a8e1294ef"
 _BEFORE_REQUIRE_CONTRACT = "6d26f3f69526"
 
 
@@ -668,7 +667,7 @@ def test_project_without_contract_is_removed_and_reported(tmp_db: tuple[Path, st
     assert len(notices) == 1
     assert "Chaos Coordinator" in notices[0]
     assert "Kept" not in notices[0]
-    assert _get_current_revision(url) == _REQUIRE_CONTRACT_REVISION
+    assert _get_current_revision(url) == _heads(url)[1]
     con = sqlite3.connect(db)
     try:
         assert con.execute("SELECT title FROM project ORDER BY id").fetchall() == [("Kept",)]

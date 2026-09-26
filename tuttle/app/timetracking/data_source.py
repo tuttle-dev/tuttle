@@ -1,3 +1,5 @@
+import datetime
+import shutil
 from pathlib import Path
 from typing import Optional
 
@@ -7,22 +9,12 @@ from loguru import logger
 from pandas import DataFrame
 
 from ... import timetracking
-from ...app_db import AppDatabase
 from ...calendar import ICSCalendar
-from ...data_dir import get_data_dir
 from ...dev import singleton
-from ...model import TimeTrackingItem
-from ..core.abstractions import SQLModelDataSourceMixin
+from ...model import TimeTrackingItem, TimeTrackingSettings
+from ..core.abstractions import SQLModelDataSourceMixin, get_active_db
 from ..core.rpc_utils import register_reset
 from .aggregation import merge_dataframes
-
-_SETTING_SOURCE_TYPE = "timetracking.source_type"
-_SETTING_CALENDAR_ID = "timetracking.calendar_id"
-_SETTING_CALENDAR_NAME = "timetracking.calendar_name"
-
-_SETTING_TIMER_START = "timetracking.timer_start"
-_SETTING_TIMER_TAG = "timetracking.timer_tag"
-_SETTING_TIMER_TITLE = "timetracking.timer_title"
 
 TZ = "CET"
 
@@ -39,10 +31,70 @@ def _naive_cet(dt):
     return to_cet(dt).tz_localize(None).to_pydatetime()
 
 
-def _cache_path() -> Path:
-    d = get_data_dir() / "cache"
-    d.mkdir(parents=True, exist_ok=True)
-    return d / "timetracking_events.parquet"
+def user_cache_dir(db_path: Path) -> Path:
+    """Cache directory of the user whose database is *db_path*.
+
+    Calendar events are private to one user, so each user gets their own
+    directory next to their database; nothing is shared between users.
+    """
+    db_path = Path(db_path)
+    return db_path.parent / "cache" / db_path.stem
+
+
+def calendar_cache_path(db_path: Optional[Path] = None) -> Path:
+    return user_cache_dir(db_path or get_active_db()) / "timetracking_events.parquet"
+
+
+def write_calendar_cache(db_path: Path, calendar: DataFrame):
+    """Persist calendar rows for the user whose database is *db_path*."""
+    path = calendar_cache_path(db_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    calendar.to_parquet(path)
+    logger.info(f"Persisted {len(calendar)} calendar events to {path}")
+
+
+def delete_user_cache(db_path: Path):
+    shutil.rmtree(user_cache_dir(db_path), ignore_errors=True)
+
+
+class TimeTrackingSettingsSource:
+    """Calendar connection and running timer, stored in one user's database.
+
+    Defaults to the active user; pass *db_path* to address another user's
+    database explicitly (e.g. installing the demo user while someone else is active).
+    """
+
+    def __init__(self, db_path: Optional[Path] = None):
+        self._db_url = f"sqlite:///{db_path or get_active_db()}"
+
+    def _run(self, fn):
+        engine = sqlmodel.create_engine(self._db_url)
+        try:
+            with sqlmodel.Session(engine, expire_on_commit=False) as session:
+                return fn(session)
+        finally:
+            engine.dispose()
+
+    def get(self) -> TimeTrackingSettings:
+        row = self._run(lambda session: session.exec(sqlmodel.select(TimeTrackingSettings)).first())
+        return row or TimeTrackingSettings()
+
+    def update(self, **fields):
+        def _update(session):
+            row = session.exec(sqlmodel.select(TimeTrackingSettings)).first() or TimeTrackingSettings()
+            for key, value in fields.items():
+                setattr(row, key, value)
+            session.add(row)
+            session.commit()
+
+        self._run(_update)
+
+
+def _to_naive_utc(iso: str) -> datetime.datetime:
+    ts = datetime.datetime.fromisoformat(iso)
+    if ts.tzinfo is not None:
+        ts = ts.astimezone(datetime.timezone.utc).replace(tzinfo=None)
+    return ts
 
 
 @singleton
@@ -94,20 +146,20 @@ class TimeTrackingDataFrameSource:
         self._manual_loaded = False
 
     # -- persistence helpers ---------------------------------------------------
+    # Everything below reads and writes the *active* user's database and cache
+    # directory. Nothing here may live in app.db or a shared file.
 
     def save_to_cache(self):
         calendar = self.calendar_rows()
         if calendar is None:
             return
-        path = _cache_path()
         try:
-            calendar.to_parquet(path)
-            logger.info(f"Persisted {len(calendar)} calendar events to {path}")
+            write_calendar_cache(get_active_db(), calendar)
         except Exception as ex:
             logger.warning(f"Failed to persist time-tracking cache: {ex}")
 
     def load_from_cache(self) -> bool:
-        path = _cache_path()
+        path = calendar_cache_path()
         if not path.exists():
             return False
         try:
@@ -122,57 +174,55 @@ class TimeTrackingDataFrameSource:
             return False
 
     def clear_cache(self):
-        path = _cache_path()
+        path = calendar_cache_path()
         if path.exists():
             path.unlink()
 
     @staticmethod
     def save_source_config(source_type: str, calendar_id: str = "", calendar_name: str = ""):
-        db = AppDatabase()
-        db.set_setting(_SETTING_SOURCE_TYPE, source_type)
-        db.set_setting(_SETTING_CALENDAR_ID, calendar_id)
-        db.set_setting(_SETTING_CALENDAR_NAME, calendar_name)
+        TimeTrackingSettingsSource().update(
+            calendar_source=source_type,
+            calendar_id=calendar_id or None,
+            calendar_name=calendar_name or None,
+        )
 
     @staticmethod
     def get_source_config() -> dict:
-        db = AppDatabase()
+        row = TimeTrackingSettingsSource().get()
         return {
-            "source_type": db.get_setting(_SETTING_SOURCE_TYPE) or "",
-            "calendar_id": db.get_setting(_SETTING_CALENDAR_ID) or "",
-            "calendar_name": db.get_setting(_SETTING_CALENDAR_NAME) or "",
+            "source_type": row.calendar_source or "",
+            "calendar_id": row.calendar_id or "",
+            "calendar_name": row.calendar_name or "",
         }
 
     @staticmethod
     def clear_source_config():
-        db = AppDatabase()
-        for key in (_SETTING_SOURCE_TYPE, _SETTING_CALENDAR_ID, _SETTING_CALENDAR_NAME):
-            db.delete_setting(key)
+        TimeTrackingSettingsSource().update(calendar_source=None, calendar_id=None, calendar_name=None)
 
     # -- timer state -----------------------------------------------------------
 
     @staticmethod
     def save_timer_state(start_iso: str, tag: str = "", title: str = ""):
-        db = AppDatabase()
-        db.set_setting(_SETTING_TIMER_START, start_iso)
-        db.set_setting(_SETTING_TIMER_TAG, tag)
-        db.set_setting(_SETTING_TIMER_TITLE, title)
+        TimeTrackingSettingsSource().update(
+            timer_start=_to_naive_utc(start_iso),
+            timer_tag=tag or None,
+            timer_title=title or None,
+        )
 
     @staticmethod
     def get_timer_state() -> dict:
-        db = AppDatabase()
-        start = db.get_setting(_SETTING_TIMER_START) or ""
+        row = TimeTrackingSettingsSource().get()
+        start = row.timer_start.replace(tzinfo=datetime.timezone.utc).isoformat() if row.timer_start else None
         return {
-            "running": bool(start),
-            "start_time": start or None,
-            "tag": db.get_setting(_SETTING_TIMER_TAG) or None,
-            "title": db.get_setting(_SETTING_TIMER_TITLE) or None,
+            "running": start is not None,
+            "start_time": start,
+            "tag": row.timer_tag or None,
+            "title": row.timer_title or None,
         }
 
     @staticmethod
     def clear_timer_state():
-        db = AppDatabase()
-        for key in (_SETTING_TIMER_START, _SETTING_TIMER_TAG, _SETTING_TIMER_TITLE):
-            db.delete_setting(key)
+        TimeTrackingSettingsSource().update(timer_start=None, timer_tag=None, timer_title=None)
 
 
 class ManualEntriesDataSource(SQLModelDataSourceMixin):

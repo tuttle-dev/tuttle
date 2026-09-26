@@ -185,7 +185,7 @@ class TestDemoStartPath:
         reset_all()
         _intents.clear()
 
-        with patch("tuttle.demo.install_demo_data", side_effect=RuntimeError("boom")):
+        with patch("tuttle.app.users.intent.install_demo_data", side_effect=RuntimeError("boom")):
             with pytest.raises(RuntimeError, match="boom"):
                 dispatch("users.ensure_demo", {})
 
@@ -1138,13 +1138,11 @@ class TestManualTimeTracking:
         assert r["data"]["first_weekday"] == 6
         assert r["data"]["summary"]["total_events"] == 0
 
-    def test_calendar_cache_round_trips(self, rpc_env, tmp_path, monkeypatch):
+    def test_calendar_cache_round_trips(self, rpc_env):
         import pandas
 
-        from tuttle.app.timetracking import data_source
-        from tuttle.app.timetracking.data_source import TimeTrackingDataFrameSource
+        from tuttle.app.timetracking.data_source import TimeTrackingDataFrameSource, calendar_cache_path
 
-        monkeypatch.setattr(data_source, "get_data_dir", lambda: tmp_path)
         row = pandas.DataFrame(
             [
                 {
@@ -1159,14 +1157,22 @@ class TestManualTimeTracking:
             ],
             index=pandas.DatetimeIndex([pandas.Timestamp("2026-09-16T09:00", tz="CET")], name="begin"),
         )
+        path = calendar_cache_path(abstractions.get_active_db())
+        original = path.read_bytes() if path.exists() else None
         ds = TimeTrackingDataFrameSource()
-        ds.store_data_frame(row)
-        ds.save_to_cache()
-        assert (tmp_path / "cache" / "timetracking_events.parquet").exists()
-        ds.clear()
-        assert ds.load_from_cache()
-        assert ds.has_calendar_rows()
-        assert ds.calendar_rows().index.tz is not None
+        try:
+            ds.store_data_frame(row)
+            ds.save_to_cache()
+            assert path.exists()
+            ds.clear()
+            assert ds.load_from_cache()
+            assert ds.has_calendar_rows()
+            assert ds.calendar_rows().index.tz is not None
+        finally:
+            # This is the demo user's own cache; leave it as the other tests expect.
+            if original is not None:
+                path.write_bytes(original)
+            ds.clear()
 
     def test_get_project_tags(self, rpc_env):
         r = assert_ok(dispatch("timetracking.get_project_tags", {}))
