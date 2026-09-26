@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useId, useState, useCallback, useMemo } from "react";
 import {
   FileText, Send, CheckCircle, XCircle, Mail, Trash2,
-  Building2, FolderKanban, Calendar, Banknote, Eye, DollarSign,
+  Building2, FolderKanban, Calendar, Banknote, Eye,
   Plus, Clock, AlertTriangle, ChevronLeft, ChevronRight, Search, Share, Receipt, Milestone, FileSignature,
 } from "lucide-react";
 import { rpc, readFileAsDataURL } from "../../api/rpc";
@@ -622,21 +622,6 @@ function CreateInvoiceDialog({ onClose, onCreated }: { onClose: () => void; onCr
               )}
             </label>
           )}
-
-          {/* Fixed-price notice */}
-          {isFixedPrice && docType === "invoice" && selectedProject && (() => {
-            const ct = subEntity(selectedProject, "contract");
-            const price = ct ? num(ct, "fixed_price") : 0;
-            const currency = ct ? str(ct, "currency") : "EUR";
-            return (
-              <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-accent/10 border border-accent/20">
-                <DollarSign size={14} className="text-accent shrink-0" />
-                <span className="text-xs text-primary">
-                  Fixed price contract — <span className="font-medium">{price} {currency}</span>
-                </span>
-              </div>
-            );
-          })()}
 
           {/* Additional charges the contract will add on top — only when it has any */}
           {mode !== "manual" && charges.length > 0 && (
