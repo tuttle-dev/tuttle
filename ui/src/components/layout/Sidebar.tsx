@@ -89,7 +89,7 @@ export function Sidebar({
         {SECTIONS.map((section) => (
           <div key={section.label}>
             {!collapsed && (
-              <div className="px-2 pb-1 text-[13px] font-medium text-tertiary">
+              <div className="px-2 pb-1 text-[13px] font-semibold text-secondary">
                 {section.label}
               </div>
             )}
