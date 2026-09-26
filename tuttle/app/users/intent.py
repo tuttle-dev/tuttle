@@ -10,13 +10,21 @@ from sqlmodel import create_engine as sql_create_engine
 from sqlmodel import select
 
 from ...app_db import AppDatabase
+from ...calendar import ICSCalendar
 from ...data_dir import get_data_dir
 from ...db_schema import ensure_schema
-from ...model import Address, BankAccount, Invoice, Timesheet, User
+from ...demo import create_fake_calendar, install_demo_data
+from ...model import Address, BankAccount, Invoice, Project, Timesheet, User
 from ..auth.data_source import UserDataSource
 from ..core.abstractions import get_active_db, set_active_db
 from ..core.intent_result import IntentResult
 from ..core.rpc_utils import reset_all
+from ..timetracking.data_source import (
+    TimeTrackingSettingsSource,
+    calendar_cache_path,
+    delete_user_cache,
+    write_calendar_cache,
+)
 
 #: Logos are downscaled so the longest edge is at most this many pixels before
 #: being stored as a base64 data URI in the per-user database.
@@ -146,41 +154,34 @@ class UsersIntent:
         self._app_db.set_active(db_file)
         reset_all()
         logger.info(f"Switched to user DB: {db_file}")
-        return notices
-
         if is_demo:
             self._ensure_demo_timetracking(db_path)
+        return notices
 
-    def _ensure_demo_timetracking(self, db_path: Path = None):
-        """Repopulate demo time-tracking data for the Harry Tuttle demo user."""
-        from ..timetracking.data_source import TimeTrackingDataFrameSource
+    @staticmethod
+    def _install_demo_calendar(db_path: Path, df):
+        """Store the demo calendar as the demo user's own, never the active user's."""
+        write_calendar_cache(db_path, df)
+        TimeTrackingSettingsSource(db_path).update(calendar_source="demo", calendar_name="Demo calendar")
 
-        ds = TimeTrackingDataFrameSource()
-        if ds.get_data_frame() is not None:
+    def _ensure_demo_timetracking(self, db_path: Path):
+        """Regenerate the demo user's calendar if their cache is missing.
+
+        Demo users created before calendars were stored per user had theirs in
+        a shared cache file, which is now deleted.
+        """
+        if calendar_cache_path(db_path).exists():
             return
         try:
-            from sqlmodel import Session, create_engine, select
-
-            from ...calendar import ICSCalendar
-            from ...demo import create_fake_calendar
-            from ...model import Project
-
-            if db_path is None:
-                db_path = get_active_db()
-
-            engine = create_engine(f"sqlite:///{db_path}")
-            with Session(engine) as session:
+            engine = sql_create_engine(f"sqlite:///{db_path}")
+            with SqlSession(engine) as session:
                 projects = session.exec(select(Project)).all()
+            engine.dispose()
             if not projects:
                 return
-            cal = ICSCalendar(
-                name="Demo calendar",
-                ics_calendar=create_fake_calendar(list(projects)),
-            )
+            cal = ICSCalendar(name="Demo calendar", ics_calendar=create_fake_calendar(list(projects)))
             df = cal.to_data()
-            ds.store_data_frame(df)
-            ds.save_to_cache()
-            ds.save_source_config("demo", calendar_name="Demo calendar")
+            self._install_demo_calendar(db_path, df)
             logger.info(f"Repopulated {len(df)} demo time-tracking events")
         except Exception as ex:
             logger.warning(f"Could not repopulate demo timetracking: {ex}")
@@ -201,6 +202,7 @@ class UsersIntent:
         """Delete a user, their database, and all rendered output files."""
         db_path = self._app_db.get_user_db_path(db_file)
         self._cleanup_rendered_files(db_path)
+        delete_user_cache(db_path)
         removed = self._app_db.remove_user(db_file)
         if removed:
             reset_all()
@@ -463,9 +465,6 @@ class UsersIntent:
         data (e.g. a rendering error), the incomplete registration is removed
         and the installation is retried from scratch.
         """
-        from ...demo import install_demo_data
-        from ..timetracking.data_source import TimeTrackingDataFrameSource
-
         existing = self._app_db.get_user_by_db_file("harry-tuttle.db")
         if existing:
             db_path = self._app_db.get_user_db_path("harry-tuttle.db")
@@ -487,10 +486,9 @@ class UsersIntent:
             db_path.unlink()
 
         def _cache_demo_timetracking(df):
-            ds = TimeTrackingDataFrameSource()
-            ds.store_data_frame(df)
-            ds.save_to_cache()
-            ds.save_source_config("demo", calendar_name="Demo calendar")
+            # Another user may be active while the demo is installed; write to
+            # the demo user's database and cache directory only.
+            self._install_demo_calendar(db_path, df)
             logger.info(f"Cached {len(df)} demo time-tracking events")
 
         try:
@@ -530,12 +528,12 @@ class UsersIntent:
         self._app_db.ensure()
         self._app_db.migrate_llm_config_from_json()
 
-        notices: list[str] = []
+        notices: list[str] = self._app_db.drop_shared_timetracking_state()
         last = self._app_db.get_last_active()
         if last:
-            notices = self._switch_to_user_db(last.db_file)
+            notices += self._switch_to_user_db(last.db_file)
         else:
             users = self._app_db.list_users()
             if users:
-                notices = self._switch_to_user_db(users[0].db_file)
+                notices += self._switch_to_user_db(users[0].db_file)
         return IntentResult(was_intent_successful=True, data=None, warning="\n\n".join(notices))

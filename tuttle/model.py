@@ -956,6 +956,28 @@ class TimeTrackingItem(SQLModel, table=True):
     description: Optional[str] = Field(description="A longer description of the time interval.")
 
 
+class TimeTrackingSettings(SQLModel, table=True):
+    """The user's calendar connection and running timer (at most one row).
+
+    Kept in the user's own database, never in app.db, so that switching users
+    can never surface one user's calendar events or timer to another.
+    """
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    calendar_source: Optional[str] = Field(
+        default=None,
+        description="Where calendar events come from: 'system', 'ics' or 'demo'; None when no calendar is connected.",
+    )
+    calendar_id: Optional[str] = Field(default=None, description="Identifier of the connected system calendar.")
+    calendar_name: Optional[str] = Field(default=None, description="Display name of the connected calendar or file.")
+    timer_start: Optional[datetime.datetime] = Field(
+        default=None,
+        description="When the running timer was started, in UTC; None when no timer is running.",
+    )
+    timer_tag: Optional[str] = Field(default=None, description="Project tag of the running timer.")
+    timer_title: Optional[str] = Field(default=None, description="Title of the running timer.")
+
+
 class Timesheet(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     title: str
