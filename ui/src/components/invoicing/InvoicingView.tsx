@@ -1,8 +1,8 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { Fragment, useEffect, useId, useState, useCallback, useMemo } from "react";
 import {
   FileText, Send, CheckCircle, XCircle, Mail, Trash2,
   Building2, FolderKanban, Calendar, Banknote, Eye, DollarSign,
-  Plus, Clock, AlertTriangle, ChevronLeft, ChevronRight, Search, Share, Receipt, Milestone,
+  Plus, Clock, AlertTriangle, ChevronLeft, ChevronRight, Search, Share, Receipt, Milestone, FileSignature,
 } from "lucide-react";
 import { rpc, readFileAsDataURL } from "../../api/rpc";
 import { str, num, bool, entity as subEntity, list as entityList, formatDate, invoiceStatus, deepStr, isReminder, isDeposit, isFinalInvoice, reminderLevel, depositChainHeadId, depositMilestoneLabel, milestoneScheduleStatus, type MilestoneScheduleStatus } from "../../api/entity";
@@ -275,6 +275,49 @@ function contractCharges(project?: Entity | null): Entity[] {
   return entityList(contract, "charges").filter((c) => bool(c, "is_active"));
 }
 
+/** The contract an invoice bills under, with its terms on hover or focus. */
+function ContractPreview({ contract }: { contract: Entity }) {
+  const id = useId();
+  const client = subEntity(contract, "client");
+  const bank = subEntity(contract, "bank_account");
+  const currency = str(contract, "currency") || "EUR";
+  const fixedPrice = num(contract, "fixed_price");
+  const term = str(contract, "term_of_payment");
+  const terms: [string, string][] = [
+    ["Client", client ? str(client, "name") : "—"],
+    fixedPrice > 0
+      ? ["Fixed price", `${fixedPrice} ${currency}`]
+      : ["Rate", `${num(contract, "rate")} ${currency} per ${str(contract, "unit") || "hour"}`],
+    ["VAT", taxTreatment(taxCategory(str(contract, "VAT_category")), num(contract, "VAT_rate"))],
+    ["Payment", term ? `${term} days` : "—"],
+    ["Bank account", bank ? str(bank, "name") : "Default"],
+  ];
+  return (
+    <span className="relative group flex mt-1.5">
+      <button type="button" aria-describedby={id}
+        className="w-full flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-bg-card border border-border-subtle text-xs text-secondary cursor-help hover:text-primary transition-colors focus:outline-none focus:ring-2 focus:ring-accent">
+        <FileSignature size={12} className="shrink-0" />
+        <span className="truncate">{str(contract, "title")}</span>
+        <span className="ml-auto shrink-0 text-tertiary">{currency}</span>
+      </button>
+      <span id={id} role="tooltip"
+        className="absolute top-full left-0 mt-2 z-50 w-64 rounded-md border border-border-subtle bg-bg-card p-3 shadow-lg
+          opacity-0 invisible transition-all duration-150
+          group-hover:opacity-100 group-hover:visible
+          group-focus-within:opacity-100 group-focus-within:visible">
+        <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-xs">
+          {terms.map(([label, value]) => (
+            <Fragment key={label}>
+              <dt className="text-tertiary">{label}</dt>
+              <dd className="text-primary min-w-0 break-words">{value}</dd>
+            </Fragment>
+          ))}
+        </dl>
+      </span>
+    </span>
+  );
+}
+
 function makeDefaultItem(project?: Entity | null): LineItem {
   const contract = contractOf(project);
   const unit = contract ? str(contract, "unit") : "";
@@ -514,15 +557,18 @@ function CreateInvoiceDialog({ onClose, onCreated }: { onClose: () => void; onCr
         <div className="px-5 py-4 space-y-4">
           <p className="text-xs text-muted"><span className="text-accent">*</span> Required</p>
           {/* Project */}
-          <label className="block">
-            <span className="text-xs font-semibold text-secondary uppercase tracking-wider">Project<span className="text-accent ml-0.5">*</span></span>
-            <select value={projectId ?? ""} onChange={(e) => handleProjectChange(Number(e.target.value))}
-              className="mt-1 w-full px-3 py-1.5 rounded-md bg-bg-card border border-border-subtle text-sm text-primary">
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>{str(p, "title")}</option>
-              ))}
-            </select>
-          </label>
+          <div>
+            <label className="block">
+              <span className="text-xs font-semibold text-secondary uppercase tracking-wider">Project<span className="text-accent ml-0.5">*</span></span>
+              <select value={projectId ?? ""} onChange={(e) => handleProjectChange(Number(e.target.value))}
+                className="mt-1 w-full px-3 py-1.5 rounded-md bg-bg-card border border-border-subtle text-sm text-primary">
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>{str(p, "title")}</option>
+                ))}
+              </select>
+            </label>
+            {selectedContract && <ContractPreview contract={selectedContract} />}
+          </div>
 
           {/* Document type (only when contract has milestones) */}
           {hasMilestones && isFixedPrice && (
