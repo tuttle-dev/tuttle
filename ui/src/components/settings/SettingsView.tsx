@@ -1307,10 +1307,8 @@ function SystemTab() {
         setChecking(false);
         showMessage(`Update ${info.version} available — downloading…`, { type: "info" });
       }),
-      window.tuttle?.onUpdateError?.((info) => {
-        setChecking(false);
-        showMessage(`Update check failed: ${info.message}`, { type: "error" });
-      }),
+      // The message itself is shown by UpdateBanner, which is always mounted.
+      window.tuttle?.onUpdateError?.(() => setChecking(false)),
     ];
     return () => offs.forEach((off) => off?.());
   }, []);

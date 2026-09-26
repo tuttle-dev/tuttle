@@ -8,6 +8,12 @@ declare global {
       onUpdateNotAvailable: (cb: (info: { version: string }) => void) => () => void;
       onUpdateDownloaded: (cb: (info: { version: string }) => void) => () => void;
       onUpdateError: (cb: (info: { message: string }) => void) => () => void;
+      onUpdateProgress: (cb: (info: { version: string; percent: number }) => void) => () => void;
+      getUpdateState: () => Promise<
+        | { status: "idle" }
+        | { status: "downloading"; version: string; percent: number }
+        | { status: "ready"; version: string }
+      >;
       checkForUpdate: () => void;
       openExternal: (url: string) => void;
       quitAndInstall: () => void;
