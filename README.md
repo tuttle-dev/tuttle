@@ -40,12 +40,12 @@
 
 Tuttle is a desktop app that takes the paperwork off your plate as a freelancer:
 
-- **Track your time** — import from your calendar, a calendar file, or your favorite time-tracking tool.
-- **Generate invoices and timesheets** — from tracked time, from manual entries, or for fixed-price contracts. Export to PDF, send by email. Invoices are generated as Factur-X / ZUGFeRD electronic invoices by default.
-- **Import documents with AI** — drop an existing invoice or contract PDF and let Tuttle extract the data automatically.
-- **See your business at a glance** — dashboard with revenue, outstanding invoices, project budgets, and key performance indicators.
-- **Know what you can spend** — tax and VAT reserve estimates, income forecasting, and an effective salary calculation show how much of your revenue is actually yours.
-- **Keep your data private** — everything is processed and stored locally on your device, with no central data collection.
+- **Track your time** — with a timer, by hand, or imported from your calendar.
+- **Invoice** — from tracked time or fixed-price milestones, as Factur-X / ZUGFeRD e-invoices.
+- **Import documents with AI** — extract data from existing invoices and contracts.
+- **See your business at a glance** — revenue, outstanding invoices, budgets, goals.
+- **Know what you can spend** — tax reserves, expenses, and your effective salary.
+- **Keep your data private** — stored locally, no account, no central server.
 
 ## Mission Statement
 
@@ -58,39 +58,45 @@ Tuttle brings all of this into one place. It is a desktop app tailored to solo f
 
 ### Dashboard
 
-Get an overview of your freelance business at a glance: revenue, outstanding invoices, project budgets, income forecasting and key performance indicators.
+Revenue, outstanding invoices, project budgets, forecasts, and progress towards your financial goals.
 
 <img src="assets/images/screenshot-dashboard.png" width=768 />
 
 ### Time Tracking
 
-Track the time you spend on your projects with the built-in timer, log entries by hand, or import from your calendar, a calendar file, or an export of your favorite time tracking tool.
+Start a timer on a project, log entries by hand, or import from your calendar or time-tracking tool.
 
 <img src="assets/images/screenshot-timetracking.png" width=768 />
 
 ### Invoicing
 
-Generate invoices and timesheets automatically from your time tracking data, or create invoices manually by entering the quantity of hours or days directly. Supports both time-based and fixed-price contracts. Export to PDF and send via email.
-
-Invoices are generated as **Factur-X / ZUGFeRD** electronic invoices by default: machine-readable XML (EN16931) is embedded directly into the PDF, compliant with EU e-invoicing requirements without changing your workflow.
+Invoices and timesheets from tracked time, manual quantities, or fixed-price contracts with deposit and final invoices. Payment reminders, multiple currencies, and a SEPA QR code. Every invoice is a **Factur-X / ZUGFeRD** e-invoice (XRechnung optional), exported to PDF and sent by email.
 
 <img src="assets/images/screenshot-invoices.png" width=768 />
 
+### Clients, Contracts & Projects
+
+Rates, billing cycles, payment schedules and bank accounts per contract; time budgets per project.
+
 ### Tax & Reserves
 
-See how much of your revenue goes to VAT and estimated income tax. A revenue breakdown waterfall shows your spendable income after all reserves.
+How much of your revenue goes to VAT and income tax, and what is left to spend.
 
 <img src="assets/images/screenshot-tax.png" width=768 />
 
-### Salary
+### Salary & Expenses
 
-Calculate your effective monthly salary as a freelancer -- what you can safely pay yourself -- based on paid and outstanding invoices, tax reserves, and recurring expenses.
+What you can safely pay yourself each month, after taxes and recurring expenses.
 
 <img src="assets/images/screenshot-salary.png" width=768 />
 
+### Timeline & Tasks
+
+Key events in chronological order, and a to-do list of what needs your attention.
+
 ### AI Document Import
 
-Drop an invoice or contract PDF and let Tuttle extract the structured data automatically using AI. Imported data flows into your clients, contracts, and invoices.
+Drop an invoice or contract PDF and Tuttle extracts the data — with a local model via Ollama, or any OpenAI-compatible provider.
 
 <img src="assets/images/screenshot-import.png" width=768 />
 
