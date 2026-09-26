@@ -3,7 +3,7 @@ import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import { PythonBridge } from "./python-bridge";
-import { autoUpdater, initUpdater } from "./updater";
+import { autoUpdater, checkForUpdates, getUpdateState, initUpdater } from "./updater";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -102,12 +102,10 @@ app.whenReady().then(async () => {
       });
       return;
     }
-    autoUpdater.checkForUpdates().catch((err) => {
-      mainWindow!.webContents.send("update-error", {
-        message: err?.message ?? String(err),
-      });
-    });
+    checkForUpdates(mainWindow, true);
   });
+
+  ipcMain.handle("get-update-state", () => getUpdateState());
 
   ipcMain.on("open-external", (_event, url: string) => {
     if (typeof url === "string" && /^https?:\/\//.test(url)) {
