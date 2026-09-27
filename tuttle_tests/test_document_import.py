@@ -695,3 +695,122 @@ class TestLlmInvoiceSchema:
 
         result = _map_invoices([inv])
         assert result[0]["items"][0]["unit"] == "fixed_price"
+
+
+class TestImportProgress:
+    """parse_document_for_import streams progress events while the LLM runs."""
+
+    EXTRACTED = {
+        "contacts": [{"ref": "contact_1", "first_name": "Jane", "last_name": "Doe"}],
+        "clients": [{"ref": "client_1", "name": "ACME GmbH", "contact_ref": "contact_1"}],
+        "contracts": [{"ref": "contract_1", "title": "Rahmenvertrag", "client_ref": "client_1"}],
+        "projects": [],
+        "invoices": [],
+    }
+
+    @staticmethod
+    def _chunk(delta="", thinking=None):
+        from types import SimpleNamespace
+
+        return SimpleNamespace(delta=delta, additional_kwargs={"thinking_delta": thinking} if thinking else {})
+
+    def _run(self, monkeypatch, summary_chunks, extract_chunks):
+        import base64
+
+        import tuttle.llm as llm
+
+        class FakeLlm:
+            def stream_complete(self, prompt):
+                yield from summary_chunks
+
+            def stream_chat(self, messages, **kwargs):
+                assert kwargs["format"] == llm.DocumentExtractionResult.model_json_schema()
+                yield from extract_chunks
+
+        monkeypatch.setattr(llm, "_get_llm", lambda config: FakeLlm())
+        monkeypatch.setattr(llm, "_TEXT_EMIT_INTERVAL", 0)
+        monkeypatch.setattr(llm, "_ITEMS_EMIT_INTERVAL", 0)
+        events = []
+        result = llm.parse_document_for_import(
+            base64.b64encode(b"Contract between ACME GmbH and Jane Doe").decode(),
+            "contract.txt",
+            config=llm.LLMConfig(provider="ollama", model="test-model"),
+            on_progress=events.append,
+        )
+        return result, events
+
+    def test_streams_steps_reasoning_and_items(self, monkeypatch):
+        import json
+
+        from tuttle.llm import DocumentExtractionResult, _map_document_extraction
+
+        summary_chunks = [
+            self._chunk(thinking="The document is "),
+            self._chunk(thinking="a contract."),
+            self._chunk("CONTACTS: Jane Doe\n"),
+            self._chunk("CLIENTS: ACME GmbH\n"),
+        ]
+        payload = json.dumps(self.EXTRACTED)
+        extract_chunks = [self._chunk(payload[i : i + 7]) for i in range(0, len(payload), 7)]
+
+        result, events = self._run(monkeypatch, summary_chunks, extract_chunks)
+
+        assert all(s["status"] == "done" for s in result["steps"])
+        expected = _map_document_extraction(DocumentExtractionResult.model_validate(self.EXTRACTED))
+        assert {k: result[k] for k in expected} == expected
+
+        running = [
+            next(s["key"] for s in e["steps"] if s["status"] == "running")
+            for e in events
+            if e["kind"] == "steps" and any(s["status"] == "running" for s in e["steps"])
+        ]
+        assert running == [s["key"] for s in result["steps"]]
+
+        text = [e for e in events if e["kind"] == "text"]
+        assert all(e["step"] == "summarize_document" for e in text)
+        assert "".join(e["thinking"] for e in text) == "The document is a contract."
+        assert "".join(e["text"] for e in text) == "CONTACTS: Jane Doe\nCLIENTS: ACME GmbH\n"
+
+        items = [e["items"] for e in events if e["kind"] == "items"]
+        assert len(items) > 1
+        for before, after in zip(items, items[1:]):
+            assert all(len(after[k]) >= len(before[k]) for k in before)
+        assert items[-1] == {
+            "contacts": ["Jane Doe"],
+            "clients": ["ACME GmbH"],
+            "contracts": ["Rahmenvertrag"],
+            "projects": [],
+            "invoices": [],
+        }
+
+    def test_timeout_mid_stream_fails_the_step(self, monkeypatch):
+        import httpx
+
+        def summary_chunks():
+            yield self._chunk("CONTACTS: Jane")
+            raise httpx.ReadTimeout("timed out")
+
+        result, events = self._run(monkeypatch, summary_chunks(), [])
+
+        failed = next(s for s in result["steps"] if s["status"] == "error")
+        assert failed["key"] == "summarize_document"
+        assert "timed out" in failed["error"]
+        assert "Settings" in failed["error"]
+        assert events[-1] == {"kind": "steps", "steps": result["steps"]}
+
+
+def test_rpc_notification_has_no_id(monkeypatch):
+    import io
+    import json
+
+    import tuttle.rpc_server as rpc_server
+
+    out = io.StringIO()
+    monkeypatch.setattr(rpc_server.sys, "stdout", out)
+    rpc_server.notify("progress", {"topic": "import", "kind": "items", "items": {}})
+
+    message = json.loads(out.getvalue())
+    assert out.getvalue().count("\n") == 1
+    assert "id" not in message
+    assert message["method"] == "progress"
+    assert message["params"]["topic"] == "import"

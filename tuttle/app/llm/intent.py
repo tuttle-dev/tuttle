@@ -2,6 +2,7 @@
 
 import tuttle.llm as _llm
 
+from ..core import progress
 from ..core.intent_result import IntentResult
 
 
@@ -49,6 +50,7 @@ class LlmIntent:
         result = _llm.parse_document_for_import(
             file_base64,
             file_name,
+            on_progress=lambda event: progress.emit("import", **event),
         )
         all_done = all(s["status"] == "done" for s in result.get("steps", []))
         if all_done:

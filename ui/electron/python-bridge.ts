@@ -19,6 +19,8 @@ export class PythonBridge {
   private process: ChildProcess | null = null;
   private rl: readline.Interface | null = null;
   private pending = new Map<number, PendingRequest>();
+  /** Receives JSON-RPC notifications (messages without an id), e.g. progress. */
+  onNotification: ((method: string, params: unknown) => void) | null = null;
   private nextId = 1;
   private projectRoot: string;
   private isPackaged: boolean;
@@ -85,6 +87,10 @@ export class PythonBridge {
     this.rl.on("line", (line: string) => {
       try {
         const response = JSON.parse(line);
+        if (response.id == null && typeof response.method === "string") {
+          this.onNotification?.(response.method, response.params);
+          return;
+        }
         const req = this.pending.get(response.id);
         if (req) {
           this.pending.delete(response.id);
