@@ -7,6 +7,7 @@ import pandas
 import pytest
 
 from tuttle.forecasting import (
+    cash_flow_series,
     monthly_revenue_from_calendar,
     monthly_revenue_from_contracts,
     revenue_curve,
@@ -28,6 +29,7 @@ from tuttle.model import (
     Invoice,
     InvoiceItem,
     Project,
+    RecurringExpense,
     Timesheet,
     TimeTrackingItem,
 )
@@ -410,6 +412,178 @@ class TestRevenueSeries:
         assert present["has_later"] is False
         past = revenue_series([paid_invoice], [], None, granularity="month", offset=-1, today=datetime.date.today())
         assert past["has_later"] is True
+
+
+class TestCashFlowSeries:
+    """Cash flow forecast projecting invoice inflows, calendar planned revenue, and expenses."""
+
+    TODAY = datetime.date(2026, 10, 15)
+
+    def test_empty_data_handling(self):
+        result = cash_flow_series([], [], [], [], None, forecast_months=6, today=self.TODAY)
+        assert len(result["buckets"]) == 6
+        assert result["window_start"] == "2026-10-01"
+        assert result["window_end"] == "2027-03-31"
+        assert result["total_inflow"] == 0.0
+        assert result["total_outflow"] == 0.0
+        assert result["net_cash_flow"] == 0.0
+        assert all(b["inflow_total"] == 0.0 for b in result["buckets"])
+        assert all(b["outflow"] == 0.0 for b in result["buckets"])
+        assert all(b["balance"] == 0.0 for b in result["buckets"])
+        assert result["buckets"][0]["is_current"] is True
+        assert result["buckets"][1]["is_current"] is False
+
+    def test_sent_unpaid_invoices_placed_in_due_date_bucket(self, active_contract, project):
+        active_contract.term_of_payment = 14
+        inv = Invoice(
+            number="2026-201",
+            date=datetime.date(2026, 10, 25),
+            contract=active_contract,
+            project=project,
+            sent=True,
+            paid=False,
+            cancelled=False,
+        )
+        InvoiceItem(
+            invoice=inv,
+            quantity=10,
+            unit="hour",
+            unit_price=Decimal("100.00"),
+            VAT_rate=Decimal("0"),
+        )
+        result = cash_flow_series([inv], [active_contract], [project], [], None, forecast_months=6, today=self.TODAY)
+        # Month 0: Oct 2026
+        assert result["buckets"][0]["inflow_invoiced"] == 0.0
+        # Month 1: Nov 2026 (due date is Nov 8)
+        assert result["buckets"][1]["inflow_invoiced"] == 1000.0
+        assert result["total_inflow"] == 1000.0
+
+    def test_overdue_invoices_placed_into_current_month(self, active_contract, project):
+        active_contract.term_of_payment = 14
+        inv = Invoice(
+            number="2026-202",
+            date=datetime.date(2026, 8, 1),
+            contract=active_contract,
+            project=project,
+            sent=True,
+            paid=False,
+            cancelled=False,
+        )
+        InvoiceItem(
+            invoice=inv,
+            quantity=15,
+            unit="hour",
+            unit_price=Decimal("100.00"),
+            VAT_rate=Decimal("0"),
+        )
+        result = cash_flow_series([inv], [active_contract], [project], [], None, forecast_months=6, today=self.TODAY)
+        # Should be mapped to current month (Month 0: Oct 2026)
+        assert result["buckets"][0]["inflow_invoiced"] == 1500.0
+        assert result["buckets"][0]["inflow_total"] == 1500.0
+        assert result["buckets"][1]["inflow_invoiced"] == 0.0
+
+    def test_paid_and_cancelled_invoices_excluded(self, paid_invoice, unpaid_invoice):
+        unpaid_invoice.cancelled = True
+        result = cash_flow_series(
+            [paid_invoice, unpaid_invoice],
+            [paid_invoice.contract],
+            [paid_invoice.project],
+            [],
+            None,
+            forecast_months=6,
+            today=self.TODAY,
+        )
+        assert result["total_inflow"] == 0.0
+        assert all(b["inflow_invoiced"] == 0.0 for b in result["buckets"])
+
+    def test_calendar_planned_work_shifted_by_contract_payment_terms(self, project, active_contract):
+        active_contract.id = 1
+        project.contract_id = 1
+        active_contract.term_of_payment = 30
+        time_data = TestMonthlyRevenueFromCalendar._time_data(project.tag, datetime.date(2026, 10, 10))
+        result = cash_flow_series([], [active_contract], [project], [], time_data, forecast_months=6, today=self.TODAY)
+        # October bucket has 0 planned inflow (shifted to Nov)
+        assert result["buckets"][0]["inflow_planned"] == 0.0
+        # November bucket receives the planned inflow
+        assert result["buckets"][1]["inflow_planned"] > 0.0
+        assert result["total_inflow"] > 0.0
+
+    def test_recurring_expenses_deducted_across_all_buckets(self):
+        exp_monthly = RecurringExpense(
+            title="Office Rent",
+            amount=Decimal("1000.00"),
+            period=Cycle.monthly,
+        )
+        exp_quarterly = RecurringExpense(
+            title="Insurance",
+            amount=Decimal("600.00"),
+            period=Cycle.quarterly,
+        )
+        exp_dynamic = RecurringExpense(
+            title="Health Insurance",
+            amount=Decimal("0"),
+            rate=Decimal("14.6"),
+            period=Cycle.monthly,
+        )
+        result = cash_flow_series(
+            [],
+            [],
+            [],
+            [exp_monthly, exp_quarterly, exp_dynamic],
+            None,
+            forecast_months=6,
+            today=self.TODAY,
+        )
+        assert all(b["outflow"] == 1200.0 for b in result["buckets"])
+        assert result["total_outflow"] == 7200.0
+        assert result["net_cash_flow"] == -7200.0
+
+    def test_running_balance_cumulative_accumulation(self, active_contract, project):
+        active_contract.term_of_payment = 10
+        inv = Invoice(
+            number="2026-203",
+            date=datetime.date(2026, 10, 1),
+            contract=active_contract,
+            project=project,
+            sent=True,
+            paid=False,
+            cancelled=False,
+        )
+        InvoiceItem(
+            invoice=inv,
+            quantity=20,
+            unit="hour",
+            unit_price=Decimal("100.00"),
+            VAT_rate=Decimal("0"),
+        )
+        exp = RecurringExpense(
+            title="Hosting",
+            amount=Decimal("500.00"),
+            period=Cycle.monthly,
+        )
+        result = cash_flow_series(
+            [inv],
+            [active_contract],
+            [project],
+            [exp],
+            None,
+            forecast_months=6,
+            today=self.TODAY,
+        )
+        # Month 0: Inflow 2000, Outflow 500 -> Net 1500, Balance 1500
+        assert result["buckets"][0]["net"] == 1500.0
+        assert result["buckets"][0]["balance"] == 1500.0
+
+        # Month 1: Inflow 0, Outflow 500 -> Net -500, Balance 1000
+        assert result["buckets"][1]["net"] == -500.0
+        assert result["buckets"][1]["balance"] == 1000.0
+
+        # Month 2: Inflow 0, Outflow 500 -> Net -500, Balance 500
+        assert result["buckets"][2]["net"] == -500.0
+        assert result["buckets"][2]["balance"] == 500.0
+
+        # Last month balance must match total net_cash_flow
+        assert result["buckets"][-1]["balance"] == result["net_cash_flow"]
 
 
 class TestRevenueHistory:
