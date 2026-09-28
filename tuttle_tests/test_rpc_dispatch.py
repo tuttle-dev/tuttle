@@ -71,8 +71,6 @@ def rpc_env(tmp_path_factory):
         assert result["ok"], f"db.ensure failed: {result}"
         demo_result = dispatch("users.ensure_demo", {})
         assert demo_result["ok"], f"users.ensure_demo failed: {demo_result}"
-        switch_result = dispatch("users.switch", {"db_file": "harry-tuttle.db"})
-        assert switch_result["ok"], f"users.switch failed: {switch_result}"
         yield tmp
     finally:
         app_db_mod.AppDatabase.__init__ = orig_app_init
@@ -303,6 +301,7 @@ DASHBOARD_ROUTES = [
 
 @pytest.mark.parametrize("method,params", DASHBOARD_ROUTES)
 def test_dashboard_routes(rpc_env, method, params):
+    dispatch("users.switch", {"db_file": "harry-tuttle.db"})
     result = dispatch(method, params)
     assert_ok(result)
 
