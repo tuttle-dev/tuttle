@@ -58,6 +58,9 @@ app.whenReady().then(async () => {
     ? process.resourcesPath
     : "";
   pythonBridge = new PythonBridge(projectRoot, isPackaged, resourcesPath);
+  pythonBridge.onNotification = (method, params) => {
+    if (method === "progress") mainWindow?.webContents.send("rpc-progress", params);
+  };
 
   ipcMain.handle("rpc", async (_event, method: string, params: Record<string, unknown>) => {
     if (!pythonBridge) throw new Error("Python bridge not initialised");

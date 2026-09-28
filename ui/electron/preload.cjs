@@ -31,6 +31,11 @@ contextBridge.exposeInMainWorld("tuttle", {
     ipcRenderer.on("update-progress", handler);
     return () => ipcRenderer.removeListener("update-progress", handler);
   },
+  onRpcProgress: (cb) => {
+    const handler = (_e, info) => cb(info);
+    ipcRenderer.on("rpc-progress", handler);
+    return () => ipcRenderer.removeListener("rpc-progress", handler);
+  },
   getUpdateState: () => ipcRenderer.invoke("get-update-state"),
   checkForUpdate: () => ipcRenderer.send("check-for-update"),
   openExternal: (url) => ipcRenderer.send("open-external", url),
