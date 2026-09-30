@@ -261,6 +261,8 @@ export function CashFlowChart() {
               />
               <Tooltip
                 cursor={{ fill: "var(--color-surface-overlay-hover)" }}
+                wrapperStyle={{ zIndex: 100, pointerEvents: "none" }}
+                allowEscapeViewBox={{ x: true, y: true }}
                 content={(props) => <CashFlowTooltip {...props} fmt={fmtFull} />}
               />
 
