@@ -214,9 +214,25 @@ sync-data:
 #   just release patch --pre rc         3.1.0 → 3.1.1rc1  (release candidate)
 #
 # Add --dry-run to preview without changing anything.
+#
+# Runs only on main, and only when main has everything origin/main has: the
+# version bump is committed and tagged locally before the push, so a release
+# from the wrong branch or a stale main leaves a tag behind that blocks the next try.
 release part *flags="":
     #!/usr/bin/env bash
     set -euo pipefail
+    branch=$(git branch --show-current)
+    if [[ "$branch" != "main" ]]; then
+        echo "Releases are made from main, but you are on '${branch:-a detached HEAD}'." >&2
+        echo "Run: git switch main && git pull" >&2
+        exit 1
+    fi
+    git fetch --quiet origin main
+    if ! git merge-base --is-ancestor origin/main HEAD; then
+        echo "Your main is missing commits from origin/main." >&2
+        echo "Run: git pull" >&2
+        exit 1
+    fi
     dry_run=0
     pre=""
     bump_flags=()
