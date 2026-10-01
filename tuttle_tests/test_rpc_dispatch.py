@@ -134,6 +134,15 @@ class TestDemoStartPath:
         invoices = assert_ok(dispatch("invoicing.get_all", {}))["data"]
         assert len(invoices) >= 4, "Demo should have at least 4 invoices"
 
+    def test_dashboard_counts_tracked_time_before_time_tracking_is_opened(self, rpc_env):
+        """The switch empties the in-memory calendar, as a restart does; the dashboard must reload it."""
+        dispatch("users.switch", {"db_file": "harry-tuttle.db"})
+
+        budgets = assert_ok(dispatch("dashboard.get_project_budgets", {}))["data"]
+        assert any(b["hours_tracked"] > 0 for b in budgets)
+        series = assert_ok(dispatch("dashboard.get_revenue_series", {"granularity": "year", "offset": 0}))["data"]
+        assert sum(b["planned"] for b in series["buckets"]) > 0
+
     def test_recovery_from_empty_database(self, rpc_env):
         """If the demo DB exists but is empty, ensure_demo reinstalls it."""
         from tuttle.app.users.intent import UsersIntent

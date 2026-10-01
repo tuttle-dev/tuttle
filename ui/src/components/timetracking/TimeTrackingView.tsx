@@ -122,7 +122,6 @@ export function TimeTrackingView() {
 
   useEffect(() => {
     (async () => {
-      await rpc("timetracking.restore");
       const cfg = await rpc<{ source_type: string; has_data: boolean }>("timetracking.get_source_config");
       if (cfg.ok && cfg.data?.source_type) {
         if (cfg.data.has_data) setCalendarSource(cfg.data.source_type as CalendarSource);

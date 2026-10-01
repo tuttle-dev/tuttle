@@ -250,57 +250,15 @@ class TimeTrackingIntent(Intent):
         return IntentResult(was_intent_successful=True, data=config)
 
     def restore(self) -> IntentResult:
-        """Restore cached time-tracking data from disk (called on startup)."""
-        ds = self._timetracking_data_frame_source
-        if ds.has_calendar_rows():
-            return IntentResult(
-                was_intent_successful=True,
-                data={"restored": False, "reason": "already_loaded", "has_data": True},
-            )
-        config = ds.get_source_config()
-        source_type = config.get("source_type", "")
-        if not source_type:
-            # No calendar connected, but manually tracked entries may be cached.
-            restored = ds.load_from_cache()
-            df = ds.get_data_frame()
-            return IntentResult(
-                was_intent_successful=True,
-                data={
-                    "restored": restored,
-                    "reason": "no_config",
-                    "has_data": df is not None and not df.empty,
-                },
-            )
-        if source_type == "system" and is_available():
-            calendar_id = config.get("calendar_id", "")
-            if calendar_id:
-                try:
-                    from_date = datetime.date.today() - datetime.timedelta(days=365)
-                    to_date = datetime.date.max
-                    new_df = fetch_events(calendar_id, from_date, to_date)
-                    if not new_df.empty:
-                        self._replace_calendar_rows(new_df)
-                        logger.info(f"Restored {len(new_df)} events from system calendar {calendar_id}")
-                        return IntentResult(
-                            was_intent_successful=True,
-                            data={
-                                "restored": True,
-                                "source": "system",
-                                "count": len(new_df),
-                                "has_data": True,
-                            },
-                        )
-                except Exception as ex:
-                    logger.warning(f"Failed to restore from system calendar: {ex}")
-        restored = ds.load_from_cache()
-        has_data = ds.get_data_frame() is not None and not ds.get_data_frame().empty
+        """Bring a connected system calendar up to date (called on startup).
+
+        Cached rows of every source load on the first read; this only
+        re-fetches a system calendar. If that fails, the cached rows stay.
+        """
+        self.sync()
         return IntentResult(
             was_intent_successful=True,
-            data={
-                "restored": restored,
-                "source": source_type if restored else "cache",
-                "has_data": has_data,
-            },
+            data={"has_data": self._timetracking_data_frame_source.has_calendar_rows()},
         )
 
     def sync(self) -> IntentResult:

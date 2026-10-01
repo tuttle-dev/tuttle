@@ -102,6 +102,8 @@ class TimeTrackingDataFrameSource:
     """The in-memory time-tracking frame: calendar rows plus manual entries.
 
     Calendar rows come from the connected source (and its on-disk cache).
+    The cached rows load on the first read, so the dashboard, invoicing and
+    tax see tracked time no matter which view the user opens first.
     Manual entries are ``TimeTrackingItem`` rows without a timesheet and are
     merged in from the database on the next read after anything replaced the
     frame. Because this is a @singleton, its data survives intent resets; the
@@ -111,6 +113,7 @@ class TimeTrackingDataFrameSource:
     def __init__(self):
         super().__init__()
         self.data: Optional[DataFrame] = None
+        self._calendar_loaded = False
         self._manual_loaded = False
         register_reset(self.clear)
 
@@ -122,9 +125,12 @@ class TimeTrackingDataFrameSource:
     def store_data_frame(self, data: Optional[DataFrame]):
         """Replace the calendar rows; manual entries are re-attached on the next read."""
         self.data = data
+        self._calendar_loaded = True
         self._manual_loaded = False
 
     def calendar_rows(self) -> Optional[DataFrame]:
+        if not self._calendar_loaded:
+            self.load_from_cache()
         df = self.data
         if df is None or df.empty:
             return None
@@ -143,6 +149,7 @@ class TimeTrackingDataFrameSource:
 
     def clear(self):
         self.data = None
+        self._calendar_loaded = False
         self._manual_loaded = False
 
     # -- persistence helpers ---------------------------------------------------
@@ -159,6 +166,8 @@ class TimeTrackingDataFrameSource:
             logger.warning(f"Failed to persist time-tracking cache: {ex}")
 
     def load_from_cache(self) -> bool:
+        # Marked loaded up front: a missing or unreadable cache is not retried on every read.
+        self._calendar_loaded = True
         path = calendar_cache_path()
         if not path.exists():
             return False

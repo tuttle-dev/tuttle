@@ -124,6 +124,8 @@ export function Shell() {
         );
         return;
       }
+      // Fetch new events from a connected calendar before any view sums up tracked time.
+      await rpc("timetracking.restore");
       setBootState("ready");
     })();
   }, []);
