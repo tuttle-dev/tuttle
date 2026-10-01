@@ -677,6 +677,14 @@ class TestProjectBudgetStatus:
         assert 0 <= result[0]["progress"] <= 1.0
         assert result[0]["open_ended"] is False
 
+    def test_timezone_aware_calendar_data(self, project, time_data_df):
+        """Calendar sources index events in CET, which a naive "now" cannot be compared with."""
+        project.contract.volume = 100
+        time_data_df.index = time_data_df.index.tz_localize("CET")
+        result = project_budget_status([project], time_data=time_data_df)
+        assert result[0]["hours_tracked"] == 40.0
+        assert result[0]["hours_planned"] == 16.0
+
     def test_no_time_data_yields_empty(self, project):
         """Without calendar data no budget rows are produced."""
         project.contract.volume = 100

@@ -4,7 +4,7 @@ import datetime
 from decimal import Decimal
 from typing import List, NamedTuple, Optional
 
-from pandas import DataFrame
+from pandas import DataFrame, Timestamp
 
 from .app.core.formatting import fmt_currency
 from .fx import primary_currency
@@ -302,11 +302,12 @@ def project_budget_status(
     budget_exceeded.  Skips projects without a contract volume or without any
     tracked or planned time.
     """
-    now = datetime.datetime.now()
     tracked_by_tag: dict = {}
     planned_by_tag: dict = {}
 
     if time_data is not None and not time_data.empty:
+        # Calendar indexes are timezone-aware; a naive "now" cannot be compared with them.
+        now = Timestamp.now(tz=time_data.index.tz)
         tag_to_workday = {p.tag: p.contract.units_per_workday for p in projects if p.tag and p.contract}
         past = time_data[time_data.index < now]
         if not past.empty:
