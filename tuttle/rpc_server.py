@@ -30,6 +30,19 @@ from tuttle.data_dir import get_data_dir  # noqa: E402
 
 logger.add(_log_sink, level="DEBUG")
 
+_stdout_lock = threading.Lock()
+
+
+def _write(message: Dict[str, Any]) -> None:
+    with _stdout_lock:
+        sys.stdout.write(json.dumps(message) + "\n")
+        sys.stdout.flush()
+
+
+def notify(method: str, params: Dict[str, Any]) -> None:
+    """Send a JSON-RPC notification (no ``id``, no response expected)."""
+    _write({"jsonrpc": "2.0", "method": method, "params": params})
+
 
 def _start_parent_watchdog(interval: float = 2.0):
     """Exit if the parent process (Electron) disappears.
@@ -52,8 +65,10 @@ def _start_parent_watchdog(interval: float = 2.0):
 
 
 def main():
+    from tuttle.app.core import progress
     from tuttle.app.core.dispatch import dispatch
 
+    progress.set_emitter(lambda params: notify("progress", params))
     _start_parent_watchdog()
     logger.info("Tuttle RPC server starting…")
     logger.info(f"Data directory: {get_data_dir()} (frozen={getattr(sys, 'frozen', False)})")
@@ -86,8 +101,7 @@ def main():
                 },
             }
 
-        sys.stdout.write(json.dumps(response) + "\n")
-        sys.stdout.flush()
+        _write(response)
 
 
 if __name__ == "__main__":

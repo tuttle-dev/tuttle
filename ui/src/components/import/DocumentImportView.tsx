@@ -90,24 +90,19 @@ interface ExtractionResult {
   invoices?: ParsedInvoice[];
 }
 
+/** Streamed LLM output of one pipeline step. */
+interface StepStream { thinking: string; text: string }
+
+/** Entity labels found so far during extraction, keyed by entity type. */
+type LiveItems = Record<string, string[]>;
+
+/** Progress events pushed by `llm.parse_document_for_import` while it runs. */
+type ImportProgressEvent =
+  | { kind: "steps"; steps: ImportStep[] }
+  | { kind: "text"; step: string; thinking: string; text: string }
+  | { kind: "items"; items: LiveItems };
+
 type Phase = "upload" | "review" | "committed";
-
-const PIPELINE_STEPS: Omit<ImportStep, "status" | "error">[] = [
-  { key: "load_config", label: "Loading LLM configuration" },
-  { key: "read_document", label: "Reading document" },
-  { key: "connect_llm", label: "Connecting to LLM" },
-  { key: "summarize_document", label: "Analysing document" },
-  { key: "extract_entities", label: "Extracting structured data" },
-  { key: "map_results", label: "Processing results" },
-];
-
-function makeSteps(upTo: number, running: number): ImportStep[] {
-  return PIPELINE_STEPS.map((s, i) => ({
-    ...s,
-    status: i < upTo ? "done" : i === running ? "running" : "pending",
-    error: null,
-  }));
-}
 
 // ---------------------------------------------------------------------------
 // Main View
@@ -118,6 +113,8 @@ export function DocumentImportView() {
   const [parsing, setParsing] = useState(false);
   const [parseError, setParseError] = useState<string | null>(null);
   const [importSteps, setImportSteps] = useState<ImportStep[]>([]);
+  const [streams, setStreams] = useState<Record<string, StepStream>>({});
+  const [liveItems, setLiveItems] = useState<LiveItems | null>(null);
 
   const [contacts, setContacts] = useState<ImportEntity<ParsedContact>[]>([]);
   const [clients, setClients] = useState<ImportEntity<ParsedClient>[]>([]);
@@ -143,15 +140,27 @@ export function DocumentImportView() {
     });
   }, []);
 
+  function handleProgress(event: { topic: string }) {
+    if (event.topic !== "import") return;
+    const e = event as unknown as ImportProgressEvent;
+    if (e.kind === "steps") {
+      setImportSteps(e.steps);
+    } else if (e.kind === "text") {
+      setStreams((prev) => {
+        const cur = prev[e.step] ?? { thinking: "", text: "" };
+        return { ...prev, [e.step]: { thinking: cur.thinking + e.thinking, text: cur.text + e.text } };
+      });
+    } else if (e.kind === "items") {
+      setLiveItems(e.items);
+    }
+  }
+
   async function handleFile(file: File) {
     setParsing(true);
     setParseError(null);
+    setImportSteps([]); setStreams({}); setLiveItems(null);
 
-    setImportSteps(makeSteps(0, 0));
-    const t1 = setTimeout(() => setImportSteps(makeSteps(1, 1)), 300);
-    const t2 = setTimeout(() => setImportSteps(makeSteps(2, 2)), 600);
-    const t3 = setTimeout(() => setImportSteps(makeSteps(3, 3)), 1000);
-
+    const unsubscribe = window.tuttle?.onRpcProgress?.(handleProgress);
     try {
       const buffer = await file.arrayBuffer();
       const base64 = btoa(
@@ -163,7 +172,6 @@ export function DocumentImportView() {
         file_base64: base64, file_name: file.name,
       });
 
-      clearTimeout(t1); clearTimeout(t2); clearTimeout(t3);
       const data = res.data ?? (res as unknown as { data: ExtractionResult }).data;
       if (data?.steps) setImportSteps(data.steps);
 
@@ -183,8 +191,9 @@ export function DocumentImportView() {
         setParseError(failedStep?.error || res.error || "Failed to parse document.");
       }
     } catch (err) {
-      clearTimeout(t1); clearTimeout(t2); clearTimeout(t3);
       setParseError(String(err));
+    } finally {
+      unsubscribe?.();
     }
     setParsing(false);
   }
@@ -193,7 +202,7 @@ export function DocumentImportView() {
     setPhase("upload");
     setContacts([]); setClients([]); setContracts([]); setProjects([]); setInvoices([]);
     setCommitResult(null); setCommitError(null);
-    setImportSteps([]); setParseError(null);
+    setImportSteps([]); setStreams({}); setLiveItems(null); setParseError(null);
     setFileBase64(null);
   }
 
@@ -239,6 +248,8 @@ export function DocumentImportView() {
             parsing={parsing}
             parseError={parseError}
             importSteps={importSteps}
+            streams={streams}
+            liveItems={liveItems}
             onFileSelected={handleFile}
           />
         )}
@@ -377,39 +388,147 @@ function StepIcon({ status }: { status: StepStatus }) {
   }
 }
 
-function PipelineSteps({ steps, error }: { steps: ImportStep[]; error: string | null }) {
+const LIVE_ENTITY_TYPES: Record<string, { label: string; icon: typeof Users }> = {
+  contacts: { label: "Contact", icon: Users },
+  clients: { label: "Client", icon: Building2 },
+  contracts: { label: "Contract", icon: FileSignature },
+  projects: { label: "Project", icon: FolderKanban },
+  invoices: { label: "Invoice", icon: ReceiptText },
+};
+
+function formatElapsed(seconds: number): string {
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
+/** Seconds since the step `key` started running; restarts when the running step changes. */
+function useElapsed(key: string | undefined): number {
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    setElapsed(0);
+    if (!key) return;
+    const start = Date.now();
+    const id = setInterval(() => setElapsed(Math.floor((Date.now() - start) / 1000)), 1000);
+    return () => clearInterval(id);
+  }, [key]);
+  return elapsed;
+}
+
+/** Streamed model output; follows new text unless the user has scrolled up. */
+function ReasoningBox({ stream }: { stream: StepStream }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const follow = useRef(true);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (el && follow.current) el.scrollTop = el.scrollHeight;
+  }, [stream]);
+
+  return (
+    <div
+      ref={ref}
+      onScroll={(e) => {
+        const el = e.currentTarget;
+        follow.current = el.scrollHeight - el.scrollTop - el.clientHeight < 24;
+      }}
+      className="mt-2 max-h-40 overflow-y-auto rounded-md bg-bg-content/60 px-2.5 py-2 text-xs leading-relaxed whitespace-pre-wrap break-words"
+    >
+      {stream.thinking && <span className="text-tertiary italic">{stream.thinking}</span>}
+      {stream.thinking && stream.text && "\n\n"}
+      {stream.text && <span className="text-secondary">{stream.text}</span>}
+    </div>
+  );
+}
+
+/** One tile per entity found so far; names fill in as the model writes them. */
+function LiveItemsList({ items }: { items: LiveItems }) {
+  const tiles = Object.entries(items).flatMap(([type, labels]) =>
+    labels.map((name, idx) => ({ type, name, key: `${type}-${idx}` })),
+  );
+  if (tiles.length === 0) return null;
+  return (
+    <ul className="mt-2 space-y-1.5">
+      {tiles.map(({ type, name, key }) => {
+        const { label, icon: Icon } = LIVE_ENTITY_TYPES[type] ?? { label: type, icon: Circle };
+        return (
+          <li key={key}
+            className="flex items-center gap-2.5 rounded-lg border border-fuchsia-400/20 bg-fuchsia-500/5 px-3 py-2">
+            <Icon size={14} className="shrink-0 text-tertiary" />
+            <span className={`min-w-0 flex-1 truncate text-sm ${name ? "text-primary" : "text-tertiary"}`}>
+              {name || "…"}
+            </span>
+            <span className="shrink-0 text-xs text-tertiary">{label}</span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function PipelineSteps({ steps, error, streams, liveItems }: {
+  steps: ImportStep[];
+  error: string | null;
+  streams: Record<string, StepStream>;
+  liveItems: LiveItems | null;
+}) {
   const hasError = steps.some((s) => s.status === "error");
+  const runningKey = steps.find((s) => s.status === "running")?.key;
+  const elapsed = useElapsed(runningKey);
+  const [showReasoning, setShowReasoning] = useState(false);
 
   return (
     <div className="space-y-4">
       <div className="space-y-1">
-        {steps.map((step) => (
-          <div
-            key={step.key}
-            className={`flex items-start gap-3 px-3 py-2 rounded-lg transition-colors ${
-              step.status === "running" ? "bg-fuchsia-500/5" :
-              step.status === "error" ? "bg-red-500/5" :
-              ""
-            }`}
-          >
-            <div className="mt-0.5 shrink-0">
-              <StepIcon status={step.status} />
+        {steps.map((step) => {
+          const running = step.status === "running";
+          const stream = running ? streams[step.key] : undefined;
+          return (
+            <div
+              key={step.key}
+              className={`flex items-start gap-3 px-3 py-2 rounded-lg transition-colors ${
+                running ? "bg-fuchsia-500/5" :
+                step.status === "error" ? "bg-red-500/5" :
+                ""
+              }`}
+            >
+              <div className="mt-0.5 shrink-0">
+                <StepIcon status={step.status} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-baseline gap-2">
+                  <p className={`flex-1 text-sm ${
+                    step.status === "done" ? "text-secondary" :
+                    running ? "text-primary font-medium" :
+                    step.status === "error" ? "text-red-400 font-medium" :
+                    "text-tertiary"
+                  }`}>
+                    {step.label}
+                  </p>
+                  {running && elapsed > 0 && (
+                    <span className="text-xs tabular-nums text-tertiary">{formatElapsed(elapsed)}</span>
+                  )}
+                </div>
+                {running && step.key === "extract_entities" && liveItems && (
+                  <LiveItemsList items={liveItems} />
+                )}
+                {stream && (stream.thinking || stream.text) && (
+                  <>
+                    <button
+                      onClick={() => setShowReasoning((v) => !v)}
+                      className="mt-1 flex items-center gap-1 text-xs text-tertiary hover:text-secondary transition-colors"
+                    >
+                      {showReasoning ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                      {showReasoning ? "Hide reasoning" : "Show reasoning"}
+                    </button>
+                    {showReasoning && <ReasoningBox stream={stream} />}
+                  </>
+                )}
+                {step.status === "error" && step.error && (
+                  <p className="text-xs text-red-400/80 mt-1">{step.error}</p>
+                )}
+              </div>
             </div>
-            <div className="min-w-0 flex-1">
-              <p className={`text-sm ${
-                step.status === "done" ? "text-secondary" :
-                step.status === "running" ? "text-primary font-medium" :
-                step.status === "error" ? "text-red-400 font-medium" :
-                "text-tertiary"
-              }`}>
-                {step.label}
-              </p>
-              {step.status === "error" && step.error && (
-                <p className="text-xs text-red-400/80 mt-1">{step.error}</p>
-              )}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {hasError && error && (
@@ -421,9 +540,11 @@ function PipelineSteps({ steps, error }: { steps: ImportStep[]; error: string | 
   );
 }
 
-function UploadPhase({ parsing, parseError, importSteps, onFileSelected }: {
+function UploadPhase({ parsing, parseError, importSteps, streams, liveItems, onFileSelected }: {
   parsing: boolean; parseError: string | null;
   importSteps: ImportStep[];
+  streams: Record<string, StepStream>;
+  liveItems: LiveItems | null;
   onFileSelected: (f: File) => void;
 }) {
   const [dragOver, setDragOver] = useState(false);
@@ -469,7 +590,7 @@ function UploadPhase({ parsing, parseError, importSteps, onFileSelected }: {
       {(parsing || hasSteps) && (
         <div className="rounded-xl border border-border-subtle bg-bg-card p-5">
           {hasSteps ? (
-            <PipelineSteps steps={importSteps} error={parseError} />
+            <PipelineSteps steps={importSteps} error={parseError} streams={streams} liveItems={liveItems} />
           ) : (
             <div className="flex items-center justify-center gap-3 py-6">
               <Loader2 size={20} className="animate-spin text-fuchsia-400" />

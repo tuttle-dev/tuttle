@@ -8,11 +8,12 @@ OpenAI-API-compatible endpoint via llama_index.
 import base64
 import time
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 import httpx
 from loguru import logger
 from pydantic import BaseModel, Field
+from pydantic_core import from_json
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -611,23 +612,125 @@ _IMPORT_STEPS = [
     {"key": "read_document", "label": "Reading document"},
     {"key": "connect_llm", "label": "Connecting to LLM"},
     {"key": "summarize_document", "label": "Analysing document"},
-    {"key": "extract_entities", "label": "Extracting structured entities"},
+    {"key": "extract_entities", "label": "Extracting structured data"},
     {"key": "map_results", "label": "Processing results"},
 ]
+
+
+ProgressCallback = Callable[[Dict[str, Any]], None]
+
+# Minimum seconds between progress events while streaming, so a fast model
+# does not flood the UI with one event per token.
+_TEXT_EMIT_INTERVAL = 0.15
+_ITEMS_EMIT_INTERVAL = 0.25
+
+_ENTITY_KEYS = ("contacts", "clients", "contracts", "projects", "invoices")
+
+
+def _stream_summary(llm, prompt: str, on_progress: ProgressCallback) -> str:
+    """Pass 1: stream the free-text summary, forwarding thinking and answer deltas."""
+    parts: List[str] = []
+    pending = {"thinking": "", "text": ""}
+    last = time.monotonic()
+
+    def flush():
+        if pending["thinking"] or pending["text"]:
+            on_progress({"kind": "text", "step": "summarize_document", **pending})
+            pending["thinking"] = pending["text"] = ""
+
+    for r in llm.stream_complete(prompt):
+        delta = r.delta or ""
+        parts.append(delta)
+        pending["thinking"] += r.additional_kwargs.get("thinking_delta") or ""
+        pending["text"] += delta
+        if time.monotonic() - last >= _TEXT_EMIT_INTERVAL:
+            flush()
+            last = time.monotonic()
+    flush()
+    return "".join(parts)
+
+
+def _item_label(item: Dict[str, Any]) -> str:
+    label = item.get("title") or item.get("name") or item.get("number") or ""
+    if not label:
+        label = f"{item.get('first_name') or ''} {item.get('last_name') or ''}".strip()
+    return str(label or item.get("company") or "")
+
+
+def _partial_items(text: str) -> Optional[Dict[str, List[str]]]:
+    """Labels of the entities found so far in a partial extraction JSON, per type."""
+    try:
+        data = from_json(text, allow_partial="trailing-strings")
+    except ValueError:
+        return None
+    if not isinstance(data, dict):
+        return None
+    return {
+        key: [
+            _item_label(item)
+            for item in data.get(key) or []
+            if isinstance(item, dict) and _has_content(item, ignore={"ref", "items"})
+        ]
+        for key in _ENTITY_KEYS
+    }
+
+
+def _stream_extraction(llm, prompt: str, on_progress: ProgressCallback) -> str:
+    """Pass 2 on Ollama: stream the schema-constrained JSON, reporting entities as they appear.
+
+    Mirrors ``Ollama.structured_predict`` (``format=<schema>``, then
+    ``model_validate_json`` by the caller), so results and errors are unchanged.
+    """
+    from llama_index.core.base.llms.types import ChatMessage, MessageRole
+
+    thinking = ""
+    text = ""
+    reported: Optional[Dict[str, List[str]]] = None
+    last = time.monotonic()
+
+    def report():
+        nonlocal thinking, reported
+        if thinking:
+            on_progress({"kind": "text", "step": "extract_entities", "thinking": thinking, "text": ""})
+            thinking = ""
+        items = _partial_items(text)
+        if items is not None and items != reported:
+            on_progress({"kind": "items", "items": items})
+            reported = items
+
+    stream = llm.stream_chat(
+        [ChatMessage(role=MessageRole.USER, content=prompt)],
+        format=DocumentExtractionResult.model_json_schema(),
+    )
+    for r in stream:
+        text += r.delta or ""
+        thinking += r.additional_kwargs.get("thinking_delta") or ""
+        if time.monotonic() - last >= _ITEMS_EMIT_INTERVAL:
+            report()
+            last = time.monotonic()
+    report()
+    return text
 
 
 def parse_document_for_import(
     file_base64: str,
     file_name: str,
     config: Optional[LLMConfig] = None,
+    on_progress: Optional[ProgressCallback] = None,
 ) -> Dict[str, Any]:
     """Extract all entity types from a contract document in a single LLM call.
 
     Returns a dict with keys:
     - steps: list of {key, label, status, error?} tracking pipeline progress
     - contacts, clients, contracts, projects (when successful)
+
+    ``on_progress`` receives events while the pipeline runs:
+    - ``{"kind": "steps", "steps": [...]}`` whenever a step changes status
+    - ``{"kind": "text", "step", "thinking", "text"}`` streamed LLM output deltas
+    - ``{"kind": "items", "items": {type: [label, ...]}}`` entities found so far
     """
     steps = [{**s, "status": "pending", "error": None} for s in _IMPORT_STEPS]
+    emit: ProgressCallback = on_progress or (lambda _event: None)
 
     def _mark(key: str, status: str, error: str | None = None):
         for s in steps:
@@ -636,6 +739,7 @@ def parse_document_for_import(
                 if error:
                     s["error"] = error
                 break
+        emit({"kind": "steps", "steps": [dict(s) for s in steps]})
 
     def _fail(key: str, error: str) -> Dict[str, Any]:
         _mark(key, "error", error)
@@ -713,8 +817,7 @@ def parse_document_for_import(
     t0 = time.monotonic()
     try:
         summary_prompt = _DOC_SUMMARY_PROMPT + "--- DOCUMENT START ---\n" + text + "\n--- DOCUMENT END ---"
-        summary_response = llm.complete(summary_prompt)
-        summary_text = str(summary_response)
+        summary_text = _stream_summary(llm, summary_prompt, emit)
         elapsed = time.monotonic() - t0
         logger.info(f"Pass 1 — summarise completed in {elapsed:.1f}s ({len(summary_text)} chars)")
         logger.info(f"Summary:\n{summary_text[:3000]}")
@@ -729,14 +832,18 @@ def parse_document_for_import(
     logger.info("Pass 2 — structured extraction starting")
     t1 = time.monotonic()
     try:
-        sllm = llm.as_structured_llm(output_cls=DocumentExtractionResult)
         extract_prompt = _DOC_EXTRACT_PROMPT + "--- SUMMARY START ---\n" + summary_text + "\n--- SUMMARY END ---"
-        response = _structured_complete(sllm, extract_prompt, config)
+        if config.provider == "ollama":
+            raw_text = _stream_extraction(llm, extract_prompt, emit)
+            extracted = DocumentExtractionResult.model_validate_json(raw_text)
+        else:
+            sllm = llm.as_structured_llm(output_cls=DocumentExtractionResult)
+            response = _structured_complete(sllm, extract_prompt, config)
+            raw_text = response.text
+            extracted = response.raw
         elapsed = time.monotonic() - t1
-        raw_text = response.text
         logger.info(f"Pass 2 — extraction completed in {elapsed:.1f}s ({len(raw_text)} chars)")
         logger.info(f"LLM raw response: {raw_text[:2000]}")
-        extracted: DocumentExtractionResult = response.raw
         logger.info(
             f"Parsed extraction: "
             f"contacts={len(extracted.contacts)}, "

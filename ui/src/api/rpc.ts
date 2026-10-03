@@ -9,6 +9,8 @@ declare global {
       onUpdateDownloaded: (cb: (info: { version: string }) => void) => () => void;
       onUpdateError: (cb: (info: { message: string }) => void) => () => void;
       onUpdateProgress: (cb: (info: { version: string; percent: number }) => void) => () => void;
+      /** Progress events pushed by the Python core during a long-running RPC call. */
+      onRpcProgress: (cb: (event: { topic: string; [key: string]: unknown }) => void) => () => void;
       getUpdateState: () => Promise<
         | { status: "idle" }
         | { status: "downloading"; version: string; percent: number }
