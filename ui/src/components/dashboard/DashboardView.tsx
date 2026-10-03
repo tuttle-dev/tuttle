@@ -8,6 +8,7 @@ import { str, num, int } from "../../api/entity";
 import { KPICard } from "../shared/KPICard";
 import { EmptyStateIntro } from "../shared/EmptyStateIntro";
 import { RevenueChart } from "./RevenueChart";
+import { CashFlowChart } from "./CashFlowChart";
 import { FinancialGoalsCard } from "./FinancialGoalsCard";
 import type { Entity } from "../../api/types";
 
@@ -71,6 +72,8 @@ export function DashboardView() {
       </div>
 
       <RevenueChart />
+
+      <CashFlowChart />
 
       <FinancialGoalsCard />
 
