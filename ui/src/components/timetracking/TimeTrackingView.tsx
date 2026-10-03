@@ -1,15 +1,15 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import {
-  AlertTriangle, Calendar, CalendarPlus, Check, ChevronLeft, ChevronRight, Clock,
-  MonitorSmartphone, Pause, Pencil, Play, Plus, RefreshCw, Settings, Square, Trash2,
-  Unplug, Upload, X,
+  AlertTriangle, Calendar, CalendarClock, CalendarPlus, Check, ChevronLeft, ChevronRight, Clock,
+  Hourglass, MonitorSmartphone, Pause, Pencil, Play, Plus, RefreshCw, Settings, Square, Timer,
+  Trash2, Unplug, Upload, X,
 } from "lucide-react";
 import { rpc } from "../../api/rpc";
 import { Toolbar, ToolbarButtonSecondary } from "../shared/ToolbarButtons";
 import { useStatusBar } from "../shared/status-bar-context";
 import { useNavigation } from "../shared/NavigationContext";
 import { useTimer } from "./timer-context";
-import { formatElapsed, formatHours } from "./format";
+import { formatElapsed, formatHours, parseDuration } from "./format";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -27,9 +27,12 @@ type TimeEvent = {
   is_future: boolean;
   source: string;
   entry_id: number | null;
+  duration_only: boolean;
 };
 
-type DayInfo = { date: string; hours: number; all_day_count?: number; tags: string[]; count: number };
+type DayMarker = { tag: string; source: string };
+
+type DayInfo = { date: string; hours: number; all_day_count?: number; markers: DayMarker[]; count: number };
 
 type CalendarData = {
   year: number;
@@ -53,7 +56,7 @@ type SystemCalendarResult = {
 
 type ProjectTag = { tag: string; title: string; id: number };
 
-type EntryValues = { tag: string; title: string; start: string; end: string };
+type EntryValues = { tag: string; title: string; start: string; end: string; duration: string };
 
 // ---------------------------------------------------------------------------
 // Stable project colors
@@ -68,6 +71,18 @@ function tagColor(tag: string, allTags: string[]): string {
   const idx = allTags.indexOf(tag);
   return PROJECT_COLORS[idx >= 0 ? idx % PROJECT_COLORS.length : 0];
 }
+
+// Logged in Tuttle: the full project color. Imported from a calendar: a light
+// shade of it. Planned (future) entries get a dashed outline.
+function dotStyle(color: string, imported: boolean, planned: boolean): React.CSSProperties {
+  return {
+    backgroundColor: imported ? `${color}4D` : color,
+    border: `1.5px ${planned ? "dashed" : "solid"} ${color}`,
+    opacity: planned ? 0.6 : 1,
+  };
+}
+
+const LEGEND_COLOR = "#8E8E93";
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -268,7 +283,7 @@ export function TimeTrackingView() {
         )}
       />
 
-      <TimerBar projectTags={projectTags} onCreateProject={() => navigate("projects", {})} />
+      <TimerBar projectTags={projectTags} onCreateProject={() => navigate("projects", {})} onLogged={loadData} />
 
       {connectionLost && !calendarSource && (
         <div className="mx-5 mt-3 flex items-center gap-2 rounded-lg bg-status-warning/10 border border-status-warning/30 px-3 py-2 text-xs text-status-warning">
@@ -416,71 +431,184 @@ export function TimeTrackingView() {
 }
 
 // ---------------------------------------------------------------------------
-// Timer bar — the one control for tracking time live
+// Timer bar — the one control for tracking time: run a timer, or log a
+// duration or a time slot after the fact
 // ---------------------------------------------------------------------------
 
-function TimerBar({ projectTags, onCreateProject }: { projectTags: ProjectTag[]; onCreateProject: () => void }) {
+type BarMode = "timer" | "duration" | "slot";
+
+const BAR_MODES: { mode: BarMode; icon: typeof Clock; label: string }[] = [
+  { mode: "timer", icon: Timer, label: "Timer" },
+  { mode: "duration", icon: Hourglass, label: "Log a duration" },
+  { mode: "slot", icon: CalendarClock, label: "Log a time slot" },
+];
+
+const BAR_MODE_KEY = "tuttle-timetracking-bar-mode";
+const MAX_DAY_MINUTES = 24 * 60;
+
+function loadBarMode(): BarMode {
+  try {
+    const saved = localStorage.getItem(BAR_MODE_KEY);
+    return saved === "duration" || saved === "slot" ? saved : "timer";
+  } catch { return "timer"; }
+}
+
+const barInputBase =
+  "px-2 py-1 rounded-md bg-bg-content border text-sm text-primary placeholder:text-muted outline-none focus:border-accent disabled:opacity-50";
+const barInputCls = `${barInputBase} border-border-subtle`;
+
+function TimerBar({ projectTags, onCreateProject, onLogged }: {
+  projectTags: ProjectTag[]; onCreateProject: () => void; onLogged: () => void;
+}) {
   const timer = useTimer();
+  const { showMessage } = useStatusBar();
   const { status, elapsed, tag, title } = timer.state;
   const idle = status === "idle";
   const running = status === "running";
   const pending = status === "pending";
   const noProjects = projectTags.length === 0;
 
+  const [savedMode, setSavedMode] = useState<BarMode>(loadBarMode);
+  const mode = idle ? savedMode : "timer";
+  const [date, setDate] = useState(localDateIso);
+  const [duration, setDuration] = useState("");
+  const [start, setStart] = useState("");
+  const [end, setEnd] = useState("");
+  const [logging, setLogging] = useState(false);
+
+  const minutes = mode === "duration" ? parseDuration(duration) : slotMinutes(start, end);
+  const durationUnreadable = duration.trim() !== "" && parseDuration(duration) == null;
+  const canLog = !!tag && !!date && !logging && minutes != null && minutes > 0 && minutes <= MAX_DAY_MINUTES;
+
+  function chooseMode(next: BarMode) {
+    setSavedMode(next);
+    try { localStorage.setItem(BAR_MODE_KEY, next); } catch { /* remembering the mode is a convenience */ }
+  }
+
+  async function logEntry() {
+    if (!canLog || minutes == null) return;
+    setLogging(true);
+    const when = mode === "duration" ? { duration_minutes: minutes } : { start_time: start, end_time: end };
+    const res = await rpc("timetracking.add_manual_entry", { tag, title: title || null, date, ...when });
+    setLogging(false);
+    if (!res.ok) {
+      showMessage(res.error || "The entry could not be logged.", { type: "error" });
+      return;
+    }
+    showMessage(`Logged ${formatHours(minutes / 60)} on ${tag}`, { type: "success" });
+    timer.update({ title: "" }, false);
+    setDuration("");
+    if (mode === "slot") { setStart(end); setEnd(""); }
+    onLogged();
+  }
+
+  function submitOnEnter(e: React.KeyboardEvent) {
+    if (e.key !== "Enter" || noProjects) return;
+    if (mode === "timer") { if (idle) timer.start(); }
+    else logEntry();
+  }
+
   const roundBtn = "w-9 h-9 rounded-full flex items-center justify-center text-white transition-opacity shrink-0 disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90";
 
   return (
     <div className={`mx-5 mt-4 rounded-xl border bg-bg-card shadow-sm transition-colors ${running ? "border-green-500/40" : pending ? "border-accent/40" : "border-border-subtle"}`}>
-      <div className="flex items-center gap-3 px-4 py-2.5">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5">
         {running
           ? <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse shrink-0" />
           : pending
             ? <Pause size={15} className="text-accent shrink-0" />
-            : <Clock size={16} strokeWidth={1.8} className="text-tertiary shrink-0" />}
+            : (
+              <div className="flex items-center rounded-lg bg-bg-content border border-border-subtle p-0.5 shrink-0" role="radiogroup">
+                {BAR_MODES.map(({ mode: m, icon: Icon, label }) => (
+                  <button key={m} onClick={() => chooseMode(m)} title={label} aria-label={label}
+                    role="radio" aria-checked={mode === m}
+                    className={`w-7 h-7 rounded-md flex items-center justify-center transition-colors ${mode === m ? "bg-bg-card text-primary shadow-sm" : "text-muted hover:text-secondary"}`}>
+                    <Icon size={14} strokeWidth={1.8} />
+                  </button>
+                ))}
+              </div>
+            )}
         <input
           type="text"
           value={title}
           onChange={(e) => timer.update({ title: e.target.value }, false)}
           onBlur={(e) => timer.update({ title: e.target.value })}
-          onKeyDown={(e) => { if (e.key === "Enter" && idle && !noProjects) timer.start(); }}
-          placeholder="What are you working on?"
-          className="flex-1 min-w-0 bg-transparent text-sm text-primary placeholder:text-muted outline-none"
+          onKeyDown={submitOnEnter}
+          placeholder={mode === "timer" ? "What are you working on?" : "What did you work on?"}
+          className="flex-1 min-w-[160px] bg-transparent text-sm text-primary placeholder:text-muted outline-none"
         />
-        <select
-          value={tag}
-          onChange={(e) => timer.update({ tag: e.target.value })}
-          disabled={noProjects}
-          className={`max-w-[220px] px-2 py-1 rounded-md bg-bg-content border text-sm text-primary outline-none disabled:opacity-50 ${pending && !tag ? "border-accent ring-2 ring-accent/30" : "border-border-subtle"}`}
-        >
-          <option value="">{noProjects ? "No projects yet" : "No project"}</option>
-          {projectTags.map((p) => (
-            <option key={p.tag} value={p.tag}>{p.title}</option>
-          ))}
-        </select>
-        <span className={`tabular-nums text-lg font-semibold min-w-[92px] text-right ${idle ? "text-tertiary" : "text-primary"}`}>
-          {formatElapsed(elapsed)}
-        </span>
-        {idle && (
-          <button onClick={() => timer.start()} disabled={noProjects} title="Start timer" className={`${roundBtn} bg-accent`}>
-            <Play size={14} fill="currentColor" className="ml-0.5" />
-          </button>
-        )}
-        {running && (
-          <button onClick={() => timer.stop()} title="Stop timer" className={`${roundBtn} bg-red-500`}>
-            <Square size={12} fill="currentColor" />
-          </button>
-        )}
-        {pending && (
-          <button onClick={() => timer.save()} disabled={!tag} title="Save entry" className={`${roundBtn} bg-accent`}>
-            <Check size={16} />
-          </button>
-        )}
-        {!idle && (
-          <button onClick={() => timer.discard()} title="Discard timer"
-            className="p-1 rounded text-muted hover:text-red-400 hover:bg-bg-hover transition-colors shrink-0">
-            <X size={14} />
-          </button>
-        )}
+        <div className="flex items-center gap-3 ml-auto">
+          <select
+            value={tag}
+            onChange={(e) => timer.update({ tag: e.target.value })}
+            disabled={noProjects}
+            className={`max-w-[200px] px-2 py-1 rounded-md bg-bg-content border text-sm text-primary outline-none disabled:opacity-50 ${pending && !tag ? "border-accent ring-2 ring-accent/30" : "border-border-subtle"}`}
+          >
+            <option value="">{noProjects ? "No projects yet" : mode === "timer" ? "No project" : "Choose project"}</option>
+            {projectTags.map((p) => (
+              <option key={p.tag} value={p.tag}>{p.title}</option>
+            ))}
+          </select>
+
+          {mode === "timer" ? (
+            <span className={`tabular-nums text-lg font-semibold min-w-[92px] text-right ${idle ? "text-tertiary" : "text-primary"}`}>
+              {formatElapsed(elapsed)}
+            </span>
+          ) : (
+            <div className="flex items-center gap-1.5">
+              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} disabled={noProjects}
+                title="Day" className={barInputCls} />
+              {mode === "duration" ? (
+                <input
+                  type="text"
+                  value={duration}
+                  onChange={(e) => setDuration(e.target.value)}
+                  onBlur={() => { const m = parseDuration(duration); if (m) setDuration(formatHours(m / 60)); }}
+                  onKeyDown={submitOnEnter}
+                  disabled={noProjects}
+                  placeholder="e.g. 1h 30m"
+                  title="Duration"
+                  className={`${barInputBase} w-[104px] tabular-nums ${durationUnreadable ? "border-red-400" : "border-border-subtle"}`}
+                />
+              ) : (
+                <>
+                  <input type="time" value={start} onChange={(e) => setStart(e.target.value)} onKeyDown={submitOnEnter}
+                    disabled={noProjects} title="From" className={barInputCls} />
+                  <span className="text-xs text-muted">–</span>
+                  <input type="time" value={end} onChange={(e) => setEnd(e.target.value)} onKeyDown={submitOnEnter}
+                    disabled={noProjects} title="To" className={barInputCls} />
+                </>
+              )}
+            </div>
+          )}
+
+          {mode !== "timer" && (
+            <button onClick={logEntry} disabled={!canLog} title="Log entry" className={`${roundBtn} bg-accent`}>
+              <Plus size={18} />
+            </button>
+          )}
+          {mode === "timer" && idle && (
+            <button onClick={() => timer.start()} disabled={noProjects} title="Start timer" className={`${roundBtn} bg-accent`}>
+              <Play size={14} fill="currentColor" className="ml-0.5" />
+            </button>
+          )}
+          {running && (
+            <button onClick={() => timer.stop()} title="Stop timer" className={`${roundBtn} bg-red-500`}>
+              <Square size={12} fill="currentColor" />
+            </button>
+          )}
+          {pending && (
+            <button onClick={() => timer.save()} disabled={!tag} title="Save entry" className={`${roundBtn} bg-accent`}>
+              <Check size={16} />
+            </button>
+          )}
+          {!idle && (
+            <button onClick={() => timer.discard()} title="Discard timer"
+              className="p-1 rounded text-muted hover:text-red-400 hover:bg-bg-hover transition-colors shrink-0">
+              <X size={14} />
+            </button>
+          )}
+        </div>
       </div>
       {pending && (
         <div className="flex items-center gap-3 px-4 pb-2.5 text-xs">
@@ -494,7 +622,7 @@ function TimerBar({ projectTags, onCreateProject }: { projectTags: ProjectTag[];
         <div className="px-4 pb-2.5 text-xs text-secondary">
           Time is tracked per project.{" "}
           <button onClick={onCreateProject} className="text-accent hover:underline">Create a project</button>
-          {" "}to start the timer.
+          {" "}to track time.
         </div>
       )}
     </div>
@@ -646,6 +774,16 @@ function MonthGrid({
   const { year, month, first_weekday, days_in_month, days } = calData;
   const todayStr = new Date().toISOString().slice(0, 10);
 
+  const markerOrder = (mk: DayMarker) => allTags.indexOf(mk.tag) * 2 + (mk.source === "manual" ? 0 : 1);
+  const hasLogged = calData.events.some((ev) => ev.source === "manual");
+  const hasImported = calData.events.some((ev) => ev.source !== "manual");
+  const hasPlanned = calData.events.some((ev) => ev.is_future);
+  const legend = [
+    hasLogged && { label: "Logged in Tuttle", style: dotStyle(LEGEND_COLOR, false, false) },
+    hasImported && { label: "Imported from calendar", style: dotStyle(LEGEND_COLOR, true, false) },
+    hasPlanned && { label: "Planned", style: dotStyle(LEGEND_COLOR, true, true) },
+  ].filter((item) => !!item);
+
   const cells: (number | null)[] = [];
   for (let i = 0; i < first_weekday; i++) cells.push(null);
   for (let d = 1; d <= days_in_month; d++) cells.push(d);
@@ -685,16 +823,15 @@ function MonthGrid({
               {info && (
                 <div className="mt-1.5 space-y-1">
                   <div className="flex gap-1 flex-wrap">
-                    {info.tags.map((t) => (
-                      <div key={t} className="w-2.5 h-2.5 rounded-full"
-                        style={{
-                          backgroundColor: tagColor(t, allTags),
-                          opacity: isFuture ? 0.5 : 1,
-                          border: isFuture ? `1.5px dashed ${tagColor(t, allTags)}` : "none",
-                        }}
-                        title={`${t}${isFuture ? " (planned)" : ""}`}
-                      />
-                    ))}
+                    {[...info.markers].sort((a, b) => markerOrder(a) - markerOrder(b)).map((mk) => {
+                      const imported = mk.source !== "manual";
+                      return (
+                        <div key={`${mk.tag}-${mk.source}`} className="w-2.5 h-2.5 rounded-full"
+                          style={dotStyle(tagColor(mk.tag, allTags), imported, isFuture)}
+                          title={`${mk.tag} · ${imported ? "imported" : "logged"}${isFuture ? " (planned)" : ""}`}
+                        />
+                      );
+                    })}
                   </div>
                   <div className={`text-[11px] font-medium tabular-nums ${isFuture ? "text-blue-400/70" : "text-secondary"}`}>
                     {formatDayDuration(info)}
@@ -705,6 +842,17 @@ function MonthGrid({
           );
         })}
       </div>
+
+      {legend.length > 1 && (
+        <div className="flex justify-end gap-4 mt-2">
+          {legend.map((item) => (
+            <div key={item.label} className="flex items-center gap-1.5 text-[11px] text-secondary">
+              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={item.style} />
+              {item.label}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -714,14 +862,15 @@ function MonthGrid({
 // ---------------------------------------------------------------------------
 
 function EntryForm({
-  initial, projectTags, submitLabel, onSubmit, onCancel,
+  initial, durationOnly = false, projectTags, submitLabel, onSubmit, onCancel,
 }: {
-  initial: EntryValues; projectTags: ProjectTag[]; submitLabel: string;
+  initial: EntryValues; durationOnly?: boolean; projectTags: ProjectTag[]; submitLabel: string;
   onSubmit: (values: EntryValues) => Promise<void>; onCancel: () => void;
 }) {
   const [values, setValues] = useState<EntryValues>(initial);
   const [saving, setSaving] = useState(false);
-  const valid = !!values.tag && !!values.start && !!values.end && values.end > values.start;
+  const minutes = durationOnly ? parseDuration(values.duration) : slotMinutes(values.start, values.end);
+  const valid = !!values.tag && minutes != null && minutes > 0 && minutes <= MAX_DAY_MINUTES;
 
   async function submit() {
     if (!valid || saving) return;
@@ -737,9 +886,17 @@ function EntryForm({
         <option value="" disabled>Project…</option>
         {projectTags.map((p) => <option key={p.tag} value={p.tag}>{p.title}</option>)}
       </select>
-      <input type="time" value={values.start} onChange={(e) => setValues({ ...values, start: e.target.value })} className={inputCls} />
-      <span className="text-xs text-muted">–</span>
-      <input type="time" value={values.end} onChange={(e) => setValues({ ...values, end: e.target.value })} className={inputCls} />
+      {durationOnly ? (
+        <input type="text" value={values.duration} onChange={(e) => setValues({ ...values, duration: e.target.value })}
+          onKeyDown={(e) => e.key === "Enter" && submit()}
+          placeholder="e.g. 1h 30m" title="Duration" className={`${inputCls} w-[90px] tabular-nums`} />
+      ) : (
+        <>
+          <input type="time" value={values.start} onChange={(e) => setValues({ ...values, start: e.target.value })} className={inputCls} />
+          <span className="text-xs text-muted">–</span>
+          <input type="time" value={values.end} onChange={(e) => setValues({ ...values, end: e.target.value })} className={inputCls} />
+        </>
+      )}
       <input type="text" value={values.title} onChange={(e) => setValues({ ...values, title: e.target.value })}
         onKeyDown={(e) => e.key === "Enter" && submit()}
         placeholder="Title (optional)" className={`${inputCls} flex-1 min-w-[140px]`} />
@@ -797,8 +954,11 @@ function DayDetail({
   }
 
   async function updateEntry(ev: TimeEvent, v: EntryValues) {
+    const when = ev.duration_only
+      ? { duration_minutes: parseDuration(v.duration) }
+      : { start_time: v.start, end_time: v.end };
     const res = await rpc("timetracking.update_manual_entry", {
-      entry_id: ev.entry_id, tag: v.tag, title: v.title || null, date: day, start_time: v.start, end_time: v.end,
+      entry_id: ev.entry_id, tag: v.tag, title: v.title || null, date: day, ...when,
     });
     if (res.ok) {
       setEditing(null);
@@ -842,7 +1002,11 @@ function DayDetail({
               return (
                 <div key={key} className="px-3 py-2.5 bg-bg-hover/40">
                   <EntryForm
-                    initial={{ tag: ev.tag, title: ev.title, start: toTimeInput(ev.begin), end: ev.end ? toTimeInput(ev.end) : "" }}
+                    initial={{
+                      tag: ev.tag, title: ev.title, start: toTimeInput(ev.begin), end: ev.end ? toTimeInput(ev.end) : "",
+                      duration: formatHours(ev.duration_hours),
+                    }}
+                    durationOnly={ev.duration_only}
                     projectTags={projectTags}
                     submitLabel="Save"
                     onSubmit={(v) => updateEntry(ev, v)}
@@ -854,10 +1018,7 @@ function DayDetail({
             return (
               <div key={key} className={`px-3 py-2 flex items-start gap-2.5 group ${ev.is_future ? "opacity-70" : ""}`}>
                 <div className="w-2.5 h-2.5 rounded-full mt-1 shrink-0"
-                  style={{
-                    backgroundColor: ev.is_future ? "transparent" : tagColor(ev.tag, allTags),
-                    border: ev.is_future ? `1.5px dashed ${tagColor(ev.tag, allTags)}` : "none",
-                  }} />
+                  style={dotStyle(tagColor(ev.tag, allTags), !isManual, ev.is_future)} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className={`text-sm font-medium truncate ${ev.title ? "text-primary" : "text-muted"}`}>{ev.title || "No title"}</span>
@@ -875,7 +1036,7 @@ function DayDetail({
                   <div className="flex items-center gap-3 mt-0.5 text-xs text-secondary">
                     {ev.all_day
                       ? <span>all day</span>
-                      : <><span>{formatTime(ev.begin)} – {ev.end ? formatTime(ev.end) : "?"}</span>
+                      : <>{!ev.duration_only && <span>{formatTime(ev.begin)} – {ev.end ? formatTime(ev.end) : "?"}</span>}
                           <span className="tabular-nums font-medium">{formatHours(ev.duration_hours)}</span></>
                     }
                   </div>
@@ -911,7 +1072,7 @@ function DayDetail({
       <div className="px-3 py-2 border-t border-border-subtle">
         {adding ? (
           <EntryForm
-            initial={{ tag: defaultTag, title: "", start: "09:00", end: "17:00" }}
+            initial={{ tag: defaultTag, title: "", start: "09:00", end: "17:00", duration: "" }}
             projectTags={projectTags}
             submitLabel="Add"
             onSubmit={addEntry}
@@ -945,6 +1106,16 @@ function toTimeInput(iso: string): string {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return "";
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
+function localDateIso(d: Date = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function slotMinutes(start: string, end: string): number | null {
+  if (!start || !end) return null;
+  const toMinutes = (t: string) => +t.slice(0, 2) * 60 + +t.slice(3, 5);
+  return toMinutes(end) - toMinutes(start);
 }
 
 function formatDayDuration(info: DayInfo): string {

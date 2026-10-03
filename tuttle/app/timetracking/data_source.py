@@ -144,7 +144,12 @@ class TimeTrackingDataFrameSource:
     def refresh_manual_rows(self):
         calendar = self.calendar_rows()
         manual = ManualEntriesDataSource().load_frame()
-        self.data = merge_dataframes(calendar, manual) if manual is not None else calendar
+        if manual is None:
+            self.data = calendar
+        else:
+            # Calendar rows have no duration_only flag; they all carry clock times.
+            merged = merge_dataframes(calendar, manual)
+            self.data = merged.assign(duration_only=merged["duration_only"].eq(True))
         self._manual_loaded = True
 
     def clear(self):
@@ -252,13 +257,14 @@ class ManualEntriesDataSource(SQLModelDataSourceMixin):
                 "end": to_cet(item.end),
                 "source": "manual",
                 "entry_id": item.id,
+                "duration_only": item.duration_only,
             }
             for item in items
         ]
         index = pandas.DatetimeIndex([to_cet(item.begin) for item in items], name="begin")
         return DataFrame(rows, index=index)
 
-    def add(self, begin, end, tag: str, title: str) -> int:
+    def add(self, begin, end, tag: str, title: str, duration_only: bool = False) -> int:
         begin, end = _naive_cet(begin), _naive_cet(end)
         item = TimeTrackingItem(
             begin=begin,
@@ -267,11 +273,12 @@ class ManualEntriesDataSource(SQLModelDataSourceMixin):
             title=title,
             tag=tag,
             description="",
+            duration_only=duration_only,
         )
         self.store(item)
         return item.id
 
-    def update(self, entry_id: int, begin, end, tag: str, title: str) -> bool:
+    def update(self, entry_id: int, begin, end, tag: str, title: str, duration_only: bool = False) -> bool:
         with self.create_session() as session:
             item = session.get(TimeTrackingItem, entry_id)
             if item is None or item.timesheet_id is not None:
@@ -279,6 +286,7 @@ class ManualEntriesDataSource(SQLModelDataSourceMixin):
             item.begin, item.end = _naive_cet(begin), _naive_cet(end)
             item.duration = item.end - item.begin
             item.tag, item.title = tag, title
+            item.duration_only = duration_only
             session.add(item)
             session.commit()
         return True

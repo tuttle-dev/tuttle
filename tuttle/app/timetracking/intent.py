@@ -34,6 +34,7 @@ from .data_source import (
 )
 
 _MISSING_ENTRY = "This entry no longer exists. Reload the calendar and try again."
+_MAX_DAY_MINUTES = 24 * 60
 
 
 class _EntryError(ValueError):
@@ -44,16 +45,33 @@ def _parse_local(date: str, time: str) -> pandas.Timestamp:
     return to_cet(datetime.datetime.fromisoformat(f"{date}T{time}"))
 
 
-def _validate_entry(tag: str, date: str, start_time: str, end_time: str):
+def _validate_entry(tag: str, date: str, start_time, end_time, duration_minutes=None):
+    """Return (begin, end, duration_only) for a time slot, or for an amount when *duration_minutes* is given."""
     if not tag:
         raise _EntryError("Choose a project for this entry.")
+    if duration_minutes is not None:
+        return (*_validate_amount(date, duration_minutes), True)
     try:
         begin, end = _parse_local(date, start_time), _parse_local(date, end_time)
-    except ValueError:
+    except (TypeError, ValueError):
         raise _EntryError("Enter the date as YYYY-MM-DD and the times as HH:MM.")
     if end <= begin:
         raise _EntryError("The end time must be after the start time.")
-    return begin, end
+    return begin, end, False
+
+
+def _validate_amount(date: str, duration_minutes):
+    try:
+        begin = _parse_local(date, "00:00")
+    except (TypeError, ValueError):
+        raise _EntryError("Enter the date as YYYY-MM-DD.")
+    try:
+        minutes = round(float(duration_minutes))
+    except (TypeError, ValueError, OverflowError):
+        minutes = 0
+    if not 0 < minutes <= _MAX_DAY_MINUTES:
+        raise _EntryError("Enter a duration between 1 minute and 24 hours, for example 1h 30m.")
+    return begin, begin + datetime.timedelta(minutes=minutes)
 
 
 def _ensure_source_column(df: DataFrame, source: str = "calendar") -> DataFrame:
@@ -67,6 +85,9 @@ def _manual_entry_starts_at(df: Optional[DataFrame], begin, exclude_id: Optional
     if df is None or df.empty or "source" not in df.columns:
         return False
     mask = (df.index == to_cet(begin)) & (df["source"] == "manual").to_numpy()
+    if "duration_only" in df.columns:
+        # Amounts all sit at midnight; only time slots can collide.
+        mask &= ~df["duration_only"].to_numpy(dtype=bool)
     if exclude_id is not None and "entry_id" in df.columns:
         mask &= (df["entry_id"] != exclude_id).to_numpy()
     return bool(mask.any())
@@ -410,22 +431,24 @@ class TimeTrackingIntent(Intent):
         self,
         tag: str,
         date: str,
-        start_time: str,
-        end_time: str,
+        start_time: Optional[str] = None,
+        end_time: Optional[str] = None,
         title: Optional[str] = None,
+        duration_minutes: Optional[float] = None,
     ) -> IntentResult:
+        """Add a time slot (*start_time*–*end_time*) or, with *duration_minutes*, an amount of time on *date*."""
         try:
-            begin, end = _validate_entry(tag, date, start_time, end_time)
+            begin, end, duration_only = _validate_entry(tag, date, start_time, end_time, duration_minutes)
         except _EntryError as ex:
             return IntentResult(was_intent_successful=False, error_msg=str(ex))
         ds = self._timetracking_data_frame_source
-        if _manual_entry_starts_at(ds.get_data_frame(), begin):
+        if not duration_only and _manual_entry_starts_at(ds.get_data_frame(), begin):
             return IntentResult(
                 was_intent_successful=False,
                 error_msg=f"You already have an entry starting at {start_time} on {date}. "
                 "Edit that entry or choose a different start time.",
             )
-        entry_id = self._manual_entries().add(begin, end, tag, title or "")
+        entry_id = self._manual_entries().add(begin, end, tag, title or "", duration_only)
         ds.refresh_manual_rows()
         return IntentResult(
             was_intent_successful=True,
@@ -437,24 +460,25 @@ class TimeTrackingIntent(Intent):
         entry_id,
         tag: str,
         date: str,
-        start_time: str,
-        end_time: str,
+        start_time: Optional[str] = None,
+        end_time: Optional[str] = None,
         title: Optional[str] = None,
+        duration_minutes: Optional[float] = None,
     ) -> IntentResult:
         entry_id = _coerce_id(entry_id)
         if entry_id is None:
             return IntentResult(was_intent_successful=False, error_msg=_MISSING_ENTRY)
         try:
-            begin, end = _validate_entry(tag, date, start_time, end_time)
+            begin, end, duration_only = _validate_entry(tag, date, start_time, end_time, duration_minutes)
         except _EntryError as ex:
             return IntentResult(was_intent_successful=False, error_msg=str(ex))
         ds = self._timetracking_data_frame_source
-        if _manual_entry_starts_at(ds.get_data_frame(), begin, exclude_id=entry_id):
+        if not duration_only and _manual_entry_starts_at(ds.get_data_frame(), begin, exclude_id=entry_id):
             return IntentResult(
                 was_intent_successful=False,
                 error_msg=f"Another entry already starts at {start_time} on {date}. Choose a different start time.",
             )
-        if not self._manual_entries().update(entry_id, begin, end, tag, title or ""):
+        if not self._manual_entries().update(entry_id, begin, end, tag, title or "", duration_only):
             return IntentResult(was_intent_successful=False, error_msg=_MISSING_ENTRY)
         ds.refresh_manual_rows()
         return IntentResult(

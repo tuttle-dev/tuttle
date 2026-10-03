@@ -62,6 +62,7 @@ def df_to_records(df: DataFrame, tag_to_workday: Optional[dict] = None) -> list:
                 "is_future": is_future,
                 "source": str(row.get("source", "calendar")),
                 "entry_id": entry_id,
+                "duration_only": bool(row.get("duration_only", False)),
             }
         )
     return records
@@ -92,7 +93,8 @@ def build_calendar_data(
     """Build a month-view calendar payload from a time-tracking DataFrame.
 
     Returns a dict with ``events``, ``projects`` (unique tags with hours),
-    ``days`` (per-day aggregation), and ``summary`` (totals).
+    ``days`` (per-day aggregation, with one marker per project and source),
+    and ``summary`` (totals).
     """
     tag_to_title = tag_to_title or {}
     tag_to_workday = tag_to_workday or {}
@@ -127,7 +129,7 @@ def build_calendar_data(
                 "date": d,
                 "hours": 0.0,
                 "all_day_count": 0,
-                "tags": [],
+                "markers": [],
                 "count": 0,
             }
         is_all_day = bool(row.get("all_day", False))
@@ -138,9 +140,9 @@ def build_calendar_data(
             h = dur.total_seconds() / 3600 if hasattr(dur, "total_seconds") else 0
             days[d]["hours"] = round(days[d]["hours"] + h, 2)
         days[d]["count"] += 1
-        tag = str(row.get("tag", ""))
-        if tag and tag not in days[d]["tags"]:
-            days[d]["tags"].append(tag)
+        marker = {"tag": str(row.get("tag", "")), "source": str(row.get("source", "calendar"))}
+        if marker["tag"] and marker not in days[d]["markers"]:
+            days[d]["markers"].append(marker)
 
     total_hours = total_event_hours(month_df, tag_to_workday) if len(month_df) else 0
 
@@ -212,9 +214,11 @@ def build_summary(
 def merge_dataframes(existing: Optional[DataFrame], new_df: DataFrame) -> DataFrame:
     """Merge *new_df* into *existing*.
 
-    Rows are deduplicated by begin timestamp *within each source*: a re-imported
-    calendar event replaces its earlier copy, while a manual entry that happens
-    to start at the same moment as a calendar event is kept.
+    Calendar rows are deduplicated by begin timestamp: a re-imported calendar
+    event replaces its earlier copy. Manual entries are database rows with their
+    own ids and are never dropped, even when several start at the same moment
+    (amounts logged on one day all begin at midnight) or share a start with a
+    calendar event.
     """
     if existing is None or existing.empty:
         return new_df
@@ -224,5 +228,6 @@ def merge_dataframes(existing: Optional[DataFrame], new_df: DataFrame) -> DataFr
     if "source" not in combined.columns:
         combined["source"] = "calendar"
     combined["source"] = combined["source"].fillna("calendar")
-    key = pandas.MultiIndex.from_arrays([combined.index, combined["source"].to_numpy()])
-    return combined[~key.duplicated(keep="last")]
+    source = combined["source"].to_numpy()
+    key = pandas.MultiIndex.from_arrays([combined.index, source])
+    return combined[~(key.duplicated(keep="last") & (source != "manual"))]

@@ -1,3 +1,4 @@
+import datetime
 import tempfile
 from pathlib import Path
 
@@ -5,6 +6,7 @@ import faker
 import pytest
 
 from tuttle import demo, rendering
+from tuttle.model import TimeTrackingItem
 
 
 @pytest.fixture
@@ -14,6 +16,23 @@ def fake():
 
 class TestRenderTimesheet:
     """Tests for render_timesheet"""
+
+    def test_logged_duration_has_no_clock_times(self, fake):
+        timesheet = demo.create_fake_timesheet(fake)
+        timesheet.items.append(
+            TimeTrackingItem(
+                begin=datetime.datetime(2026, 8, 20),
+                end=datetime.datetime(2026, 8, 20, 2),
+                duration=datetime.timedelta(hours=2),
+                title="Logged amount",
+                tag="#amount",
+                description="",
+                duration_only=True,
+            )
+        )
+        html = rendering.render_timesheet(user=demo.create_fake_user(fake), timesheet=timesheet, out_dir=None)
+        assert "Logged amount" in html
+        assert "00:00 – 02:00" not in html
 
     def test_returns_html_when_out_dir_is_none(self, fake):
         user = demo.create_fake_user(fake)
