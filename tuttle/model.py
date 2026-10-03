@@ -954,6 +954,10 @@ class TimeTrackingItem(SQLModel, table=True):
     title: str = Field(description="A short description of the time interval.")
     tag: str = Field(description="A short tag to identify the project the time interval belongs to.")
     description: Optional[str] = Field(description="A longer description of the time interval.")
+    duration_only: bool = Field(
+        default=False,
+        description="An amount of time logged on a day: begin is midnight and carries no clock time.",
+    )
 
 
 class TimeTrackingSettings(SQLModel, table=True):
