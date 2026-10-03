@@ -14,14 +14,20 @@ import json
 from decimal import Decimal
 from pathlib import Path
 
+import pandas
 import pytest
 import sqlmodel
 
 import tuttle.app
 import tuttle.app.core.abstractions as abstractions
 import tuttle.app_db as app_db_mod
+from tuttle import timetracking
 from tuttle.app.core.dispatch import _intents, dispatch
 from tuttle.app.core.rpc_utils import reset_all
+from tuttle.app.projects.intent import ProjectsIntent
+from tuttle.app.timetracking.aggregation import merge_dataframes
+from tuttle.app.timetracking.data_source import TimeTrackingDataFrameSource
+from tuttle.app.timetracking.intent import TimeTrackingIntent
 from tuttle.model import (
     Client,
     Contact,
@@ -1191,3 +1197,104 @@ class TestManualTimeTracking:
         for item in r["data"]:
             assert "tag" in item
             assert "title" in item
+
+    def test_log_a_duration(self, rpc_env):
+        r = assert_ok(
+            dispatch(
+                "timetracking.add_manual_entry",
+                {"tag": "#amount", "title": "Review", "date": "2026-08-12", "duration_minutes": 90},
+            )
+        )
+        entry = r["data"]["entry"]
+        assert entry["duration_only"] is True
+        assert entry["duration_hours"] == 1.5
+        assert entry["date"] == "2026-08-12"
+
+    def test_durations_on_one_day_are_all_kept(self, rpc_env):
+        assert_ok(
+            dispatch(
+                "timetracking.add_manual_entry",
+                {"tag": "#amount", "title": "Second", "date": "2026-08-12", "duration_minutes": 30},
+            )
+        )
+        # Amounts sit at midnight, so a time slot starting at 00:00 must not collide with them.
+        assert_ok(
+            dispatch(
+                "timetracking.add_manual_entry",
+                {"tag": "#amount", "title": "Night", "date": "2026-08-12", "start_time": "00:00", "end_time": "01:00"},
+            )
+        )
+        events = assert_ok(dispatch("timetracking.get_events", {"project_tag": "#amount"}))["data"]
+        assert sorted(ev["title"] for ev in events) == ["Night", "Review", "Second"]
+        assert [ev["duration_only"] for ev in sorted(events, key=lambda ev: ev["title"])] == [False, True, True]
+
+    @pytest.mark.parametrize("minutes", [0, -30, 24 * 60 + 1, "soon"])
+    def test_log_a_duration_out_of_range_fails(self, rpc_env, minutes):
+        r = dispatch(
+            "timetracking.add_manual_entry",
+            {"tag": "#amount", "title": None, "date": "2026-08-13", "duration_minutes": minutes},
+        )
+        assert r["ok"] is False
+        assert "between 1 minute and 24 hours" in r["error"]
+
+    def test_edit_a_logged_duration(self, rpc_env):
+        added = assert_ok(
+            dispatch(
+                "timetracking.add_manual_entry",
+                {"tag": "#amount", "title": "Draft", "date": "2026-08-14", "duration_minutes": 60},
+            )
+        )
+        r = assert_ok(
+            dispatch(
+                "timetracking.update_manual_entry",
+                {
+                    "entry_id": added["data"]["entry"]["entry_id"],
+                    "tag": "#amount",
+                    "title": "Final",
+                    "date": "2026-08-15",
+                    "duration_minutes": 150,
+                },
+            )
+        )
+        entry = r["data"]["entry"]
+        assert entry["duration_only"] is True
+        assert entry["duration_hours"] == 2.5
+        assert entry["date"] == "2026-08-15"
+
+    def test_logged_and_imported_entries_are_told_apart(self, rpc_env):
+        project = next(p for p in ProjectsIntent().get_all().data if p.tag and p.contract)
+        imported = pandas.DataFrame(
+            [
+                {
+                    "title": "Workshop",
+                    "tag": project.tag,
+                    "description": "",
+                    "duration": pandas.Timedelta(hours=3),
+                    "all_day": False,
+                    "end": pandas.Timestamp("2026-08-20T12:00", tz="CET"),
+                    "source": "calendar",
+                }
+            ],
+            index=pandas.DatetimeIndex([pandas.Timestamp("2026-08-20T09:00", tz="CET")], name="begin"),
+        )
+        ds = TimeTrackingDataFrameSource()
+        ds.store_data_frame(merge_dataframes(ds.calendar_rows(), imported))
+        try:
+            assert_ok(
+                dispatch(
+                    "timetracking.add_manual_entry",
+                    {"tag": project.tag, "title": "Follow-up", "date": "2026-08-20", "duration_minutes": 45},
+                )
+            )
+            data = assert_ok(
+                dispatch("timetracking.get_calendar_data", {"year": 2026, "month": 8, "project_tag": project.tag})
+            )["data"]
+            markers = data["days"]["2026-08-20"]["markers"]
+            assert sorted(m["source"] for m in markers) == ["calendar", "manual"]
+            assert all(m["tag"] == project.tag for m in markers)
+            # Imported rows carry no flag of their own; timesheet items must still get a real bool.
+            df = TimeTrackingIntent().get_timetracking_data().data
+            sheet = timetracking.generate_timesheet(df, project, datetime.date(2026, 8, 20), datetime.date(2026, 8, 20))
+            assert {item.title: item.duration_only for item in sheet.items} == {"Workshop": False, "Follow-up": True}
+        finally:
+            assert_ok(dispatch("timetracking.clear", {}))

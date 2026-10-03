@@ -476,6 +476,8 @@ def render_timesheet(
         return total > 0 and total % 86400 == 0
 
     def _time_range(item) -> str:
+        if item.duration_only:
+            return ""
         if _is_all_day(item):
             return "All day"
         return f"{item.begin.strftime('%H:%M')} – {item.end.strftime('%H:%M')}"

@@ -119,7 +119,7 @@ def print_table(rows: list[dict], totals_only: bool = False) -> None:
         footer=f"[bold green]{totals['total']}[/bold green]",
     )
 
-    for r in rows:
+    for r in reversed(rows):
         table.add_row(
             r["tag"],
             r["date"],
