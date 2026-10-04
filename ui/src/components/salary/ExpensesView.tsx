@@ -305,8 +305,8 @@ function ExpenseDetail({ expense, onEdit, onDelete, deleteError }: {
 
   return (
     <div className="p-6 space-y-6 max-w-xl">
-      <div className="flex items-center justify-between border-b border-border-subtle pb-4">
-        <div>
+      <div className="flex items-center justify-between gap-4 border-b border-border-subtle pb-4">
+        <div className="min-w-0">
           <h2 className="text-lg font-semibold">{title}</h2>
           <span className="inline-block text-xs font-medium px-2 py-0.5 rounded bg-accent/15 text-accent capitalize mt-1">
             {category}

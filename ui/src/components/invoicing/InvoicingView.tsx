@@ -875,7 +875,7 @@ function InvoiceRow({ invoice, isSelected, isHighlighted, reminderCount, deposit
       className={`w-full text-left ${LIST_ROW_PADDING} border-b transition-colors
         ${isSelected ? "bg-bg-selected border-border-subtle" : isHighlighted ? "bg-accent/10 border-accent/30" : "border-border-subtle hover:bg-bg-hover"}`}>
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center gap-2 min-w-0 overflow-hidden">
           <span className="text-sm font-medium shrink-0">{str(invoice, "number") || "Draft"}</span>
           {isDeposit(invoice) && depositLabel && (
             <span className="text-xs font-semibold text-blue-400 truncate">{depositLabel}</span>
@@ -943,7 +943,7 @@ function DepositRow({ invoice, isSelected, onSelect }: { invoice: Entity; isSele
       className={`w-full text-left pl-10 pr-4 py-2.5 border-b transition-colors border-l-2 border-l-blue-400
         ${isSelected ? "bg-bg-selected border-b-border-subtle" : "border-b-border-subtle hover:bg-bg-hover bg-bg-content/50"}`}>
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center gap-2 min-w-0 overflow-hidden">
           <span className="text-xs font-semibold text-blue-400 truncate">
             {depositLabel || "Deposit"}
           </span>
@@ -1141,7 +1141,7 @@ function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid, onTog
       {/* Header */}
       <div className="p-5 pb-3 space-y-3 shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-bg-card flex items-center justify-center">
+          <div className="w-10 h-10 rounded-lg bg-bg-card flex items-center justify-center shrink-0">
             {isRem
               ? <AlertTriangle size={18} className="text-status-warning" />
               : isFinalInvoice(invoice)
@@ -1150,7 +1150,7 @@ function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid, onTog
               ? <Milestone size={18} className="text-blue-400" />
               : <FileText size={18} className="text-secondary" />}
           </div>
-          <div>
+          <div className="min-w-0">
             <h1 className="text-lg font-semibold">
               {isRem
                 ? `Reminder ${reminderLevel(invoice)}`
@@ -1175,7 +1175,7 @@ function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid, onTog
 
         {/* A final invoice settles the whole contract: what matters is the
             balance still due after deducting the deposits, not the full total. */}
-        <div className="grid grid-cols-3 gap-2">
+        <div className="flex flex-wrap gap-2">
           {isFinalInvoice(invoice) ? (
             <>
               <AmountCard label="Contract total" value={str(invoice, "total_formatted")} />
@@ -1546,7 +1546,7 @@ function TabBtn({ label, icon, active, disabled, onClick }: {
 
 function AmountCard({ label, value, color, prominent }: { label: string; value: string; color?: string; prominent?: boolean }) {
   return (
-    <div className="flex items-baseline justify-between gap-2 px-3 py-1.5 rounded-md bg-bg-card border border-border-subtle"
+    <div className="flex-1 min-w-fit flex items-baseline justify-between gap-2 px-3 py-1.5 rounded-md bg-bg-card border border-border-subtle"
       style={prominent ? { borderColor: `${color || "#007AFF"}44` } : undefined}>
       <span className="text-[10px] font-semibold uppercase tracking-wider text-tertiary">{label}</span>
       <span className={`tabular-nums ${prominent ? "text-sm font-bold" : "text-xs font-medium"}`}

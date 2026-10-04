@@ -347,7 +347,7 @@ function ContractDetail({ contract, onEdit, onDuplicate, onDelete, onToggle, del
       </div>
 
       {/* Actions */}
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <button onClick={onToggle}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs text-secondary hover:text-primary border border-border-subtle transition-colors">
           <CheckCircle2 size={13} /> {bool(contract, "is_completed") ? "Reopen" : "Mark Complete"}
@@ -372,7 +372,7 @@ function ContractDetail({ contract, onEdit, onDuplicate, onDelete, onToggle, del
 
       {/* Terms */}
       <DetailSection label="Terms">
-        <div className="grid grid-cols-3 gap-x-6 gap-y-3">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-x-6 gap-y-3">
           {isFixed && <TermItem label="Fixed Price" value={`${fixedPrice} ${currency}`} />}
           {rate > 0 && <TermItem label="Rate" value={`${rate} ${currency}`} sub={`per ${unit}`} />}
           {!isFixed && <TermItem label="Volume" value={str(contract, "volume") || "—"} sub={str(contract, "volume") ? `${unit}s` : ""} />}
