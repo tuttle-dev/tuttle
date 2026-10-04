@@ -232,9 +232,6 @@ export function ProjectsView() {
                 <button key={p.id} onClick={() => selectProject(p)}
                   className={`w-full text-left ${LIST_ROW_PADDING} border-b transition-colors flex items-center gap-3
                     ${isSelected ? "bg-bg-selected border-border-subtle" : isHighlighted ? "bg-accent/10 border-accent/30" : "border-border-subtle hover:bg-bg-hover"}`}>
-                  <div className="w-9 h-9 rounded-full bg-bg-card flex items-center justify-center text-sm font-semibold text-secondary shrink-0">
-                    <FolderKanban size={16} />
-                  </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-sm font-medium truncate">{str(p, "title")}</span>
