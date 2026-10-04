@@ -19,6 +19,7 @@ import type { Entity } from "../../api/types";
 import { str, bool, list as entityList } from "../../api/entity";
 import { useStatusBar, type StatusMessage, type MessageType } from "../shared/status-bar-context";
 import { Toolbar } from "../shared/ToolbarButtons";
+import { useNavigation } from "../shared/NavigationContext";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -138,7 +139,10 @@ const TABS: { id: Tab; label: string; icon: typeof User }[] = [
 // ---------------------------------------------------------------------------
 
 export function SettingsView() {
-  const [tab, setTab] = useState<Tab>("profile");
+  const { filter: navFilter } = useNavigation();
+  const [tab, setTab] = useState<Tab>(
+    () => TABS.find((t) => t.id === navFilter.tab)?.id ?? "profile",
+  );
 
   const [config, setConfig] = useState<LLMConfig>(DEFAULT_CONFIG);
   const [models, setModels] = useState<string[]>([]);
@@ -1241,10 +1245,7 @@ function RegionTab({ operatingCountry, supportedCountries, onCountryChange, vatN
         </div>
         {operatingCountry && !taxModelCountries.has(operatingCountry) && (
           <div className="mt-3 px-3 py-2 rounded-md bg-status-warning/10 border border-status-warning/20 text-xs text-secondary">
-            Income tax estimation is not yet available for {operatingCountry}. VAT and invoicing still work.{" "}
-            <a href="https://github.com/tuttle-dev/tuttle/issues" target="_blank" rel="noopener noreferrer" className="underline text-accent hover:text-primary">
-              Request this tax model on GitHub
-            </a>
+            No tax model for {operatingCountry} yet. VAT and invoicing still work.
           </div>
         )}
       </fieldset>

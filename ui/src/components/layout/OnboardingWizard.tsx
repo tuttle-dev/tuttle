@@ -357,10 +357,7 @@ export function OnboardingWizard({ open, onClose, onSubmit, onDemo, loading, ove
 
         {profile.operating_country && !taxModelCountries.has(profile.operating_country) && (
           <div className="px-3 py-2 rounded-md bg-status-warning/10 border border-status-warning/20 text-xs text-secondary">
-            Income tax estimation is not yet available for {profile.operating_country}. VAT and invoicing still work.{" "}
-            <a href="https://github.com/tuttle-dev/tuttle/issues" target="_blank" rel="noopener noreferrer" className="underline text-accent hover:text-primary">
-              Request this tax model on GitHub
-            </a>
+            No tax model for {profile.operating_country} yet. VAT and invoicing still work.
           </div>
         )}
 

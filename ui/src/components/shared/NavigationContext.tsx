@@ -4,6 +4,9 @@ export interface NavigationFilter {
   contractId?: number;
   clientId?: number;
   projectId?: number;
+  invoiceId?: number;
+  /** Settings tab to open, e.g. "llm". */
+  tab?: string;
 }
 
 interface NavigationContextValue {
