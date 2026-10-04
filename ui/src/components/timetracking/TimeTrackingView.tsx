@@ -67,8 +67,8 @@ type EntryValues = { tag: string; title: string; start: string; end: string; dur
 // ---------------------------------------------------------------------------
 
 const PROJECT_COLORS = [
-  "#3f72b0", "#3f8f5f", "#b38a1e", "#8460b3",
-  "#c0742e", "#b84a5c", "#3a8fa3", "#8a7458",
+  "#3a78c9", "#2f9a5c", "#c49a12", "#8b5cc9",
+  "#d97b2a", "#c94a62", "#2f9bb3", "#9a7a52",
 ];
 
 function tagColor(tag: string, allTags: string[]): string {

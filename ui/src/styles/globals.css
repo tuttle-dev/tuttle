@@ -14,17 +14,17 @@
   --color-tertiary: #5c5c61;
   --color-muted: #6b6b70;
   --color-progress: #7a7a80;
-  --color-accent: #2f63a3;
+  --color-accent: #2563b8;
   --color-on-fill: #ffffff;
   --color-chart-label: #5c5c61;
   --color-surface-overlay: rgba(0, 0, 0, 0.05);
   --color-surface-overlay-hover: rgba(0, 0, 0, 0.08);
-  --color-status-success: #2e7347;
-  --color-status-warning: #8f5a12;
-  --color-status-danger: #b03a32;
-  --color-status-info: #2f63a3;
+  --color-status-success: #1f7a42;
+  --color-status-warning: #965c00;
+  --color-status-danger: #c0392f;
+  --color-status-info: #2563b8;
   --color-status-neutral: #5c5c61;
-  --color-status-purple: #6e4fa0;
+  --color-status-purple: #7446b3;
 }
 
 /* Dark palette — activated by .dark on <html> */
@@ -44,13 +44,13 @@
   --color-chart-label: #b8b8bc;
   --color-surface-overlay: rgba(255, 255, 255, 0.03);
   --color-surface-overlay-hover: rgba(255, 255, 255, 0.07);
-  --color-status-success: #86c79f;
-  --color-status-warning: #d9a861;
-  --color-status-danger: #ec8f87;
-  --color-status-info: #8ab0de;
+  --color-status-success: #7fd29e;
+  --color-status-warning: #eaab50;
+  --color-status-danger: #f78d84;
+  --color-status-info: #84b3f0;
   --color-status-neutral: #ababb0;
-  --color-status-purple: #bba3df;
-  --color-accent: #8ab0de;
+  --color-status-purple: #c0a1f0;
+  --color-accent: #84b3f0;
   --color-on-fill: #1d1d1f;
 }
 
