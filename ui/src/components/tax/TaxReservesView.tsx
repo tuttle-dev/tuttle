@@ -16,6 +16,10 @@ function fmtPct(value: number): string {
   return `${(value * 100).toFixed(1)}%`;
 }
 
+function noTaxModel(country: string): string {
+  return `No tax model for ${country || "your country"} yet.`;
+}
+
 export function TaxReservesView() {
   const [spending, setSpending] = useState<Entity | null>(null);
   const [taxEstimate, setTaxEstimate] = useState<Entity | null>(null);
@@ -125,10 +129,7 @@ export function TaxReservesView() {
                 <WaterfallBar key={line.title} label={`${line.title} (${line.rate}%, from taxed income)`} amount={line.amount} total={totalBase} color="var(--color-status-warning)" currency={currency} />
               ))}
               {!countrySupported && (
-                <p className="text-xs text-muted italic">
-                  Tax model for {taxCountry} is not yet available.{" "}
-                  <a href="https://github.com/tuttle-dev/tuttle/issues" target="_blank" rel="noopener noreferrer" className="underline text-accent">Request it on GitHub</a>
-                </p>
+                <p className="text-xs text-muted italic">{noTaxModel(taxCountry)}</p>
               )}
               <WaterfallBar label="= Safe to Spend" amount={spendable} total={totalBase} color={spendable >= 0 ? "var(--color-status-success)" : "var(--color-status-danger)"} currency={currency} bold />
               {totalBase > 0 && (
@@ -215,7 +216,7 @@ function IncomeTaxSection({ data, currency }: { data: Entity; currency: string }
   if (planned > 0) parts.push(`${fmt(planned, currency)} planned`);
 
   return (
-    <Section title={`Income Tax Estimate (${country})`} icon={<Calculator size={16} />}>
+    <Section title={country ? `Income Tax Estimate (${country})` : "Income Tax Estimate"} icon={<Calculator size={16} />}>
       <div className="space-y-2">
         <SummaryRow label="Income Basis" value={fmt(incomeBasis, currency)} />
         {parts.length > 0 && (
@@ -252,10 +253,7 @@ function IncomeTaxSection({ data, currency }: { data: Entity; currency: string }
           </div>
         )}
         {!supported && (
-          <p className="text-xs text-muted italic mt-3">
-            Tax model for {country} is not yet available. VAT reserves are still tracked above.{" "}
-            <a href="https://github.com/tuttle-dev/tuttle/issues" target="_blank" rel="noopener noreferrer" className="underline text-accent">Request it on GitHub</a>
-          </p>
+          <p className="text-xs text-muted italic mt-3">{noTaxModel(country)} VAT reserves still apply.</p>
         )}
       </div>
     </Section>

@@ -59,7 +59,14 @@ export function InvoicingView() {
   );
   const stageStore = useStageStore("invoice", INVOICE_COLUMNS, defaultColumn);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(navFilter.invoiceId); }, []);
+  // An invoice opened from elsewhere (e.g. an overdue task) is scrolled into view once.
+  const navScrolled = useRef(false);
+  useEffect(() => {
+    if (navScrolled.current || navFilter.invoiceId == null || invoices.length === 0) return;
+    navScrolled.current = true;
+    document.querySelector(`[data-invoice-id="${navFilter.invoiceId}"]`)?.scrollIntoView({ block: "center" });
+  }, [invoices]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { setMailError(null); }, [selected?.id]);
 
   async function load(selectId?: number) {
@@ -182,7 +189,7 @@ export function InvoicingView() {
               const isSelected = selected?.id === inv.id;
               const isHighlighted = !isSelected && (inv.id === newlyCreatedId || (navFilter.contractId != null && num(inv, "contract_id") === navFilter.contractId));
               return (
-                <div key={inv.id} className={chainAccentClass(chain)}>
+                <div key={inv.id} data-invoice-id={inv.id} className={chainAccentClass(chain)}>
                   <InvoiceRow invoice={inv} isSelected={isSelected} isHighlighted={isHighlighted}
                     reminderCount={chain.reminders.length}
                     schedule={milestoneScheduleStatus(inv, chain.deposits)}
@@ -671,7 +678,7 @@ function CreateInvoiceDialog({ onClose, onCreated }: { onClose: () => void; onCr
                 </button>
               </div>
               {!hasTimeData && (
-                <p className="text-[10px] text-muted mt-1">Import calendar data in Time Tracking to use this option.</p>
+                <p className="text-[10px] text-muted mt-1">No tracked time yet.</p>
               )}
             </div>
           )}
@@ -679,16 +686,11 @@ function CreateInvoiceDialog({ onClose, onCreated }: { onClose: () => void; onCr
           {/* Timesheet opt-out (time-tracking mode only, not for deposit/final) */}
           {step === 0 && !isFixedPrice && mode === "timetracking" && docType === "invoice" && (
             <div>
-              <label className="flex items-start gap-2 cursor-pointer">
+              <label className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" checked={withTimesheet}
                   onChange={(e) => setWithTimesheet(e.target.checked)}
-                  className="mt-0.5 accent-accent" />
-                <div className="flex-1">
-                  <div className="text-sm text-primary">Generate timesheet PDF</div>
-                  <div className="text-[10px] text-muted">
-                    You can also generate it later from the invoice view.
-                  </div>
-                </div>
+                  className="accent-accent" />
+                <span className="text-sm text-primary">Generate timesheet PDF</span>
               </label>
             </div>
           )}

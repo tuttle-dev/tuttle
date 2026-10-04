@@ -91,6 +91,15 @@ class TestTutorialTasks:
         assert "tutorial:configure_ai" in keys
         assert "tutorial:import_document" in keys
 
+    def test_refreshes_outdated_copy(self, session):
+        session.add(Task(key="tutorial:configure_ai", title="Old", description="Old text", status="done"))
+        session.commit()
+        generate_tasks(session)
+        task = session.exec(sqlmodel.select(Task).where(Task.key == "tutorial:configure_ai")).first()
+        assert task.title == "Configure AI assistant"
+        assert task.description != "Old text"
+        assert task.status == "done"
+
     def test_manual_tutorial_tasks_not_auto_resolved(self, session):
         """Manual tutorial tasks stay pending regardless of other data."""
         session.add(Contact(first_name="X", last_name="Y", email="x@y.com"))

@@ -1,11 +1,31 @@
 import { useEffect, useState } from "react";
-import { CheckSquare, Circle, CheckCircle2, X } from "lucide-react";
+import { ArrowRight, CheckSquare, Circle, CheckCircle2, X } from "lucide-react";
 import { rpc } from "../../api/rpc";
 import { EmptyStateIntro } from "../shared/EmptyStateIntro";
 import { PageLayout } from "../shared/ToolbarButtons";
+import { useNavigation, type NavigationFilter } from "../shared/NavigationContext";
 import type { Entity } from "../../api/types";
 
+type Destination = { view: string; filter?: NavigationFilter };
+
+// Where each task gets done, by task key (see tuttle/app/tasks/generator.py).
+const DESTINATIONS: Record<string, Destination> = {
+  "tutorial:first_contact": { view: "contacts" },
+  "tutorial:first_client": { view: "clients" },
+  "tutorial:first_contract": { view: "contracts" },
+  "tutorial:first_project": { view: "projects" },
+  "tutorial:first_invoice": { view: "invoicing" },
+  "tutorial:configure_ai": { view: "settings", filter: { tab: "llm" } },
+  "tutorial:import_document": { view: "import" },
+};
+
+function destinationOf(key: string): Destination | undefined {
+  if (key.startsWith("overdue:")) return { view: "invoicing", filter: { invoiceId: Number(key.slice("overdue:".length)) } };
+  return DESTINATIONS[key];
+}
+
 export function TasksView() {
+  const { navigate } = useNavigation();
   const [tasks, setTasks] = useState<Entity[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -56,14 +76,18 @@ export function TasksView() {
     <PageLayout title="Tasks">
       {pending.length > 0 && (
         <div className="space-y-2 mb-6">
-          {pending.map((task) => (
-            <TaskCard
-              key={task.id as number}
-              task={task}
-              onDone={() => markDone(task.id as number)}
-              onDismiss={() => dismiss(task.id as number)}
-            />
-          ))}
+          {pending.map((task) => {
+            const dest = destinationOf((task.key as string) ?? "");
+            return (
+              <TaskCard
+                key={task.id as number}
+                task={task}
+                onOpen={dest ? () => navigate(dest.view, dest.filter) : undefined}
+                onDone={() => markDone(task.id as number)}
+                onDismiss={() => dismiss(task.id as number)}
+              />
+            );
+          })}
         </div>
       )}
 
@@ -98,9 +122,10 @@ export function TasksView() {
   );
 }
 
-function TaskCard({ task, done, onDone, onDismiss, onReopen }: {
+function TaskCard({ task, done, onOpen, onDone, onDismiss, onReopen }: {
   task: Entity;
   done?: boolean;
+  onOpen?: () => void;
   onDone?: () => void;
   onDismiss?: () => void;
   onReopen?: () => void;
@@ -108,17 +133,28 @@ function TaskCard({ task, done, onDone, onDismiss, onReopen }: {
   const [confirmDismiss, setConfirmDismiss] = useState(false);
   const key = (task.key as string) ?? "";
   const isTutorial = key.startsWith("tutorial:");
+  // The card navigates; its own buttons must not.
+  const own = (fn?: () => void) => (e: React.MouseEvent) => { e.stopPropagation(); fn?.(); };
 
   return (
-    <div className={`
+    <div
+      role={onOpen ? "button" : undefined}
+      tabIndex={onOpen ? 0 : undefined}
+      onClick={onOpen}
+      onKeyDown={onOpen ? (e) => {
+        if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onOpen(); }
+      } : undefined}
+      className={`
       rounded-lg border px-4 py-3 transition-all group
       ${done
         ? "border-border-subtle bg-bg-sidebar opacity-60"
+        : onOpen
+        ? "border-border-subtle bg-bg-card hover:border-accent hover:bg-bg-hover cursor-pointer"
         : "border-border-subtle bg-bg-card hover:border-border"}
     `}>
       <div className="flex items-start gap-3">
         <button
-          onClick={done ? onReopen : onDone}
+          onClick={own(done ? onReopen : onDone)}
           disabled={done && !onReopen}
           className={`mt-0.5 shrink-0 transition-colors ${
             done && onReopen
@@ -150,7 +186,7 @@ function TaskCard({ task, done, onDone, onDismiss, onReopen }: {
 
         {onDismiss && !confirmDismiss && (
           <button
-            onClick={() => setConfirmDismiss(true)}
+            onClick={own(() => setConfirmDismiss(true))}
             className="shrink-0 mt-0.5 opacity-0 group-hover:opacity-100 text-muted hover:text-secondary transition-all"
           >
             <X size={14} />
@@ -159,19 +195,20 @@ function TaskCard({ task, done, onDone, onDismiss, onReopen }: {
         {onDismiss && confirmDismiss && (
           <div className="shrink-0 flex items-center gap-1.5">
             <button
-              onClick={onDismiss}
+              onClick={own(onDismiss)}
               className="text-[11px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors"
             >
               Remove
             </button>
             <button
-              onClick={() => setConfirmDismiss(false)}
+              onClick={own(() => setConfirmDismiss(false))}
               className="text-[11px] px-1.5 py-0.5 rounded text-muted hover:text-secondary transition-colors"
             >
               Cancel
             </button>
           </div>
         )}
+        {onOpen && <ArrowRight size={14} className="shrink-0 mt-0.5 text-tertiary group-hover:text-primary" />}
       </div>
     </div>
   );
