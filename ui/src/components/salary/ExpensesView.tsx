@@ -184,7 +184,7 @@ export function ExpensesView() {
   return (
     <div className="flex flex-col h-full">
       <Toolbar
-        title="Recurring Expenses"
+        title="Expenses"
         actions={<ToolbarButtonPrimary icon={<Plus size={13} />} label="New" onClick={startCreate} />}
         search={{ value: search, onChange: setSearch }}
       />

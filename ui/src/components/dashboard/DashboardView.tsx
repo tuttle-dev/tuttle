@@ -7,6 +7,7 @@ import { rpc } from "../../api/rpc";
 import { str, num, int } from "../../api/entity";
 import { KPICard } from "../shared/KPICard";
 import { EmptyStateIntro } from "../shared/EmptyStateIntro";
+import { PageLayout } from "../shared/ToolbarButtons";
 import { RevenueChart } from "./RevenueChart";
 import { FinancialGoalsCard } from "./FinancialGoalsCard";
 import type { Entity } from "../../api/types";
@@ -48,9 +49,7 @@ export function DashboardView() {
   );
 
   return (
-    <div className="p-6 space-y-6 max-w-6xl">
-      <h1 className="text-lg font-semibold">Dashboard</h1>
-
+    <PageLayout title="Dashboard" className="space-y-6 max-w-6xl">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <KPICard title="Revenue (YTD)" value={str(kpis, "total_revenue_ytd_formatted")} icon={TrendingUp}
           valueColor={num(kpis, "total_revenue_ytd") > 0 ? "var(--color-status-success)" : undefined} tooltip="Total revenue received from paid invoices during the current calendar year." />
@@ -117,6 +116,6 @@ export function DashboardView() {
           })}
         </div>
       )}
-    </div>
+    </PageLayout>
   );
 }

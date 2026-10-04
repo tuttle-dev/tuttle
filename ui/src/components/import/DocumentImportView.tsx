@@ -6,6 +6,7 @@ import {
   XCircle, ReceiptText, Plus, Minus,
 } from "lucide-react";
 import { rpc } from "../../api/rpc";
+import { Toolbar } from "../shared/ToolbarButtons";
 
 // ---------------------------------------------------------------------------
 // Types — RPC response shapes from `imports.parse_document_for_import`.
@@ -237,10 +238,7 @@ export function DocumentImportView() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center gap-2 px-4 py-2 shrink-0 border-b border-border-subtle">
-        <Sparkles size={16} className="text-fuchsia-400" />
-        <h2 className="text-sm font-semibold">Document Import</h2>
-      </div>
+      <Toolbar title="Import" />
 
       <div className="flex-1 overflow-y-auto p-5">
         {phase === "upload" && (

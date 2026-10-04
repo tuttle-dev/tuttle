@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { BarChart3, ReceiptText, Calculator, ChevronDown } from "lucide-react";
 import { rpc } from "../../api/rpc";
 import { EmptyStateIntro } from "../shared/EmptyStateIntro";
+import { PageLayout } from "../shared/ToolbarButtons";
 import type { Entity } from "../../api/types";
 import { str, num, bool, type DynamicLine } from "../../api/entity";
 
@@ -74,21 +75,10 @@ export function TaxReservesView() {
   }
 
   return (
-    <div className="p-6 space-y-6 max-w-3xl">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold">Tax &amp; Reserves</h1>
-          <p className="text-sm text-muted mt-1">How much of your revenue can you actually spend?</p>
-        </div>
-        {availableYears.length > 1 && (
-          <YearSelector
-            years={availableYears}
-            selected={selectedYear}
-            onChange={setSelectedYear}
-          />
-        )}
-      </div>
-
+    <PageLayout title="Tax & Reserves" className="space-y-6 max-w-3xl"
+      right={availableYears.length > 1 && (
+        <YearSelector years={availableYears} selected={selectedYear} onChange={setSelectedYear} />
+      )}>
       {/* Revenue Waterfall */}
       <Section title={`Revenue Breakdown (${periodLabel})`} icon={<BarChart3 size={16} />}>
         {!hasAnyIncome ? (
@@ -185,7 +175,7 @@ export function TaxReservesView() {
 
       {/* Income Tax Estimate */}
       {taxEstimate && <IncomeTaxSection data={taxEstimate} currency={currency} />}
-    </div>
+    </PageLayout>
   );
 }
 

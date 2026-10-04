@@ -11,12 +11,13 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { Settings, Plus, RefreshCw, Save, CheckCircle2, AlertCircle, User, Bot, FileText, RotateCcw, Trash2, AlertTriangle, Monitor, Globe, Info, Image as ImageIcon, X, Sun, Moon, Laptop, Palette, Terminal, Clipboard, Check } from "lucide-react";
+import { Plus, RefreshCw, Save, CheckCircle2, AlertCircle, User, Bot, FileText, RotateCcw, Trash2, AlertTriangle, Monitor, Globe, Info, Image as ImageIcon, X, Sun, Moon, Laptop, Palette, Terminal, Clipboard, Check } from "lucide-react";
 import { useTheme, type ThemeChoice } from "../../hooks/useTheme";
 import { rpc } from "../../api/rpc";
 import type { Entity } from "../../api/types";
 import { str, bool, list as entityList } from "../../api/entity";
 import { useStatusBar, type StatusMessage, type MessageType } from "../shared/status-bar-context";
+import { Toolbar } from "../shared/ToolbarButtons";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -464,13 +465,11 @@ export function SettingsView() {
   const labelCls = "block text-xs text-tertiary mb-1";
 
   return (
-    <div className="flex h-full">
+    <div className="grid grid-cols-[auto_minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)] h-full">
+      <div className="col-span-2"><Toolbar title="Settings" /></div>
+
       {/* Sidebar tabs */}
       <nav className="w-48 shrink-0 border-r border-border-subtle py-4 px-2 space-y-1">
-        <div className="flex items-center gap-2 px-3 pb-3">
-          <Settings size={18} strokeWidth={1.6} className="text-secondary" />
-          <span className="text-sm font-semibold">Settings</span>
-        </div>
         {TABS.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
