@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import {
   FolderKanban, Building2, FileSignature, Calendar, Clock, FileText,
-  Plus, Trash2, Save, X, FileUp, Sparkles, Check, CheckCheck, Loader2, CheckCircle2,
+  Plus, Trash2, X, FileUp, Sparkles, Check, CheckCheck, Loader2, CheckCircle2,
   AlertTriangle, Copy,
 } from "lucide-react";
 import { rpc } from "../../api/rpc";
@@ -14,6 +14,8 @@ import { KanbanBoard, useStageStore, type BoardColumn } from "../shared/KanbanBo
 import { Toolbar, ToolbarButtonPrimary, ToolbarButtonSecondary, ToolbarFilterGroup, ListDetailLayout, LIST_ROW_PADDING } from "../shared/ToolbarButtons";
 import { useNavigation } from "../shared/NavigationContext";
 import { EmptyStateIntro } from "../shared/EmptyStateIntro";
+import { DetailHeader, DetailAction, DetailDeleteAction, DetailSubmit, DETAIL_PANE } from "../shared/DetailHeader";
+import { DetailFields, DetailField } from "../shared/DetailFields";
 import { useFieldRequirements } from "../../hooks/useFieldRequirements";
 import type { Entity } from "../../api/types";
 
@@ -260,48 +262,32 @@ export function ProjectsView() {
             ) : mode === "edit" && selected ? (
               <ProjectForm project={selected} contracts={contractsMap} onSave={handleSave} onCancel={() => setMode("view")} error={saveError} />
             ) : selected ? (
-              <div className="p-6 max-w-2xl space-y-5">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-bg-card flex items-center justify-center shrink-0">
-                    <FolderKanban size={18} className="text-secondary" />
-                  </div>
-                  <div className="min-w-0">
-                    <h1 className="text-lg font-semibold">{str(selected, "title")}</h1>
-                    <TagBadge tag={str(selected, "tag")} className="mt-1" />
-                  </div>
-                  <StatusBadge status={projectStatus(selected)} className="ml-auto" />
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  <button onClick={() => handleToggle(selected.id)}
-                    className="flex items-center gap-1 px-2 py-1.5 rounded text-xs text-secondary hover:text-primary border border-border-subtle transition-colors">
-                    <CheckCircle2 size={13} /> {bool(selected, "is_completed") ? "Reopen" : "Complete"}
-                  </button>
-                  <button onClick={() => setMode("edit")}
-                    className="px-3 py-1.5 rounded text-sm font-medium bg-bg-card text-secondary hover:text-primary border border-border-subtle transition-colors">
-                    Edit
-                  </button>
-                  <button onClick={() => startDuplicate(selected)} title="Create a new project based on this one"
-                    className="flex items-center gap-1 px-3 py-1.5 rounded text-sm font-medium bg-bg-card text-secondary hover:text-primary border border-border-subtle transition-colors">
-                    <Copy size={13} /> Duplicate
-                  </button>
-                  <button onClick={() => handleDelete(selected.id)}
-                    className="p-1.5 rounded text-secondary hover:text-red-400 border border-border-subtle transition-colors">
-                    <Trash2 size={14} />
-                  </button>
-                </div>
+              <div className={`${DETAIL_PANE} space-y-6`}>
+                <DetailHeader title={str(selected, "title")}
+                  badges={<>
+                    <TagBadge tag={str(selected, "tag")} />
+                    <StatusBadge status={projectStatus(selected)} />
+                  </>}
+                  actions={<>
+                    <DetailAction icon={<CheckCircle2 size={13} />} label={bool(selected, "is_completed") ? "Reopen" : "Complete"}
+                      onClick={() => handleToggle(selected.id)} />
+                    <DetailAction icon={<Copy size={13} />} label="Duplicate" title="Create a new project based on this one"
+                      onClick={() => startDuplicate(selected)} />
+                    <DetailAction label="Edit" onClick={() => setMode("edit")} />
+                    <DetailDeleteAction key={selected.id} label="Delete project" onDelete={() => handleDelete(selected.id)} />
+                  </>} />
 
                 {deleteError && (
                   <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-400">{deleteError}</div>
                 )}
 
                 {str(selected, "description") && <p className="text-sm text-secondary">{str(selected, "description")}</p>}
-                <div className="grid grid-cols-2 gap-4">
-                  <DetailRow label="Dates" value={dateRange(selected)} />
-                  <DetailRow label="Client" value={selectedClient ? str(selectedClient, "name") : "—"} />
-                  <DetailRow label="Contract" value={selectedContract ? str(selectedContract, "title") : "—"} />
-                  <DetailRow label="Rate" value={selectedContract ? `${str(selectedContract, "rate")} ${str(selectedContract, "currency")}/${str(selectedContract, "unit_abbrev") || "h"}` : "—"} />
-                </div>
+                <DetailFields>
+                  <DetailField label="Dates">{dateRange(selected)}</DetailField>
+                  <DetailField label="Client">{selectedClient ? str(selectedClient, "name") : "—"}</DetailField>
+                  <DetailField label="Contract">{selectedContract ? str(selectedContract, "title") : "—"}</DetailField>
+                  <DetailField label="Rate">{selectedContract ? `${str(selectedContract, "rate")} ${str(selectedContract, "currency")}/${str(selectedContract, "unit_abbrev") || "h"}` : "—"}</DetailField>
+                </DetailFields>
                 {selected.id != null && budgetsMap[selected.id as number] && (() => {
                   const b = budgetsMap[selected.id as number];
                   return (
@@ -418,15 +404,6 @@ function BudgetBar({ budget: b }: { budget: BudgetEntry }) {
   );
 }
 
-function DetailRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <div className="text-xs font-semibold uppercase tracking-wider text-tertiary mb-0.5">{label}</div>
-      <div className="text-sm">{value}</div>
-    </div>
-  );
-}
-
 /* ---------- Form ---------- */
 
 interface ProjectFormData {
@@ -482,20 +459,12 @@ function ProjectForm({ project, isDuplicate = false, contracts, onSave, onCancel
   }
 
   return (
-    <form onSubmit={handleSubmit} className="p-5 space-y-5">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">{isNew ? "New Project" : "Edit Project"}</h2>
-        <div className="flex items-center gap-2">
-          <button type="button" onClick={onCancel}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm text-secondary hover:text-primary hover:bg-bg-hover transition-colors">
-            <X size={14} /> Cancel
-          </button>
-          <button type="submit" disabled={saving}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium text-primary hover:bg-bg-hover transition-colors disabled:opacity-40">
-            <Save size={14} /> {saving ? "Saving…" : "Save"}
-          </button>
-        </div>
-      </div>
+    <form onSubmit={handleSubmit} className={`${DETAIL_PANE} space-y-5`}>
+      <DetailHeader title={isNew ? "New Project" : "Edit Project"}
+        actions={<>
+          <DetailAction label="Cancel" onClick={onCancel} />
+          <DetailSubmit label={saving ? "Saving…" : "Save"} disabled={saving} />
+        </>} />
 
       <p className="text-xs text-muted"><span className="text-accent">*</span> Required</p>
 

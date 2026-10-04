@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import {
-  FileText, FileSignature, Plus, Trash2, Save, X, DollarSign, Calendar,
+  FileText, FileSignature, Plus, Trash2, X, DollarSign, Calendar,
   FileUp, Sparkles, Check, CheckCheck, Loader2, CheckCircle2,
   FolderKanban, ReceiptText, ArrowRight, ChevronDown, ChevronRight, XCircle, Milestone, Copy,
 } from "lucide-react";
@@ -12,6 +12,8 @@ import { StatusBadge } from "../shared/StatusBadge";
 import { useNavigation } from "../shared/NavigationContext";
 import { EmptyStateIntro } from "../shared/EmptyStateIntro";
 import { InfoHint } from "../shared/InfoHint";
+import { DetailHeader, DetailAction, DetailDeleteAction, DetailSubmit, DETAIL_PANE } from "../shared/DetailHeader";
+import { DetailFields, DetailField } from "../shared/DetailFields";
 import { useFieldRequirements } from "../../hooks/useFieldRequirements";
 import type { Entity } from "../../api/types";
 
@@ -336,35 +338,14 @@ function ContractDetail({ contract, onEdit, onDuplicate, onDelete, onToggle, del
     : `From ${formatDate(startDate)}`;
 
   return (
-    <div className="p-6 max-w-2xl space-y-6">
-      {/* Header */}
-      <div className="flex items-start gap-4">
-        <div className="flex-1 min-w-0">
-          <h1 className="text-lg font-semibold">{title}</h1>
-          <div className="text-sm text-secondary mt-0.5">{clientName}</div>
-        </div>
-        <StatusBadge status={status} />
-      </div>
-
-      {/* Actions */}
-      <div className="flex flex-wrap items-center gap-2">
-        <button onClick={onToggle}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs text-secondary hover:text-primary border border-border-subtle transition-colors">
-          <CheckCircle2 size={13} /> {bool(contract, "is_completed") ? "Reopen" : "Mark Complete"}
-        </button>
-        <button onClick={onEdit}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium bg-bg-card text-secondary hover:text-primary border border-border-subtle transition-colors">
-          Edit
-        </button>
-        <button onClick={onDuplicate} title="Create a new contract based on this one"
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium bg-bg-card text-secondary hover:text-primary border border-border-subtle transition-colors">
-          <Copy size={13} /> Duplicate
-        </button>
-        <button onClick={onDelete}
-          className="p-1.5 rounded-md text-secondary hover:text-red-400 border border-border-subtle transition-colors">
-          <Trash2 size={14} />
-        </button>
-      </div>
+    <div className={`${DETAIL_PANE} space-y-6`}>
+      <DetailHeader title={title} subtitle={clientName} badges={<StatusBadge status={status} />}
+        actions={<>
+          <DetailAction icon={<CheckCircle2 size={13} />} label={bool(contract, "is_completed") ? "Reopen" : "Complete"} onClick={onToggle} />
+          <DetailAction icon={<Copy size={13} />} label="Duplicate" title="Create a new contract based on this one" onClick={onDuplicate} />
+          <DetailAction label="Edit" onClick={onEdit} />
+          <DetailDeleteAction key={contract.id} label="Delete contract" onDelete={onDelete} />
+        </>} />
 
       {deleteError && (
         <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-400">{deleteError}</div>
@@ -372,21 +353,17 @@ function ContractDetail({ contract, onEdit, onDuplicate, onDelete, onToggle, del
 
       {/* Terms */}
       <DetailSection label="Terms">
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-x-6 gap-y-3">
-          {isFixed && <TermItem label="Fixed Price" value={`${fixedPrice} ${currency}`} />}
-          {rate > 0 && <TermItem label="Rate" value={`${rate} ${currency}`} sub={`per ${unit}`} />}
-          {!isFixed && <TermItem label="Volume" value={str(contract, "volume") || "—"} sub={str(contract, "volume") ? `${unit}s` : ""} />}
-          {!isFixed && <TermItem label="Billing" value={str(contract, "billing_cycle") || "—"} />}
-          <TermItem
-            label="VAT"
-            value={taxTreatment(
-              taxCategory(str(contract, "VAT_category")),
-              num(contract, "VAT_rate"),
-            )}
-          />
-          <TermItem label="Payment" value={str(contract, "term_of_payment") ? `${str(contract, "term_of_payment")} days` : "—"} />
-          {!isFixed && <TermItem label="Workday" value={`${str(contract, "units_per_workday") || "8"} ${unit}s`} />}
-        </div>
+        <DetailFields>
+          {isFixed && <DetailField label="Fixed Price">{`${fixedPrice} ${currency}`}</DetailField>}
+          {rate > 0 && <DetailField label="Rate" sub={`per ${unit}`}>{`${rate} ${currency}`}</DetailField>}
+          {!isFixed && <DetailField label="Volume" sub={str(contract, "volume") ? `${unit}s` : ""}>{str(contract, "volume") || "—"}</DetailField>}
+          {!isFixed && <DetailField label="Billing">{str(contract, "billing_cycle") || "—"}</DetailField>}
+          <DetailField label="VAT">
+            {taxTreatment(taxCategory(str(contract, "VAT_category")), num(contract, "VAT_rate"))}
+          </DetailField>
+          <DetailField label="Payment">{str(contract, "term_of_payment") ? `${str(contract, "term_of_payment")} days` : "—"}</DetailField>
+          {!isFixed && <DetailField label="Workday">{`${str(contract, "units_per_workday") || "8"} ${unit}s`}</DetailField>}
+        </DetailFields>
       </DetailSection>
 
       {/* Additional charges — only shown when this contract actually uses them */}
@@ -465,20 +442,8 @@ function ContractDetail({ contract, onEdit, onDuplicate, onDelete, onToggle, del
 function DetailSection({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <div className="text-xs font-semibold uppercase tracking-wider text-tertiary mb-3">{label}</div>
+      <div className="text-xs font-semibold uppercase tracking-wider text-secondary mb-3">{label}</div>
       {children}
-    </div>
-  );
-}
-
-function TermItem({ label, value, sub }: { label: string; value: string; sub?: string }) {
-  return (
-    <div>
-      <div className="text-xs text-tertiary">{label}</div>
-      <div className="text-sm font-medium mt-0.5">
-        {value}
-        {sub && <span className="text-tertiary font-normal ml-1">{sub}</span>}
-      </div>
     </div>
   );
 }
@@ -744,20 +709,12 @@ function ContractForm({ contract, isDuplicate = false, clients, defaultCurrency,
   const inputCls = "w-full px-3 py-2 rounded-md text-sm bg-bg-card text-primary border border-border-subtle outline-none focus:border-accent transition-colors";
 
   return (
-    <form onSubmit={handleSubmit} className="p-5 space-y-5">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">{isNew ? "New Contract" : "Edit Contract"}</h2>
-        <div className="flex items-center gap-2">
-          <button type="button" onClick={onCancel}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm text-secondary hover:text-primary hover:bg-bg-hover transition-colors">
-            <X size={14} /> Cancel
-          </button>
-          <button type="submit" disabled={saving}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium text-primary hover:bg-bg-hover transition-colors disabled:opacity-40">
-            <Save size={14} /> {saving ? "Saving..." : "Save"}
-          </button>
-        </div>
-      </div>
+    <form onSubmit={handleSubmit} className={`${DETAIL_PANE} space-y-5`}>
+      <DetailHeader title={isNew ? "New Contract" : "Edit Contract"}
+        actions={<>
+          <DetailAction label="Cancel" onClick={onCancel} />
+          <DetailSubmit label={saving ? "Saving…" : "Save"} disabled={saving} />
+        </>} />
 
       <p className="text-xs text-muted"><span className="text-accent">*</span> Required</p>
 

@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import {
-  Building2, Plus, Trash2, Save, X, Mail, MapPin, Users,
+  Building2, Plus, Trash2, X, Users,
   FileUp, Sparkles, Check, CheckCheck, Loader2, UserPlus,
 } from "lucide-react";
 import { rpc } from "../../api/rpc";
@@ -8,6 +8,8 @@ import { str, num, entity as subEntity, displayName, fullName } from "../../api/
 import { Toolbar, ToolbarButtonPrimary, ToolbarButtonSecondary, ListDetailLayout, LIST_ROW_PADDING } from "../shared/ToolbarButtons";
 import { EditableClientContactRole } from "../shared/EditableClientContactRole";
 import { EmptyStateIntro } from "../shared/EmptyStateIntro";
+import { DetailHeader, DetailAction, DetailDeleteAction, DetailSubmit, DETAIL_PANE } from "../shared/DetailHeader";
+import { DetailFields, DetailField } from "../shared/DetailFields";
 import { useFieldRequirements } from "../../hooks/useFieldRequirements";
 import type { Entity } from "../../api/types";
 
@@ -281,65 +283,41 @@ function ClientDetail({ client, contacts, onEdit, onDelete, deleteError, onReloa
   const linkedContactIds = new Set(assocs.map((a) => num(a, "contact_id")));
 
   return (
-    <div className="p-5 space-y-5">
-      <div className="flex items-center gap-4">
-        <div className="w-14 h-14 rounded-full bg-bg-card flex items-center justify-center text-xl font-semibold text-secondary shrink-0">
-          {name.slice(0, 2).toUpperCase()}
-        </div>
-        <div className="flex-1 min-w-0">
-          <h1 className="text-lg font-semibold break-words">{name}</h1>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <button onClick={onEdit}
-            className="px-3 py-1.5 rounded text-sm font-medium bg-bg-card text-secondary hover:text-primary border border-border-subtle transition-colors">
-            Edit
-          </button>
-          <button onClick={onDelete}
-            className="p-1.5 rounded text-secondary hover:text-red-400 border border-border-subtle transition-colors"
-            title="Delete client">
-            <Trash2 size={14} />
-          </button>
-        </div>
-      </div>
+    <div className={`${DETAIL_PANE} space-y-6`}>
+      <DetailHeader avatar={name.slice(0, 2).toUpperCase()} title={name}
+        actions={<>
+          <DetailAction label="Edit" onClick={onEdit} />
+          <DetailDeleteAction key={client.id} label="Delete client" onDelete={onDelete} />
+        </>} />
 
       {deleteError && (
         <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-400">{deleteError}</div>
       )}
 
-      {str(client, "vat_number") && (
-        <div className="space-y-3">
-          <div className="text-xs font-semibold uppercase tracking-wider text-secondary mb-2">VAT Number</div>
-          <div className="text-sm text-primary">{str(client, "vat_number")}</div>
-        </div>
-      )}
-
-      {clientAddrParts.length > 0 && (
-        <div className="space-y-3">
-          <div className="text-xs font-semibold uppercase tracking-wider text-secondary mb-2">Address</div>
-          <div className="flex items-start gap-3 p-3 rounded-lg bg-bg-card border border-border-subtle">
-            <span className="text-tertiary mt-0.5"><MapPin size={14} /></span>
-            <div>
-              {clientAddrParts.map((line, i) => <div key={i} className="text-sm">{line}</div>)}
-            </div>
-          </div>
-        </div>
+      {(str(client, "vat_number") || clientAddrParts.length > 0) && (
+        <DetailFields>
+          {str(client, "vat_number") && <DetailField label="VAT Number">{str(client, "vat_number")}</DetailField>}
+          {clientAddrParts.length > 0 && (
+            <DetailField label="Address">
+              {clientAddrParts.map((line, i) => <div key={i}>{line}</div>)}
+            </DetailField>
+          )}
+        </DetailFields>
       )}
 
       {(contactName || email || company || contactAddrParts.length > 0) && (
-        <div className="space-y-3">
-          <div className="text-xs font-semibold uppercase tracking-wider text-secondary mb-2">Invoicing Contact</div>
-          {contactName && <InfoRow icon={<Users size={14} />} label="Name" value={contactName} />}
-          {email && <InfoRow icon={<Mail size={14} />} label="Email" value={email} />}
-          {company && <InfoRow icon={<Building2 size={14} />} label="Company" value={company} />}
-          {contactAddrParts.length > 0 && (
-            <div className="flex items-start gap-3 p-3 rounded-lg bg-bg-card border border-border-subtle">
-              <span className="text-tertiary mt-0.5"><MapPin size={14} /></span>
-              <div>
-                <div className="text-xs font-semibold uppercase tracking-wider text-tertiary mb-1">Address</div>
-                {contactAddrParts.map((line, i) => <div key={i} className="text-sm">{line}</div>)}
-              </div>
-            </div>
-          )}
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-wider text-secondary mb-3">Invoicing Contact</div>
+          <DetailFields>
+            {contactName && <DetailField label="Name">{contactName}</DetailField>}
+            {email && <DetailField label="Email">{email}</DetailField>}
+            {company && <DetailField label="Company">{company}</DetailField>}
+            {contactAddrParts.length > 0 && (
+              <DetailField label="Address">
+                {contactAddrParts.map((line, i) => <div key={i}>{line}</div>)}
+              </DetailField>
+            )}
+          </DetailFields>
         </div>
       )}
 
@@ -407,18 +385,6 @@ function ClientDetail({ client, contacts, onEdit, onDelete, deleteError, onReloa
   );
 }
 
-function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
-  return (
-    <div className="flex items-center gap-3 p-3 rounded-lg bg-bg-card border border-border-subtle">
-      <span className="text-tertiary">{icon}</span>
-      <div>
-        <div className="text-xs font-semibold uppercase tracking-wider text-tertiary">{label}</div>
-        <div className="text-sm">{value}</div>
-      </div>
-    </div>
-  );
-}
-
 /* ---------- Form ---------- */
 
 interface ClientFormData {
@@ -463,20 +429,12 @@ function ClientForm({ client, contacts, onSave, onCancel, error }: {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="p-5 space-y-5">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">{isNew ? "New Client" : "Edit Client"}</h2>
-        <div className="flex items-center gap-2">
-          <button type="button" onClick={onCancel}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm text-secondary hover:text-primary hover:bg-bg-hover transition-colors">
-            <X size={14} /> Cancel
-          </button>
-          <button type="submit" disabled={saving || !name.trim()}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium text-primary hover:bg-bg-hover transition-colors disabled:opacity-40">
-            <Save size={14} /> {saving ? "Saving…" : "Save"}
-          </button>
-        </div>
-      </div>
+    <form onSubmit={handleSubmit} className={`${DETAIL_PANE} space-y-5`}>
+      <DetailHeader title={isNew ? "New Client" : "Edit Client"}
+        actions={<>
+          <DetailAction label="Cancel" onClick={onCancel} />
+          <DetailSubmit label={saving ? "Saving…" : "Save"} disabled={saving || !name.trim()} />
+        </>} />
 
       <p className="text-xs text-muted"><span className="text-accent">*</span> Required</p>
 
