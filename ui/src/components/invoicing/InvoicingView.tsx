@@ -149,9 +149,7 @@ export function InvoicingView() {
   return (
     <div className="flex flex-col h-full">
       <Toolbar title="Invoicing"
-        actions={viewMode === "list"
-          ? <ToolbarButtonPrimary icon={<Plus size={13} />} label="Create Invoice" onClick={() => setCreateOpen(true)} />
-          : undefined}
+        actions={<ToolbarButtonPrimary icon={<Plus size={13} />} label="Create Invoice" onClick={() => setCreateOpen(true)} />}
         center={viewMode === "list"
           ? <ToolbarFilterGroup options={STATUS_FILTERS} value={statusFilter} onChange={setStatusFilter} colors={FILTER_COLORS} />
           : undefined}
@@ -974,15 +972,15 @@ function InvoiceChainCard({ chain, color, reminderCount, depositCount }: {
         <div className="ml-2 pl-2 border-l-2 border-blue-400/60 space-y-1.5">
           {deposits.map((dep) => (
             <div key={dep.id} className="pt-1 border-t border-border-subtle/60 first:border-t-0 first:pt-0">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1 min-w-0">
-                  <span className="text-xs font-semibold text-blue-400 truncate">
-                    {depositMilestoneLabel(dep) || "Deposit"}
-                  </span>
-                  <DocumentTypeBadge type="deposit" />
-                  <span className="text-[10px] text-tertiary truncate">{str(dep, "number") || "Draft"}</span>
-                </div>
-                <span className="text-xs font-semibold tabular-nums shrink-0">{str(dep, "total_formatted")}</span>
+              <div className="flex items-center gap-1 min-w-0">
+                <span className="text-xs font-semibold text-blue-400 truncate">
+                  {depositMilestoneLabel(dep) || "Deposit"}
+                </span>
+                <DocumentTypeBadge type="deposit" />
+              </div>
+              <div className="flex flex-wrap items-baseline gap-x-2 mt-0.5">
+                <span className="text-[10px] text-tertiary truncate">{str(dep, "number") || "Draft"}</span>
+                <span className="ml-auto text-xs font-semibold tabular-nums shrink-0">{str(dep, "total_formatted")}</span>
               </div>
               <div className="text-[10px] text-tertiary mt-0.5">{formatDate(str(dep, "date"))}</div>
             </div>
@@ -996,11 +994,17 @@ function InvoiceChainCard({ chain, color, reminderCount, depositCount }: {
 function InvoiceCard({ invoice, reminderCount, depositCount, schedule }: { invoice: Entity; color: string; reminderCount?: number; depositCount?: number; schedule?: MilestoneScheduleStatus | null }) {
   const depositLabel = depositMilestoneLabel(invoice);
   const isFinal = isFinalInvoice(invoice);
+  const number = str(invoice, "number") || "Draft";
+  const hasBadges = isDeposit(invoice) || isFinal || (depositCount ?? 0) > 0 || (reminderCount ?? 0) > 0;
   return (
     <div className="space-y-1.5">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5 min-w-0">
-          <span className="text-sm font-semibold shrink-0">{str(invoice, "number") || "Draft"}</span>
+      {/* Amount wraps below the number when the column is too narrow for both. */}
+      <div className="flex flex-wrap items-baseline gap-x-2">
+        <span className="text-sm font-semibold truncate" title={number}>{number}</span>
+        <span className="ml-auto text-sm font-bold tabular-nums shrink-0">{str(invoice, "total_formatted")}</span>
+      </div>
+      {hasBadges && (
+        <div className="flex flex-wrap items-center gap-1">
           {isDeposit(invoice) && depositLabel && (
             <span className="text-xs font-semibold text-blue-400 truncate">{depositLabel}</span>
           )}
@@ -1020,22 +1024,21 @@ function InvoiceCard({ invoice, reminderCount, depositCount, schedule }: { invoi
             </span>
           )}
         </div>
-        <span className="text-sm font-bold tabular-nums">{str(invoice, "total_formatted")}</span>
-      </div>
+      )}
       {deepStr(invoice, "contract.client.name") && (
         <div className="flex items-center gap-1 text-secondary">
-          <Building2 size={12} className="text-tertiary" />
+          <Building2 size={12} className="text-tertiary shrink-0" />
           <span className="text-xs truncate">{deepStr(invoice, "contract.client.name")}</span>
         </div>
       )}
       {deepStr(invoice, "project.title") && (
         <div className="flex items-center gap-1 text-secondary">
-          <FolderKanban size={12} className="text-tertiary" />
+          <FolderKanban size={12} className="text-tertiary shrink-0" />
           <span className="text-xs truncate">{deepStr(invoice, "project.title")}</span>
         </div>
       )}
       <div className="flex items-center gap-1 text-tertiary">
-        <Calendar size={12} /><span className="text-xs">{formatDate(str(invoice, "date"))}</span>
+        <Calendar size={12} className="shrink-0" /><span className="text-xs truncate">{formatDate(str(invoice, "date"))}</span>
       </div>
       {schedule && (
         <div className="pt-0.5">

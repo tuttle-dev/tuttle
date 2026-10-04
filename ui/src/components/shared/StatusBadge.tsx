@@ -18,7 +18,7 @@ export function TagBadge({ tag, className = "" }: { tag: string; className?: str
   if (!tag) return null;
   return (
     <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium bg-bg-hover text-tertiary border border-border-subtle ${className}`}>
-      {tag}
+      <span className="truncate">{tag}</span>
     </span>
   );
 }
