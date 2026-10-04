@@ -49,7 +49,7 @@ export function DashboardView() {
   );
 
   return (
-    <PageLayout title="Dashboard" className="space-y-6 max-w-6xl">
+    <PageLayout title="Dashboard" className="space-y-6">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <KPICard title="Revenue (YTD)" value={str(kpis, "total_revenue_ytd_formatted")} icon={TrendingUp}
           valueColor={num(kpis, "total_revenue_ytd") > 0 ? "var(--color-status-success)" : undefined} tooltip="Total revenue received from paid invoices during the current calendar year." />
