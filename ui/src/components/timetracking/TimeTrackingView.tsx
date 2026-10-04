@@ -34,13 +34,15 @@ type DayMarker = { tag: string; source: string };
 
 type DayInfo = { date: string; hours: number; all_day_count?: number; markers: DayMarker[]; count: number };
 
+type ProjectHours = { tag: string; title: string; hours: number; event_count: number };
+
 type CalendarData = {
   year: number;
   month: number;
   first_weekday: number;
   days_in_month: number;
   events: TimeEvent[];
-  projects: { tag: string; title: string; hours: number; event_count: number }[];
+  projects: ProjectHours[];
   days: Record<string, DayInfo>;
   summary: { total_events: number; total_hours: number; planned_hours: number; planned_events: number };
 };
@@ -104,7 +106,7 @@ export function TimeTrackingView() {
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [filterTag, setFilterTag] = useState<string | null>(null);
-  const [availableTags, setAvailableTags] = useState<string[]>([]);
+  const [monthProjects, setMonthProjects] = useState<ProjectHours[]>([]);
   const [projectTags, setProjectTags] = useState<ProjectTag[]>([]);
   const [restoringSource, setRestoringSource] = useState(true);
 
@@ -123,15 +125,14 @@ export function TimeTrackingView() {
   const isMac = typeof window !== "undefined" && window.tuttle?.platform === "darwin";
 
   const loadData = useCallback(async () => {
-    const res = await rpc<CalendarData>("timetracking.get_calendar_data", { year, month, project_tag: filterTag });
+    // While filtered, the projects panel still lists every project of the month.
+    const [res, unfiltered] = await Promise.all([
+      rpc<CalendarData>("timetracking.get_calendar_data", { year, month, project_tag: filterTag }),
+      filterTag ? rpc<CalendarData>("timetracking.get_calendar_data", { year, month }) : null,
+    ]);
     if (res.ok && res.data) {
       setCalData(res.data);
-      if (!filterTag) {
-        const tags = res.data.projects.map((p) => p.tag);
-        setAvailableTags((prev) =>
-          prev.length === tags.length && prev.every((t, i) => t === tags[i]) ? prev : tags,
-        );
-      }
+      setMonthProjects((unfiltered?.ok && unfiltered.data ? unfiltered.data : res.data).projects);
     }
   }, [year, month, filterTag]);
 
@@ -236,23 +237,26 @@ export function TimeTrackingView() {
     setConnectionLost(false);
     setSystemCals(null);
     setFilterTag(null);
-    setAvailableTags([]);
     loadData();
   }
 
   // ── Derived data ────────────────────────────────────────────────────────
 
-  const allTags = useMemo(() => {
-    if (availableTags.length > 0) return availableTags;
-    return calData?.projects.map((p) => p.tag) ?? [];
-  }, [calData, availableTags]);
+  // Keep the filtered project listed even in a month without its entries, so it can be cleared.
+  const panelProjects = useMemo(() => {
+    if (!filterTag || monthProjects.some((p) => p.tag === filterTag)) return monthProjects;
+    const title = projectTags.find((p) => p.tag === filterTag)?.title ?? filterTag;
+    return [...monthProjects, { tag: filterTag, title, hours: 0, event_count: 0 }];
+  }, [monthProjects, filterTag, projectTags]);
+
+  const allTags = useMemo(() => panelProjects.map((p) => p.tag), [panelProjects]);
 
   const dayEvents = useMemo(() => {
     if (!selectedDay || !calData) return [];
     return calData.events.filter((ev) => ev.date === selectedDay);
   }, [selectedDay, calData]);
 
-  const monthHasEvents = !!calData && calData.summary.total_events > 0;
+  const showPanel = panelProjects.length > 0 || (!!calData && calData.summary.total_events > 0);
   const defaultTag = timer.state.tag || projectTags[0]?.tag || "";
 
   // ── Render ──────────────────────────────────────────────────────────────
@@ -318,25 +322,6 @@ export function TimeTrackingView() {
               </h3>
               <button onClick={nextMonth} className="p-1.5 rounded-md hover:bg-bg-hover text-primary"><ChevronRight size={18} /></button>
               <button onClick={goToday} className="text-xs font-medium text-secondary hover:text-primary hover:underline">Today</button>
-              <div className="flex-1" />
-              {(availableTags.length > 1 || filterTag) && (
-                <div className="flex items-center gap-1 flex-wrap justify-end">
-                  <button
-                    onClick={() => setFilterTag(null)}
-                    className={`px-2 py-0.5 rounded-full text-[11px] font-medium transition-colors ${!filterTag ? "bg-accent text-white" : "text-tertiary hover:text-secondary"}`}
-                  >All</button>
-                  {allTags.map((t) => (
-                    <button key={t} onClick={() => setFilterTag(t === filterTag ? null : t)}
-                      className="px-2 py-0.5 rounded-full text-[11px] font-medium transition-colors"
-                      style={{
-                        backgroundColor: filterTag === t ? tagColor(t, allTags) : "transparent",
-                        color: filterTag === t ? "#fff" : tagColor(t, allTags),
-                        border: `1px solid ${tagColor(t, allTags)}44`,
-                      }}
-                    >{t}</button>
-                  ))}
-                </div>
-              )}
             </div>
 
             <MonthGrid
@@ -361,26 +346,34 @@ export function TimeTrackingView() {
           )}
         </div>
 
-        {monthHasEvents && (
+        {showPanel && (
           <div className="w-60 shrink-0 border-l border-border-subtle overflow-y-auto p-4 space-y-4">
-            <div className="text-[11px] font-bold uppercase tracking-wider text-primary mb-2">Projects</div>
-            {calData.projects.map((p) => (
-              <div key={p.tag} className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: tagColor(p.tag, allTags) }} />
-                  <div className="min-w-0">
-                    <div className="text-[13px] font-semibold truncate text-primary">{p.title || p.tag}</div>
-                    {p.title && p.title !== p.tag && (
-                      <div className="text-[11px] text-tertiary truncate">{p.tag}</div>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 ml-5">
-                  <span className="text-xs tabular-nums font-medium text-primary">{formatHours(p.hours)}</span>
-                  <span className="text-[11px] text-secondary">{p.event_count} {p.event_count === 1 ? "entry" : "entries"}</span>
-                </div>
+            <div>
+              <div className="text-[11px] font-bold uppercase tracking-wider text-primary mb-2">Projects</div>
+              <div className="-mx-2 space-y-1">
+                {panelProjects.map((p) => {
+                  const selected = p.tag === filterTag;
+                  return (
+                    <button key={p.tag} onClick={() => setFilterTag(selected ? null : p.tag)} aria-pressed={selected}
+                      className={`block w-full text-left rounded-lg px-2 py-1.5 space-y-1 transition-colors ${selected ? "bg-bg-selected" : "hover:bg-bg-hover"}`}>
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: tagColor(p.tag, allTags) }} />
+                        <div className="min-w-0">
+                          <div className="text-[13px] font-semibold truncate text-primary">{p.title || p.tag}</div>
+                          {p.title && p.title !== p.tag && (
+                            <div className="text-[11px] text-tertiary truncate">{p.tag}</div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 ml-5">
+                        <span className="text-xs tabular-nums font-medium text-primary">{formatHours(p.hours)}</span>
+                        <span className="text-[11px] text-secondary">{p.event_count} {p.event_count === 1 ? "entry" : "entries"}</span>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
-            ))}
+            </div>
 
             <div className="border-t border-border-subtle pt-3">
               <div className="text-[11px] font-bold uppercase tracking-wider text-primary mb-1">Total</div>
@@ -512,7 +505,7 @@ function TimerBar({ projectTags, onCreateProject, onLogged }: {
 
   return (
     <div className={`mx-5 mt-4 rounded-xl border bg-bg-card shadow-sm transition-colors ${running ? "border-green-500/40" : pending ? "border-accent/40" : "border-border-subtle"}`}>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5">
+      <div className="flex items-center gap-3 px-4 py-2.5">
         {running
           ? <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse shrink-0" />
           : pending
@@ -535,14 +528,15 @@ function TimerBar({ projectTags, onCreateProject, onLogged }: {
           onBlur={(e) => timer.update({ title: e.target.value })}
           onKeyDown={submitOnEnter}
           placeholder={mode === "timer" ? "What are you working on?" : "What did you work on?"}
-          className="flex-1 min-w-[160px] bg-transparent text-sm text-primary placeholder:text-muted outline-none"
+          className="flex-1 min-w-[80px] bg-transparent text-sm text-primary placeholder:text-muted outline-none"
         />
-        <div className="flex items-center gap-3 ml-auto">
+        {/* One line at the minimum window width: the title gives way first, then the project select. */}
+        <div className="flex items-center gap-3 ml-auto min-w-0">
           <select
             value={tag}
             onChange={(e) => timer.update({ tag: e.target.value })}
             disabled={noProjects}
-            className={`max-w-[200px] px-2 py-1 rounded-md bg-bg-content border text-sm text-primary outline-none disabled:opacity-50 ${pending && !tag ? "border-accent ring-2 ring-accent/30" : "border-border-subtle"}`}
+            className={`min-w-0 max-w-[200px] px-2 py-1 rounded-md bg-bg-content border text-sm text-primary outline-none disabled:opacity-50 ${pending && !tag ? "border-accent ring-2 ring-accent/30" : "border-border-subtle"}`}
           >
             <option value="">{noProjects ? "No projects yet" : mode === "timer" ? "No project" : "Choose project"}</option>
             {projectTags.map((p) => (
@@ -555,7 +549,7 @@ function TimerBar({ projectTags, onCreateProject, onLogged }: {
               {formatElapsed(elapsed)}
             </span>
           ) : (
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 shrink-0">
               <input type="date" value={date} onChange={(e) => setDate(e.target.value)} disabled={noProjects}
                 title="Day" className={barInputCls} />
               {mode === "duration" ? (
