@@ -1,8 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import {
-  FolderKanban, Building2, FileSignature, Calendar, Clock, FileText,
-  Plus, Trash2, X, FileUp, Sparkles, Check, CheckCheck, Loader2, CheckCircle2,
-  AlertTriangle, Copy,
+  FolderKanban, Building2, FileSignature, Calendar, Plus, Trash2, FileUp, Sparkles, Check, CheckCircle2, Save, AlertTriangle, Copy,
 } from "lucide-react";
 import { rpc } from "../../api/rpc";
 import { str, int, num, bool, entity, dateRange, projectStatus } from "../../api/entity";
@@ -17,6 +15,8 @@ import { EmptyStateIntro } from "../shared/EmptyStateIntro";
 import { DetailHeader, DetailAction, DetailDeleteAction, DetailSubmit, DETAIL_PANE } from "../shared/DetailHeader";
 import { DetailFields, DetailField } from "../shared/DetailFields";
 import { LoadError, LoadingState } from "../shared/LoadStates";
+import { Section } from "../shared/Section";
+import { DocumentImportPanel } from "../shared/DocumentImportPanel";
 import { useFieldRequirements } from "../../hooks/useFieldRequirements";
 import { useAutoSelect } from "../../hooks/useAutoSelect";
 import type { Entity } from "../../api/types";
@@ -260,12 +260,17 @@ export function ProjectsView() {
             })
           }
           detail={mode === "import" ? (
-              <ProjectImportPanel
-                parsing={parsing} parseError={parseError} parsedProjects={parsedProjects}
-                contracts={contractsMap}
-                onFileSelected={handleFileImport} onAccept={acceptProject} onAcceptAll={acceptAll}
-                onDiscard={discardProject} onUpdate={updateParsedProject} onClose={() => setMode("view")}
-              />
+              <DocumentImportPanel title="Import Projects from Document" noun="project" count={parsedProjects.length}
+                parsing={parsing} parseError={parseError}
+                onFileSelected={handleFileImport} onAcceptAll={acceptAll} onClose={() => setMode("view")}
+              >
+                {parsedProjects.map((p, i) => (
+                  <ParsedProjectCard key={i} project={p} contracts={Object.values(contractsMap)}
+                    onAccept={() => acceptProject(p)}
+                    onDiscard={() => discardProject(p)}
+                    onUpdate={(updated) => updateParsedProject(i, updated)} />
+                ))}
+              </DocumentImportPanel>
             ) : mode === "create" ? (
               <ProjectForm key={duplicateSource?.id ?? "new"} project={duplicateSource ?? undefined} isDuplicate={duplicateSource != null} contracts={contractsMap} onSave={handleSave} onCancel={() => setMode("view")} error={saveError} />
             ) : mode === "edit" && selected ? (
@@ -494,15 +499,6 @@ function ProjectForm({ project, isDuplicate = false, contracts, onSave, onCancel
 
 /* ---------- Shared UI ---------- */
 
-function Section({ title, children }: { title: React.ReactNode; children: React.ReactNode }) {
-  return (
-    <div>
-      <div className="text-xs font-semibold uppercase tracking-wider text-secondary mb-2">{title}</div>
-      {children}
-    </div>
-  );
-}
-
 function FormField({ label, value, onChange, autoFocus, required }: {
   label: string; value: string; onChange: (v: string) => void; autoFocus?: boolean; required?: boolean;
 }) {
@@ -525,96 +521,6 @@ interface ParsedProject {
   end_date: string;
   contract_title_hint: string;
   selectedContractId?: number;
-}
-
-const ACCEPT_EXTENSIONS = [".pdf", ".txt", ".md", ".text"];
-
-function ProjectImportPanel({ parsing, parseError, parsedProjects, contracts, onFileSelected, onAccept, onAcceptAll, onDiscard, onUpdate, onClose }: {
-  parsing: boolean;
-  parseError: string | null;
-  parsedProjects: ParsedProject[];
-  contracts: Record<string, Entity>;
-  onFileSelected: (file: File) => void;
-  onAccept: (p: ParsedProject) => void;
-  onAcceptAll: () => void;
-  onDiscard: (p: ParsedProject) => void;
-  onUpdate: (index: number, p: ParsedProject) => void;
-  onClose: () => void;
-}) {
-  const [dragOver, setDragOver] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault(); setDragOver(false);
-    const file = e.dataTransfer.files[0];
-    if (file && ACCEPT_EXTENSIONS.some((ext) => file.name.toLowerCase().endsWith(ext))) onFileSelected(file);
-  }, [onFileSelected]);
-
-  const contractList = Object.values(contracts);
-
-  return (
-    <div className="p-5 space-y-5">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Sparkles size={18} className="text-fuchsia-400" />
-          <h2 className="text-lg font-semibold">Import Projects from Document</h2>
-        </div>
-        <button onClick={onClose}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm text-secondary hover:text-primary hover:bg-bg-hover transition-colors">
-          <X size={14} /> Close
-        </button>
-      </div>
-
-      {parsedProjects.length === 0 && !parsing && (
-        <div
-          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={handleDrop}
-          onClick={() => fileInputRef.current?.click()}
-          className={`flex flex-col items-center justify-center gap-3 p-10 rounded-xl border-2 border-dashed cursor-pointer transition-colors
-            ${dragOver ? "border-fuchsia-400 bg-fuchsia-500/5" : "border-border-subtle hover:border-fuchsia-400/50 hover:bg-fuchsia-500/5"}`}
-        >
-          <FileUp size={32} strokeWidth={1.4} className="text-fuchsia-400" />
-          <div className="text-center">
-            <p className="text-sm font-medium">Drop a document here</p>
-            <p className="text-xs text-tertiary mt-1">PDF, TXT, or Markdown — AI will extract projects</p>
-          </div>
-          <input ref={fileInputRef} type="file" className="hidden" accept=".pdf,.txt,.md,.text" onChange={(e) => { const f = e.target.files?.[0]; if (f) onFileSelected(f); }} />
-        </div>
-      )}
-
-      {parsing && (
-        <div className="flex items-center justify-center gap-3 py-10">
-          <Loader2 size={20} className="animate-spin text-fuchsia-400" />
-          <span className="text-sm text-secondary">Parsing document with AI…</span>
-        </div>
-      )}
-
-      {parseError && (
-        <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-400">{parseError}</div>
-      )}
-
-      {parsedProjects.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-secondary">
-              <span className="font-medium text-fuchsia-400">{parsedProjects.length}</span> project{parsedProjects.length !== 1 ? "s" : ""} found
-            </p>
-            <button onClick={onAcceptAll}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium text-fuchsia-400 hover:bg-fuchsia-500/10 border border-fuchsia-400/30 transition-colors">
-              <CheckCheck size={14} /> Accept All
-            </button>
-          </div>
-          {parsedProjects.map((p, i) => (
-            <ParsedProjectCard key={i} project={p} contracts={contractList}
-              onAccept={() => onAccept(p)}
-              onDiscard={() => onDiscard(p)}
-              onUpdate={(updated) => onUpdate(i, updated)} />
-          ))}
-        </div>
-      )}
-    </div>
-  );
 }
 
 function ParsedProjectCard({ project, contracts, onAccept, onDiscard, onUpdate }: {

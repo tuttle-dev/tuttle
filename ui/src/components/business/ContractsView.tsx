@@ -1,8 +1,6 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
-  FileText, Plus, Trash2, Save, X, DollarSign, Calendar,
-  FileUp, Sparkles, Check, CheckCheck, Loader2, CheckCircle2,
-  FolderKanban, ReceiptText, ArrowRight, ChevronDown, ChevronRight, XCircle, Milestone, Copy,
+  FileText, Plus, Trash2, Save, X, Calendar, FileUp, Sparkles, Check, CheckCircle2, FolderKanban, ReceiptText, ArrowRight, ChevronDown, ChevronRight, XCircle, Milestone, Copy,
 } from "lucide-react";
 import { rpc } from "../../api/rpc";
 import { str, num, bool, entity as subEntity, list as entityList, displayName, formatDate, formatMoney } from "../../api/entity";
@@ -15,6 +13,8 @@ import { LoadError, LoadingState } from "../shared/LoadStates";
 import { InfoHint } from "../shared/InfoHint";
 import { DetailHeader, DetailAction, DetailDeleteAction, DetailSubmit, DETAIL_PANE } from "../shared/DetailHeader";
 import { DetailFields, DetailField } from "../shared/DetailFields";
+import { Section } from "../shared/Section";
+import { DocumentImportPanel } from "../shared/DocumentImportPanel";
 import { useFieldRequirements } from "../../hooks/useFieldRequirements";
 import { useAutoSelect } from "../../hooks/useAutoSelect";
 import type { Entity } from "../../api/types";
@@ -252,12 +252,17 @@ export function ContractsView() {
           ))
         }
         detail={mode === "import" ? (
-            <ContractImportPanel
-              parsing={parsing} parseError={parseError} parsedContracts={parsedContracts}
-              clients={clients}
-              onFileSelected={handleFileImport} onAccept={acceptContract} onAcceptAll={acceptAll}
-              onDiscard={discardContract} onUpdate={updateParsedContract} onClose={() => setMode("view")}
-            />
+            <DocumentImportPanel title="Import Contracts from Document" noun="contract" count={parsedContracts.length}
+              parsing={parsing} parseError={parseError}
+              onFileSelected={handleFileImport} onAcceptAll={acceptAll} onClose={() => setMode("view")}
+            >
+              {parsedContracts.map((c, i) => (
+                <ParsedContractCard key={i} contract={c} clients={Object.values(clients)}
+                  onAccept={() => acceptContract(c)}
+                  onDiscard={() => discardContract(c)}
+                  onUpdate={(updated) => updateParsedContract(i, updated)} />
+              ))}
+            </DocumentImportPanel>
           ) : mode === "create" ? (
             <ContractForm key={duplicateSource?.id ?? "new"} contract={duplicateSource} isDuplicate={duplicateSource != null} clients={clients} defaultCurrency={defaultCurrency} currencies={currencies} bankAccounts={bankAccounts} onSave={handleSave} onCancel={() => setMode("view")} error={saveError} />
           ) : mode === "edit" && selected ? (
@@ -1063,17 +1068,6 @@ function ChargesEditor({ charges, expanded, onToggle, isFixed, currency, unitLab
   );
 }
 
-/* ---------- Shared ---------- */
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <div className="text-xs font-semibold uppercase tracking-wider text-secondary mb-2">{title}</div>
-      {children}
-    </div>
-  );
-}
-
 /* ---------- AI Import ---------- */
 
 interface ParsedContract {
@@ -1092,96 +1086,6 @@ interface ParsedContract {
   term_of_payment: number | null;
   client_name_hint: string;
   selectedClientId?: number;
-}
-
-const ACCEPT_EXTENSIONS = [".pdf", ".txt", ".md", ".text"];
-
-function ContractImportPanel({ parsing, parseError, parsedContracts, clients, onFileSelected, onAccept, onAcceptAll, onDiscard, onUpdate, onClose }: {
-  parsing: boolean;
-  parseError: string | null;
-  parsedContracts: ParsedContract[];
-  clients: Record<string, Entity>;
-  onFileSelected: (file: File) => void;
-  onAccept: (c: ParsedContract) => void;
-  onAcceptAll: () => void;
-  onDiscard: (c: ParsedContract) => void;
-  onUpdate: (index: number, c: ParsedContract) => void;
-  onClose: () => void;
-}) {
-  const [dragOver, setDragOver] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault(); setDragOver(false);
-    const file = e.dataTransfer.files[0];
-    if (file && ACCEPT_EXTENSIONS.some((ext) => file.name.toLowerCase().endsWith(ext))) onFileSelected(file);
-  }, [onFileSelected]);
-
-  const clientList = Object.values(clients);
-
-  return (
-    <div className="p-5 space-y-5">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Sparkles size={18} className="text-fuchsia-400" />
-          <h2 className="text-lg font-semibold">Import Contracts from Document</h2>
-        </div>
-        <button onClick={onClose}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm text-secondary hover:text-primary hover:bg-bg-hover transition-colors">
-          <X size={14} /> Close
-        </button>
-      </div>
-
-      {parsedContracts.length === 0 && !parsing && (
-        <div
-          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={handleDrop}
-          onClick={() => fileInputRef.current?.click()}
-          className={`flex flex-col items-center justify-center gap-3 p-10 rounded-xl border-2 border-dashed cursor-pointer transition-colors
-            ${dragOver ? "border-fuchsia-400 bg-fuchsia-500/5" : "border-border-subtle hover:border-fuchsia-400/50 hover:bg-fuchsia-500/5"}`}
-        >
-          <FileUp size={32} strokeWidth={1.4} className="text-fuchsia-400" />
-          <div className="text-center">
-            <p className="text-sm font-medium">Drop a document here</p>
-            <p className="text-xs text-tertiary mt-1">PDF, TXT, or Markdown — AI will extract contracts</p>
-          </div>
-          <input ref={fileInputRef} type="file" className="hidden" accept=".pdf,.txt,.md,.text" onChange={(e) => { const f = e.target.files?.[0]; if (f) onFileSelected(f); }} />
-        </div>
-      )}
-
-      {parsing && (
-        <div className="flex items-center justify-center gap-3 py-10">
-          <Loader2 size={20} className="animate-spin text-fuchsia-400" />
-          <span className="text-sm text-secondary">Parsing document with AI…</span>
-        </div>
-      )}
-
-      {parseError && (
-        <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-400">{parseError}</div>
-      )}
-
-      {parsedContracts.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-secondary">
-              <span className="font-medium text-fuchsia-400">{parsedContracts.length}</span> contract{parsedContracts.length !== 1 ? "s" : ""} found
-            </p>
-            <button onClick={onAcceptAll}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium text-fuchsia-400 hover:bg-fuchsia-500/10 border border-fuchsia-400/30 transition-colors">
-              <CheckCheck size={14} /> Accept All
-            </button>
-          </div>
-          {parsedContracts.map((c, i) => (
-            <ParsedContractCard key={i} contract={c} clients={clientList}
-              onAccept={() => onAccept(c)}
-              onDiscard={() => onDiscard(c)}
-              onUpdate={(updated) => onUpdate(i, updated)} />
-          ))}
-        </div>
-      )}
-    </div>
-  );
 }
 
 function ParsedContractCard({ contract, clients, onAccept, onDiscard, onUpdate }: {

@@ -1,9 +1,6 @@
 import { Fragment, useEffect, useId, useRef, useState, useCallback, useMemo } from "react";
 import {
-  FileText, Send, CheckCircle, XCircle, Mail, Trash2,
-  Building2, FolderKanban, Calendar, Banknote, Eye,
-  Plus, Clock, AlertTriangle, ChevronDown, ChevronLeft, ChevronRight, Search, Share, Receipt, Milestone, FileSignature,
-  RotateCcw,
+  FileText, Send, CheckCircle, XCircle, Mail, Trash2, Building2, FolderKanban, Calendar, Banknote, Eye, Plus, Clock, AlertTriangle, ChevronDown, ChevronLeft, ChevronRight, Share, Receipt, Milestone, FileSignature, RotateCcw,
 } from "lucide-react";
 import { rpc, readFileAsDataURL } from "../../api/rpc";
 import { str, num, bool, entity as subEntity, list as entityList, formatDate, invoiceStatus, deepStr, isReminder, isDeposit, isFinalInvoice, reminderLevel, depositChainHeadId, depositMilestoneLabel, milestoneScheduleStatus, type MilestoneScheduleStatus } from "../../api/entity";
@@ -19,6 +16,7 @@ import { StepDots } from "../shared/StepDots";
 import { useDismiss } from "../../hooks/useDismiss";
 import { useAutoSelect } from "../../hooks/useAutoSelect";
 import { LoadError, LoadingState } from "../shared/LoadStates";
+import { Section } from "../shared/Section";
 import type { Entity } from "../../api/types";
 
 type InvoiceChain = { root: Entity; reminders: Entity[]; deposits: Entity[] };
@@ -1559,10 +1557,6 @@ function AmountCard({ label, value, prominent }: { label: string; value: string;
       <span className={`tabular-nums ${prominent ? "text-sm font-bold text-accent" : "text-xs font-medium"}`}>{value || "—"}</span>
     </div>
   );
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return <div><div className="text-xs font-semibold uppercase tracking-wider text-secondary mb-2">{title}</div>{children}</div>;
 }
 
 function DRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
