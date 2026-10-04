@@ -45,12 +45,18 @@ const PHASE: Record<BootPhase, string> = {
   creating:  "Filing form 27B/6",
 };
 
+const SIDEBAR_COLLAPSED_KEY = "tuttle-sidebar-collapsed";
+
+function loadSidebarCollapsed(): boolean {
+  try { return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1"; } catch { return false; }
+}
+
 export function Shell() {
   const theme = useThemeProvider();
   const [bootState, setBootState] = useState<BootState>("loading");
   const [bootPhase, setBootPhase] = useState<BootPhase>("init");
   const [selected, setSelected] = useState("dashboard");
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(loadSidebarCollapsed);
   const [navFilter, setNavFilter] = useState<NavigationFilter>({});
   const [activeUser, setActiveUser] = useState<RegisteredUser | null>(null);
   const [allUsers, setAllUsers] = useState<RegisteredUser[]>([]);
@@ -63,6 +69,12 @@ export function Shell() {
     setNavFilter(filter || {});
     setSelected(view);
   }, []);
+
+  const toggleSidebar = useCallback(() => setCollapsed((c) => !c), []);
+
+  useEffect(() => {
+    try { localStorage.setItem(SIDEBAR_COLLAPSED_KEY, collapsed ? "1" : "0"); } catch { /* remembering it is a convenience */ }
+  }, [collapsed]);
 
   const navContext = useMemo(
     () => ({ navigate, filter: navFilter }),
@@ -265,7 +277,7 @@ export function Shell() {
               selected={selected}
               onSelect={handleSidebarSelect}
               collapsed={collapsed}
-              onToggleCollapse={() => setCollapsed((c) => !c)}
+              onToggleCollapse={toggleSidebar}
               activeUser={activeUser}
               allUsers={allUsers}
               onSwitchUser={handleSwitchUser}
