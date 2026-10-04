@@ -230,7 +230,7 @@ export function OnboardingWizard({ open, onClose, onSubmit, onDemo, loading, ove
         <div className="flex flex-col gap-3 w-full max-w-sm pt-2">
           <button
             onClick={next}
-            className="w-full px-5 py-2.5 rounded-lg bg-accent text-white font-medium text-sm hover:bg-accent/90 transition-colors"
+            className="w-full px-5 py-2.5 rounded-lg bg-accent text-on-fill font-medium text-sm hover:bg-accent/90 transition-colors"
           >
             Let's get started
           </button>
@@ -608,7 +608,7 @@ export function OnboardingWizard({ open, onClose, onSubmit, onDemo, loading, ove
             <button
               onClick={next}
               disabled={loading || !canAdvance()}
-              className="flex items-center gap-1.5 px-4 py-1.5 text-sm rounded-md bg-accent text-white font-medium hover:bg-accent/90 transition-colors disabled:opacity-40"
+              className="flex items-center gap-1.5 px-4 py-1.5 text-sm rounded-md bg-accent text-on-fill font-medium hover:bg-accent/90 transition-colors disabled:opacity-40"
             >
               {step === TOTAL_STEPS - 1 ? (
                 <>

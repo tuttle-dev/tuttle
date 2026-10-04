@@ -195,9 +195,9 @@ function TodayMarker({ ref }: { ref: React.Ref<HTMLDivElement> }) {
     <div ref={ref} className="flex items-center gap-2 scroll-mt-24">
       <div className="w-9 flex justify-center relative">
         <div className="w-0.5 h-8 bg-border-subtle" />
-        <div className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-red-500" />
+        <div className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-status-danger" />
       </div>
-      <span className="text-[11px] font-bold text-white bg-red-500 px-2.5 py-0.5 rounded-full">
+      <span className="text-[11px] font-bold text-on-fill bg-status-danger px-2.5 py-0.5 rounded-full">
         Today
       </span>
       <div className="flex-1 border-t border-border-subtle" />

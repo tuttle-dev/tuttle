@@ -637,7 +637,7 @@ export function SettingsView() {
                           bank_accounts: p.bank_accounts.filter((_, i) => i !== idx),
                         }))
                       }
-                      className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs text-secondary hover:text-red-400 border border-border-subtle hover:bg-red-400/10 transition-colors w-fit"
+                      className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs text-secondary hover:text-status-danger border border-border-subtle hover:bg-status-danger/10 transition-colors w-fit"
                     >
                       <Trash2 size={12} />
                       Remove
@@ -666,7 +666,7 @@ export function SettingsView() {
           </fieldset>
 
           {profileStatus && (
-            <div className={`flex items-center gap-2 text-sm ${profileStatus.type === "success" ? "text-green-400" : "text-red-400"}`}>
+            <div className={`flex items-center gap-2 text-sm ${profileStatus.type === "success" ? "text-status-success" : "text-status-danger"}`}>
               {profileStatus.type === "success" ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
               <span>{profileStatus.msg}</span>
             </div>
@@ -682,15 +682,15 @@ export function SettingsView() {
           </button>
 
           {/* Danger zone */}
-          <div className="mt-8 pt-6 border-t border-red-500/20">
-            <h3 className="text-sm font-semibold text-red-400 mb-2">Danger zone</h3>
+          <div className="mt-8 pt-6 border-t border-status-danger/20">
+            <h3 className="text-sm font-semibold text-status-danger mb-2">Danger zone</h3>
             <p className="text-xs text-muted mb-3">
               Permanently delete this user and all associated data (contracts, invoices, time tracking, etc.). This action cannot be undone.
             </p>
             <button
               onClick={() => { setDeleteConfirmOpen(true); setDeleteConfirmText(""); }}
               disabled={deleting}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium text-red-400 border border-red-500/30 hover:bg-red-500/10 transition-colors disabled:opacity-40"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium text-status-danger border border-status-danger/30 hover:bg-status-danger/10 transition-colors disabled:opacity-40"
             >
               <Trash2 size={14} />
               Delete user and data
@@ -705,8 +705,8 @@ export function SettingsView() {
           <div className="bg-bg-sidebar rounded-xl shadow-2xl w-full max-w-sm mx-4 max-h-[85vh] flex flex-col overflow-hidden">
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
               <div className="flex items-center gap-3">
-                <div className="flex items-center justify-center w-10 h-10 rounded-full bg-red-500/10">
-                  <AlertTriangle size={20} className="text-red-400" />
+                <div className="flex items-center justify-center w-10 h-10 rounded-full bg-status-danger/10">
+                  <AlertTriangle size={20} className="text-status-danger" />
                 </div>
                 <div>
                   <h3 className="text-base font-semibold text-primary">Delete user?</h3>
@@ -735,7 +735,7 @@ export function SettingsView() {
               <button
                 onClick={handleDeleteUser}
                 disabled={deleting || deleteConfirmText !== profile.name}
-                className="px-4 py-1.5 text-sm rounded-md bg-red-500 text-white font-medium hover:bg-red-600 transition-colors disabled:opacity-40"
+                className="px-4 py-1.5 text-sm rounded-md bg-status-danger text-on-fill font-medium hover:bg-status-danger/90 transition-colors disabled:opacity-40"
               >
                 {deleting ? "Deleting…" : "Delete permanently"}
               </button>
@@ -774,7 +774,7 @@ export function SettingsView() {
                     <button
                       type="button"
                       onClick={() => setProfile((p) => ({ ...p, logo: "" }))}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs text-secondary hover:text-red-400 border border-border-subtle hover:bg-bg-hover transition-colors w-fit"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs text-secondary hover:text-status-danger border border-border-subtle hover:bg-bg-hover transition-colors w-fit"
                     >
                       <X size={13} />
                       Remove
@@ -825,7 +825,7 @@ export function SettingsView() {
                   <button
                     type="button"
                     onClick={() => setProfile((p) => ({ ...p, signature: "" }))}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs text-secondary hover:text-red-400 border border-border-subtle hover:bg-bg-hover transition-colors w-fit"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs text-secondary hover:text-status-danger border border-border-subtle hover:bg-bg-hover transition-colors w-fit"
                   >
                     <X size={13} />
                     Remove
@@ -845,7 +845,7 @@ export function SettingsView() {
             {profileSaving ? "Saving…" : "Save Branding"}
           </button>
           {profileStatus && (
-            <div className={`flex items-center gap-2 text-sm ${profileStatus.type === "success" ? "text-green-400" : "text-red-400"}`}>
+            <div className={`flex items-center gap-2 text-sm ${profileStatus.type === "success" ? "text-status-success" : "text-status-danger"}`}>
               {profileStatus.type === "success" ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
               <span>{profileStatus.msg}</span>
             </div>
@@ -961,7 +961,7 @@ export function SettingsView() {
           </div>
 
           {invoicingStatus && (
-            <div className={`flex items-center gap-2 text-sm ${invoicingStatus.type === "success" ? "text-green-400" : "text-red-400"}`}>
+            <div className={`flex items-center gap-2 text-sm ${invoicingStatus.type === "success" ? "text-status-success" : "text-status-danger"}`}>
               {invoicingStatus.type === "success" ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
               <span>{invoicingStatus.msg}</span>
             </div>
@@ -987,7 +987,7 @@ export function SettingsView() {
                     <span className="flex-1 text-xs text-primary whitespace-pre-wrap break-words">{str(n, "text")}</span>
                     <button
                       onClick={() => handleDeleteNote(n.id)}
-                      className="shrink-0 p-1 rounded text-muted hover:text-red-400 hover:bg-red-400/10 transition-colors"
+                      className="shrink-0 p-1 rounded text-muted hover:text-status-danger hover:bg-status-danger/10 transition-colors"
                       title="Delete note"
                     >
                       <Trash2 size={13} />
@@ -1141,7 +1141,7 @@ export function SettingsView() {
           </div>
 
           {status && (
-            <div className={`flex items-center gap-2 text-sm ${status.type === "success" ? "text-green-400" : "text-red-400"}`}>
+            <div className={`flex items-center gap-2 text-sm ${status.type === "success" ? "text-status-success" : "text-status-danger"}`}>
               {status.type === "success" ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
               <span>{status.msg}</span>
             </div>
@@ -1169,9 +1169,9 @@ export function SettingsView() {
 // ---------------------------------------------------------------------------
 
 const LOG_TYPE_STYLES: Record<MessageType, string> = {
-  info: "text-blue-400",
-  error: "text-red-400",
-  success: "text-green-400",
+  info: "text-status-info",
+  error: "text-status-danger",
+  success: "text-status-success",
 };
 
 const LOG_TYPE_ICONS: Record<MessageType, typeof Info> = {
@@ -1410,9 +1410,9 @@ function SystemTab() {
 // ---------------------------------------------------------------------------
 
 const LEVEL_STYLES: Record<string, string> = {
-  ERROR: "text-red-400",
+  ERROR: "text-status-danger",
   WARNING: "text-status-warning",
-  INFO: "text-blue-400",
+  INFO: "text-status-info",
   DEBUG: "text-muted",
 };
 
@@ -1515,7 +1515,7 @@ function BackendLogs() {
                 <span className={levelCls}>{tag}</span>{" "}
                 {entry.message}
                 {entry.exception && (
-                  <span className="text-red-400">{"\n     " + entry.exception}</span>
+                  <span className="text-status-danger">{"\n     " + entry.exception}</span>
                 )}
                 {"\n"}
               </span>

@@ -244,7 +244,7 @@ export function Shell() {
             folder. Reinstalling the previous version will let you keep working.
           </p>
           <button
-            className="rounded-lg bg-accent px-4 py-2 text-sm text-white"
+            className="rounded-lg bg-accent px-4 py-2 text-sm text-on-fill"
             onClick={() => window.location.reload()}
           >
             Try again

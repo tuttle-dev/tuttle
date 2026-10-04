@@ -262,7 +262,7 @@ export function DocumentImportView() {
                 <button
                   onClick={handleCommit}
                   disabled={totalAccepted === 0 || committing}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium text-fuchsia-400 hover:bg-fuchsia-500/10 border border-fuchsia-400/30 transition-colors disabled:opacity-40"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium text-status-purple hover:bg-status-purple/10 border border-status-purple/30 transition-colors disabled:opacity-40"
                 >
                   {committing ? <Loader2 size={14} className="animate-spin" /> : <CheckCheck size={14} />}
                   {committing ? "Committing..." : `Commit ${totalAccepted} Items`}
@@ -271,7 +271,7 @@ export function DocumentImportView() {
             </div>
 
             {commitError && (
-              <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-400 whitespace-pre-line">
+              <div className="p-3 rounded-lg bg-status-danger/10 border border-status-danger/30 text-sm text-status-danger whitespace-pre-line">
                 {commitError}
               </div>
             )}
@@ -372,11 +372,11 @@ export function DocumentImportView() {
 function StepIcon({ status }: { status: StepStatus }) {
   switch (status) {
     case "done":
-      return <Check size={14} className="text-emerald-400" />;
+      return <Check size={14} className="text-status-success" />;
     case "running":
-      return <Loader2 size={14} className="animate-spin text-fuchsia-400" />;
+      return <Loader2 size={14} className="animate-spin text-status-purple" />;
     case "error":
-      return <XCircle size={14} className="text-red-400" />;
+      return <XCircle size={14} className="text-status-danger" />;
     default:
       return <Circle size={14} className="text-tertiary/40" />;
   }
@@ -445,7 +445,7 @@ function LiveItemsList({ items }: { items: LiveItems }) {
         const { label, icon: Icon } = LIVE_ENTITY_TYPES[type] ?? { label: type, icon: Circle };
         return (
           <li key={key}
-            className="flex items-center gap-2.5 rounded-lg border border-fuchsia-400/20 bg-fuchsia-500/5 px-3 py-2">
+            className="flex items-center gap-2.5 rounded-lg border border-status-purple/20 bg-status-purple/5 px-3 py-2">
             <Icon size={14} className="shrink-0 text-tertiary" />
             <span className={`min-w-0 flex-1 truncate text-sm ${name ? "text-primary" : "text-tertiary"}`}>
               {name || "…"}
@@ -479,8 +479,8 @@ function PipelineSteps({ steps, error, streams, liveItems }: {
             <div
               key={step.key}
               className={`flex items-start gap-3 px-3 py-2 rounded-lg transition-colors ${
-                running ? "bg-fuchsia-500/5" :
-                step.status === "error" ? "bg-red-500/5" :
+                running ? "bg-status-purple/5" :
+                step.status === "error" ? "bg-status-danger/5" :
                 ""
               }`}
             >
@@ -492,7 +492,7 @@ function PipelineSteps({ steps, error, streams, liveItems }: {
                   <p className={`flex-1 text-sm ${
                     step.status === "done" ? "text-secondary" :
                     running ? "text-primary font-medium" :
-                    step.status === "error" ? "text-red-400 font-medium" :
+                    step.status === "error" ? "text-status-danger font-medium" :
                     "text-tertiary"
                   }`}>
                     {step.label}
@@ -517,7 +517,7 @@ function PipelineSteps({ steps, error, streams, liveItems }: {
                   </>
                 )}
                 {step.status === "error" && step.error && (
-                  <p className="text-xs text-red-400/80 mt-1">{step.error}</p>
+                  <p className="text-xs text-status-danger/80 mt-1">{step.error}</p>
                 )}
               </div>
             </div>
@@ -526,7 +526,7 @@ function PipelineSteps({ steps, error, streams, liveItems }: {
       </div>
 
       {hasError && error && (
-        <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-400">
+        <div className="p-3 rounded-lg bg-status-danger/10 border border-status-danger/30 text-sm text-status-danger">
           {error}
         </div>
       )}
@@ -563,7 +563,7 @@ function UploadPhase({ parsing, parseError, importSteps, streams, liveItems, onF
             <PipelineSteps steps={importSteps} error={parseError} streams={streams} liveItems={liveItems} />
           ) : (
             <div className="flex items-center justify-center gap-3 py-6">
-              <Loader2 size={20} className="animate-spin text-fuchsia-400" />
+              <Loader2 size={20} className="animate-spin text-status-purple" />
               <span className="text-sm text-secondary">Preparing...</span>
             </div>
           )}
@@ -571,13 +571,13 @@ function UploadPhase({ parsing, parseError, importSteps, streams, liveItems, onF
       )}
 
       {!hasSteps && parseError && (
-        <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-400">
+        <div className="p-3 rounded-lg bg-status-danger/10 border border-status-danger/30 text-sm text-status-danger">
           {parseError}
         </div>
       )}
 
       {hasError && (
-        <label className="flex items-center gap-2 mx-auto px-4 py-2 rounded-lg text-sm font-medium text-fuchsia-400 hover:bg-fuchsia-500/10 border border-fuchsia-400/30 transition-colors cursor-pointer">
+        <label className="flex items-center gap-2 mx-auto px-4 py-2 rounded-lg text-sm font-medium text-status-purple hover:bg-status-purple/10 border border-status-purple/30 transition-colors cursor-pointer">
           <FileUp size={14} /> Try Again
           <input type="file" className="hidden"
             accept=".pdf,.txt,.md,.text" onChange={(e) => { const f = e.target.files?.[0]; if (f) onFileSelected(f); }} />
@@ -601,8 +601,8 @@ function CommittedPhase({ result, onDone }: {
 
   return (
     <div className="max-w-xl mx-auto mt-12 space-y-5 text-center">
-      <div className="w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto">
-        <Check size={32} className="text-emerald-400" />
+      <div className="w-16 h-16 rounded-full bg-status-success/10 flex items-center justify-center mx-auto">
+        <Check size={32} className="text-status-success" />
       </div>
       <h2 className="text-xl font-semibold">Import Complete</h2>
       <p className="text-sm text-secondary">{total} items processed.</p>
@@ -610,13 +610,13 @@ function CommittedPhase({ result, onDone }: {
       <div className="text-left space-y-2 bg-bg-card rounded-lg border border-border-subtle p-4">
         {created.length > 0 && (
           <div>
-            <div className="text-xs font-semibold uppercase tracking-wider text-emerald-400 mb-1">Created</div>
+            <div className="text-xs font-semibold uppercase tracking-wider text-status-success mb-1">Created</div>
             {created.map((s, i) => <div key={i} className="text-sm text-secondary">{s}</div>)}
           </div>
         )}
         {linked.length > 0 && (
           <div>
-            <div className="text-xs font-semibold uppercase tracking-wider text-blue-400 mb-1">Linked to existing</div>
+            <div className="text-xs font-semibold uppercase tracking-wider text-status-info mb-1">Linked to existing</div>
             {linked.map((s, i) => <div key={i} className="text-sm text-secondary">{s}</div>)}
           </div>
         )}
@@ -672,7 +672,7 @@ function InvoiceSection({ invoices, setInvoices, importedContracts, importedProj
         {collapsed ? <ChevronRight size={14} className="text-tertiary" /> : <ChevronDown size={14} className="text-tertiary" />}
         <span className="text-tertiary"><ReceiptText size={16} /></span>
         <span className="text-sm font-semibold">Invoices</span>
-        <span className="text-xs text-fuchsia-400 font-medium">
+        <span className="text-xs text-status-purple font-medium">
           {acceptedCount}/{invoices.length}
         </span>
       </div>
@@ -683,11 +683,11 @@ function InvoiceSection({ invoices, setInvoices, importedContracts, importedProj
             <div key={item.data.ref || `inv-${idx}`} className={`rounded-xl border-2 p-4 transition-all ${
               item.status === "discarded"
                 ? "border-border-subtle opacity-50"
-                : "border-fuchsia-400/40 bg-fuchsia-500/5"
+                : "border-status-purple/40 bg-status-purple/5"
             }`}>
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium px-2 py-0.5 rounded bg-fuchsia-500/10 text-fuchsia-400 border border-fuchsia-400/30">
+                  <span className="text-xs font-medium px-2 py-0.5 rounded bg-status-purple/10 text-status-purple border border-status-purple/30">
                     <Sparkles size={11} className="inline -mt-0.5 mr-1" />
                     Will create
                   </span>
@@ -696,8 +696,8 @@ function InvoiceSection({ invoices, setInvoices, importedContracts, importedProj
                   onClick={() => toggleStatus(idx)}
                   className={`flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors ${
                     item.status === "discarded"
-                      ? "text-fuchsia-400 hover:bg-fuchsia-500/10"
-                      : "text-secondary hover:text-red-400 hover:bg-red-500/10"
+                      ? "text-status-purple hover:bg-status-purple/10"
+                      : "text-secondary hover:text-status-danger hover:bg-status-danger/10"
                   }`}
                 >
                   {item.status === "discarded" ? <><Check size={12} /> Restore</> : <><Trash2 size={12} /> Discard</>}
@@ -809,11 +809,11 @@ function InvoiceCard({ item, onUpdate, importedContracts, importedProjects, exis
       {/* Contract / Project linking */}
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <label className="block text-xs text-fuchsia-300/70 mb-0.5">Contract</label>
+          <label className="block text-xs text-status-purple/70 mb-0.5">Contract</label>
           <select
             value={d.contract_ref || ""}
             onChange={(e) => set("contract_ref", e.target.value)}
-            className="w-full px-2.5 py-1.5 rounded-md text-sm bg-bg-card text-primary border border-fuchsia-400/30 outline-none focus:border-fuchsia-400 transition-colors"
+            className="w-full px-2.5 py-1.5 rounded-md text-sm bg-bg-card text-primary border border-status-purple/30 outline-none focus:border-status-purple transition-colors"
           >
             <option value="">-- Select --</option>
             {contractOptions.map((o) => (
@@ -822,11 +822,11 @@ function InvoiceCard({ item, onUpdate, importedContracts, importedProjects, exis
           </select>
         </div>
         <div>
-          <label className="block text-xs text-fuchsia-300/70 mb-0.5">Project</label>
+          <label className="block text-xs text-status-purple/70 mb-0.5">Project</label>
           <select
             value={d.project_ref || ""}
             onChange={(e) => set("project_ref", e.target.value)}
-            className="w-full px-2.5 py-1.5 rounded-md text-sm bg-bg-card text-primary border border-fuchsia-400/30 outline-none focus:border-fuchsia-400 transition-colors"
+            className="w-full px-2.5 py-1.5 rounded-md text-sm bg-bg-card text-primary border border-status-purple/30 outline-none focus:border-status-purple transition-colors"
           >
             <option value="">-- Select --</option>
             {projectOptions.map((o) => (
@@ -841,7 +841,7 @@ function InvoiceCard({ item, onUpdate, importedContracts, importedProjects, exis
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs font-semibold text-secondary uppercase tracking-wider">Line Items</span>
           <button onClick={addItem}
-            className="flex items-center gap-1 text-xs text-fuchsia-400 hover:text-fuchsia-300 transition-colors">
+            className="flex items-center gap-1 text-xs text-status-purple hover:text-status-purple transition-colors">
             <Plus size={12} /> Add Item
           </button>
         </div>
@@ -849,29 +849,29 @@ function InvoiceCard({ item, onUpdate, importedContracts, importedProjects, exis
           {d.items.map((li, idx) => {
             const missing = (f: string, v: any) => ireq(f) && (v == null || v === "");
             const borderCls = (f: string, v: any) =>
-              missing(f, v) ? "border-red-400/60" : "border-fuchsia-400/20";
+              missing(f, v) ? "border-status-danger/60" : "border-status-purple/20";
             return (
             <div key={idx} className="grid grid-cols-[1fr_80px_60px_90px_70px_28px] gap-1.5 items-end">
               <div>
                 <label className="block text-[10px] text-tertiary mb-0.5">
-                  Description{ireq("description") && <span className="text-red-400 ml-0.5">*</span>}
+                  Description{ireq("description") && <span className="text-status-danger ml-0.5">*</span>}
                 </label>
                 <input value={li.description} onChange={(e) => updateItem(idx, "description", e.target.value)}
-                  className={`w-full px-2 py-1 rounded text-xs bg-bg-card text-primary border ${borderCls("description", li.description)} outline-none focus:border-fuchsia-400`} />
+                  className={`w-full px-2 py-1 rounded text-xs bg-bg-card text-primary border ${borderCls("description", li.description)} outline-none focus:border-status-purple`} />
               </div>
               <div>
                 <label className="block text-[10px] text-tertiary mb-0.5">
-                  Qty{ireq("quantity") && <span className="text-red-400 ml-0.5">*</span>}
+                  Qty{ireq("quantity") && <span className="text-status-danger ml-0.5">*</span>}
                 </label>
                 <input type="number" step="any" value={li.quantity ?? ""} onChange={(e) => updateItem(idx, "quantity", e.target.value ? parseFloat(e.target.value) : null)}
-                  className={`w-full px-2 py-1 rounded text-xs bg-bg-card text-primary border ${borderCls("quantity", li.quantity)} outline-none focus:border-fuchsia-400`} />
+                  className={`w-full px-2 py-1 rounded text-xs bg-bg-card text-primary border ${borderCls("quantity", li.quantity)} outline-none focus:border-status-purple`} />
               </div>
               <div>
                 <label className="block text-[10px] text-tertiary mb-0.5">
-                  Unit{ireq("unit") && <span className="text-red-400 ml-0.5">*</span>}
+                  Unit{ireq("unit") && <span className="text-status-danger ml-0.5">*</span>}
                 </label>
                 <select value={li.unit || ""} onChange={(e) => updateItem(idx, "unit", e.target.value)}
-                  className={`w-full px-1.5 py-1 rounded text-xs bg-bg-card text-primary border ${borderCls("unit", li.unit)} outline-none focus:border-fuchsia-400`}>
+                  className={`w-full px-1.5 py-1 rounded text-xs bg-bg-card text-primary border ${borderCls("unit", li.unit)} outline-none focus:border-status-purple`}>
                   <option value="">--</option>
                   <option value="hour">hour</option>
                   <option value="day">day</option>
@@ -880,14 +880,14 @@ function InvoiceCard({ item, onUpdate, importedContracts, importedProjects, exis
               </div>
               <div>
                 <label className="block text-[10px] text-tertiary mb-0.5">
-                  Unit Price{ireq("unit_price") && <span className="text-red-400 ml-0.5">*</span>}
+                  Unit Price{ireq("unit_price") && <span className="text-status-danger ml-0.5">*</span>}
                 </label>
                 <input type="number" step="any" value={li.unit_price ?? ""} onChange={(e) => updateItem(idx, "unit_price", e.target.value ? parseFloat(e.target.value) : null)}
-                  className={`w-full px-2 py-1 rounded text-xs bg-bg-card text-primary border ${borderCls("unit_price", li.unit_price)} outline-none focus:border-fuchsia-400`} />
+                  className={`w-full px-2 py-1 rounded text-xs bg-bg-card text-primary border ${borderCls("unit_price", li.unit_price)} outline-none focus:border-status-purple`} />
               </div>
               <div>
                 <label className="block text-[10px] text-tertiary mb-0.5">
-                  VAT %{ireq("VAT_rate") && <span className="text-red-400 ml-0.5">*</span>}
+                  VAT %{ireq("VAT_rate") && <span className="text-status-danger ml-0.5">*</span>}
                 </label>
                 <input type="number" step="any"
                   value={li.VAT_rate != null ? String(Math.round((li.VAT_rate > 1 ? li.VAT_rate : li.VAT_rate * 100) * 100) / 100) : ""}
@@ -895,10 +895,10 @@ function InvoiceCard({ item, onUpdate, importedContracts, importedProjects, exis
                     const pct = e.target.value ? parseFloat(e.target.value) : null;
                     updateItem(idx, "VAT_rate", pct == null ? null : pct / 100);
                   }}
-                  className={`w-full px-2 py-1 rounded text-xs bg-bg-card text-primary border ${borderCls("VAT_rate", li.VAT_rate)} outline-none focus:border-fuchsia-400`} />
+                  className={`w-full px-2 py-1 rounded text-xs bg-bg-card text-primary border ${borderCls("VAT_rate", li.VAT_rate)} outline-none focus:border-status-purple`} />
               </div>
               <button onClick={() => removeItem(idx)}
-                className="p-1 rounded text-tertiary hover:text-red-400 hover:bg-red-500/10 transition-colors">
+                className="p-1 rounded text-tertiary hover:text-status-danger hover:bg-status-danger/10 transition-colors">
                 <Minus size={12} />
               </button>
             </div>
@@ -954,13 +954,13 @@ function EntitySection<T extends { ref: string }>({ icon, title, items, setItems
         {collapsed ? <ChevronRight size={14} className="text-tertiary" /> : <ChevronDown size={14} className="text-tertiary" />}
         <span className="text-tertiary">{icon}</span>
         <span className="text-sm font-semibold">{title}</span>
-        <span className="text-xs text-fuchsia-400 font-medium">
+        <span className="text-xs text-status-purple font-medium">
           {acceptedCount}/{items.length}
         </span>
         {acceptedCount < items.length && (
           <button
             onClick={(e) => { e.stopPropagation(); acceptAll(); }}
-            className="ml-auto text-xs text-fuchsia-400 hover:text-fuchsia-300 transition-colors"
+            className="ml-auto text-xs text-status-purple hover:text-status-purple transition-colors"
           >
             Accept All
           </button>
@@ -973,7 +973,7 @@ function EntitySection<T extends { ref: string }>({ icon, title, items, setItems
             <div key={item.data.ref} className={`rounded-xl border-2 p-4 transition-all ${
               item.status === "discarded"
                 ? "border-border-subtle opacity-50"
-                : "border-fuchsia-400/40 bg-fuchsia-500/5"
+                : "border-status-purple/40 bg-status-purple/5"
             }`}>
               <div className="flex items-center justify-between mb-3">
                 <MatchBadge item={item} existing={existing}
@@ -988,8 +988,8 @@ function EntitySection<T extends { ref: string }>({ icon, title, items, setItems
                     onClick={() => toggleStatus(idx)}
                     className={`flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors ${
                       item.status === "discarded"
-                        ? "text-fuchsia-400 hover:bg-fuchsia-500/10"
-                        : "text-secondary hover:text-red-400 hover:bg-red-500/10"
+                        ? "text-status-purple hover:bg-status-purple/10"
+                        : "text-secondary hover:text-status-danger hover:bg-status-danger/10"
                     }`}
                   >
                     {item.status === "discarded" ? <><Check size={12} /> Restore</> : <><Trash2 size={12} /> Discard</>}
@@ -1026,8 +1026,8 @@ function MatchBadge<T extends { ref: string }>({ item, existing, onChangeMatch }
       <button onClick={() => setOpen((o) => !o)}
         className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs transition-colors ${
           matched
-            ? "text-blue-400 bg-blue-500/10 border border-blue-400/30"
-            : "text-fuchsia-400 bg-fuchsia-500/10 border border-fuchsia-400/30"
+            ? "text-status-info bg-status-info/10 border border-status-info/30"
+            : "text-status-purple bg-status-purple/10 border border-status-purple/30"
         }`}
       >
         {matched ? <><Link2 size={11} /> Update: {matchLabel}</> : <><Sparkles size={11} /> Will create</>}
@@ -1037,7 +1037,7 @@ function MatchBadge<T extends { ref: string }>({ item, existing, onChangeMatch }
       {open && (
         <div className="absolute top-full left-0 mt-1 z-50 bg-bg-sidebar border border-border-subtle rounded-lg shadow-lg py-1 min-w-[200px] max-h-48 overflow-y-auto">
           <button onClick={() => { onChangeMatch(null); setOpen(false); }}
-            className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${!matched ? "text-fuchsia-400 font-medium" : "text-secondary hover:bg-bg-hover"}`}>
+            className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${!matched ? "text-status-purple font-medium" : "text-secondary hover:bg-bg-hover"}`}>
             Create as new record
           </button>
           {existing.map((e) => {
@@ -1045,7 +1045,7 @@ function MatchBadge<T extends { ref: string }>({ item, existing, onChangeMatch }
             return (
               <button key={e.id} onClick={() => { onChangeMatch(e.id); setOpen(false); }}
                 className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${
-                  matched === e.id ? "text-blue-400 font-medium" : "text-secondary hover:bg-bg-hover"
+                  matched === e.id ? "text-status-info font-medium" : "text-secondary hover:bg-bg-hover"
                 }`}>
                 {label}
               </button>
@@ -1178,11 +1178,11 @@ function ContractCard({ item, onUpdate, existing, clients, requiredFields, enumF
 
   return (
     <div className="space-y-2">
-      <div className="flex rounded-md border border-fuchsia-400/30 overflow-hidden w-fit">
+      <div className="flex rounded-md border border-status-purple/30 overflow-hidden w-fit">
         {["time_based", "fixed_price"].map((mode) => (
           <button key={mode} type="button" onClick={() => switchType(mode)}
             className={`px-3 py-1 text-xs font-medium transition-colors ${ctype === mode
-              ? "bg-fuchsia-500 text-white" : "bg-bg-card text-secondary hover:text-primary hover:bg-bg-hover"}`}>
+              ? "bg-status-purple text-on-fill" : "bg-bg-card text-secondary hover:text-primary hover:bg-bg-hover"}`}>
             {mode === "time_based" ? "Time-Based" : "Fixed Price"}
           </button>
         ))}
@@ -1289,15 +1289,15 @@ function AiField({ label, value, dbValue, onChange, type = "text", required, opt
   const missing = required && !safeValue.trim();
 
   const fieldCls = `w-full px-2.5 py-1.5 rounded-md text-sm bg-bg-card text-primary outline-none
-    focus:border-fuchsia-400 transition-colors placeholder:text-muted border ${
-    missing ? "border-red-400/70 bg-red-500/5" :
-    differs ? "border-status-warning/60" : "border-fuchsia-400/30"
+    focus:border-status-purple transition-colors placeholder:text-muted border ${
+    missing ? "border-status-danger/70 bg-status-danger/5" :
+    differs ? "border-status-warning/60" : "border-status-purple/30"
   }`;
 
   return (
     <div>
-      <label className={`block text-xs mb-0.5 ${missing ? "text-red-400" : "text-fuchsia-300/70"}`}>
-        {label}{required && <span className="text-red-400 ml-0.5">*</span>}
+      <label className={`block text-xs mb-0.5 ${missing ? "text-status-danger" : "text-status-purple/70"}`}>
+        {label}{required && <span className="text-status-danger ml-0.5">*</span>}
       </label>
       {options ? (
         <select value={safeValue} onChange={(e) => onChange(e.target.value)} className={fieldCls}>
@@ -1308,7 +1308,7 @@ function AiField({ label, value, dbValue, onChange, type = "text", required, opt
         <input type={type} value={safeValue} onChange={(e) => onChange(e.target.value)} className={fieldCls} />
       )}
       {missing && (
-        <div className="text-[10px] text-red-400 mt-0.5">Required</div>
+        <div className="text-[10px] text-status-danger mt-0.5">Required</div>
       )}
       {!missing && differs && (
         <div className="text-[10px] text-status-warning/80 mt-0.5 truncate" title={`DB: ${dbValue}`}>
@@ -1331,7 +1331,7 @@ function RefDropdown({ label, currentRef, options, onChange, hint }: {
 
   return (
     <div>
-      <label className="block text-xs text-fuchsia-300/70 mb-0.5">
+      <label className="block text-xs text-status-purple/70 mb-0.5">
         {label}
         {noLink && options.length > 0 && (
           <span className="ml-1.5 text-status-warning">
@@ -1342,7 +1342,7 @@ function RefDropdown({ label, currentRef, options, onChange, hint }: {
       <select
         value={safeRef}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full px-2.5 py-1.5 rounded-md text-sm bg-bg-card text-primary border border-fuchsia-400/30 outline-none focus:border-fuchsia-400 transition-colors"
+        className="w-full px-2.5 py-1.5 rounded-md text-sm bg-bg-card text-primary border border-status-purple/30 outline-none focus:border-status-purple transition-colors"
       >
         <option value="">-- Select --</option>
         {options.map((o) => (

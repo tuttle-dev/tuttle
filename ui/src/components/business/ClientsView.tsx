@@ -306,7 +306,7 @@ function ClientDetail({ client, contacts, onEdit, onDelete, deleteError, onReloa
         </>} />
 
       {deleteError && (
-        <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-400">{deleteError}</div>
+        <div className="p-3 rounded-lg bg-status-danger/10 border border-status-danger/30 text-sm text-status-danger">{deleteError}</div>
       )}
 
       {(str(client, "vat_number") || clientAddrParts.length > 0) && (
@@ -365,7 +365,7 @@ function ClientDetail({ client, contacts, onEdit, onDelete, deleteError, onReloa
                   updateMethod="clients.update_client_contact_role" />
               </div>
               <button onClick={() => removeAssoc(a.id)}
-                className="opacity-0 group-hover:opacity-100 p-1 rounded text-secondary hover:text-red-400 transition-all"
+                className="opacity-0 group-hover:opacity-100 p-1 rounded text-secondary hover:text-status-danger transition-all"
                 title="Remove contact">
                 <X size={14} />
               </button>
@@ -483,7 +483,7 @@ function ClientForm({ client, contacts, onSave, onCancel, error }: {
         </select>
       </Section>
 
-      {error && <p className="text-xs text-red-400">{error}</p>}
+      {error && <p className="text-xs text-status-danger">{error}</p>}
     </form>
   );
 }
@@ -519,19 +519,19 @@ function ParsedClientCard({ client, contacts, onAccept, onDiscard, onUpdate }: {
   onUpdate: (c: ParsedClient) => void;
 }) {
   return (
-    <div className="rounded-xl border-2 border-fuchsia-400/40 bg-fuchsia-500/5 p-4 space-y-3">
+    <div className="rounded-xl border-2 border-status-purple/40 bg-status-purple/5 p-4 space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Sparkles size={14} className="text-fuchsia-400" />
+          <Sparkles size={14} className="text-status-purple" />
           <span className="text-sm font-semibold">{client.name || "Unnamed"}</span>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={onDiscard}
-            className="flex items-center gap-1 px-2 py-1 rounded text-xs text-secondary hover:text-red-400 hover:bg-red-500/10 transition-colors">
+            className="flex items-center gap-1 px-2 py-1 rounded text-xs text-secondary hover:text-status-danger hover:bg-status-danger/10 transition-colors">
             <Trash2 size={12} /> Discard
           </button>
           <button onClick={onAccept}
-            className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium text-fuchsia-400 hover:bg-fuchsia-500/10 border border-fuchsia-400/30 transition-colors">
+            className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium text-status-purple hover:bg-status-purple/10 border border-status-purple/30 transition-colors">
             <Check size={12} /> Accept
           </button>
         </div>
@@ -539,16 +539,16 @@ function ParsedClientCard({ client, contacts, onAccept, onDiscard, onUpdate }: {
 
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <label className="block text-xs text-fuchsia-300/70 mb-0.5">Client Name</label>
+          <label className="block text-xs text-status-purple/70 mb-0.5">Client Name</label>
           <input type="text" value={client.name} onChange={(e) => onUpdate({ ...client, name: e.target.value })}
-            className="w-full px-2.5 py-1.5 rounded-md text-sm bg-bg-card text-primary border border-fuchsia-400/30 outline-none focus:border-fuchsia-400 transition-colors" />
+            className="w-full px-2.5 py-1.5 rounded-md text-sm bg-bg-card text-primary border border-status-purple/30 outline-none focus:border-status-purple transition-colors" />
         </div>
         <div>
-          <label className="block text-xs text-fuchsia-300/70 mb-0.5">
-            Invoicing Contact {client.contact_name_hint && <span className="text-fuchsia-400/60">(hint: {client.contact_name_hint})</span>}
+          <label className="block text-xs text-status-purple/70 mb-0.5">
+            Invoicing Contact {client.contact_name_hint && <span className="text-status-purple/60">(hint: {client.contact_name_hint})</span>}
           </label>
           <select value={client.selectedContactId ?? ""} onChange={(e) => onUpdate({ ...client, selectedContactId: e.target.value ? Number(e.target.value) : undefined })}
-            className="w-full px-2.5 py-1.5 rounded-md text-sm bg-bg-card text-primary border border-fuchsia-400/30 outline-none focus:border-fuchsia-400 transition-colors">
+            className="w-full px-2.5 py-1.5 rounded-md text-sm bg-bg-card text-primary border border-status-purple/30 outline-none focus:border-status-purple transition-colors">
             <option value="">— Select —</option>
             {contacts.map((c) => <option key={c.id} value={c.id}>{displayName(c)}</option>)}
           </select>

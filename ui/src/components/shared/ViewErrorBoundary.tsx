@@ -73,8 +73,8 @@ export class ViewErrorBoundary extends Component<Props, State> {
       <div className="relative flex flex-col items-center justify-center h-full gap-5 px-6">
         <div className="drag-region absolute inset-x-0 top-0 h-13" />
         <div className="flex flex-col items-center gap-3 max-w-md text-center">
-          <div className="w-12 h-12 rounded-2xl bg-red-500/10 flex items-center justify-center">
-            <AlertTriangle size={24} strokeWidth={1.5} className="text-red-400" />
+          <div className="w-12 h-12 rounded-2xl bg-status-danger/10 flex items-center justify-center">
+            <AlertTriangle size={24} strokeWidth={1.5} className="text-status-danger" />
           </div>
 
           <h3 className="text-base font-semibold text-primary">
@@ -86,7 +86,7 @@ export class ViewErrorBoundary extends Component<Props, State> {
           </p>
 
           <div className="w-full mt-2 rounded-lg border border-border-subtle bg-bg-card p-3 text-left">
-            <p className="text-xs font-mono text-red-400 break-all leading-relaxed">
+            <p className="text-xs font-mono text-status-danger break-all leading-relaxed">
               {error.message}
             </p>
           </div>
@@ -101,7 +101,7 @@ export class ViewErrorBoundary extends Component<Props, State> {
             </button>
             <button
               onClick={this.handleCopy}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-white bg-accent hover:bg-accent/90 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-on-fill bg-accent hover:bg-accent/90 transition-colors"
             >
               <Copy size={12} />
               {this.state.copied ? "Copied!" : "Copy error report"}

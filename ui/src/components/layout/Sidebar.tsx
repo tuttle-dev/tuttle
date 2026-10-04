@@ -188,7 +188,7 @@ export function Sidebar({
                 {u.is_demo && (
                   <button
                     onClick={(e) => { e.stopPropagation(); onDeleteUser(u.db_file); setMenuOpen(false); }}
-                    className="opacity-0 group-hover:opacity-100 px-2 py-1 text-muted hover:text-red-400 transition-all"
+                    className="opacity-0 group-hover:opacity-100 px-2 py-1 text-muted hover:text-status-danger transition-all"
                     title="Remove demo user"
                   >
                     <Trash2 size={13} />

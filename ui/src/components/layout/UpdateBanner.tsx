@@ -52,7 +52,7 @@ export function UpdateBanner() {
       {update.status === "ready" && (
         <button
           onClick={() => window.tuttle.quitAndInstall()}
-          className="px-3 py-1 rounded-md bg-accent text-white text-xs font-medium hover:bg-accent/90 transition-colors"
+          className="px-3 py-1 rounded-md bg-accent text-on-fill text-xs font-medium hover:bg-accent/90 transition-colors"
         >
           Restart &amp; Update
         </button>

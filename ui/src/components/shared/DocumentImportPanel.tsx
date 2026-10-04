@@ -22,7 +22,7 @@ export function DocumentImportPanel({ title, noun, count, parsing, parseError, o
     <div className="p-5 space-y-5">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Sparkles size={18} className="text-fuchsia-400" />
+          <Sparkles size={18} className="text-status-purple" />
           <h2 className="text-lg font-semibold">{title}</h2>
         </div>
         <button onClick={onClose}
@@ -37,23 +37,23 @@ export function DocumentImportPanel({ title, noun, count, parsing, parseError, o
 
       {parsing && (
         <div className="flex items-center justify-center gap-3 py-10">
-          <Loader2 size={20} className="animate-spin text-fuchsia-400" />
+          <Loader2 size={20} className="animate-spin text-status-purple" />
           <span className="text-sm text-secondary">Parsing document with AI…</span>
         </div>
       )}
 
       {parseError && (
-        <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-400">{parseError}</div>
+        <div className="p-3 rounded-lg bg-status-danger/10 border border-status-danger/30 text-sm text-status-danger">{parseError}</div>
       )}
 
       {count > 0 && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <p className="text-sm text-secondary">
-              <span className="font-medium text-fuchsia-400">{count}</span> {noun}{count !== 1 ? "s" : ""} found
+              <span className="font-medium text-status-purple">{count}</span> {noun}{count !== 1 ? "s" : ""} found
             </p>
             <button onClick={onAcceptAll}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium text-fuchsia-400 hover:bg-fuchsia-500/10 border border-fuchsia-400/30 transition-colors">
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium text-status-purple hover:bg-status-purple/10 border border-status-purple/30 transition-colors">
               <CheckCheck size={14} /> Accept All
             </button>
           </div>

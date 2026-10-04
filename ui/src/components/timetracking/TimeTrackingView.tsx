@@ -67,8 +67,8 @@ type EntryValues = { tag: string; title: string; start: string; end: string; dur
 // ---------------------------------------------------------------------------
 
 const PROJECT_COLORS = [
-  "#0A84FF", "#30D158", "#FFD60A", "#BF5AF2",
-  "#FF9F0A", "#FF375F", "#64D2FF", "#AC8E68",
+  "#3a78c9", "#2f9a5c", "#c49a12", "#8b5cc9",
+  "#d97b2a", "#c94a62", "#2f9bb3", "#9a7a52",
 ];
 
 function tagColor(tag: string, allTags: string[]): string {
@@ -395,7 +395,7 @@ export function TimeTrackingView() {
               <div className="text-xl font-bold tabular-nums text-primary">{formatHours(calData.summary.total_hours)}</div>
               <div className="text-xs text-secondary">{calData.summary.total_events} {calData.summary.total_events === 1 ? "entry" : "entries"}</div>
               {calData.summary.planned_hours > 0 && (
-                <div className="text-xs text-blue-400 mt-1">
+                <div className="text-xs text-status-info mt-1">
                   {formatHours(calData.summary.planned_hours)} planned
                 </div>
               )}
@@ -516,13 +516,13 @@ function TimerBar({ projectTags, onCreateProject, onLogged }: {
     else logEntry();
   }
 
-  const roundBtn = "w-9 h-9 rounded-full flex items-center justify-center text-white transition-opacity shrink-0 disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90";
+  const roundBtn = "w-9 h-9 rounded-full flex items-center justify-center text-on-fill transition-opacity shrink-0 disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90";
 
   return (
-    <div className={`mx-5 mt-4 rounded-xl border bg-bg-card shadow-sm transition-colors ${running ? "border-green-500/40" : pending ? "border-accent/40" : "border-border-subtle"}`}>
+    <div className={`mx-5 mt-4 rounded-xl border bg-bg-card shadow-sm transition-colors ${running ? "border-status-success/40" : pending ? "border-accent/40" : "border-border-subtle"}`}>
       <div className="flex items-center gap-3 px-4 py-2.5">
         {running
-          ? <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse shrink-0" />
+          ? <span className="w-2.5 h-2.5 rounded-full bg-status-success animate-pulse shrink-0" />
           : pending
             ? <Pause size={15} className="text-accent shrink-0" />
             : (
@@ -577,7 +577,7 @@ function TimerBar({ projectTags, onCreateProject, onLogged }: {
                   disabled={noProjects}
                   placeholder="e.g. 1h 30m"
                   title="Duration"
-                  className={`${barInputBase} w-[104px] tabular-nums ${durationUnreadable ? "border-red-400" : "border-border-subtle"}`}
+                  className={`${barInputBase} w-[104px] tabular-nums ${durationUnreadable ? "border-status-danger" : "border-border-subtle"}`}
                 />
               ) : (
                 <>
@@ -602,7 +602,7 @@ function TimerBar({ projectTags, onCreateProject, onLogged }: {
             </button>
           )}
           {running && (
-            <button onClick={() => timer.stop()} title="Stop timer" className={`${roundBtn} bg-red-500`}>
+            <button onClick={() => timer.stop()} title="Stop timer" className={`${roundBtn} bg-status-danger`}>
               <Square size={12} fill="currentColor" />
             </button>
           )}
@@ -613,7 +613,7 @@ function TimerBar({ projectTags, onCreateProject, onLogged }: {
           )}
           {!idle && (
             <button onClick={() => timer.discard()} title="Discard timer"
-              className="p-1 rounded text-muted hover:text-red-400 hover:bg-bg-hover transition-colors shrink-0">
+              className="p-1 rounded text-muted hover:text-status-danger hover:bg-bg-hover transition-colors shrink-0">
               <X size={14} />
             </button>
           )}
@@ -824,9 +824,9 @@ function MonthGrid({
               className={`bg-bg-card min-h-[80px] p-2 text-left transition-colors relative group
                 ${isSelected ? "ring-2 ring-accent ring-inset bg-bg-selected" : "hover:bg-bg-hover"}
                 ${isWeekend ? "opacity-60" : ""}
-                ${isFuture && info ? "bg-blue-500/[0.03]" : ""}`}
+                ${isFuture && info ? "bg-status-info/[0.03]" : ""}`}
             >
-              <span className={`text-[13px] font-semibold ${isToday ? "bg-accent text-white px-1.5 py-0.5 rounded-full" : "text-primary"}`}>
+              <span className={`text-[13px] font-semibold ${isToday ? "bg-accent text-on-fill px-1.5 py-0.5 rounded-full" : "text-primary"}`}>
                 {day}
               </span>
               {info && (
@@ -842,7 +842,7 @@ function MonthGrid({
                       );
                     })}
                   </div>
-                  <div className={`text-[11px] font-medium tabular-nums ${isFuture ? "text-blue-400/70" : "text-secondary"}`}>
+                  <div className={`text-[11px] font-medium tabular-nums ${isFuture ? "text-status-info/70" : "text-secondary"}`}>
                     {formatDayDuration(info)}
                   </div>
                 </div>
@@ -910,7 +910,7 @@ function EntryForm({
         onKeyDown={(e) => e.key === "Enter" && submit()}
         placeholder="Title (optional)" className={`${inputCls} flex-1 min-w-[140px]`} />
       <button onClick={submit} disabled={!valid || saving}
-        className="px-2.5 py-1 rounded-md bg-accent text-white text-xs font-medium hover:bg-accent/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+        className="px-2.5 py-1 rounded-md bg-accent text-on-fill text-xs font-medium hover:bg-accent/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
         {submitLabel}
       </button>
       <button onClick={onCancel} className="px-2 py-1 text-xs text-muted hover:text-secondary transition-colors">Cancel</button>
@@ -1032,7 +1032,7 @@ function DayDetail({
                   <div className="flex items-center gap-2">
                     <span className={`text-sm font-medium truncate ${ev.title ? "text-primary" : "text-muted"}`}>{ev.title || "No title"}</span>
                     {ev.is_future && (
-                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-blue-500/10 text-blue-400 shrink-0">planned</span>
+                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-status-info/10 text-status-info shrink-0">planned</span>
                     )}
                     {ev.tag && (
                       <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0"
@@ -1054,8 +1054,8 @@ function DayDetail({
                   )}
                   {deleting === key && (
                     <div className="mt-1.5 flex items-center gap-2 text-xs">
-                      <span className="text-red-400">Delete this entry?</span>
-                      <button onClick={() => deleteEntry(ev)} className="font-medium text-red-400 hover:underline">Delete</button>
+                      <span className="text-status-danger">Delete this entry?</span>
+                      <button onClick={() => deleteEntry(ev)} className="font-medium text-status-danger hover:underline">Delete</button>
                       <button onClick={() => setDeleting(null)} className="text-muted hover:text-secondary">Cancel</button>
                     </div>
                   )}
@@ -1067,7 +1067,7 @@ function DayDetail({
                       <Pencil size={12} />
                     </button>
                     <button onClick={() => setDeleting(key)}
-                      className="p-1 rounded text-muted hover:text-red-400 hover:bg-bg-hover transition-colors" title="Delete">
+                      className="p-1 rounded text-muted hover:text-status-danger hover:bg-bg-hover transition-colors" title="Delete">
                       <Trash2 size={12} />
                     </button>
                   </div>

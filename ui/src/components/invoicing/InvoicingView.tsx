@@ -608,7 +608,7 @@ function CreateInvoiceDialog({ onClose, onCreated }: { onClose: () => void; onCr
                 })}
               </div>
               {docType === "final" && (
-                <p className="text-[10px] text-blue-300 mt-1">
+                <p className="text-[10px] text-status-info mt-1">
                   States the full contract amount and deducts every deposit already issued.
                 </p>
               )}
@@ -630,7 +630,7 @@ function CreateInvoiceDialog({ onClose, onCreated }: { onClose: () => void; onCr
                 ))}
               </select>
               {isLastOpenMilestone && (
-                <p className="text-[10px] text-blue-300 mt-1">
+                <p className="text-[10px] text-status-info mt-1">
                   Last milestone — creates the final settlement invoice with prior deposits deducted.
                 </p>
               )}
@@ -763,7 +763,7 @@ function CreateInvoiceDialog({ onClose, onCreated }: { onClose: () => void; onCr
                       </div>
                     </div>
                     {lineItems.length > 1 && (
-                      <button onClick={() => removeItem(idx)} className="mt-1 p-1 rounded text-muted hover:text-red-400 hover:bg-red-400/10 transition-colors"
+                      <button onClick={() => removeItem(idx)} className="mt-1 p-1 rounded text-muted hover:text-status-danger hover:bg-status-danger/10 transition-colors"
                         title="Remove item">
                         <XCircle size={14} />
                       </button>
@@ -816,7 +816,7 @@ function CreateInvoiceDialog({ onClose, onCreated }: { onClose: () => void; onCr
             </div>
           )}
 
-          {error && <p className="text-xs text-red-400">{error}</p>}
+          {error && <p className="text-xs text-status-danger">{error}</p>}
         </div>
 
         <div className="px-5 py-3 border-t border-border-subtle flex items-center gap-2 shrink-0">
@@ -832,12 +832,12 @@ function CreateInvoiceDialog({ onClose, onCreated }: { onClose: () => void; onCr
           </button>
           {step === 0 ? (
             <button onClick={() => setStep(1)} disabled={!canAdvance}
-              className="flex items-center gap-1.5 px-4 py-1.5 rounded-md text-sm font-medium bg-accent text-white hover:bg-accent/90 transition-colors disabled:opacity-50">
+              className="flex items-center gap-1.5 px-4 py-1.5 rounded-md text-sm font-medium bg-accent text-on-fill hover:bg-accent/90 transition-colors disabled:opacity-50">
               Next <ChevronRight size={14} />
             </button>
           ) : (
             <button onClick={submit} disabled={submitting}
-              className="px-4 py-1.5 rounded-md text-sm font-medium bg-accent text-white hover:bg-accent/90 transition-colors disabled:opacity-50">
+              className="px-4 py-1.5 rounded-md text-sm font-medium bg-accent text-on-fill hover:bg-accent/90 transition-colors disabled:opacity-50">
               {submitting ? "Creating…"
                 : docType === "final" ? "Create Final Invoice"
                 : docType === "deposit" ? (isLastOpenMilestone ? "Create Final Invoice" : "Create Deposit Invoice")
@@ -853,13 +853,13 @@ function CreateInvoiceDialog({ onClose, onCreated }: { onClose: () => void; onCr
 function DocumentTypeBadge({ type }: { type: "deposit" | "final" }) {
   if (type === "deposit") {
     return (
-      <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-500/15 text-blue-400 shrink-0">
+      <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-status-info/15 text-status-info shrink-0">
         Deposit
       </span>
     );
   }
   return (
-    <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-500/20 text-blue-300 shrink-0">
+    <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-status-info/20 text-status-info shrink-0">
       Final
     </span>
   );
@@ -867,7 +867,7 @@ function DocumentTypeBadge({ type }: { type: "deposit" | "final" }) {
 
 function chainAccentClass(chain: InvoiceChain): string {
   if (isFinalInvoice(chain.root) || isDeposit(chain.root) || chain.deposits.length > 0) {
-    return "border-l-2 border-l-blue-400";
+    return "border-l-2 border-l-status-info";
   }
   return "";
 }
@@ -877,21 +877,21 @@ function MilestoneScheduleBadge({ schedule }: { schedule: MilestoneScheduleStatu
 
   if (settled) {
     return (
-      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-green-500/10 text-green-400 shrink-0">
+      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-status-success/10 text-status-success shrink-0">
         All settled
       </span>
     );
   }
   if (hasFinal) {
     return (
-      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-300 shrink-0">
+      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-status-info/10 text-status-info shrink-0">
         Settlement · {paidCount}/{issuedCount} paid
       </span>
     );
   }
   return (
     <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded shrink-0 ${
-      invoicedCount === total ? "bg-blue-500/10 text-blue-400" : "bg-status-warning/10 text-status-warning"
+      invoicedCount === total ? "bg-status-info/10 text-status-info" : "bg-status-warning/10 text-status-warning"
     }`}>
       {invoicedCount}/{total} milestones invoiced · {paidCount}/{issuedCount} paid
     </span>
@@ -915,7 +915,7 @@ function InvoiceRow({ invoice, isSelected, isHighlighted, reminderCount, schedul
         <div className="flex items-center gap-2 min-w-0 overflow-hidden">
           <span className="text-sm font-medium shrink-0">{str(invoice, "number") || "Draft"}</span>
           {isDeposit(invoice) && depositLabel && (
-            <span className="text-xs font-semibold text-blue-400 truncate">{depositLabel}</span>
+            <span className="text-xs font-semibold text-status-info truncate">{depositLabel}</span>
           )}
           <span className="text-xs text-tertiary shrink-0">{formatDate(str(invoice, "date"))}</span>
           {isDeposit(invoice) && <DocumentTypeBadge type="deposit" />}
@@ -969,11 +969,11 @@ function DepositRow({ invoice, isSelected, onSelect }: { invoice: Entity; isSele
   const depositLabel = depositMilestoneLabel(invoice);
   return (
     <button onClick={onSelect}
-      className={`w-full text-left pl-10 pr-4 py-2.5 border-b transition-colors border-l-2 border-l-blue-400
+      className={`w-full text-left pl-10 pr-4 py-2.5 border-b transition-colors border-l-2 border-l-status-info
         ${isSelected ? "bg-bg-selected border-b-border-subtle" : "border-b-border-subtle hover:bg-bg-hover bg-bg-content/50"}`}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 min-w-0 overflow-hidden">
-          <span className="text-xs font-semibold text-blue-400 truncate">
+          <span className="text-xs font-semibold text-status-info truncate">
             {depositLabel || "Deposit"}
           </span>
           <DocumentTypeBadge type="deposit" />
@@ -997,11 +997,11 @@ function InvoiceChainCard({ chain, color, reminderCount, depositCount }: {
     <div className="space-y-1.5">
       <InvoiceCard invoice={root} color={color} reminderCount={reminderCount} depositCount={depositCount} schedule={schedule} />
       {deposits.length > 0 && (
-        <div className="ml-2 pl-2 border-l-2 border-blue-400/60 space-y-1.5">
+        <div className="ml-2 pl-2 border-l-2 border-status-info/60 space-y-1.5">
           {deposits.map((dep) => (
             <div key={dep.id} className="pt-1 border-t border-border-subtle/60 first:border-t-0 first:pt-0">
               <div className="flex items-center gap-1 min-w-0">
-                <span className="text-xs font-semibold text-blue-400 truncate">
+                <span className="text-xs font-semibold text-status-info truncate">
                   {depositMilestoneLabel(dep) || "Deposit"}
                 </span>
                 <DocumentTypeBadge type="deposit" />
@@ -1034,15 +1034,15 @@ function InvoiceCard({ invoice, reminderCount, depositCount, schedule }: { invoi
       {hasBadges && (
         <div className="flex flex-wrap items-center gap-1">
           {isDeposit(invoice) && depositLabel && (
-            <span className="text-xs font-semibold text-blue-400 truncate">{depositLabel}</span>
+            <span className="text-xs font-semibold text-status-info truncate">{depositLabel}</span>
           )}
           {isFinal && (
-            <span className="text-xs font-semibold text-blue-300 truncate">Settlement</span>
+            <span className="text-xs font-semibold text-status-info truncate">Settlement</span>
           )}
           {isDeposit(invoice) && <DocumentTypeBadge type="deposit" />}
           {isFinal && <DocumentTypeBadge type="final" />}
           {(depositCount ?? 0) > 0 && !isDeposit(invoice) && (
-            <span className="flex items-center gap-0.5 px-1 py-0.5 rounded text-[10px] font-semibold bg-blue-500/15 text-blue-400">
+            <span className="flex items-center gap-0.5 px-1 py-0.5 rounded text-[10px] font-semibold bg-status-info/15 text-status-info">
               <Milestone size={9} />{depositCount}
             </span>
           )}
@@ -1173,9 +1173,9 @@ function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid, onTog
             {isRem
               ? <AlertTriangle size={18} className="text-status-warning" />
               : isFinalInvoice(invoice)
-              ? <FileText size={18} className="text-blue-400" />
+              ? <FileText size={18} className="text-status-info" />
               : isDeposit(invoice)
-              ? <Milestone size={18} className="text-blue-400" />
+              ? <Milestone size={18} className="text-status-info" />
               : <FileText size={18} className="text-secondary" />}
           </div>
           <div className="min-w-0">
@@ -1193,7 +1193,7 @@ function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid, onTog
                 <span className="text-xs text-tertiary">Inv. {str(invoice, "number") || "Draft"}</span>
               )}
               {isFinalInvoice(invoice) && (
-                <span className="text-xs font-medium text-blue-300">Settlement invoice</span>
+                <span className="text-xs font-medium text-status-info">Settlement invoice</span>
               )}
               <span className="text-sm text-secondary">{deepStr(invoice, "contract.client.name") || "No client"}</span>
               <StatusMenu key={invoice.id} status={status} isSent={isSent} isPaid={isPaid} isCancelled={isCancelled}
@@ -1223,21 +1223,21 @@ function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid, onTog
         {/* Document actions; status changes live in the status menu above. */}
         <div>
           {mailError && (
-            <div className="mb-2 flex items-center gap-2 px-3 py-2 rounded-md text-xs text-red-400 bg-red-500/10 border border-red-500/30">
+            <div className="mb-2 flex items-center gap-2 px-3 py-2 rounded-md text-xs text-status-danger bg-status-danger/10 border border-status-danger/30">
               <span className="flex-1">{mailError}</span>
-              <button onClick={onClearMailError} className="text-red-400 hover:text-red-300">✕</button>
+              <button onClick={onClearMailError} className="text-status-danger hover:text-status-danger">✕</button>
             </div>
           )}
           <div className="flex flex-wrap items-center gap-1.5">
             {!isCancelled && !isSent && !isPaid && pdfPath && (
               <button onClick={onSendMail}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-accent text-white hover:bg-accent/90 transition-colors">
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-accent text-on-fill hover:bg-accent/90 transition-colors">
                 <Mail size={13} /> {isRem ? "Send Reminder" : "Send Invoice"}
               </button>
             )}
             {canCreateReminder && (
               <button onClick={() => setReminderDialogOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-status-warning text-white hover:bg-status-warning/90 transition-colors">
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-status-warning text-on-fill hover:bg-status-warning/90 transition-colors">
                 <AlertTriangle size={13} /> Create Reminder
               </button>
             )}
@@ -1250,15 +1250,15 @@ function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid, onTog
             <div className="flex-1" />
             {!deleteConfirm ? (
               <button onClick={() => setDeleteConfirm(true)}
-                className="p-1.5 rounded-md text-secondary hover:text-red-400 border border-border-subtle transition-colors"
+                className="p-1.5 rounded-md text-secondary hover:text-status-danger border border-border-subtle transition-colors"
                 title="Delete invoice">
                 <Trash2 size={14} />
               </button>
             ) : (
               <div className="flex items-center gap-1.5 ml-1">
-                <span className="text-xs text-red-400">Delete permanently?</span>
+                <span className="text-xs text-status-danger">Delete permanently?</span>
                 <button onClick={() => { setDeleteConfirm(false); onDelete(); }}
-                  className="px-2 py-1 rounded-md text-xs font-medium bg-red-500 text-white hover:bg-red-600 transition-colors">
+                  className="px-2 py-1 rounded-md text-xs font-medium bg-status-danger text-on-fill hover:bg-status-danger/90 transition-colors">
                   Delete
                 </button>
                 <button onClick={() => setDeleteConfirm(false)}
@@ -1269,7 +1269,7 @@ function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid, onTog
             )}
           </div>
           {deleteError && (
-            <div className="mt-1.5 px-3 py-2 rounded-md text-xs text-red-400 bg-red-500/10 border border-red-500/30">{deleteError}</div>
+            <div className="mt-1.5 px-3 py-2 rounded-md text-xs text-status-danger bg-status-danger/10 border border-status-danger/30">{deleteError}</div>
           )}
         </div>
 
@@ -1313,10 +1313,10 @@ function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid, onTog
               <FileText size={36} strokeWidth={1.2} />
               <div className="text-sm text-center">No timesheet PDF generated yet.</div>
               <button onClick={renderTimesheet}
-                className="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium bg-accent text-white hover:bg-accent/90 transition-colors">
+                className="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium bg-accent text-on-fill hover:bg-accent/90 transition-colors">
                 <FileText size={14} /> Generate Timesheet PDF
               </button>
-              {tsError && <p className="text-xs text-red-400">{tsError}</p>}
+              {tsError && <p className="text-xs text-status-danger">{tsError}</p>}
             </div>
           )}
         </div>
@@ -1420,7 +1420,7 @@ function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid, onTog
                             <span className="text-tertiary shrink-0">{str(billedBy, "number")}</span>
                           )}
                           {!dep && finalInv && (
-                            <span className="text-[10px] font-medium text-blue-300 shrink-0">via final invoice</span>
+                            <span className="text-[10px] font-medium text-status-info shrink-0">via final invoice</span>
                           )}
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
@@ -1433,10 +1433,10 @@ function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid, onTog
                     );
                   })}
                   {finalInv && (
-                    <div className="flex items-center justify-between px-3 py-2 rounded-md text-xs bg-blue-500/5 border border-blue-500/20">
+                    <div className="flex items-center justify-between px-3 py-2 rounded-md text-xs bg-status-info/5 border border-status-info/20">
                       <div className="flex items-center gap-2">
-                        <FileText size={12} className="text-blue-400" />
-                        <span className="font-medium text-blue-300">Final invoice</span>
+                        <FileText size={12} className="text-status-info" />
+                        <span className="font-medium text-status-info">Final invoice</span>
                         <span className="text-tertiary">{str(finalInv, "number")}</span>
                       </div>
                       <StatusBadge status={invoiceStatus(finalInv)} />
@@ -1481,8 +1481,8 @@ function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid, onTog
                   {deposits.map((dep) => (
                     <div key={dep.id} className="flex items-center justify-between px-3 py-2 rounded-md text-xs bg-bg-card border border-border-subtle">
                       <div className="flex items-center gap-2 min-w-0">
-                        <Milestone size={12} className="text-blue-400 shrink-0" />
-                        <span className="font-medium text-blue-400 truncate">
+                        <Milestone size={12} className="text-status-info shrink-0" />
+                        <span className="font-medium text-status-info truncate">
                           {depositMilestoneLabel(dep) || "Deposit"}
                         </span>
                         <span className="text-tertiary shrink-0">{str(dep, "number")}</span>
@@ -1511,7 +1511,7 @@ function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid, onTog
               <Section title="Final Invoice">
                 <div className="flex items-center justify-between px-3 py-2 rounded-md text-xs bg-bg-card border border-border-subtle">
                   <div className="flex items-center gap-2">
-                    <FileText size={12} className="text-blue-400" />
+                    <FileText size={12} className="text-status-info" />
                     <span className="font-medium">{str(final_, "number")}</span>
                     <span className="text-tertiary">{formatDate(str(final_, "date"))}</span>
                   </div>
@@ -1707,7 +1707,7 @@ function CreateReminderDialog({ invoiceId, invoiceNumber, onClose, onCreated }: 
               onChange={(e) => setFee(e.target.value)}
               className="mt-1 w-full px-3 py-1.5 rounded-md bg-bg-card border border-border-subtle text-sm text-primary tabular-nums" />
           </label>
-          {error && <p className="text-xs text-red-400">{error}</p>}
+          {error && <p className="text-xs text-status-danger">{error}</p>}
         </div>
         <div className="px-5 py-3 border-t border-border-subtle flex justify-end gap-2 shrink-0">
           <button onClick={onClose}
@@ -1715,7 +1715,7 @@ function CreateReminderDialog({ invoiceId, invoiceNumber, onClose, onCreated }: 
             Cancel
           </button>
           <button onClick={submit} disabled={submitting}
-            className="px-4 py-1.5 rounded-md text-sm font-medium bg-status-warning text-white hover:bg-status-warning/90 transition-colors disabled:opacity-50">
+            className="px-4 py-1.5 rounded-md text-sm font-medium bg-status-warning text-on-fill hover:bg-status-warning/90 transition-colors disabled:opacity-50">
             {submitting ? "Creating…" : "Create Reminder"}
           </button>
         </div>
