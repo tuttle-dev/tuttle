@@ -1,8 +1,9 @@
-import { Fragment, useEffect, useId, useState, useCallback, useMemo } from "react";
+import { Fragment, useEffect, useId, useRef, useState, useCallback, useMemo } from "react";
 import {
   FileText, Send, CheckCircle, XCircle, Mail, Trash2,
   Building2, FolderKanban, Calendar, Banknote, Eye,
-  Plus, Clock, AlertTriangle, ChevronLeft, ChevronRight, Search, Share, Receipt, Milestone, FileSignature,
+  Plus, Clock, AlertTriangle, ChevronDown, ChevronLeft, ChevronRight, Search, Share, Receipt, Milestone, FileSignature,
+  RotateCcw,
 } from "lucide-react";
 import { rpc, readFileAsDataURL } from "../../api/rpc";
 import { str, num, bool, entity as subEntity, list as entityList, formatDate, invoiceStatus, deepStr, isReminder, isDeposit, isFinalInvoice, reminderLevel, depositChainHeadId, depositMilestoneLabel, milestoneScheduleStatus, type MilestoneScheduleStatus } from "../../api/entity";
@@ -1168,7 +1169,8 @@ function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid, onTog
                 <span className="text-xs font-medium text-blue-300">Settlement invoice</span>
               )}
               <span className="text-sm text-secondary">{deepStr(invoice, "contract.client.name") || "No client"}</span>
-              <StatusBadge status={status} />
+              <StatusMenu key={invoice.id} status={status} isSent={isSent} isPaid={isPaid} isCancelled={isCancelled}
+                onToggleSent={onToggleSent} onTogglePaid={onTogglePaid} onToggleCancelled={onToggleCancelled} />
             </div>
           </div>
         </div>
@@ -1179,20 +1181,20 @@ function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid, onTog
           {isFinalInvoice(invoice) ? (
             <>
               <AmountCard label="Contract total" value={str(invoice, "total_formatted")} />
-              <AmountCard label="Deposits deducted" value={str(invoice, "deposits_deducted_formatted") ? `−${str(invoice, "deposits_deducted_formatted")}` : "—"} color="#3b82f6" />
+              <AmountCard label="Deposits deducted" value={str(invoice, "deposits_deducted_formatted") ? `−${str(invoice, "deposits_deducted_formatted")}` : "—"} />
               <AmountCard label="Balance due" value={str(invoice, "remaining_balance_formatted")} prominent />
             </>
           ) : (
             <>
               <AmountCard label="Subtotal" value={str(invoice, "sum_formatted")} />
-              <AmountCard label="VAT" value={invoiceTaxCategory === "O" ? "—" : str(invoice, "vat_total_formatted")} color="#f97316" />
+              <AmountCard label="VAT" value={invoiceTaxCategory === "O" ? "—" : str(invoice, "vat_total_formatted")} />
               <AmountCard label="Total" value={str(invoice, "total_formatted")} prominent />
             </>
           )}
         </div>
 
-        {/* Actions group */}
-        <Section title="Actions">
+        {/* Document actions; status changes live in the status menu above. */}
+        <div>
           {mailError && (
             <div className="mb-2 flex items-center gap-2 px-3 py-2 rounded-md text-xs text-red-400 bg-red-500/10 border border-red-500/30">
               <span className="flex-1">{mailError}</span>
@@ -1213,34 +1215,12 @@ function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid, onTog
               </button>
             )}
             {!isCancelled && pdfPath && (
-  <a
-    href={pdfDataUrl ?? ""}
-    download={(pdfPath.split(/[\\/]/).pop() ?? "invoice.pdf").replace(/[<>:"/\\|?*]+/g, "_")}
-    className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-bg-sidebar text-secondary border border-border-subtle hover:bg-bg-card hover:text-primary transition-colors"
-  >
-    <Share size={13} /> Export Invoice
-  </a>
-)}
-{!isCancelled && tsPdfDataUrl && (
-  <a
-    href={tsPdfDataUrl}
-    download={(tsPath.split(/[\\/]/).pop() ?? "timesheet.pdf").replace(/[<>:"/\\|?*]+/g, "_")}
-    className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-bg-sidebar text-secondary border border-border-subtle hover:bg-bg-card hover:text-primary transition-colors"
-  >
-    <Share size={13} /> Export Timesheet
-  </a>
-)}
+              <ExportLink href={pdfDataUrl ?? ""} path={pdfPath} fallbackName="invoice.pdf" label="Export Invoice" />
+            )}
+            {!isCancelled && tsPdfDataUrl && (
+              <ExportLink href={tsPdfDataUrl} path={tsPath} fallbackName="timesheet.pdf" label="Export Timesheet" />
+            )}
             <div className="flex-1" />
-            {!isCancelled && !isPaid && (
-              <ActionBtn label={isSent ? "Sent" : "Mark Sent"} icon={<Send size={13} />}
-                color="#3b82f6" active={isSent} onClick={onToggleSent} />
-            )}
-            {!isCancelled && isSent && (
-              <ActionBtn label={isPaid ? "Paid" : "Mark Paid"} icon={<CheckCircle size={13} />}
-                color="#22c55e" active={isPaid} onClick={onTogglePaid} />
-            )}
-            <ActionBtn label={isCancelled ? "Restore" : "Cancel"} icon={<XCircle size={13} />}
-              color="#f97316" active={isCancelled} onClick={onToggleCancelled} />
             {!deleteConfirm ? (
               <button onClick={() => setDeleteConfirm(true)}
                 className="p-1.5 rounded-md text-secondary hover:text-red-400 border border-border-subtle transition-colors"
@@ -1264,7 +1244,7 @@ function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid, onTog
           {deleteError && (
             <div className="mt-1.5 px-3 py-2 rounded-md text-xs text-red-400 bg-red-500/10 border border-red-500/30">{deleteError}</div>
           )}
-        </Section>
+        </div>
 
         <div className="flex gap-1 border-b border-border-subtle">
           <TabBtn label="Invoice" icon={<Eye size={14} />} active={detailTab === "invoice"}
@@ -1283,8 +1263,7 @@ function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid, onTog
           {pdfLoading ? (
             <div className="flex items-center justify-center h-full text-secondary">Loading PDF…</div>
          ) : pdfDataUrl ? (
-              <embed src={pdfDataUrl} type="application/pdf"
-  className="w-full h-full rounded-lg border border-border-subtle" />
+              <PdfPreview src={pdfDataUrl} />
           ) : (
             <div className="flex items-center justify-center h-full text-tertiary">
               PDF not available
@@ -1301,8 +1280,7 @@ function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid, onTog
           ) : tsPdfLoading ? (
             <div className="flex items-center justify-center h-full text-secondary">Loading PDF…</div>
           ) : tsPdfDataUrl ? (
-              <embed src={tsPdfDataUrl} type="application/pdf"
-  className="w-full h-full rounded-lg border border-border-subtle" />
+              <PdfPreview src={tsPdfDataUrl} />
           ) : (
             <div className="flex flex-col items-center justify-center h-full gap-3 text-tertiary">
               <FileText size={36} strokeWidth={1.2} />
@@ -1544,13 +1522,12 @@ function TabBtn({ label, icon, active, disabled, onClick }: {
   );
 }
 
-function AmountCard({ label, value, color, prominent }: { label: string; value: string; color?: string; prominent?: boolean }) {
+function AmountCard({ label, value, prominent }: { label: string; value: string; prominent?: boolean }) {
   return (
-    <div className="flex-1 min-w-fit flex items-baseline justify-between gap-2 px-3 py-1.5 rounded-md bg-bg-card border border-border-subtle"
-      style={prominent ? { borderColor: `${color || "#007AFF"}44` } : undefined}>
+    <div className={`flex-1 min-w-fit flex items-baseline justify-between gap-2 px-3 py-1.5 rounded-md bg-bg-card border
+      ${prominent ? "border-accent/25" : "border-border-subtle"}`}>
       <span className="text-[10px] font-semibold uppercase tracking-wider text-tertiary">{label}</span>
-      <span className={`tabular-nums ${prominent ? "text-sm font-bold" : "text-xs font-medium"}`}
-        style={prominent ? { color: color || "#007AFF" } : undefined}>{value || "—"}</span>
+      <span className={`tabular-nums ${prominent ? "text-sm font-bold text-accent" : "text-xs font-medium"}`}>{value || "—"}</span>
     </div>
   );
 }
@@ -1571,15 +1548,82 @@ function DRow({ icon, label, value }: { icon: React.ReactNode; label: string; va
   );
 }
 
-function ActionBtn({ label, icon, color, active, onClick }: {
-  label: string; icon: React.ReactNode; color: string; active: boolean; onClick: () => void;
-}) {
+/** Chromium's PDF viewer without its thumbnail pane or dark toolbar (the
+ *  Export buttons cover download), fitted to width. The embed overscans by
+ *  4px so the viewer's dark page margin is clipped away. */
+function PdfPreview({ src }: { src: string }) {
   return (
-    <button onClick={onClick}
-      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors"
-      style={{ background: active ? color : `${color}18`, color: active ? "#fff" : color }}>
-      {icon}{label}
-    </button>
+    <div className="h-full rounded-lg border border-border-subtle overflow-hidden">
+      <embed src={`${src}#toolbar=0&navpanes=0&view=FitH`} type="application/pdf"
+        className="block -m-1 w-[calc(100%+8px)] h-[calc(100%+8px)]" />
+    </div>
+  );
+}
+
+function ExportLink({ href, path, fallbackName, label }: { href: string; path: string; fallbackName: string; label: string }) {
+  return (
+    <a href={href} download={(path.split(/[\\/]/).pop() ?? fallbackName).replace(/[<>:"/\\|?*]+/g, "_")}
+      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-bg-sidebar text-secondary border border-border-subtle hover:bg-bg-card hover:text-primary transition-colors">
+      <Share size={13} /> {label}
+    </a>
+  );
+}
+
+type StatusTransition = { label: string; icon: React.ReactNode; onClick: () => void };
+
+/** The invoice status as a badge that opens the transitions valid from it. */
+function StatusMenu({ status, isSent, isPaid, isCancelled, onToggleSent, onTogglePaid, onToggleCancelled }: {
+  status: string; isSent: boolean; isPaid: boolean; isCancelled: boolean;
+  onToggleSent: () => void; onTogglePaid: () => void; onToggleCancelled: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onMouseDown(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    function onKeyDown(e: KeyboardEvent) { if (e.key === "Escape") setOpen(false); }
+    document.addEventListener("mousedown", onMouseDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onMouseDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
+
+  const transitions: StatusTransition[] = [];
+  if (isCancelled) {
+    transitions.push({ label: "Restore", icon: <RotateCcw size={14} className="text-tertiary" />, onClick: onToggleCancelled });
+  } else {
+    if (!isSent && !isPaid) transitions.push({ label: "Mark as sent", icon: <Send size={14} className="text-status-info" />, onClick: onToggleSent });
+    if (isSent && !isPaid) {
+      transitions.push({ label: "Mark as paid", icon: <CheckCircle size={14} className="text-status-success" />, onClick: onTogglePaid });
+      transitions.push({ label: "Back to draft", icon: <RotateCcw size={14} className="text-tertiary" />, onClick: onToggleSent });
+    }
+    if (isPaid) transitions.push({ label: "Mark as unpaid", icon: <RotateCcw size={14} className="text-tertiary" />, onClick: onTogglePaid });
+    transitions.push({ label: "Cancel invoice", icon: <XCircle size={14} className="text-status-warning" />, onClick: onToggleCancelled });
+  }
+
+  return (
+    <div ref={ref} className="relative" data-status-menu>
+      <button onClick={() => setOpen((o) => !o)} title="Change status" aria-haspopup="menu" aria-expanded={open}
+        className={`flex items-center gap-0.5 rounded-full pr-1 transition-colors ${open ? "bg-bg-hover" : "hover:bg-bg-hover"}`}>
+        <StatusBadge status={status} />
+        <ChevronDown size={12} className="text-tertiary" />
+      </button>
+      {open && (
+        <div role="menu" className="absolute top-full left-0 mt-1 z-50 min-w-[160px] py-1 rounded-lg bg-bg-sidebar border border-border-subtle shadow-lg">
+          {transitions.map((t) => (
+            <button key={t.label} role="menuitem" onClick={() => { setOpen(false); t.onClick(); }}
+              className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-left text-secondary hover:bg-bg-hover hover:text-primary transition-colors">
+              {t.icon}{t.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
