@@ -160,10 +160,10 @@ export function InvoicingView() {
       />
 
       {renderWarning && (
-        <div className="mx-4 mt-2 flex items-center gap-2 px-3 py-2 rounded-md text-xs text-amber-300 bg-amber-500/10 border border-amber-500/30">
+        <div className="mx-4 mt-2 flex items-center gap-2 px-3 py-2 rounded-md text-xs text-status-warning bg-status-warning/10 border border-status-warning/30">
           <AlertTriangle size={14} className="shrink-0" />
           <span className="flex-1">{renderWarning}</span>
-          <button onClick={() => setRenderWarning(null)} className="text-amber-300 hover:text-amber-200">✕</button>
+          <button onClick={() => setRenderWarning(null)} className="text-status-warning hover:text-status-warning/80">✕</button>
         </div>
       )}
 
@@ -858,7 +858,7 @@ function MilestoneScheduleBadge({ schedule }: { schedule: MilestoneScheduleStatu
   }
   return (
     <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded shrink-0 ${
-      invoicedCount === total ? "bg-blue-500/10 text-blue-400" : "bg-amber-500/10 text-amber-400"
+      invoicedCount === total ? "bg-blue-500/10 text-blue-400" : "bg-status-warning/10 text-status-warning"
     }`}>
       {invoicedCount}/{total} milestones invoiced · {paidCount}/{issuedCount} paid
     </span>
@@ -894,7 +894,7 @@ function InvoiceRow({ invoice, isSelected, isHighlighted, reminderCount, deposit
             </span>
           )}
           {(reminderCount ?? 0) > 0 && (
-            <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/15 text-amber-600">
+            <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-status-warning/15 text-status-warning">
               <AlertTriangle size={10} />{reminderCount}
             </span>
           )}
@@ -921,11 +921,11 @@ function ReminderRow({ invoice, isSelected, onSelect }: { invoice: Entity; isSel
   const level = reminderLevel(invoice);
   return (
     <button onClick={onSelect}
-      className={`w-full text-left pl-10 pr-4 py-2.5 border-b transition-colors border-l-2 border-l-amber-400
+      className={`w-full text-left pl-10 pr-4 py-2.5 border-b transition-colors border-l-2 border-l-status-warning
         ${isSelected ? "bg-bg-selected border-b-border-subtle" : "border-b-border-subtle hover:bg-bg-hover bg-bg-content/50"}`}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 min-w-0">
-          <span className="text-xs font-semibold text-amber-600">Reminder {level}</span>
+          <span className="text-xs font-semibold text-status-warning">Reminder {level}</span>
           <span className="text-xs text-tertiary">{formatDate(str(invoice, "date"))}</span>
         </div>
         <div className="flex items-center gap-2 shrink-0 ml-2">
@@ -1015,7 +1015,7 @@ function InvoiceCard({ invoice, reminderCount, depositCount, schedule }: { invoi
             </span>
           )}
           {(reminderCount ?? 0) > 0 && (
-            <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/15 text-amber-600">
+            <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-status-warning/15 text-status-warning">
               <AlertTriangle size={9} />{reminderCount}
             </span>
           )}
@@ -1140,7 +1140,7 @@ function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid, onTog
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-bg-card flex items-center justify-center">
             {isRem
-              ? <AlertTriangle size={18} className="text-amber-500" />
+              ? <AlertTriangle size={18} className="text-status-warning" />
               : isFinalInvoice(invoice)
               ? <FileText size={18} className="text-blue-400" />
               : isDeposit(invoice)
@@ -1205,7 +1205,7 @@ function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid, onTog
             )}
             {canCreateReminder && (
               <button onClick={() => setReminderDialogOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-amber-500 text-white hover:bg-amber-500/90 transition-colors">
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-status-warning text-white hover:bg-status-warning/90 transition-colors">
                 <AlertTriangle size={13} /> Create Reminder
               </button>
             )}
@@ -1450,7 +1450,7 @@ function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid, onTog
                       ${isThis ? "bg-accent/10 border border-accent/30" : "bg-bg-card border border-border-subtle"}`}>
                       <div className="flex items-center gap-2">
                         {rem
-                          ? <AlertTriangle size={12} className="text-amber-500" />
+                          ? <AlertTriangle size={12} className="text-status-warning" />
                           : <FileText size={12} className="text-tertiary" />}
                         <span className="font-medium">{rem ? `Reminder ${num(item, "reminder_level")}` : str(item, "number")}</span>
                         <span className="text-tertiary">{formatDate(str(item, "date"))}</span>
@@ -1645,7 +1645,7 @@ function CreateReminderDialog({ invoiceId, invoiceNumber, onClose, onCreated }: 
             Cancel
           </button>
           <button onClick={submit} disabled={submitting}
-            className="px-4 py-1.5 rounded-md text-sm font-medium bg-amber-500 text-white hover:bg-amber-500/90 transition-colors disabled:opacity-50">
+            className="px-4 py-1.5 rounded-md text-sm font-medium bg-status-warning text-white hover:bg-status-warning/90 transition-colors disabled:opacity-50">
             {submitting ? "Creating…" : "Create Reminder"}
           </button>
         </div>

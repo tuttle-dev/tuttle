@@ -1021,7 +1021,7 @@ function DayDetail({
                     )}
                     {ev.tag && (
                       <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0"
-                        style={{ color: tagColor(ev.tag, allTags), backgroundColor: tagColor(ev.tag, allTags) + "1F" }}>
+                        style={{ color: `color-mix(in srgb, ${tagColor(ev.tag, allTags)} 55%, var(--color-primary))`, backgroundColor: tagColor(ev.tag, allTags) + "1F" }}>
                         {ev.tag}
                       </span>
                     )}

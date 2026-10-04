@@ -825,7 +825,7 @@ function ParsedContactCard({ contact, onAccept, onDiscard, onUpdate }: {
       </div>
 
       {!valid && (
-        <p className="text-xs text-amber-400">
+        <p className="text-xs text-status-warning">
           Required: {missing.join(", ")}
         </p>
       )}
@@ -861,12 +861,12 @@ function AiField({ label, value, onChange, required, missing, addressRequired }:
   return (
     <div>
       <label className="block text-xs text-fuchsia-300/70 mb-0.5">
-        {label}{required && <span className="text-amber-400 ml-0.5">*</span>}
+        {label}{required && <span className="text-status-warning ml-0.5">*</span>}
       </label>
       <input type="text" value={value} onChange={(e) => onChange(e.target.value)}
         className={`w-full px-2.5 py-1.5 rounded-md text-sm bg-bg-card text-primary outline-none
           focus:border-fuchsia-400 transition-colors placeholder:text-muted border ${
-          showWarning ? "border-amber-400/60" : "border-fuchsia-400/30"
+          showWarning ? "border-status-warning/60" : "border-fuchsia-400/30"
         }`} />
     </div>
   );
