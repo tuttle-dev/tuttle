@@ -4,9 +4,10 @@ import {
   ListFilter, CalendarDays,
 } from "lucide-react";
 import { rpc } from "../../api/rpc";
-import { PageLayout, Toolbar, ToolbarFilterGroup } from "../shared/ToolbarButtons";
+import { PageLayout, ToolbarFilterGroup } from "../shared/ToolbarButtons";
 import { EmptyStateIntro } from "../shared/EmptyStateIntro";
 import { tint, onTint } from "../shared/status-colors";
+import { LoadError, LoadingState } from "../shared/LoadStates";
 import type { Entity } from "../../api/types";
 import { str, bool } from "../../api/entity";
 
@@ -68,6 +69,7 @@ type EventGroup = { key: string; label: string; events: Entity[] };
 export function TimelineView() {
   const [events, setEvents] = useState<Entity[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [activeFilter, setActiveFilter] = useState<Category>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const todayRef = useRef<HTMLDivElement>(null);
@@ -76,7 +78,9 @@ export function TimelineView() {
 
   async function load() {
     setLoading(true);
+    setLoadFailed(false);
     const res = await rpc<Entity[]>("timeline.get_events", {});
+    setLoadFailed(!res.ok);
     if (res.ok && res.data) setEvents(res.data);
     setLoading(false);
   }
@@ -133,15 +137,12 @@ export function TimelineView() {
     todayRef.current?.scrollIntoView({ block: "start", behavior: "instant" });
   }, [loading, filtered]);
 
-  if (loading) return <div className="flex items-center justify-center h-full text-secondary">Loading timeline…</div>;
-
+  if (loadFailed) return <PageLayout title="Timeline" fallback={<LoadError what="the timeline" onRetry={load} />} />;
+  if (loading) return <PageLayout title="Timeline" fallback={<LoadingState />} />;
   if (!events.length) {
-    return (
-      <div className="flex flex-col h-full">
-        <Toolbar title="Timeline" />
-        <EmptyStateIntro icon={CalendarDays} description="Key events — new contracts, sent invoices, and project milestones — appear here in chronological order." />
-      </div>
-    );
+    return <PageLayout title="Timeline" fallback={
+      <EmptyStateIntro icon={CalendarDays} description="Key events — new contracts, sent invoices, and project milestones — appear here in chronological order." />
+    } />;
   }
 
   return (

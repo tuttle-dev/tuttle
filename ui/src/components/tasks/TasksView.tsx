@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ArrowRight, CheckSquare, Circle, CheckCircle2, X } from "lucide-react";
 import { rpc } from "../../api/rpc";
 import { EmptyStateIntro } from "../shared/EmptyStateIntro";
+import { LoadError, LoadingState } from "../shared/LoadStates";
 import { PageLayout } from "../shared/ToolbarButtons";
 import { useNavigation, type NavigationFilter } from "../shared/NavigationContext";
 import type { Entity } from "../../api/types";
@@ -28,12 +29,15 @@ export function TasksView() {
   const { navigate } = useNavigation();
   const [tasks, setTasks] = useState<Entity[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
 
   useEffect(() => { load(true); }, []);
 
   async function load(showSpinner = false) {
     if (showSpinner) setLoading(true);
+    setLoadFailed(false);
     const res = await rpc<Entity[]>("tasks.get_all");
+    setLoadFailed(!res.ok);
     if (res.ok && Array.isArray(res.data)) setTasks(res.data);
     if (showSpinner) setLoading(false);
   }
@@ -61,12 +65,10 @@ export function TasksView() {
     await load();
   }
 
-  if (loading) {
-    return <div className="flex items-center justify-center h-full text-secondary">Loading tasks…</div>;
-  }
-
+  if (loadFailed) return <PageLayout title="Tasks" fallback={<LoadError what="tasks" onRetry={() => load(true)} />} />;
+  if (loading) return <PageLayout title="Tasks" fallback={<LoadingState />} />;
   if (tasks.length === 0) {
-    return <EmptyStateIntro icon={CheckSquare} description="You're all caught up — no pending tasks." />;
+    return <PageLayout title="Tasks" fallback={<EmptyStateIntro icon={CheckSquare} description="You're all caught up — no pending tasks." />} />;
   }
 
   const pending = tasks.filter((t) => t.status === "pending");

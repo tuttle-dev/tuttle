@@ -11,6 +11,7 @@ import { Toolbar, ToolbarButtonPrimary, ToolbarButtonSecondary, ToolbarFilterGro
 import { StatusBadge } from "../shared/StatusBadge";
 import { useNavigation } from "../shared/NavigationContext";
 import { EmptyStateIntro } from "../shared/EmptyStateIntro";
+import { LoadError, LoadingState } from "../shared/LoadStates";
 import { InfoHint } from "../shared/InfoHint";
 import { DetailHeader, DetailAction, DetailDeleteAction, DetailSubmit, DETAIL_PANE } from "../shared/DetailHeader";
 import { DetailFields, DetailField } from "../shared/DetailFields";
@@ -36,6 +37,7 @@ export function ContractsView() {
   const [clients, setClients] = useState<Record<string, Entity>>({});
   const [selected, setSelected] = useState<Entity | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("All");
   const [mode, setMode] = useState<Mode>("view");
@@ -55,6 +57,7 @@ export function ContractsView() {
 
   async function load(selectId?: number) {
     setLoading(true);
+    setLoadFailed(false);
     const [res, clRes, curRes, supRes, accRes] = await Promise.all([
       rpc<Entity[]>("contracts.get_all"),
       rpc<Record<string, Entity>>("contracts.get_all_clients"),
@@ -62,6 +65,7 @@ export function ContractsView() {
       rpc<{ supported: string[] }>("settings.get_currency"),
       rpc<Entity>("users.get_active"),
     ]);
+    setLoadFailed([res, clRes, curRes, supRes, accRes].some((r) => !r.ok));
     if (res.ok && res.data) {
       setContracts(res.data);
       const currentId = selectId ?? selectedIdRef.current;
@@ -219,9 +223,6 @@ export function ContractsView() {
 
   useAutoSelect(contracts, filtered, selected, setSelected, { enabled: mode === "view" });
 
-  if (loading && contracts.length === 0)
-    return <div className="flex items-center justify-center h-full text-secondary">Loading contracts…</div>;
-
   return (
     <div className="flex flex-col h-full">
       <Toolbar title="Contracts"
@@ -233,7 +234,11 @@ export function ContractsView() {
         search={{ value: search, onChange: setSearch }}
       />
 
-      {contracts.length === 0 && mode === "view" ? (
+      {loadFailed && mode === "view" ? (
+        <LoadError what="contracts" onRetry={load} />
+      ) : loading && contracts.length === 0 ? (
+        <LoadingState />
+      ) : contracts.length === 0 && mode === "view" ? (
         <EmptyStateIntro icon={FileText} description="A contract defines the business terms for working with a client — rate, billing cycle, and duration of the agreement." />
       ) : (
       <ListDetailLayout

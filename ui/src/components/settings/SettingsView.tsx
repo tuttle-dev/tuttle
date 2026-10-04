@@ -20,6 +20,7 @@ import { str, bool, list as entityList } from "../../api/entity";
 import { useStatusBar, type StatusMessage, type MessageType } from "../shared/status-bar-context";
 import { Toolbar } from "../shared/ToolbarButtons";
 import { useNavigation } from "../shared/NavigationContext";
+import { LoadError, LoadingState } from "../shared/LoadStates";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -147,6 +148,7 @@ export function SettingsView() {
   const [config, setConfig] = useState<LLMConfig>(DEFAULT_CONFIG);
   const [models, setModels] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [fetchingModels, setFetchingModels] = useState(false);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<{ type: "success" | "error"; msg: string } | null>(null);
@@ -181,6 +183,12 @@ export function SettingsView() {
 
   useEffect(() => { loadConfig(); loadProfile(); loadSupportedCountries(); loadSavedNotes(); }, []);
 
+  function retryLoad() {
+    setLoadFailed(false);
+    loadConfig();
+    loadProfile();
+  }
+
   useEffect(() => {
     if (tab === "invoicing") loadInvoicingPrefs();
   }, [tab]);
@@ -190,6 +198,7 @@ export function SettingsView() {
   async function loadConfig() {
     setLoading(true);
     const res = await rpc<LLMConfig>("llm.get_config");
+    if (!res.ok) setLoadFailed(true);
     if (res.ok && res.data) {
       setConfig(res.data);
       if (res.data.base_url) await fetchModels(res.data);
@@ -242,6 +251,7 @@ export function SettingsView() {
   async function loadProfile() {
     setProfileLoading(true);
     const res = await rpc<Entity>("users.get_active");
+    if (!res.ok) setLoadFailed(true);
     if (res.ok && res.data) {
       const d = res.data as Entity;
       setIsDemoUser(!!d.is_demo);
@@ -464,8 +474,13 @@ export function SettingsView() {
 
   // -- Render --------------------------------------------------------------
 
-  if (loading || profileLoading) {
-    return <div className="flex items-center justify-center h-full text-secondary">Loading settings…</div>;
+  if (loadFailed || loading || profileLoading) {
+    return (
+      <div className="flex flex-col h-full">
+        <Toolbar title="Settings" />
+        {loadFailed ? <LoadError what="settings" onRetry={retryLoad} /> : <LoadingState />}
+      </div>
+    );
   }
 
   const inputCls = "w-full px-3 py-2 rounded-md text-sm bg-bg-card text-primary border border-border-subtle outline-none focus:border-accent transition-colors placeholder:text-muted";
