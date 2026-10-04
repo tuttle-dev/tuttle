@@ -116,7 +116,7 @@ function SalaryDial({ salary, target, onTargetChange }: {
           onChange={(e) => onTargetChange(Number(e.target.value))}
           className="w-full h-1.5 appearance-none rounded-full cursor-pointer"
           style={{
-            background: `linear-gradient(to right, #30D158 0%, #30D158 ${conPct}%, #FFD60A ${conPct}%, #FFD60A ${optPct}%, #FF453A ${optPct}%, #FF453A 100%)`,
+            background: `linear-gradient(to right, var(--color-status-success) ${conPct}%, var(--color-status-warning) ${conPct}% ${optPct}%, var(--color-status-danger) ${optPct}%)`,
             accentColor: z.color,
           }}
         />

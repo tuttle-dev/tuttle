@@ -7,6 +7,7 @@ import {
 import { rpc } from "../../api/rpc";
 import { str, int, num, bool, entity, dateRange, projectStatus } from "../../api/entity";
 import { StatusBadge, TagBadge } from "../shared/StatusBadge";
+import { statusColor } from "../shared/status-colors";
 import { ProgressBar } from "../shared/ProgressBar";
 import { ViewModeToggle } from "../shared/ViewModeToggle";
 import { KanbanBoard, useStageStore, type BoardColumn } from "../shared/KanbanBoard";
@@ -31,19 +32,14 @@ interface BudgetEntry {
 
 type Mode = "view" | "edit" | "create" | "import";
 
-const PROJECT_COLUMNS: BoardColumn[] = [
-  { id: "Lead", label: "Lead", color: "#a855f7" },
-  { id: "Offer", label: "Offer", color: "#f97316" },
-  { id: "Upcoming", label: "Upcoming", color: "#3b82f6" },
-  { id: "Active", label: "Active", color: "#22c55e" },
-  { id: "Completed", label: "Completed", color: "#8e8e93" },
-];
+const PROJECT_COLUMNS: BoardColumn[] = ["Lead", "Offer", "Upcoming", "Active", "Completed"]
+  .map((id) => ({ id, label: id, color: statusColor(id) }));
 
 const STATUS_FILTERS = ["All", "Lead", "Offer", "Upcoming", "Active", "Completed"] as const;
 type StatusFilter = (typeof STATUS_FILTERS)[number];
 const FILTER_COLORS: Record<string, string> = {
-  All: "#007AFF", Lead: "#a855f7", Offer: "#f97316",
-  Upcoming: "#60a5fa", Active: "#34d399", Completed: "#a0a0a0",
+  ...Object.fromEntries(STATUS_FILTERS.map((s) => [s, statusColor(s)])),
+  All: "var(--color-status-info)",
 };
 
 export function ProjectsView() {
@@ -387,7 +383,7 @@ function BudgetBar({ budget: b }: { budget: BudgetEntry }) {
         <div className="flex items-center gap-1.5">
           <span className="text-xs font-medium truncate">Time Budget</span>
           {b.budget_exceeded && (
-            <AlertTriangle size={12} className="text-amber-400 shrink-0" />
+            <AlertTriangle size={12} className="text-status-warning shrink-0" />
           )}
         </div>
         <span className="text-xs text-secondary tabular-nums">{subtitle}</span>
@@ -409,7 +405,7 @@ function BudgetBar({ budget: b }: { budget: BudgetEntry }) {
         )}
       </div>
       {b.budget_exceeded && (
-        <div className="text-[11px] text-amber-400 font-medium">Budget exceeded</div>
+        <div className="text-[11px] text-status-warning font-medium">Budget exceeded</div>
       )}
     </div>
   );

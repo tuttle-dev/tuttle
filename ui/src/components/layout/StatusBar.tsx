@@ -14,8 +14,8 @@ const ICONS: Record<MessageType, typeof Info> = {
 
 const TYPE_STYLES: Record<MessageType, string> = {
   info: "text-secondary",
-  error: "text-red-400",
-  success: "text-green-400",
+  error: "text-status-danger",
+  success: "text-status-success",
 };
 
 const linkCls =

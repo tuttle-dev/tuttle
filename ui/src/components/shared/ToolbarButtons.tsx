@@ -1,5 +1,6 @@
 import { Search } from "lucide-react";
 import type { ReactNode } from "react";
+import { tint, onTint } from "./status-colors";
 
 /* ── Layout constants ─────────────────────────────────────────────────── */
 
@@ -125,7 +126,7 @@ export function ToolbarFilterGroup<T extends string>({ options, value, onChange,
           <button key={opt} onClick={() => onChange(opt)}
             className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-colors"
             style={active
-              ? { background: color ? `${color}22` : "var(--color-bg-hover)", color: color || "var(--color-primary)", border: color ? `1px solid ${color}44` : "1px solid var(--color-border-subtle)" }
+              ? { background: color ? tint(color, 13) : "var(--color-bg-hover)", color: color ? onTint(color) : "var(--color-primary)", border: color ? `1px solid ${tint(color, 27)}` : "1px solid var(--color-border-subtle)" }
               : { background: "transparent", color: "var(--color-tertiary)", border: "1px solid transparent" }
             }>
             {icon}{labels?.[opt] ?? opt}

@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, type ReactNode } from "react";
 import { GripVertical } from "lucide-react";
+import { tint, onTint } from "./status-colors";
 
 export type BoardColumn = { id: string; label: string; color: string };
 
@@ -51,7 +52,7 @@ export function KanbanBoard<T extends { id: number }>({ entities, columns, colum
             <span className="w-2 h-2 rounded-full" style={{ background: col.color }} />
             <span className="text-sm font-medium text-secondary">{col.label}</span>
             <span className="text-xs font-bold px-1.5 py-px rounded-full"
-              style={{ background: `${col.color}33`, color: col.color }}>
+              style={{ background: tint(col.color, 20), color: onTint(col.color) }}>
               {inCol(col.id).length}
             </span>
           </div>
@@ -67,7 +68,7 @@ export function KanbanBoard<T extends { id: number }>({ entities, columns, colum
           return (
             <div key={col.id}
               className={`flex-1 flex flex-col overflow-hidden transition-colors ${i < columns.length - 1 ? "border-r border-border-subtle" : ""}`}
-              style={{ background: isTarget ? `${col.color}0d` : undefined }}
+              style={{ background: isTarget ? tint(col.color, 5) : undefined }}
               onDragOver={(e) => { e.preventDefault(); setDropTarget(col.id); }}
               onDragLeave={() => setDropTarget(null)}
               onDrop={(e) => { e.preventDefault(); setDropTarget(null); if (dragRef.current != null) onMove(dragRef.current, col.id); setDragId(null); dragRef.current = null; }}>

@@ -8,6 +8,7 @@ import { rpc, readFileAsDataURL } from "../../api/rpc";
 import { str, num, bool, entity as subEntity, list as entityList, formatDate, invoiceStatus, deepStr, isReminder, isDeposit, isFinalInvoice, reminderLevel, depositChainHeadId, depositMilestoneLabel, milestoneScheduleStatus, type MilestoneScheduleStatus } from "../../api/entity";
 import { taxCategory, taxTreatment } from "../../api/tax";
 import { StatusBadge } from "../shared/StatusBadge";
+import { statusColor } from "../shared/status-colors";
 import { ViewModeToggle } from "../shared/ViewModeToggle";
 import { KanbanBoard, useStageStore, type BoardColumn } from "../shared/KanbanBoard";
 import { Toolbar, ToolbarButtonPrimary, ToolbarFilterGroup, ListDetailLayout, LIST_ROW_PADDING } from "../shared/ToolbarButtons";
@@ -17,20 +18,15 @@ import type { Entity } from "../../api/types";
 
 type InvoiceChain = { root: Entity; reminders: Entity[]; deposits: Entity[] };
 
-const INVOICE_COLUMNS: BoardColumn[] = [
-  { id: "Draft", label: "Draft", color: "#8e8e93" },
-  { id: "Sent", label: "Sent", color: "#3b82f6" },
-  { id: "Overdue", label: "Overdue", color: "#ef4444" },
-  { id: "Paid", label: "Paid", color: "#22c55e" },
-  { id: "Cancelled", label: "Cancelled", color: "#f97316" },
-];
+const INVOICE_COLUMNS: BoardColumn[] = ["Draft", "Sent", "Overdue", "Paid", "Cancelled"]
+  .map((id) => ({ id, label: id, color: statusColor(id) }));
 
 const STATUS_FILTERS = ["All", "Draft", "Sent", "Paid", "Overdue", "Cancelled"] as const;
 type StatusFilter = (typeof STATUS_FILTERS)[number];
 
 const FILTER_COLORS: Record<string, string> = {
-  All: "#007AFF", Draft: "#a0a0a0", Sent: "#60a5fa",
-  Paid: "#34d399", Overdue: "#f87171", Cancelled: "#fb923c",
+  ...Object.fromEntries(STATUS_FILTERS.map((s) => [s, statusColor(s)])),
+  All: "var(--color-status-info)",
 };
 
 type DocumentType = "invoice" | "deposit" | "final";
