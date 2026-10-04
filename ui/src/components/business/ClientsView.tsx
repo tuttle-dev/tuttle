@@ -283,11 +283,11 @@ function ClientDetail({ client, contacts, onEdit, onDelete, deleteError, onReloa
   return (
     <div className="p-5 space-y-5">
       <div className="flex items-center gap-4">
-        <div className="w-14 h-14 rounded-full bg-bg-card flex items-center justify-center text-xl font-semibold text-secondary">
+        <div className="w-14 h-14 rounded-full bg-bg-card flex items-center justify-center text-xl font-semibold text-secondary shrink-0">
           {name.slice(0, 2).toUpperCase()}
         </div>
         <div className="flex-1 min-w-0">
-          <h1 className="text-lg font-semibold">{name}</h1>
+          <h1 className="text-lg font-semibold break-words">{name}</h1>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <button onClick={onEdit}

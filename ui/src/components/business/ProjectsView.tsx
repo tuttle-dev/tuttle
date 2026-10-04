@@ -262,17 +262,17 @@ export function ProjectsView() {
             ) : selected ? (
               <div className="p-6 max-w-2xl space-y-5">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-bg-card flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-lg bg-bg-card flex items-center justify-center shrink-0">
                     <FolderKanban size={18} className="text-secondary" />
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <h1 className="text-lg font-semibold">{str(selected, "title")}</h1>
                     <TagBadge tag={str(selected, "tag")} className="mt-1" />
                   </div>
                   <StatusBadge status={projectStatus(selected)} className="ml-auto" />
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <button onClick={() => handleToggle(selected.id)}
                     className="flex items-center gap-1 px-2 py-1.5 rounded text-xs text-secondary hover:text-primary border border-border-subtle transition-colors">
                     <CheckCircle2 size={13} /> {bool(selected, "is_completed") ? "Reopen" : "Complete"}

@@ -5,7 +5,8 @@ import { tint, onTint } from "./status-colors";
 
 /* ── Layout constants ─────────────────────────────────────────────────── */
 
-export const LIST_PANEL_WIDTH = "w-[520px]";
+// 520px on large windows; an even split with the detail pane on small ones.
+export const LIST_PANEL_WIDTH = "w-[clamp(320px,50%,520px)]";
 export const LIST_ROW_PADDING = "px-4 py-3.5";
 
 /* ── List / Detail split layout ───────────────────────────────────────── */
@@ -17,7 +18,7 @@ export function ListDetailLayout({ list, detail, footer }: {
 }) {
   return (
     <div className="flex flex-1 overflow-hidden">
-      <div className={`${LIST_PANEL_WIDTH} shrink-0 flex flex-col overflow-hidden border-r border-border-subtle`}>
+      <div data-list-pane className={`${LIST_PANEL_WIDTH} shrink-0 flex flex-col overflow-hidden border-r border-border-subtle`}>
         <div className="flex-1 overflow-y-auto">{list}</div>
         {footer && (
           <div className={`${LIST_ROW_PADDING} text-xs text-tertiary border-t border-border-subtle`}>{footer}</div>
