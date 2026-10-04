@@ -13,14 +13,13 @@ let pythonBridge: PythonBridge | null = null;
 
 const MIN_WIDTH = 1024;
 const MIN_HEIGHT = 700;
-// Sidebar (208) + page content column (max-w-5xl, 1024) + its padding and scrollbar.
-const CONTENT_WIDTH = 1300;
+const COMFORTABLE_WIDTH = 1280;
 
-// Open centered on the display under the cursor, just wide enough for the
-// content so wide screens don't show empty margins, never past the screen.
+// Open centered on the display under the cursor: half its width on wide
+// displays, a comfortable width on smaller ones, never past the screen.
 function initialBounds() {
   const { workArea } = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
-  const width = Math.min(workArea.width, CONTENT_WIDTH);
+  const width = Math.min(workArea.width, Math.max(Math.round(workArea.width / 2), COMFORTABLE_WIDTH));
   const height = Math.min(workArea.height, Math.max(Math.round(workArea.height * 0.9), MIN_HEIGHT));
   return {
     width,
