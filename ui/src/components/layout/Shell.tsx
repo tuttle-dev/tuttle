@@ -273,9 +273,11 @@ export function Shell() {
               onDeleteUser={handleDeleteUser}
             />
             <main className="flex-1 flex flex-col overflow-hidden">
-              <div className="drag-region h-13 shrink-0" />
-              <UpdateBanner />
-              <MigrationNoticeBanner notice={bootNotice} onDismiss={() => setBootNotice(null)} />
+              {/* Banners sit in the title-bar row above the view, so they drag the window too. */}
+              <div className="drag-region shrink-0">
+                <UpdateBanner />
+                <MigrationNoticeBanner notice={bootNotice} onDismiss={() => setBootNotice(null)} />
+              </div>
               <div className="flex-1 overflow-y-auto">
                 <ViewErrorBoundary key={selected} viewName={selected}>
                   <DetailView id={selected} />
