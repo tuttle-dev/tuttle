@@ -96,9 +96,10 @@ export function ProjectsView() {
     setLoading(false);
   }
 
-  function startCreate() { setSelected(null); setDuplicateSource(null); setMode("create"); setDeleteError(null); }
+  // The create/import forms live in the list view's detail pane.
+  function startCreate() { setViewMode("list"); setSelected(null); setDuplicateSource(null); setMode("create"); setDeleteError(null); }
   function startDuplicate(p: Entity) { setSelected(null); setDuplicateSource(p); setMode("create"); setDeleteError(null); setSaveError(null); }
-  function startImport() { setSelected(null); setParsedProjects([]); setParseError(null); setMode("import"); }
+  function startImport() { setViewMode("list"); setSelected(null); setParsedProjects([]); setParseError(null); setMode("import"); }
   function selectProject(p: Entity) { setSelected(p); setMode("view"); setDeleteError(null); }
 
   async function handleSave(data: ProjectFormData) {
@@ -203,10 +204,10 @@ export function ProjectsView() {
   return (
     <div className="flex flex-col h-full">
       <Toolbar title="Projects"
-        actions={viewMode === "list" ? <>
+        actions={<>
           <ToolbarButtonPrimary icon={<Plus size={13} />} label="New" onClick={startCreate} />
           <ToolbarButtonSecondary icon={<FileUp size={13} />} label="Import" onClick={startImport} />
-        </> : undefined}
+        </>}
         center={viewMode === "list"
           ? <ToolbarFilterGroup options={STATUS_FILTERS} value={statusFilter} onChange={setStatusFilter} colors={FILTER_COLORS} />
           : undefined}
@@ -338,29 +339,35 @@ function clientName(p: Entity): string {
 function ProjectCard({ project, budgetsMap }: { project: Entity; color: string; budgetsMap: Record<number, BudgetEntry> }) {
   const cName = clientName(project);
   const c = entity(project, "contract");
+  const contractTitle = c ? str(c, "title") : "";
+  const [from, to] = dateRange(project).split(" – ");
   const budget = project.id != null ? budgetsMap[project.id as number] : undefined;
   return (
     <div className="space-y-2">
-      <div>
-        <div className="text-sm font-semibold leading-snug">{str(project, "title")}</div>
-        <TagBadge tag={str(project, "tag")} />
+      <div className="space-y-1">
+        <div className="text-sm font-semibold leading-snug line-clamp-2 break-words">{str(project, "title")}</div>
+        <TagBadge tag={str(project, "tag")} className="max-w-full" />
       </div>
       {cName && (
         <div className="flex items-center gap-1.5 text-secondary">
           <Building2 size={11} className="text-tertiary shrink-0" />
-          <span className="text-xs">{cName}</span>
+          <span className="text-xs truncate" title={cName}>{cName}</span>
         </div>
       )}
-      {c && str(c, "title") && (
+      {contractTitle && (
         <div className="flex items-center gap-1.5 text-secondary">
           <FileSignature size={11} className="text-tertiary shrink-0" />
-          <span className="text-xs">{str(c, "title")}</span>
+          <span className="text-xs truncate" title={contractTitle}>{contractTitle}</span>
         </div>
       )}
-      {dateRange(project) && (
+      {from && (
         <div className="flex items-center gap-1.5 text-tertiary">
           <Calendar size={11} className="shrink-0" />
-          <span className="text-xs">{dateRange(project)}</span>
+          {/* Break only between start and end date. */}
+          <span className="text-xs min-w-0">
+            <span className="whitespace-nowrap">{to ? `${from} –` : from}</span>
+            {to && <>{" "}<span className="whitespace-nowrap">{to}</span></>}
+          </span>
         </div>
       )}
       {budget && (
@@ -379,14 +386,14 @@ function BudgetBar({ budget: b }: { budget: BudgetEntry }) {
 
   return (
     <div className="space-y-1">
-      <div className="flex items-baseline justify-between">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-2">
         <div className="flex items-center gap-1.5">
           <span className="text-xs font-medium truncate">Time Budget</span>
           {b.budget_exceeded && (
             <AlertTriangle size={12} className="text-status-warning shrink-0" />
           )}
         </div>
-        <span className="text-xs text-secondary tabular-nums">{subtitle}</span>
+        <span className="ml-auto text-xs text-secondary tabular-nums text-right">{subtitle}</span>
       </div>
       <div className="h-1.5 w-full rounded-full bg-bg-hover overflow-hidden flex">
         <div
