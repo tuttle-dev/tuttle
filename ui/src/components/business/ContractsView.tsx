@@ -1,18 +1,22 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
-  FileText, FileSignature, Plus, Trash2, Save, X, DollarSign, Calendar,
-  FileUp, Sparkles, Check, CheckCheck, Loader2, CheckCircle2,
-  FolderKanban, ReceiptText, ArrowRight, ChevronDown, ChevronRight, XCircle, Milestone, Copy,
+  FileText, Plus, Trash2, Save, X, Calendar, FileUp, Sparkles, Check, CheckCircle2, FolderKanban, ReceiptText, ArrowRight, ChevronDown, ChevronRight, XCircle, Milestone, Copy,
 } from "lucide-react";
 import { rpc } from "../../api/rpc";
-import { str, num, bool, entity as subEntity, list as entityList, displayName, formatDate } from "../../api/entity";
+import { str, num, bool, entity as subEntity, list as entityList, displayName, formatDate, formatMoney } from "../../api/entity";
 import { TAX_CATEGORY_LABELS, taxCategory, taxTreatment, type TaxCategory } from "../../api/tax";
 import { Toolbar, ToolbarButtonPrimary, ToolbarButtonSecondary, ToolbarFilterGroup, ListDetailLayout, LIST_ROW_PADDING } from "../shared/ToolbarButtons";
 import { StatusBadge } from "../shared/StatusBadge";
 import { useNavigation } from "../shared/NavigationContext";
 import { EmptyStateIntro } from "../shared/EmptyStateIntro";
+import { LoadError, LoadingState } from "../shared/LoadStates";
 import { InfoHint } from "../shared/InfoHint";
+import { DetailHeader, DetailAction, DetailDeleteAction, DetailSubmit, DETAIL_PANE } from "../shared/DetailHeader";
+import { DetailFields, DetailField } from "../shared/DetailFields";
+import { Section } from "../shared/Section";
+import { DocumentImportPanel } from "../shared/DocumentImportPanel";
 import { useFieldRequirements } from "../../hooks/useFieldRequirements";
+import { useAutoSelect } from "../../hooks/useAutoSelect";
 import type { Entity } from "../../api/types";
 
 type Mode = "view" | "edit" | "create" | "import";
@@ -33,6 +37,7 @@ export function ContractsView() {
   const [clients, setClients] = useState<Record<string, Entity>>({});
   const [selected, setSelected] = useState<Entity | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("All");
   const [mode, setMode] = useState<Mode>("view");
@@ -50,8 +55,9 @@ export function ContractsView() {
   useEffect(() => { selectedIdRef.current = selected?.id ?? null; }, [selected]);
   useEffect(() => { load(); }, []);
 
-  async function load() {
+  async function load(selectId?: number) {
     setLoading(true);
+    setLoadFailed(false);
     const [res, clRes, curRes, supRes, accRes] = await Promise.all([
       rpc<Entity[]>("contracts.get_all"),
       rpc<Record<string, Entity>>("contracts.get_all_clients"),
@@ -59,9 +65,10 @@ export function ContractsView() {
       rpc<{ supported: string[] }>("settings.get_currency"),
       rpc<Entity>("users.get_active"),
     ]);
+    setLoadFailed([res, clRes, curRes, supRes, accRes].some((r) => !r.ok));
     if (res.ok && res.data) {
       setContracts(res.data);
-      const currentId = selectedIdRef.current;
+      const currentId = selectId ?? selectedIdRef.current;
       if (currentId != null) {
         const updated = res.data.find((c) => c.id === currentId);
         setSelected(updated || null);
@@ -139,14 +146,14 @@ export function ContractsView() {
     }
 
     setMode("view");
-    await load();
+    await load(contractId);
     return true;
   }
 
   async function handleDelete(id: number) {
     setDeleteError(null);
     const res = await rpc("contracts.delete", { id });
-    if (res.ok) { setSelected(null); setMode("view"); await load(); }
+    if (res.ok) { setMode("view"); await load(); }
     else if (res.error) setDeleteError(res.error);
   }
 
@@ -214,8 +221,7 @@ export function ContractsView() {
     return title.includes(q) || clientName.includes(q);
   });
 
-  if (loading && contracts.length === 0)
-    return <div className="flex items-center justify-center h-full text-secondary">Loading contracts…</div>;
+  useAutoSelect(contracts, filtered, selected, setSelected, { enabled: mode === "view" });
 
   return (
     <div className="flex flex-col h-full">
@@ -228,7 +234,11 @@ export function ContractsView() {
         search={{ value: search, onChange: setSearch }}
       />
 
-      {contracts.length === 0 && mode === "view" ? (
+      {loadFailed && mode === "view" ? (
+        <LoadError what="contracts" onRetry={load} />
+      ) : loading && contracts.length === 0 ? (
+        <LoadingState />
+      ) : contracts.length === 0 && mode === "view" ? (
         <EmptyStateIntro icon={FileText} description="A contract defines the business terms for working with a client — rate, billing cycle, and duration of the agreement." />
       ) : (
       <ListDetailLayout
@@ -242,12 +252,17 @@ export function ContractsView() {
           ))
         }
         detail={mode === "import" ? (
-            <ContractImportPanel
-              parsing={parsing} parseError={parseError} parsedContracts={parsedContracts}
-              clients={clients}
-              onFileSelected={handleFileImport} onAccept={acceptContract} onAcceptAll={acceptAll}
-              onDiscard={discardContract} onUpdate={updateParsedContract} onClose={() => setMode("view")}
-            />
+            <DocumentImportPanel title="Import Contracts from Document" noun="contract" count={parsedContracts.length}
+              parsing={parsing} parseError={parseError}
+              onFileSelected={handleFileImport} onAcceptAll={acceptAll} onClose={() => setMode("view")}
+            >
+              {parsedContracts.map((c, i) => (
+                <ParsedContractCard key={i} contract={c} clients={Object.values(clients)}
+                  onAccept={() => acceptContract(c)}
+                  onDiscard={() => discardContract(c)}
+                  onUpdate={(updated) => updateParsedContract(i, updated)} />
+              ))}
+            </DocumentImportPanel>
           ) : mode === "create" ? (
             <ContractForm key={duplicateSource?.id ?? "new"} contract={duplicateSource} isDuplicate={duplicateSource != null} clients={clients} defaultCurrency={defaultCurrency} currencies={currencies} bankAccounts={bankAccounts} onSave={handleSave} onCancel={() => setMode("view")} error={saveError} />
           ) : mode === "edit" && selected ? (
@@ -283,18 +298,16 @@ function ContractRow({ contract, isSelected, onSelect }: {
   const fixedPrice = num(contract, "fixed_price");
   const rate = num(contract, "rate");
   const currency = str(contract, "currency") || "EUR";
+  const unit = str(contract, "unit") || "hour";
   const status = contractStatus(contract);
   const priceLabel = fixedPrice > 0
-    ? `${fixedPrice} ${currency}`
-    : rate > 0 ? `${rate} ${currency}/${str(contract, "unit_abbrev") || "h"}` : "";
+    ? formatMoney(fixedPrice, currency)
+    : rate > 0 ? `${formatMoney(rate, currency)}/${unit === "hour" ? "h" : unit}` : "";
 
   return (
     <button onClick={onSelect}
       className={`w-full text-left ${LIST_ROW_PADDING} border-b border-border-subtle transition-colors flex items-center gap-3
         ${isSelected ? "bg-bg-selected" : "hover:bg-bg-hover"}`}>
-      <div className="w-9 h-9 rounded-full bg-bg-card flex items-center justify-center text-sm font-semibold text-secondary shrink-0">
-        <FileSignature size={16} />
-      </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">
           <div className="text-sm font-medium truncate">{title}</div>
@@ -336,57 +349,32 @@ function ContractDetail({ contract, onEdit, onDuplicate, onDelete, onToggle, del
     : `From ${formatDate(startDate)}`;
 
   return (
-    <div className="p-6 max-w-2xl space-y-6">
-      {/* Header */}
-      <div className="flex items-start gap-4">
-        <div className="flex-1 min-w-0">
-          <h1 className="text-lg font-semibold">{title}</h1>
-          <div className="text-sm text-secondary mt-0.5">{clientName}</div>
-        </div>
-        <StatusBadge status={status} />
-      </div>
-
-      {/* Actions */}
-      <div className="flex items-center gap-2">
-        <button onClick={onToggle}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs text-secondary hover:text-primary border border-border-subtle transition-colors">
-          <CheckCircle2 size={13} /> {bool(contract, "is_completed") ? "Reopen" : "Mark Complete"}
-        </button>
-        <button onClick={onEdit}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium bg-bg-card text-secondary hover:text-primary border border-border-subtle transition-colors">
-          Edit
-        </button>
-        <button onClick={onDuplicate} title="Create a new contract based on this one"
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium bg-bg-card text-secondary hover:text-primary border border-border-subtle transition-colors">
-          <Copy size={13} /> Duplicate
-        </button>
-        <button onClick={onDelete}
-          className="p-1.5 rounded-md text-secondary hover:text-red-400 border border-border-subtle transition-colors">
-          <Trash2 size={14} />
-        </button>
-      </div>
+    <div className={`${DETAIL_PANE} space-y-6`}>
+      <DetailHeader title={title} subtitle={clientName} badges={<StatusBadge status={status} />}
+        actions={<>
+          <DetailAction icon={<CheckCircle2 size={13} />} label={bool(contract, "is_completed") ? "Reopen" : "Complete"} onClick={onToggle} />
+          <DetailAction icon={<Copy size={13} />} label="Duplicate" title="Create a new contract based on this one" onClick={onDuplicate} />
+          <DetailAction label="Edit" onClick={onEdit} />
+          <DetailDeleteAction key={contract.id} label="Delete contract" onDelete={onDelete} />
+        </>} />
 
       {deleteError && (
-        <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-400">{deleteError}</div>
+        <div className="p-3 rounded-lg bg-status-danger/10 border border-status-danger/30 text-sm text-status-danger">{deleteError}</div>
       )}
 
       {/* Terms */}
       <DetailSection label="Terms">
-        <div className="grid grid-cols-3 gap-x-6 gap-y-3">
-          {isFixed && <TermItem label="Fixed Price" value={`${fixedPrice} ${currency}`} />}
-          {rate > 0 && <TermItem label="Rate" value={`${rate} ${currency}`} sub={`per ${unit}`} />}
-          {!isFixed && <TermItem label="Volume" value={str(contract, "volume") || "—"} sub={str(contract, "volume") ? `${unit}s` : ""} />}
-          {!isFixed && <TermItem label="Billing" value={str(contract, "billing_cycle") || "—"} />}
-          <TermItem
-            label="VAT"
-            value={taxTreatment(
-              taxCategory(str(contract, "VAT_category")),
-              num(contract, "VAT_rate"),
-            )}
-          />
-          <TermItem label="Payment" value={str(contract, "term_of_payment") ? `${str(contract, "term_of_payment")} days` : "—"} />
-          {!isFixed && <TermItem label="Workday" value={`${str(contract, "units_per_workday") || "8"} ${unit}s`} />}
-        </div>
+        <DetailFields>
+          {isFixed && <DetailField label="Fixed Price">{`${fixedPrice} ${currency}`}</DetailField>}
+          {rate > 0 && <DetailField label="Rate" sub={`per ${unit}`}>{`${rate} ${currency}`}</DetailField>}
+          {!isFixed && <DetailField label="Volume" sub={str(contract, "volume") ? `${unit}s` : ""}>{str(contract, "volume") || "—"}</DetailField>}
+          {!isFixed && <DetailField label="Billing">{str(contract, "billing_cycle") || "—"}</DetailField>}
+          <DetailField label="VAT">
+            {taxTreatment(taxCategory(str(contract, "VAT_category")), num(contract, "VAT_rate"))}
+          </DetailField>
+          <DetailField label="Payment">{str(contract, "term_of_payment") ? `${str(contract, "term_of_payment")} days` : "—"}</DetailField>
+          {!isFixed && <DetailField label="Workday">{`${str(contract, "units_per_workday") || "8"} ${unit}s`}</DetailField>}
+        </DetailFields>
       </DetailSection>
 
       {/* Additional charges — only shown when this contract actually uses them */}
@@ -439,7 +427,7 @@ function ContractDetail({ contract, onEdit, onDuplicate, onDelete, onToggle, del
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-secondary tabular-nums">{num(m, "percentage")}%</span>
                     {bool(m, "invoiced")
-                      ? <span className="text-[10px] text-green-500 font-medium px-1.5 py-0.5 rounded bg-green-500/10">Invoiced</span>
+                      ? <span className="text-[10px] text-status-success font-medium px-1.5 py-0.5 rounded bg-status-success/10">Invoiced</span>
                       : <span className="text-[10px] text-tertiary font-medium px-1.5 py-0.5 rounded bg-bg-hover">Open</span>}
                   </div>
                 </div>
@@ -465,20 +453,8 @@ function ContractDetail({ contract, onEdit, onDuplicate, onDelete, onToggle, del
 function DetailSection({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <div className="text-xs font-semibold uppercase tracking-wider text-tertiary mb-3">{label}</div>
+      <div className="text-xs font-semibold uppercase tracking-wider text-secondary mb-3">{label}</div>
       {children}
-    </div>
-  );
-}
-
-function TermItem({ label, value, sub }: { label: string; value: string; sub?: string }) {
-  return (
-    <div>
-      <div className="text-xs text-tertiary">{label}</div>
-      <div className="text-sm font-medium mt-0.5">
-        {value}
-        {sub && <span className="text-tertiary font-normal ml-1">{sub}</span>}
-      </div>
     </div>
   );
 }
@@ -744,25 +720,17 @@ function ContractForm({ contract, isDuplicate = false, clients, defaultCurrency,
   const inputCls = "w-full px-3 py-2 rounded-md text-sm bg-bg-card text-primary border border-border-subtle outline-none focus:border-accent transition-colors";
 
   return (
-    <form onSubmit={handleSubmit} className="p-5 space-y-5">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">{isNew ? "New Contract" : "Edit Contract"}</h2>
-        <div className="flex items-center gap-2">
-          <button type="button" onClick={onCancel}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm text-secondary hover:text-primary hover:bg-bg-hover transition-colors">
-            <X size={14} /> Cancel
-          </button>
-          <button type="submit" disabled={saving}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium text-primary hover:bg-bg-hover transition-colors disabled:opacity-40">
-            <Save size={14} /> {saving ? "Saving..." : "Save"}
-          </button>
-        </div>
-      </div>
+    <form onSubmit={handleSubmit} className={`${DETAIL_PANE} space-y-5`}>
+      <DetailHeader title={isNew ? "New Contract" : "Edit Contract"}
+        actions={<>
+          <DetailAction label="Cancel" onClick={onCancel} />
+          <DetailSubmit label={saving ? "Saving…" : "Save"} disabled={saving} />
+        </>} />
 
       <p className="text-xs text-muted"><span className="text-accent">*</span> Required</p>
 
       {(validationError || error) && (
-        <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-400">{validationError || error}</div>
+        <div className="p-3 rounded-lg bg-status-danger/10 border border-status-danger/30 text-sm text-status-danger">{validationError || error}</div>
       )}
 
       <Section title="Basic">
@@ -786,7 +754,7 @@ function ContractForm({ contract, isDuplicate = false, clients, defaultCurrency,
           {(["time_based", "fixed_price"] as const).map((mode) => (
             <button key={mode} type="button" onClick={() => switchPricingMode(mode)}
               className={`px-4 py-1.5 text-xs font-medium transition-colors ${pricingMode === mode
-                ? "bg-accent text-white" : "bg-bg-card text-secondary hover:text-primary hover:bg-bg-hover"}`}>
+                ? "bg-accent text-on-fill" : "bg-bg-card text-secondary hover:text-primary hover:bg-bg-hover"}`}>
               {mode === "time_based" ? "Time-Based" : "Fixed Price"}
             </button>
           ))}
@@ -984,11 +952,11 @@ function ContractForm({ contract, isDuplicate = false, clients, defaultCurrency,
                           <span className="text-xs text-muted">%</span>
                         </div>
                         {m.invoiced ? (
-                          <span className="text-[10px] text-green-500 font-medium px-1.5 py-0.5 rounded bg-green-500/10">Invoiced</span>
+                          <span className="text-[10px] text-status-success font-medium px-1.5 py-0.5 rounded bg-status-success/10">Invoiced</span>
                         ) : (
                           <button type="button" onClick={() => setMilestones((prev) => prev.filter((_, i) => i !== idx))}
                             disabled={milestones.length <= 1}
-                            className="p-1 rounded text-muted hover:text-red-400 disabled:opacity-30 transition-colors">
+                            className="p-1 rounded text-muted hover:text-status-danger disabled:opacity-30 transition-colors">
                             <X size={14} />
                           </button>
                         )}
@@ -1005,7 +973,7 @@ function ContractForm({ contract, isDuplicate = false, clients, defaultCurrency,
                     const total = milestones.reduce((s, m) => s + (parseFloat(m.percentage) || 0), 0);
                     const ok = Math.abs(total - 100) < 0.01;
                     return (
-                      <div className={`mt-2 text-xs ${ok ? "text-green-500" : "text-amber-400"}`}>
+                      <div className={`mt-2 text-xs ${ok ? "text-status-success" : "text-status-warning"}`}>
                         Total: {total.toFixed(1)}%{!ok && " (must be 100%)"}
                       </div>
                     );
@@ -1084,7 +1052,7 @@ function ChargesEditor({ charges, expanded, onToggle, isFixed, currency, unitLab
                 </p>
               </div>
               <button type="button" onClick={() => onRemove(idx)}
-                className="mt-1 p-1 rounded text-muted hover:text-red-400 hover:bg-red-400/10 transition-colors"
+                className="mt-1 p-1 rounded text-muted hover:text-status-danger hover:bg-status-danger/10 transition-colors"
                 title="Remove charge">
                 <XCircle size={14} />
               </button>
@@ -1096,17 +1064,6 @@ function ChargesEditor({ charges, expanded, onToggle, isFixed, currency, unitLab
           </button>
         </div>
       )}
-    </div>
-  );
-}
-
-/* ---------- Shared ---------- */
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <div className="text-xs font-semibold uppercase tracking-wider text-secondary mb-2">{title}</div>
-      {children}
     </div>
   );
 }
@@ -1131,114 +1088,24 @@ interface ParsedContract {
   selectedClientId?: number;
 }
 
-const ACCEPT_EXTENSIONS = [".pdf", ".txt", ".md", ".text"];
-
-function ContractImportPanel({ parsing, parseError, parsedContracts, clients, onFileSelected, onAccept, onAcceptAll, onDiscard, onUpdate, onClose }: {
-  parsing: boolean;
-  parseError: string | null;
-  parsedContracts: ParsedContract[];
-  clients: Record<string, Entity>;
-  onFileSelected: (file: File) => void;
-  onAccept: (c: ParsedContract) => void;
-  onAcceptAll: () => void;
-  onDiscard: (c: ParsedContract) => void;
-  onUpdate: (index: number, c: ParsedContract) => void;
-  onClose: () => void;
-}) {
-  const [dragOver, setDragOver] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault(); setDragOver(false);
-    const file = e.dataTransfer.files[0];
-    if (file && ACCEPT_EXTENSIONS.some((ext) => file.name.toLowerCase().endsWith(ext))) onFileSelected(file);
-  }, [onFileSelected]);
-
-  const clientList = Object.values(clients);
-
-  return (
-    <div className="p-5 space-y-5">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Sparkles size={18} className="text-fuchsia-400" />
-          <h2 className="text-lg font-semibold">Import Contracts from Document</h2>
-        </div>
-        <button onClick={onClose}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm text-secondary hover:text-primary hover:bg-bg-hover transition-colors">
-          <X size={14} /> Close
-        </button>
-      </div>
-
-      {parsedContracts.length === 0 && !parsing && (
-        <div
-          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={handleDrop}
-          onClick={() => fileInputRef.current?.click()}
-          className={`flex flex-col items-center justify-center gap-3 p-10 rounded-xl border-2 border-dashed cursor-pointer transition-colors
-            ${dragOver ? "border-fuchsia-400 bg-fuchsia-500/5" : "border-border-subtle hover:border-fuchsia-400/50 hover:bg-fuchsia-500/5"}`}
-        >
-          <FileUp size={32} strokeWidth={1.4} className="text-fuchsia-400" />
-          <div className="text-center">
-            <p className="text-sm font-medium">Drop a document here</p>
-            <p className="text-xs text-tertiary mt-1">PDF, TXT, or Markdown — AI will extract contracts</p>
-          </div>
-          <input ref={fileInputRef} type="file" className="hidden" accept=".pdf,.txt,.md,.text" onChange={(e) => { const f = e.target.files?.[0]; if (f) onFileSelected(f); }} />
-        </div>
-      )}
-
-      {parsing && (
-        <div className="flex items-center justify-center gap-3 py-10">
-          <Loader2 size={20} className="animate-spin text-fuchsia-400" />
-          <span className="text-sm text-secondary">Parsing document with AI…</span>
-        </div>
-      )}
-
-      {parseError && (
-        <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-400">{parseError}</div>
-      )}
-
-      {parsedContracts.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-secondary">
-              <span className="font-medium text-fuchsia-400">{parsedContracts.length}</span> contract{parsedContracts.length !== 1 ? "s" : ""} found
-            </p>
-            <button onClick={onAcceptAll}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium text-fuchsia-400 hover:bg-fuchsia-500/10 border border-fuchsia-400/30 transition-colors">
-              <CheckCheck size={14} /> Accept All
-            </button>
-          </div>
-          {parsedContracts.map((c, i) => (
-            <ParsedContractCard key={i} contract={c} clients={clientList}
-              onAccept={() => onAccept(c)}
-              onDiscard={() => onDiscard(c)}
-              onUpdate={(updated) => onUpdate(i, updated)} />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 function ParsedContractCard({ contract, clients, onAccept, onDiscard, onUpdate }: {
   contract: ParsedContract; clients: Entity[];
   onAccept: () => void; onDiscard: () => void; onUpdate: (c: ParsedContract) => void;
 }) {
   return (
-    <div className="rounded-xl border-2 border-fuchsia-400/40 bg-fuchsia-500/5 p-4 space-y-3">
+    <div className="rounded-xl border-2 border-status-purple/40 bg-status-purple/5 p-4 space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Sparkles size={14} className="text-fuchsia-400" />
+          <Sparkles size={14} className="text-status-purple" />
           <span className="text-sm font-semibold">{contract.title || "Untitled"}</span>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={onDiscard}
-            className="flex items-center gap-1 px-2 py-1 rounded text-xs text-secondary hover:text-red-400 hover:bg-red-500/10 transition-colors">
+            className="flex items-center gap-1 px-2 py-1 rounded text-xs text-secondary hover:text-status-danger hover:bg-status-danger/10 transition-colors">
             <Trash2 size={12} /> Discard
           </button>
           <button onClick={onAccept}
-            className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium text-fuchsia-400 hover:bg-fuchsia-500/10 border border-fuchsia-400/30 transition-colors">
+            className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium text-status-purple hover:bg-status-purple/10 border border-status-purple/30 transition-colors">
             <Check size={12} /> Accept
           </button>
         </div>
@@ -1253,11 +1120,11 @@ function ParsedContractCard({ contract, clients, onAccept, onDiscard, onUpdate }
         <AiField label="End Date" value={contract.end_date} onChange={(v) => onUpdate({ ...contract, end_date: v })} />
       </div>
       <div>
-        <label className="block text-xs text-fuchsia-300/70 mb-0.5">
-          Client {contract.client_name_hint && <span className="text-fuchsia-400/60">(hint: {contract.client_name_hint})</span>}
+        <label className="block text-xs text-status-purple/70 mb-0.5">
+          Client {contract.client_name_hint && <span className="text-status-purple/60">(hint: {contract.client_name_hint})</span>}
         </label>
         <select value={contract.selectedClientId ?? ""} onChange={(e) => onUpdate({ ...contract, selectedClientId: e.target.value ? Number(e.target.value) : undefined })}
-          className="w-full px-2.5 py-1.5 rounded-md text-sm bg-bg-card text-primary border border-fuchsia-400/30 outline-none focus:border-fuchsia-400 transition-colors">
+          className="w-full px-2.5 py-1.5 rounded-md text-sm bg-bg-card text-primary border border-status-purple/30 outline-none focus:border-status-purple transition-colors">
           <option value="">— Select —</option>
           {clients.map((c) => <option key={c.id} value={c.id}>{str(c, "name")}</option>)}
         </select>
@@ -1269,9 +1136,9 @@ function ParsedContractCard({ contract, clients, onAccept, onDiscard, onUpdate }
 function AiField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   return (
     <div>
-      <label className="block text-xs text-fuchsia-300/70 mb-0.5">{label}</label>
+      <label className="block text-xs text-status-purple/70 mb-0.5">{label}</label>
       <input type="text" value={value} onChange={(e) => onChange(e.target.value)}
-        className="w-full px-2.5 py-1.5 rounded-md text-sm bg-bg-card text-primary border border-fuchsia-400/30 outline-none focus:border-fuchsia-400 transition-colors" />
+        className="w-full px-2.5 py-1.5 rounded-md text-sm bg-bg-card text-primary border border-status-purple/30 outline-none focus:border-status-purple transition-colors" />
     </div>
   );
 }

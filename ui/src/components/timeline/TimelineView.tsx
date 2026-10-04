@@ -1,11 +1,13 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useMemo } from "react";
 import {
   FileText, FileSignature, FolderKanban, Flag,
   ListFilter, CalendarDays,
 } from "lucide-react";
 import { rpc } from "../../api/rpc";
-import { Toolbar, ToolbarFilterGroup } from "../shared/ToolbarButtons";
+import { PageLayout, ToolbarFilterGroup } from "../shared/ToolbarButtons";
 import { EmptyStateIntro } from "../shared/EmptyStateIntro";
+import { tint, onTint } from "../shared/status-colors";
+import { LoadError, LoadingState } from "../shared/LoadStates";
 import type { Entity } from "../../api/types";
 import { str, bool } from "../../api/entity";
 
@@ -24,7 +26,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   invoice:  "var(--color-status-info)",
   contract: "var(--color-status-success)",
   project:  "var(--color-status-warning)",
-  goal:     "#BF5AF2",
+  goal:     "var(--color-status-purple)",
 };
 
 const FILTER_OPTIONS = ["all", "invoice", "contract", "project", "goal"] as const;
@@ -67,14 +69,18 @@ type EventGroup = { key: string; label: string; events: Entity[] };
 export function TimelineView() {
   const [events, setEvents] = useState<Entity[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [activeFilter, setActiveFilter] = useState<Category>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const todayRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { load(); }, []);
 
   async function load() {
     setLoading(true);
+    setLoadFailed(false);
     const res = await rpc<Entity[]>("timeline.get_events", {});
+    setLoadFailed(!res.ok);
     if (res.ok && res.data) setEvents(res.data);
     setLoading(false);
   }
@@ -126,27 +132,25 @@ export function TimelineView() {
     return null;
   }, [groups, todayISO]);
 
-  if (loading) return <div className="flex items-center justify-center h-full text-secondary">Loading timeline…</div>;
+  // Open at today, and re-anchor there whenever filter or search swaps the list.
+  useLayoutEffect(() => {
+    todayRef.current?.scrollIntoView({ block: "start", behavior: "instant" });
+  }, [loading, filtered]);
 
+  if (loadFailed) return <PageLayout title="Timeline" fallback={<LoadError what="the timeline" onRetry={load} />} />;
+  if (loading) return <PageLayout title="Timeline" fallback={<LoadingState />} />;
   if (!events.length) {
-    return (
-      <div className="flex flex-col h-full">
-        <Toolbar title="Timeline" />
-        <EmptyStateIntro icon={CalendarDays} description="Key events — new contracts, sent invoices, and project milestones — appear here in chronological order." />
-      </div>
-    );
+    return <PageLayout title="Timeline" fallback={
+      <EmptyStateIntro icon={CalendarDays} description="Key events — new contracts, sent invoices, and project milestones — appear here in chronological order." />
+    } />;
   }
 
   return (
-    <div className="flex flex-col h-full">
-      <Toolbar title="Timeline"
-        center={<ToolbarFilterGroup options={FILTER_OPTIONS} value={activeFilter} onChange={setActiveFilter}
-          colors={CATEGORY_COLORS} icons={FILTER_ICONS} labels={FILTER_LABELS} />}
-        search={{ value: searchQuery, onChange: setSearchQuery, placeholder: "Search events…" }}
-      />
-
-      <div className="flex-1 overflow-y-auto p-6 max-w-3xl">
-
+    <PageLayout title="Timeline"
+      center={<ToolbarFilterGroup options={FILTER_OPTIONS} value={activeFilter} onChange={setActiveFilter}
+        colors={CATEGORY_COLORS} icons={FILTER_ICONS} labels={FILTER_LABELS} />}
+      search={{ value: searchQuery, onChange: setSearchQuery, placeholder: "Search events…" }}
+    >
       {/* Filtered-empty state */}
       {!filtered.length && (
         <div className="text-center py-12 text-muted text-sm">No events match your filter.</div>
@@ -172,29 +176,28 @@ export function TimelineView() {
 
                 return (
                   <div key={`${str(ev, "category")}-${ei}-${str(ev, "date")}`}>
-                    {showToday && <TodayMarker />}
+                    {showToday && <TodayMarker ref={todayRef} />}
                     <EventCard event={ev} isLast={isLast} />
                   </div>
                 );
               })}
 
-              {gi === groups.length - 1 && !todayPosition && <TodayMarker />}
+              {gi === groups.length - 1 && !todayPosition && <TodayMarker ref={todayRef} />}
             </div>
           ))}
       </div>
-    </div>
-    </div>
+    </PageLayout>
   );
 }
 
-function TodayMarker() {
+function TodayMarker({ ref }: { ref: React.Ref<HTMLDivElement> }) {
   return (
-    <div className="flex items-center gap-2">
+    <div ref={ref} className="flex items-center gap-2 scroll-mt-24">
       <div className="w-9 flex justify-center relative">
         <div className="w-0.5 h-8 bg-border-subtle" />
-        <div className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-red-500" />
+        <div className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-status-danger" />
       </div>
-      <span className="text-[11px] font-bold text-white bg-red-500 px-2.5 py-0.5 rounded-full">
+      <span className="text-[11px] font-bold text-on-fill bg-status-danger px-2.5 py-0.5 rounded-full">
         Today
       </span>
       <div className="flex-1 border-t border-border-subtle" />
@@ -205,19 +208,20 @@ function TodayMarker() {
 function EventCard({ event, isLast }: { event: Entity; isLast: boolean }) {
   const cat = str(event, "category");
   const color = dotColor(event);
-  const catColor = CATEGORY_COLORS[cat] || "#0A84FF";
+  const catColor = CATEGORY_COLORS[cat] || "var(--color-status-info)";
   const isFuture = bool(event, "is_future");
   const CatIcon = CATEGORIES.find((c) => c.id === cat)?.icon || FileText;
   const catLabel = CATEGORIES.find((c) => c.id === cat)?.label || cat;
 
   return (
-    <div className="flex" style={{ opacity: isFuture ? 0.5 : 1 }}>
-      {/* Spine */}
+    <div className="flex" style={{ opacity: isFuture ? 0.7 : 1 }}>
+      {/* Spine — upcoming events get a hollow dot */}
       <div className="w-9 flex flex-col items-center shrink-0">
         <div className="w-0.5 h-3.5 bg-border-subtle" />
         <div className="relative flex items-center justify-center">
-          <div className="w-[18px] h-[18px] rounded-full" style={{ backgroundColor: color + "26" }} />
-          <div className="absolute w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
+          <div className="w-[18px] h-[18px] rounded-full" style={{ backgroundColor: tint(color, 15) }} />
+          <div className="absolute w-2.5 h-2.5 rounded-full border-2"
+            style={{ borderColor: color, backgroundColor: isFuture ? "var(--color-bg-content)" : color }} />
         </div>
         {!isLast && <div className="w-0.5 flex-1 min-h-[46px] bg-border-subtle" />}
       </div>
@@ -239,7 +243,7 @@ function EventCard({ event, isLast }: { event: Entity; isLast: boolean }) {
           )}
           <span
             className="inline-block mt-1.5 text-[10px] font-semibold px-2 py-0.5 rounded-full"
-            style={{ color: catColor, backgroundColor: catColor + "1F" }}
+            style={{ color: onTint(catColor), backgroundColor: tint(catColor, 12) }}
           >
             {catLabel}
           </span>

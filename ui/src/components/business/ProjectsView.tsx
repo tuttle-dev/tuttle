@@ -1,20 +1,26 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import {
-  FolderKanban, Building2, FileSignature, Calendar, Clock, FileText,
-  Plus, Trash2, Save, X, FileUp, Sparkles, Check, CheckCheck, Loader2, CheckCircle2,
-  AlertTriangle, Copy,
+  FolderKanban, Building2, FileSignature, Calendar, Plus, Trash2, FileUp, Sparkles, Check, CheckCircle2, Save, AlertTriangle, Copy,
 } from "lucide-react";
 import { rpc } from "../../api/rpc";
 import { str, int, num, bool, entity, dateRange, projectStatus } from "../../api/entity";
 import { StatusBadge, TagBadge } from "../shared/StatusBadge";
+import { statusColor } from "../shared/status-colors";
 import { ProgressBar } from "../shared/ProgressBar";
 import { ViewModeToggle } from "../shared/ViewModeToggle";
 import { KanbanBoard, useStageStore, type BoardColumn } from "../shared/KanbanBoard";
 import { Toolbar, ToolbarButtonPrimary, ToolbarButtonSecondary, ToolbarFilterGroup, ListDetailLayout, LIST_ROW_PADDING } from "../shared/ToolbarButtons";
 import { useNavigation } from "../shared/NavigationContext";
 import { EmptyStateIntro } from "../shared/EmptyStateIntro";
+import { DetailHeader, DetailAction, DetailDeleteAction, DetailSubmit, DETAIL_PANE } from "../shared/DetailHeader";
+import { DetailFields, DetailField } from "../shared/DetailFields";
+import { LoadError, LoadingState } from "../shared/LoadStates";
+import { Section } from "../shared/Section";
+import { DocumentImportPanel } from "../shared/DocumentImportPanel";
 import { useFieldRequirements } from "../../hooks/useFieldRequirements";
+import { useAutoSelect } from "../../hooks/useAutoSelect";
 import type { Entity } from "../../api/types";
+import { formatHours } from "../timetracking/format";
 
 interface BudgetEntry {
   project_id: number;
@@ -31,19 +37,14 @@ interface BudgetEntry {
 
 type Mode = "view" | "edit" | "create" | "import";
 
-const PROJECT_COLUMNS: BoardColumn[] = [
-  { id: "Lead", label: "Lead", color: "#a855f7" },
-  { id: "Offer", label: "Offer", color: "#f97316" },
-  { id: "Upcoming", label: "Upcoming", color: "#3b82f6" },
-  { id: "Active", label: "Active", color: "#22c55e" },
-  { id: "Completed", label: "Completed", color: "#8e8e93" },
-];
+const PROJECT_COLUMNS: BoardColumn[] = ["Lead", "Offer", "Upcoming", "Active", "Completed"]
+  .map((id) => ({ id, label: id, color: statusColor(id) }));
 
 const STATUS_FILTERS = ["All", "Lead", "Offer", "Upcoming", "Active", "Completed"] as const;
 type StatusFilter = (typeof STATUS_FILTERS)[number];
 const FILTER_COLORS: Record<string, string> = {
-  All: "#007AFF", Lead: "#a855f7", Offer: "#f97316",
-  Upcoming: "#60a5fa", Active: "#34d399", Completed: "#a0a0a0",
+  ...Object.fromEntries(STATUS_FILTERS.map((s) => [s, statusColor(s)])),
+  All: "var(--color-status-info)",
 };
 
 export function ProjectsView() {
@@ -53,6 +54,7 @@ export function ProjectsView() {
   const [budgetsMap, setBudgetsMap] = useState<Record<number, BudgetEntry>>({});
   const [selected, setSelected] = useState<Entity | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [viewMode, setViewMode] = useState<"list" | "board">("list");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("All");
   const [search, setSearch] = useState("");
@@ -76,16 +78,18 @@ export function ProjectsView() {
 
   useEffect(() => { load(); }, []);
 
-  async function load() {
+  async function load(selectId?: number) {
     setLoading(true);
+    setLoadFailed(false);
     const [res, cRes, bRes] = await Promise.all([
       rpc<Entity[]>("projects.get_all"),
       rpc<Record<string, Entity>>("projects.get_all_contracts"),
       rpc<BudgetEntry[]>("dashboard.get_project_budgets"),
     ]);
+    setLoadFailed(!res.ok || !cRes.ok || !bRes.ok);
     if (res.ok && res.data) {
       setProjects(res.data);
-      const currentId = selectedIdRef.current;
+      const currentId = selectId ?? selectedIdRef.current;
       if (currentId != null) {
         const updated = res.data.find((p) => p.id === currentId);
         setSelected(updated || null);
@@ -100,9 +104,10 @@ export function ProjectsView() {
     setLoading(false);
   }
 
-  function startCreate() { setSelected(null); setDuplicateSource(null); setMode("create"); setDeleteError(null); }
+  // The create/import forms live in the list view's detail pane.
+  function startCreate() { setViewMode("list"); setSelected(null); setDuplicateSource(null); setMode("create"); setDeleteError(null); }
   function startDuplicate(p: Entity) { setSelected(null); setDuplicateSource(p); setMode("create"); setDeleteError(null); setSaveError(null); }
-  function startImport() { setSelected(null); setParsedProjects([]); setParseError(null); setMode("import"); }
+  function startImport() { setViewMode("list"); setSelected(null); setParsedProjects([]); setParseError(null); setMode("import"); }
   function selectProject(p: Entity) { setSelected(p); setMode("view"); setDeleteError(null); }
 
   async function handleSave(data: ProjectFormData) {
@@ -116,15 +121,15 @@ export function ProjectsView() {
       contract_id: data.contractId,
     };
     if (mode === "edit" && selected) project.id = selected.id;
-    const res = await rpc("projects.save", { project });
-    if (res.ok) { setMode("view"); await load(); }
+    const res = await rpc<Entity>("projects.save", { project });
+    if (res.ok) { setMode("view"); await load(res.data?.id); }
     else setSaveError(res.error || "Failed to save project.");
   }
 
   async function handleDelete(id: number) {
     setDeleteError(null);
     const res = await rpc("projects.delete", { id });
-    if (res.ok) { setSelected(null); setMode("view"); await load(); }
+    if (res.ok) { setMode("view"); await load(); }
     else if (res.error) setDeleteError(res.error);
   }
 
@@ -191,6 +196,11 @@ export function ProjectsView() {
     (statusFilter === "All" || projectStatus(p) === statusFilter) && matchesSearch(p));
   const boardFiltered = projects.filter(matchesSearch);
 
+  useAutoSelect(projects, filtered, selected, setSelected, {
+    enabled: mode === "view",
+    preferred: navFilter.contractId != null ? (p) => num(p, "contract_id") === navFilter.contractId : undefined,
+  });
+
   function moveToColumn(id: number, colId: string) {
     stageStore.setColumn(id, colId);
     rpc("projects.set_stage", { id, stage: colId }).then(() => {
@@ -201,16 +211,13 @@ export function ProjectsView() {
   const selectedContract = selected ? entity(selected, "contract") : null;
   const selectedClient = selectedContract ? entity(selectedContract, "client") : null;
 
-  if (loading && projects.length === 0)
-    return <div className="flex items-center justify-center h-full text-secondary">Loading projects…</div>;
-
   return (
     <div className="flex flex-col h-full">
       <Toolbar title="Projects"
-        actions={viewMode === "list" ? <>
+        actions={<>
           <ToolbarButtonPrimary icon={<Plus size={13} />} label="New" onClick={startCreate} />
           <ToolbarButtonSecondary icon={<FileUp size={13} />} label="Import" onClick={startImport} />
-        </> : undefined}
+        </>}
         center={viewMode === "list"
           ? <ToolbarFilterGroup options={STATUS_FILTERS} value={statusFilter} onChange={setStatusFilter} colors={FILTER_COLORS} />
           : undefined}
@@ -218,7 +225,11 @@ export function ProjectsView() {
         search={{ value: search, onChange: setSearch }}
       />
 
-      {projects.length === 0 && mode === "view" ? (
+      {loadFailed && mode === "view" ? (
+        <LoadError what="projects" onRetry={load} />
+      ) : loading && projects.length === 0 ? (
+        <LoadingState />
+      ) : projects.length === 0 && mode === "view" ? (
         <EmptyStateIntro icon={FolderKanban} description="A project is a unit of work you do under a contract. Track time against projects to generate invoices." />
       ) : viewMode === "list" ? (
         <ListDetailLayout
@@ -232,9 +243,6 @@ export function ProjectsView() {
                 <button key={p.id} onClick={() => selectProject(p)}
                   className={`w-full text-left ${LIST_ROW_PADDING} border-b transition-colors flex items-center gap-3
                     ${isSelected ? "bg-bg-selected border-border-subtle" : isHighlighted ? "bg-accent/10 border-accent/30" : "border-border-subtle hover:bg-bg-hover"}`}>
-                  <div className="w-9 h-9 rounded-full bg-bg-card flex items-center justify-center text-sm font-semibold text-secondary shrink-0">
-                    <FolderKanban size={16} />
-                  </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-sm font-medium truncate">{str(p, "title")}</span>
@@ -252,59 +260,48 @@ export function ProjectsView() {
             })
           }
           detail={mode === "import" ? (
-              <ProjectImportPanel
-                parsing={parsing} parseError={parseError} parsedProjects={parsedProjects}
-                contracts={contractsMap}
-                onFileSelected={handleFileImport} onAccept={acceptProject} onAcceptAll={acceptAll}
-                onDiscard={discardProject} onUpdate={updateParsedProject} onClose={() => setMode("view")}
-              />
+              <DocumentImportPanel title="Import Projects from Document" noun="project" count={parsedProjects.length}
+                parsing={parsing} parseError={parseError}
+                onFileSelected={handleFileImport} onAcceptAll={acceptAll} onClose={() => setMode("view")}
+              >
+                {parsedProjects.map((p, i) => (
+                  <ParsedProjectCard key={i} project={p} contracts={Object.values(contractsMap)}
+                    onAccept={() => acceptProject(p)}
+                    onDiscard={() => discardProject(p)}
+                    onUpdate={(updated) => updateParsedProject(i, updated)} />
+                ))}
+              </DocumentImportPanel>
             ) : mode === "create" ? (
               <ProjectForm key={duplicateSource?.id ?? "new"} project={duplicateSource ?? undefined} isDuplicate={duplicateSource != null} contracts={contractsMap} onSave={handleSave} onCancel={() => setMode("view")} error={saveError} />
             ) : mode === "edit" && selected ? (
               <ProjectForm project={selected} contracts={contractsMap} onSave={handleSave} onCancel={() => setMode("view")} error={saveError} />
             ) : selected ? (
-              <div className="p-6 max-w-2xl space-y-5">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-bg-card flex items-center justify-center">
-                    <FolderKanban size={18} className="text-secondary" />
-                  </div>
-                  <div>
-                    <h1 className="text-lg font-semibold">{str(selected, "title")}</h1>
-                    <TagBadge tag={str(selected, "tag")} className="mt-1" />
-                  </div>
-                  <StatusBadge status={projectStatus(selected)} className="ml-auto" />
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button onClick={() => handleToggle(selected.id)}
-                    className="flex items-center gap-1 px-2 py-1.5 rounded text-xs text-secondary hover:text-primary border border-border-subtle transition-colors">
-                    <CheckCircle2 size={13} /> {bool(selected, "is_completed") ? "Reopen" : "Complete"}
-                  </button>
-                  <button onClick={() => setMode("edit")}
-                    className="px-3 py-1.5 rounded text-sm font-medium bg-bg-card text-secondary hover:text-primary border border-border-subtle transition-colors">
-                    Edit
-                  </button>
-                  <button onClick={() => startDuplicate(selected)} title="Create a new project based on this one"
-                    className="flex items-center gap-1 px-3 py-1.5 rounded text-sm font-medium bg-bg-card text-secondary hover:text-primary border border-border-subtle transition-colors">
-                    <Copy size={13} /> Duplicate
-                  </button>
-                  <button onClick={() => handleDelete(selected.id)}
-                    className="p-1.5 rounded text-secondary hover:text-red-400 border border-border-subtle transition-colors">
-                    <Trash2 size={14} />
-                  </button>
-                </div>
+              <div className={`${DETAIL_PANE} space-y-6`}>
+                <DetailHeader title={str(selected, "title")}
+                  badges={<>
+                    <TagBadge tag={str(selected, "tag")} />
+                    <StatusBadge status={projectStatus(selected)} />
+                  </>}
+                  actions={<>
+                    <DetailAction icon={<CheckCircle2 size={13} />} label={bool(selected, "is_completed") ? "Reopen" : "Complete"}
+                      onClick={() => handleToggle(selected.id)} />
+                    <DetailAction icon={<Copy size={13} />} label="Duplicate" title="Create a new project based on this one"
+                      onClick={() => startDuplicate(selected)} />
+                    <DetailAction label="Edit" onClick={() => setMode("edit")} />
+                    <DetailDeleteAction key={selected.id} label="Delete project" onDelete={() => handleDelete(selected.id)} />
+                  </>} />
 
                 {deleteError && (
-                  <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-400">{deleteError}</div>
+                  <div className="p-3 rounded-lg bg-status-danger/10 border border-status-danger/30 text-sm text-status-danger">{deleteError}</div>
                 )}
 
                 {str(selected, "description") && <p className="text-sm text-secondary">{str(selected, "description")}</p>}
-                <div className="grid grid-cols-2 gap-4">
-                  <DetailRow label="Dates" value={dateRange(selected)} />
-                  <DetailRow label="Client" value={selectedClient ? str(selectedClient, "name") : "—"} />
-                  <DetailRow label="Contract" value={selectedContract ? str(selectedContract, "title") : "—"} />
-                  <DetailRow label="Rate" value={selectedContract ? `${str(selectedContract, "rate")} ${str(selectedContract, "currency")}/${str(selectedContract, "unit_abbrev") || "h"}` : "—"} />
-                </div>
+                <DetailFields>
+                  <DetailField label="Dates">{dateRange(selected)}</DetailField>
+                  <DetailField label="Client">{selectedClient ? str(selectedClient, "name") : "—"}</DetailField>
+                  <DetailField label="Contract">{selectedContract ? str(selectedContract, "title") : "—"}</DetailField>
+                  <DetailField label="Rate">{selectedContract ? `${str(selectedContract, "rate")} ${str(selectedContract, "currency")}/${str(selectedContract, "unit_abbrev") || "h"}` : "—"}</DetailField>
+                </DetailFields>
                 {selected.id != null && budgetsMap[selected.id as number] && (() => {
                   const b = budgetsMap[selected.id as number];
                   return (
@@ -342,29 +339,35 @@ function clientName(p: Entity): string {
 function ProjectCard({ project, budgetsMap }: { project: Entity; color: string; budgetsMap: Record<number, BudgetEntry> }) {
   const cName = clientName(project);
   const c = entity(project, "contract");
+  const contractTitle = c ? str(c, "title") : "";
+  const [from, to] = dateRange(project).split(" – ");
   const budget = project.id != null ? budgetsMap[project.id as number] : undefined;
   return (
     <div className="space-y-2">
-      <div>
-        <div className="text-sm font-semibold leading-snug">{str(project, "title")}</div>
-        <TagBadge tag={str(project, "tag")} />
+      <div className="space-y-1">
+        <div className="text-sm font-semibold leading-snug line-clamp-2 break-words">{str(project, "title")}</div>
+        <TagBadge tag={str(project, "tag")} className="max-w-full" />
       </div>
       {cName && (
         <div className="flex items-center gap-1.5 text-secondary">
           <Building2 size={11} className="text-tertiary shrink-0" />
-          <span className="text-xs">{cName}</span>
+          <span className="text-xs truncate" title={cName}>{cName}</span>
         </div>
       )}
-      {c && str(c, "title") && (
+      {contractTitle && (
         <div className="flex items-center gap-1.5 text-secondary">
           <FileSignature size={11} className="text-tertiary shrink-0" />
-          <span className="text-xs">{str(c, "title")}</span>
+          <span className="text-xs truncate" title={contractTitle}>{contractTitle}</span>
         </div>
       )}
-      {dateRange(project) && (
+      {from && (
         <div className="flex items-center gap-1.5 text-tertiary">
           <Calendar size={11} className="shrink-0" />
-          <span className="text-xs">{dateRange(project)}</span>
+          {/* Break only between start and end date. */}
+          <span className="text-xs min-w-0">
+            <span className="whitespace-nowrap">{to ? `${from} –` : from}</span>
+            {to && <>{" "}<span className="whitespace-nowrap">{to}</span></>}
+          </span>
         </div>
       )}
       {budget && (
@@ -375,52 +378,16 @@ function ProjectCard({ project, budgetsMap }: { project: Entity; color: string; 
 }
 
 function BudgetBar({ budget: b }: { budget: BudgetEntry }) {
-  const trackedPct = b.hours_budget > 0 ? Math.min(b.hours_tracked / b.hours_budget, 1) : 0;
-  const plannedPct = b.hours_budget > 0 ? Math.min(b.hours_planned / b.hours_budget, 1 - trackedPct) : 0;
+  const share = (h: number) => (b.hours_budget > 0 ? h / b.hours_budget : 0);
   const subtitle = b.hours_planned > 0
-    ? `${b.hours_tracked.toFixed(1)}h tracked + ${b.hours_planned.toFixed(1)}h planned / ${b.hours_budget.toFixed(0)}h`
-    : `${b.hours_tracked.toFixed(1)}h / ${b.hours_budget.toFixed(0)}h`;
+    ? `${formatHours(b.hours_tracked)} tracked + ${formatHours(b.hours_planned)} planned / ${formatHours(b.hours_budget)}`
+    : `${formatHours(b.hours_tracked)} / ${formatHours(b.hours_budget)}`;
 
   return (
-    <div className="space-y-1">
-      <div className="flex items-baseline justify-between">
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs font-medium truncate">Time Budget</span>
-          {b.budget_exceeded && (
-            <AlertTriangle size={12} className="text-amber-400 shrink-0" />
-          )}
-        </div>
-        <span className="text-xs text-secondary tabular-nums">{subtitle}</span>
-      </div>
-      <div className="h-1.5 w-full rounded-full bg-bg-hover overflow-hidden flex">
-        <div
-          className="h-full rounded-l-full bg-secondary transition-all duration-300"
-          style={{ width: `${trackedPct * 100}%` }}
-        />
-        {plannedPct > 0 && (
-          <div
-            className="h-full transition-all duration-300"
-            style={{
-              width: `${plannedPct * 100}%`,
-              background: "repeating-linear-gradient(45deg, #3b82f6 0, #3b82f6 2px, transparent 2px, transparent 5px)",
-              opacity: 0.5,
-            }}
-          />
-        )}
-      </div>
-      {b.budget_exceeded && (
-        <div className="text-[11px] text-amber-400 font-medium">Budget exceeded</div>
-      )}
-    </div>
-  );
-}
-
-function DetailRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <div className="text-xs font-semibold uppercase tracking-wider text-tertiary mb-0.5">{label}</div>
-      <div className="text-sm">{value}</div>
-    </div>
+    <ProgressBar label="Time Budget" subtitle={subtitle}
+      progress={share(b.hours_tracked)} planned={share(b.hours_planned)}
+      tone={b.budget_exceeded ? "warning" : "neutral"}
+      icon={b.budget_exceeded && <AlertTriangle size={12} className="text-status-warning shrink-0" />} />
   );
 }
 
@@ -479,25 +446,17 @@ function ProjectForm({ project, isDuplicate = false, contracts, onSave, onCancel
   }
 
   return (
-    <form onSubmit={handleSubmit} className="p-5 space-y-5">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">{isNew ? "New Project" : "Edit Project"}</h2>
-        <div className="flex items-center gap-2">
-          <button type="button" onClick={onCancel}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm text-secondary hover:text-primary hover:bg-bg-hover transition-colors">
-            <X size={14} /> Cancel
-          </button>
-          <button type="submit" disabled={saving}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium text-primary hover:bg-bg-hover transition-colors disabled:opacity-40">
-            <Save size={14} /> {saving ? "Saving…" : "Save"}
-          </button>
-        </div>
-      </div>
+    <form onSubmit={handleSubmit} className={`${DETAIL_PANE} space-y-5`}>
+      <DetailHeader title={isNew ? "New Project" : "Edit Project"}
+        actions={<>
+          <DetailAction label="Cancel" onClick={onCancel} />
+          <DetailSubmit label={saving ? "Saving…" : "Save"} disabled={saving} />
+        </>} />
 
       <p className="text-xs text-muted"><span className="text-accent">*</span> Required</p>
 
       {(validationError || error) && (
-        <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-400">{validationError || error}</div>
+        <div className="p-3 rounded-lg bg-status-danger/10 border border-status-danger/30 text-sm text-status-danger">{validationError || error}</div>
       )}
 
       <Section title="Project">
@@ -540,15 +499,6 @@ function ProjectForm({ project, isDuplicate = false, contracts, onSave, onCancel
 
 /* ---------- Shared UI ---------- */
 
-function Section({ title, children }: { title: React.ReactNode; children: React.ReactNode }) {
-  return (
-    <div>
-      <div className="text-xs font-semibold uppercase tracking-wider text-secondary mb-2">{title}</div>
-      {children}
-    </div>
-  );
-}
-
 function FormField({ label, value, onChange, autoFocus, required }: {
   label: string; value: string; onChange: (v: string) => void; autoFocus?: boolean; required?: boolean;
 }) {
@@ -573,114 +523,24 @@ interface ParsedProject {
   selectedContractId?: number;
 }
 
-const ACCEPT_EXTENSIONS = [".pdf", ".txt", ".md", ".text"];
-
-function ProjectImportPanel({ parsing, parseError, parsedProjects, contracts, onFileSelected, onAccept, onAcceptAll, onDiscard, onUpdate, onClose }: {
-  parsing: boolean;
-  parseError: string | null;
-  parsedProjects: ParsedProject[];
-  contracts: Record<string, Entity>;
-  onFileSelected: (file: File) => void;
-  onAccept: (p: ParsedProject) => void;
-  onAcceptAll: () => void;
-  onDiscard: (p: ParsedProject) => void;
-  onUpdate: (index: number, p: ParsedProject) => void;
-  onClose: () => void;
-}) {
-  const [dragOver, setDragOver] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault(); setDragOver(false);
-    const file = e.dataTransfer.files[0];
-    if (file && ACCEPT_EXTENSIONS.some((ext) => file.name.toLowerCase().endsWith(ext))) onFileSelected(file);
-  }, [onFileSelected]);
-
-  const contractList = Object.values(contracts);
-
-  return (
-    <div className="p-5 space-y-5">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Sparkles size={18} className="text-fuchsia-400" />
-          <h2 className="text-lg font-semibold">Import Projects from Document</h2>
-        </div>
-        <button onClick={onClose}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm text-secondary hover:text-primary hover:bg-bg-hover transition-colors">
-          <X size={14} /> Close
-        </button>
-      </div>
-
-      {parsedProjects.length === 0 && !parsing && (
-        <div
-          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={handleDrop}
-          onClick={() => fileInputRef.current?.click()}
-          className={`flex flex-col items-center justify-center gap-3 p-10 rounded-xl border-2 border-dashed cursor-pointer transition-colors
-            ${dragOver ? "border-fuchsia-400 bg-fuchsia-500/5" : "border-border-subtle hover:border-fuchsia-400/50 hover:bg-fuchsia-500/5"}`}
-        >
-          <FileUp size={32} strokeWidth={1.4} className="text-fuchsia-400" />
-          <div className="text-center">
-            <p className="text-sm font-medium">Drop a document here</p>
-            <p className="text-xs text-tertiary mt-1">PDF, TXT, or Markdown — AI will extract projects</p>
-          </div>
-          <input ref={fileInputRef} type="file" className="hidden" accept=".pdf,.txt,.md,.text" onChange={(e) => { const f = e.target.files?.[0]; if (f) onFileSelected(f); }} />
-        </div>
-      )}
-
-      {parsing && (
-        <div className="flex items-center justify-center gap-3 py-10">
-          <Loader2 size={20} className="animate-spin text-fuchsia-400" />
-          <span className="text-sm text-secondary">Parsing document with AI…</span>
-        </div>
-      )}
-
-      {parseError && (
-        <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-400">{parseError}</div>
-      )}
-
-      {parsedProjects.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-secondary">
-              <span className="font-medium text-fuchsia-400">{parsedProjects.length}</span> project{parsedProjects.length !== 1 ? "s" : ""} found
-            </p>
-            <button onClick={onAcceptAll}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium text-fuchsia-400 hover:bg-fuchsia-500/10 border border-fuchsia-400/30 transition-colors">
-              <CheckCheck size={14} /> Accept All
-            </button>
-          </div>
-          {parsedProjects.map((p, i) => (
-            <ParsedProjectCard key={i} project={p} contracts={contractList}
-              onAccept={() => onAccept(p)}
-              onDiscard={() => onDiscard(p)}
-              onUpdate={(updated) => onUpdate(i, updated)} />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 function ParsedProjectCard({ project, contracts, onAccept, onDiscard, onUpdate }: {
   project: ParsedProject; contracts: Entity[];
   onAccept: () => void; onDiscard: () => void; onUpdate: (p: ParsedProject) => void;
 }) {
   return (
-    <div className="rounded-xl border-2 border-fuchsia-400/40 bg-fuchsia-500/5 p-4 space-y-3">
+    <div className="rounded-xl border-2 border-status-purple/40 bg-status-purple/5 p-4 space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Sparkles size={14} className="text-fuchsia-400" />
+          <Sparkles size={14} className="text-status-purple" />
           <span className="text-sm font-semibold">{project.title || "Untitled"}</span>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={onDiscard}
-            className="flex items-center gap-1 px-2 py-1 rounded text-xs text-secondary hover:text-red-400 hover:bg-red-500/10 transition-colors">
+            className="flex items-center gap-1 px-2 py-1 rounded text-xs text-secondary hover:text-status-danger hover:bg-status-danger/10 transition-colors">
             <Trash2 size={12} /> Discard
           </button>
           <button onClick={onAccept}
-            className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium text-fuchsia-400 hover:bg-fuchsia-500/10 border border-fuchsia-400/30 transition-colors">
+            className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium text-status-purple hover:bg-status-purple/10 border border-status-purple/30 transition-colors">
             <Check size={12} /> Accept
           </button>
         </div>
@@ -693,16 +553,16 @@ function ParsedProjectCard({ project, contracts, onAccept, onDiscard, onUpdate }
         <AiField label="End Date" value={project.end_date} onChange={(v) => onUpdate({ ...project, end_date: v })} />
       </div>
       <div>
-        <label className="block text-xs text-fuchsia-300/70 mb-0.5">Description</label>
+        <label className="block text-xs text-status-purple/70 mb-0.5">Description</label>
         <textarea value={project.description} onChange={(e) => onUpdate({ ...project, description: e.target.value })} rows={2}
-          className="w-full px-2.5 py-1.5 rounded-md text-sm bg-bg-card text-primary border border-fuchsia-400/30 outline-none focus:border-fuchsia-400 transition-colors resize-none" />
+          className="w-full px-2.5 py-1.5 rounded-md text-sm bg-bg-card text-primary border border-status-purple/30 outline-none focus:border-status-purple transition-colors resize-none" />
       </div>
       <div>
-        <label className="block text-xs text-fuchsia-300/70 mb-0.5">
-          Contract {project.contract_title_hint && <span className="text-fuchsia-400/60">(hint: {project.contract_title_hint})</span>}
+        <label className="block text-xs text-status-purple/70 mb-0.5">
+          Contract {project.contract_title_hint && <span className="text-status-purple/60">(hint: {project.contract_title_hint})</span>}
         </label>
         <select value={project.selectedContractId ?? ""} onChange={(e) => onUpdate({ ...project, selectedContractId: e.target.value ? Number(e.target.value) : undefined })}
-          className="w-full px-2.5 py-1.5 rounded-md text-sm bg-bg-card text-primary border border-fuchsia-400/30 outline-none focus:border-fuchsia-400 transition-colors">
+          className="w-full px-2.5 py-1.5 rounded-md text-sm bg-bg-card text-primary border border-status-purple/30 outline-none focus:border-status-purple transition-colors">
           <option value="">— Select —</option>
           {contracts.map((c) => <option key={c.id} value={c.id}>{str(c, "title")}</option>)}
         </select>
@@ -714,9 +574,9 @@ function ParsedProjectCard({ project, contracts, onAccept, onDiscard, onUpdate }
 function AiField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   return (
     <div>
-      <label className="block text-xs text-fuchsia-300/70 mb-0.5">{label}</label>
+      <label className="block text-xs text-status-purple/70 mb-0.5">{label}</label>
       <input type="text" value={value} onChange={(e) => onChange(e.target.value)}
-        className="w-full px-2.5 py-1.5 rounded-md text-sm bg-bg-card text-primary border border-fuchsia-400/30 outline-none focus:border-fuchsia-400 transition-colors" />
+        className="w-full px-2.5 py-1.5 rounded-md text-sm bg-bg-card text-primary border border-status-purple/30 outline-none focus:border-status-purple transition-colors" />
     </div>
   );
 }

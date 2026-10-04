@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { BarChart3, ReceiptText, Calculator, ChevronDown } from "lucide-react";
 import { rpc } from "../../api/rpc";
 import { EmptyStateIntro } from "../shared/EmptyStateIntro";
+import { LoadError, LoadingState } from "../shared/LoadStates";
+import { PageLayout } from "../shared/ToolbarButtons";
 import type { Entity } from "../../api/types";
 import { str, num, bool, type DynamicLine } from "../../api/entity";
 
@@ -15,12 +17,17 @@ function fmtPct(value: number): string {
   return `${(value * 100).toFixed(1)}%`;
 }
 
+function noTaxModel(country: string): string {
+  return `No tax model for ${country || "your country"} yet.`;
+}
+
 export function TaxReservesView() {
   const [spending, setSpending] = useState<Entity | null>(null);
   const [taxEstimate, setTaxEstimate] = useState<Entity | null>(null);
   const [months, setMonths] = useState<Entity[]>([]);
   const [currency, setCurrency] = useState("EUR");
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
 
@@ -41,12 +48,14 @@ export function TaxReservesView() {
 
   async function load(year: number) {
     setLoading(true);
+    setLoadFailed(false);
     const params = { year };
     const [spRes, taxRes, vatRes] = await Promise.all([
       rpc<Entity>("tax.get_spendable_income", params),
       rpc<Entity>("tax.get_income_tax_estimate", params),
       rpc<Entity>("tax.get_monthly_vat", params),
     ]);
+    setLoadFailed(!spRes.ok || !taxRes.ok || !vatRes.ok);
     if (spRes.ok && spRes.data) {
       setSpending(spRes.data as Entity);
       setCurrency(str(spRes.data as Entity, "currency") || "EUR");
@@ -60,7 +69,14 @@ export function TaxReservesView() {
     setLoading(false);
   }
 
-  if (loading) return <div className="flex items-center justify-center h-full text-secondary">Loading tax data…</div>;
+  const yearSelector = availableYears.length > 1 && (
+    <YearSelector years={availableYears} selected={selectedYear} onChange={setSelectedYear} />
+  );
+  if (loadFailed) {
+    return <PageLayout title="Tax & Reserves" right={yearSelector}
+      fallback={<LoadError what="tax data" onRetry={() => load(selectedYear)} />} />;
+  }
+  if (loading) return <PageLayout title="Tax & Reserves" right={yearSelector} fallback={<LoadingState />} />;
 
   const sp = spending?.spending as Entity | undefined;
   const hasAnyIncome = sp && (num(sp, "gross_revenue_ytd") > 0 || num(sp, "planned_revenue") > 0);
@@ -70,25 +86,13 @@ export function TaxReservesView() {
   const taxCountry = taxEstimate ? str(taxEstimate, "country") : "";
 
   if (!hasAnyIncome && months.length === 0) {
-    return <EmptyStateIntro icon={Calculator} description="Tax reserves help you set aside money for income tax and VAT throughout the year, so nothing comes as a surprise." />;
+    return <PageLayout title="Tax & Reserves" right={yearSelector}
+      fallback={<EmptyStateIntro icon={Calculator} description="Tax reserves help you set aside money for income tax and VAT throughout the year, so nothing comes as a surprise." />} />;
   }
 
   return (
-    <div className="p-6 space-y-6 max-w-3xl">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold">Tax &amp; Reserves</h1>
-          <p className="text-sm text-muted mt-1">How much of your revenue can you actually spend?</p>
-        </div>
-        {availableYears.length > 1 && (
-          <YearSelector
-            years={availableYears}
-            selected={selectedYear}
-            onChange={setSelectedYear}
-          />
-        )}
-      </div>
-
+    <PageLayout title="Tax & Reserves" className="grid gap-6 items-start @4xl:grid-cols-2 @4xl:grid-rows-[auto_1fr]"
+      right={yearSelector}>
       {/* Revenue Waterfall */}
       <Section title={`Revenue Breakdown (${periodLabel})`} icon={<BarChart3 size={16} />}>
         {!hasAnyIncome ? (
@@ -135,10 +139,7 @@ export function TaxReservesView() {
                 <WaterfallBar key={line.title} label={`${line.title} (${line.rate}%, from taxed income)`} amount={line.amount} total={totalBase} color="var(--color-status-warning)" currency={currency} />
               ))}
               {!countrySupported && (
-                <p className="text-xs text-muted italic">
-                  Tax model for {taxCountry} is not yet available.{" "}
-                  <a href="https://github.com/tuttle-dev/tuttle/issues" target="_blank" rel="noopener noreferrer" className="underline text-accent">Request it on GitHub</a>
-                </p>
+                <p className="text-xs text-muted italic">{noTaxModel(taxCountry)}</p>
               )}
               <WaterfallBar label="= Safe to Spend" amount={spendable} total={totalBase} color={spendable >= 0 ? "var(--color-status-success)" : "var(--color-status-danger)"} currency={currency} bold />
               {totalBase > 0 && (
@@ -155,7 +156,7 @@ export function TaxReservesView() {
       </Section>
 
       {/* Monthly VAT */}
-      <Section title="Monthly VAT" icon={<ReceiptText size={16} />}>
+      <Section title="Monthly VAT" icon={<ReceiptText size={16} />} className="@4xl:col-start-2 @4xl:row-span-2">
         {months.length === 0 ? (
           <p className="text-sm text-muted">No VAT data available.</p>
         ) : (
@@ -185,7 +186,7 @@ export function TaxReservesView() {
 
       {/* Income Tax Estimate */}
       {taxEstimate && <IncomeTaxSection data={taxEstimate} currency={currency} />}
-    </div>
+    </PageLayout>
   );
 }
 
@@ -225,7 +226,7 @@ function IncomeTaxSection({ data, currency }: { data: Entity; currency: string }
   if (planned > 0) parts.push(`${fmt(planned, currency)} planned`);
 
   return (
-    <Section title={`Income Tax Estimate (${country})`} icon={<Calculator size={16} />}>
+    <Section title={country ? `Income Tax Estimate (${country})` : "Income Tax Estimate"} icon={<Calculator size={16} />}>
       <div className="space-y-2">
         <SummaryRow label="Income Basis" value={fmt(incomeBasis, currency)} />
         {parts.length > 0 && (
@@ -248,7 +249,7 @@ function IncomeTaxSection({ data, currency }: { data: Entity; currency: string }
                 return (
                   <div
                     key={i}
-                    className={`flex justify-between px-3 py-1.5 rounded-md text-sm ${current ? "bg-accent text-white font-semibold" : "bg-surface-overlay text-secondary"}`}
+                    className={`flex justify-between px-3 py-1.5 rounded-md text-sm ${current ? "bg-accent text-on-fill font-semibold" : "bg-surface-overlay text-secondary"}`}
                   >
                     <span>{str(b, "label")}</span>
                     <span>
@@ -262,19 +263,16 @@ function IncomeTaxSection({ data, currency }: { data: Entity; currency: string }
           </div>
         )}
         {!supported && (
-          <p className="text-xs text-muted italic mt-3">
-            Tax model for {country} is not yet available. VAT reserves are still tracked above.{" "}
-            <a href="https://github.com/tuttle-dev/tuttle/issues" target="_blank" rel="noopener noreferrer" className="underline text-accent">Request it on GitHub</a>
-          </p>
+          <p className="text-xs text-muted italic mt-3">{noTaxModel(country)} VAT reserves still apply.</p>
         )}
       </div>
     </Section>
   );
 }
 
-function Section({ title, icon, children }: { title: string; icon?: React.ReactNode; children: React.ReactNode }) {
+function Section({ title, icon, className, children }: { title: string; icon?: React.ReactNode; className?: string; children: React.ReactNode }) {
   return (
-    <div>
+    <div className={className}>
       <div className="flex items-center gap-2 mb-2">
         {icon && <span className="text-secondary">{icon}</span>}
         <h2 className="text-sm font-semibold">{title}</h2>

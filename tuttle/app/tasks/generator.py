@@ -21,56 +21,31 @@ TUTORIAL_RULES: list[tuple[str, str, str, type]] = [
     (
         "tutorial:first_contact",
         "Add your first contact",
-        (
-            "Contacts are the people you do business with — your clients' "
-            "project leads, accountants, or anyone you need to address "
-            "invoices to. Head over to Contacts in the sidebar and add "
-            "someone you work with."
-        ),
+        "Contacts are the people you send invoices to.",
         Contact,
     ),
     (
         "tutorial:first_client",
         "Add your first client",
-        (
-            "A client is a company or person who pays you for your work. "
-            "Each client can have multiple contacts and contracts. Go to "
-            "Clients and create one — you can link a contact you already "
-            "added as the invoicing recipient."
-        ),
+        "A client is a company or person who pays you.",
         Client,
     ),
     (
         "tutorial:first_contract",
         "Create your first contract",
-        (
-            "A contract captures the terms of your engagement: your hourly "
-            "or daily rate, the billing cycle, currency, and payment terms. "
-            "Open Contracts, pick the client, and fill in the details. This "
-            "is what Tuttle uses to calculate invoices later."
-        ),
+        "Set your rate, billing cycle and payment terms.",
         Contract,
     ),
     (
         "tutorial:first_project",
         "Set up your first project",
-        (
-            "Projects group your tracked time and invoices under a contract. "
-            "Think of them as the actual work you deliver — e.g. 'Website "
-            "Redesign Q3'. Create one under Projects and link it to your "
-            "contract."
-        ),
+        "Projects group tracked time and invoices under a contract.",
         Project,
     ),
     (
         "tutorial:first_invoice",
         "Create your first invoice",
-        (
-            "Once you have a project with tracked time (or a fixed-price "
-            "contract), you can generate a professional invoice. Go to "
-            "Invoicing, hit Create, pick a project and date range — Tuttle "
-            "fills in the line items from your time records."
-        ),
+        "Turn tracked time into an invoice.",
         Invoice,
     ),
 ]
@@ -81,24 +56,12 @@ TUTORIAL_MANUAL_RULES: list[tuple[str, str, str]] = [
     (
         "tutorial:configure_ai",
         "Configure AI assistant",
-        (
-            "Tuttle can use a large language model to read documents and "
-            "extract data — like pulling contact info from a PDF or parsing "
-            "an existing invoice. You can connect a local model (e.g. Ollama "
-            "running on your machine) or a remote API (OpenAI, Anthropic, "
-            "etc.). Head to Settings → AI / LLM to configure your endpoint."
-        ),
+        "Connect a language model to read documents for you.",
     ),
     (
         "tutorial:import_document",
         "Import data from a document",
-        (
-            "Have an existing invoice, contract, or contact sheet as a PDF? "
-            "Use the Import view to drag-and-drop it in. Tuttle's AI will "
-            "read the document, extract the relevant data, and let you "
-            "review before saving. This is the fastest way to get your "
-            "existing business data into the app."
-        ),
+        "Let AI pull contacts, contracts or invoices from a PDF.",
     ),
 ]
 
@@ -121,17 +84,25 @@ def generate_tasks(session: Session) -> None:
 # ---------------------------------------------------------------------------
 
 
+def _upsert_tutorial_task(session: Session, key: str, title: str, description: str) -> Task:
+    """Create the task row, or refresh its copy if the wording has changed."""
+    existing = session.exec(select(Task).where(Task.key == key)).first()
+    if not existing:
+        existing = Task(key=key, title=title, description=description)
+        session.add(existing)
+        session.flush()
+    elif existing.title != title or existing.description != description:
+        existing.title = title
+        existing.description = description
+        session.add(existing)
+    return existing
+
+
 def _generate_tutorial_tasks(session: Session) -> None:
     """Auto-resolving tutorial tasks (condition-based)."""
     for key, title, description, model_cls in TUTORIAL_RULES:
         has_entity = session.exec(select(model_cls)).first() is not None
-        existing = session.exec(select(Task).where(Task.key == key)).first()
-
-        # Ensure task row exists
-        if not existing:
-            existing = Task(key=key, title=title, description=description)
-            session.add(existing)
-            session.flush()
+        existing = _upsert_tutorial_task(session, key, title, description)
 
         # Resolve or reopen based on current state
         if has_entity and existing.status == "pending":
@@ -145,9 +116,7 @@ def _generate_tutorial_tasks(session: Session) -> None:
 def _generate_manual_tutorial_tasks(session: Session) -> None:
     """Tutorial tasks that only disappear when the user dismisses them."""
     for key, title, description in TUTORIAL_MANUAL_RULES:
-        existing = session.exec(select(Task).where(Task.key == key)).first()
-        if not existing:
-            session.add(Task(key=key, title=title, description=description))
+        _upsert_tutorial_task(session, key, title, description)
 
 
 # ---------------------------------------------------------------------------

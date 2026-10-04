@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, shell } from "electron";
+import { app, BrowserWindow, ipcMain, screen, shell } from "electron";
 import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -11,13 +11,30 @@ const __dirname = path.dirname(__filename);
 let mainWindow: BrowserWindow | null = null;
 let pythonBridge: PythonBridge | null = null;
 
+const MIN_WIDTH = 1024;
+const MIN_HEIGHT = 700;
+const COMFORTABLE_WIDTH = 1280;
+
+// Open centered on the display under the cursor: half its width on wide
+// displays, a comfortable width on smaller ones, never past the screen.
+function initialBounds() {
+  const { workArea } = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
+  const width = Math.min(workArea.width, Math.max(Math.round(workArea.width / 2), COMFORTABLE_WIDTH));
+  const height = Math.min(workArea.height, Math.max(Math.round(workArea.height * 0.9), MIN_HEIGHT));
+  return {
+    width,
+    height,
+    x: workArea.x + Math.round((workArea.width - width) / 2),
+    y: workArea.y + Math.round((workArea.height - height) / 2),
+  };
+}
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     title: "Tuttle",
-    width: 1440,
-    height: 960,
-    minWidth: 1024,
-    minHeight: 700,
+    ...initialBounds(),
+    minWidth: MIN_WIDTH,
+    minHeight: MIN_HEIGHT,
     show: false,
     titleBarStyle: "hiddenInset",
     trafficLightPosition: { x: 16, y: 18 },
@@ -31,7 +48,6 @@ function createWindow() {
   });
 
   mainWindow.once("ready-to-show", () => {
-    mainWindow?.maximize();
     mainWindow?.show();
   });
 

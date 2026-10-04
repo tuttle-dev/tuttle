@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import {
   LayoutDashboard, CalendarDays, PieChart, Banknote,
   FolderKanban, FileSignature, Building2, Users, Clock, FileText,
-  FileUp, Settings, ChevronUp, UserPlus, Trash2, CheckSquare, ReceiptText,
+  FileUp, Settings, ChevronUp, UserPlus, Trash2, CheckSquare, ReceiptText, PanelLeft,
   type LucideIcon,
 } from "lucide-react";
 
@@ -62,7 +62,7 @@ type Props = {
 };
 
 export function Sidebar({
-  selected, onSelect, collapsed,
+  selected, onSelect, collapsed, onToggleCollapse,
   activeUser, allUsers, onSwitchUser, onAddUser, onDeleteUser,
 }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -77,19 +77,33 @@ export function Sidebar({
     return () => document.removeEventListener("mousedown", handleClick);
   }, [menuOpen]);
 
+  const isMac = typeof window !== "undefined" && window.tuttle?.platform === "darwin";
+  const shortcut = isMac ? "⌘\\" : "Ctrl+\\";
+
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      if ((isMac ? e.metaKey : e.ctrlKey) && (e.key === "\\" || e.code === "Backslash") && !e.repeat) {
+        e.preventDefault();
+        onToggleCollapse();
+      }
+    }
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [isMac, onToggleCollapse]);
+
   const initials = activeUser
     ? activeUser.name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2)
     : "?";
 
   return (
-    <aside className={`flex flex-col bg-bg-sidebar border-r border-border-subtle transition-all duration-200 ${collapsed ? "w-14" : "w-52"}`}>
+    <aside className={`flex flex-col bg-bg-sidebar border-r border-border-subtle transition-all duration-200 ${collapsed ? "w-24" : "w-52"}`}>
       <div className="drag-region h-13 shrink-0" />
 
       <nav className="flex-1 overflow-y-auto py-2 px-2 space-y-4">
         {SECTIONS.map((section) => (
           <div key={section.label}>
             {!collapsed && (
-              <div className="px-2 pb-1 text-[13px] font-semibold text-secondary">
+              <div className="px-2 pb-1 text-[13px] font-semibold text-secondary truncate">
                 {section.label}
               </div>
             )}
@@ -115,8 +129,8 @@ export function Sidebar({
         ))}
       </nav>
 
-      {/* Settings */}
-      <div className="shrink-0 px-2 pb-2">
+      {/* Settings and the sidebar toggle */}
+      <div className={`shrink-0 flex gap-0.5 px-2 pb-2 ${collapsed ? "flex-col" : ""}`}>
         <button
           onClick={() => onSelect(SETTINGS_ITEM.id)}
           className={`no-drag flex items-center gap-2.5 w-full rounded-md px-2.5 py-1.5 text-sm transition-colors cursor-default
@@ -127,13 +141,20 @@ export function Sidebar({
           <SETTINGS_ITEM.icon size={16} strokeWidth={1.8} className="shrink-0" />
           {!collapsed && <span className="truncate">{SETTINGS_ITEM.label}</span>}
         </button>
+        <button
+          onClick={onToggleCollapse}
+          className="no-drag flex items-center justify-center shrink-0 rounded-md p-2 text-secondary hover:bg-bg-hover hover:text-primary transition-colors cursor-default"
+          title={`${collapsed ? "Show" : "Hide"} sidebar (${shortcut})`}
+        >
+          <PanelLeft size={16} strokeWidth={1.8} />
+        </button>
       </div>
 
       {/* User switcher */}
       <div className="relative shrink-0 border-t border-border-subtle" ref={menuRef}>
         <button
           onClick={() => setMenuOpen((o) => !o)}
-          className="no-drag flex items-center gap-2.5 w-full px-3 py-2.5 text-sm transition-colors hover:bg-bg-hover cursor-default"
+          className={`no-drag flex items-center gap-2.5 w-full px-3 py-2.5 text-sm transition-colors hover:bg-bg-hover cursor-default ${collapsed ? "justify-center" : ""}`}
           title={activeUser?.name ?? "No user"}
         >
           <span className="flex items-center justify-center w-7 h-7 rounded-full bg-bg-card text-primary text-xs font-semibold shrink-0">
@@ -153,7 +174,7 @@ export function Sidebar({
         </button>
 
         {menuOpen && (
-          <div className="absolute left-2 right-2 bottom-full mb-1 bg-bg-sidebar border border-border-subtle rounded-lg shadow-lg z-50 py-1 max-h-64 overflow-y-auto">
+          <div className={`absolute left-2 ${collapsed ? "w-48" : "right-2"} bottom-full mb-1 bg-bg-sidebar border border-border-subtle rounded-lg shadow-lg z-50 py-1 max-h-64 overflow-y-auto`}>
             {allUsers.map((u) => (
               <div key={u.db_file} className="flex items-center group">
                 <button
@@ -167,7 +188,7 @@ export function Sidebar({
                 {u.is_demo && (
                   <button
                     onClick={(e) => { e.stopPropagation(); onDeleteUser(u.db_file); setMenuOpen(false); }}
-                    className="opacity-0 group-hover:opacity-100 px-2 py-1 text-muted hover:text-red-400 transition-all"
+                    className="opacity-0 group-hover:opacity-100 px-2 py-1 text-muted hover:text-status-danger transition-all"
                     title="Remove demo user"
                   >
                     <Trash2 size={13} />

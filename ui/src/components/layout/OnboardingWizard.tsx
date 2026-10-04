@@ -11,6 +11,8 @@
 import { useEffect, useState } from "react";
 import { RefreshCw, ChevronRight, ChevronLeft, SkipForward, Check, X } from "lucide-react";
 import { rpc } from "../../api/rpc";
+import { useDismiss } from "../../hooks/useDismiss";
+import { StepDots } from "../shared/StepDots";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -111,6 +113,8 @@ export function OnboardingWizard({ open, onClose, onSubmit, onDemo, loading, ove
   const [taxModelCountries, setTaxModelCountries] = useState<Set<string>>(new Set());
   const [models, setModels] = useState<string[]>([]);
   const [fetchingModels, setFetchingModels] = useState(false);
+  // Escape only: a stray backdrop click must not discard a multi-step form.
+  useDismiss(onClose, open && overlay && !loading);
 
   useEffect(() => {
     if (!open) {
@@ -226,7 +230,7 @@ export function OnboardingWizard({ open, onClose, onSubmit, onDemo, loading, ove
         <div className="flex flex-col gap-3 w-full max-w-sm pt-2">
           <button
             onClick={next}
-            className="w-full px-5 py-2.5 rounded-lg bg-accent text-white font-medium text-sm hover:bg-accent/90 transition-colors"
+            className="w-full px-5 py-2.5 rounded-lg bg-accent text-on-fill font-medium text-sm hover:bg-accent/90 transition-colors"
           >
             Let's get started
           </button>
@@ -353,10 +357,7 @@ export function OnboardingWizard({ open, onClose, onSubmit, onDemo, loading, ove
 
         {profile.operating_country && !taxModelCountries.has(profile.operating_country) && (
           <div className="px-3 py-2 rounded-md bg-status-warning/10 border border-status-warning/20 text-xs text-secondary">
-            Income tax estimation is not yet available for {profile.operating_country}. VAT and invoicing still work.{" "}
-            <a href="https://github.com/tuttle-dev/tuttle/issues" target="_blank" rel="noopener noreferrer" className="underline text-accent hover:text-primary">
-              Request this tax model on GitHub
-            </a>
+            No tax model for {profile.operating_country} yet. VAT and invoicing still work.
           </div>
         )}
 
@@ -552,32 +553,6 @@ export function OnboardingWizard({ open, onClose, onSubmit, onDemo, loading, ove
     );
   }
 
-  // -- Step indicator -------------------------------------------------------
-
-  function renderStepIndicator() {
-    return (
-      <div className="flex items-center justify-center gap-1.5 py-3">
-        {STEP_LABELS.map((label, i) => (
-          <div key={label} className="flex items-center gap-1.5">
-            <div
-              className={`w-2 h-2 rounded-full transition-colors ${
-                i === step
-                  ? "bg-accent"
-                  : i < step
-                    ? "bg-accent/40"
-                    : "bg-border-subtle"
-              }`}
-              title={label}
-            />
-            {i < TOTAL_STEPS - 1 && (
-              <div className={`w-6 h-px ${i < step ? "bg-accent/40" : "bg-border-subtle"}`} />
-            )}
-          </div>
-        ))}
-      </div>
-    );
-  }
-
   // -- Layout ---------------------------------------------------------------
 
   const stepContent = [renderWelcome, renderProfile, renderAddress, renderRegion, renderInvoicing, renderLLM, renderFinish][step];
@@ -592,7 +567,7 @@ export function OnboardingWizard({ open, onClose, onSubmit, onDemo, loading, ove
             <h2 className="text-base font-semibold">{STEP_LABELS[step]}</h2>
           )}
         </div>
-        {renderStepIndicator()}
+        <StepDots steps={STEP_LABELS} current={step} className="py-3" />
         <div className="flex-1 flex justify-end">
           {overlay && (
             <button onClick={onClose} className="text-muted hover:text-primary transition-colors" disabled={loading}>
@@ -633,7 +608,7 @@ export function OnboardingWizard({ open, onClose, onSubmit, onDemo, loading, ove
             <button
               onClick={next}
               disabled={loading || !canAdvance()}
-              className="flex items-center gap-1.5 px-4 py-1.5 text-sm rounded-md bg-accent text-white font-medium hover:bg-accent/90 transition-colors disabled:opacity-40"
+              className="flex items-center gap-1.5 px-4 py-1.5 text-sm rounded-md bg-accent text-on-fill font-medium hover:bg-accent/90 transition-colors disabled:opacity-40"
             >
               {step === TOTAL_STEPS - 1 ? (
                 <>

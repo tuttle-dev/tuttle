@@ -45,12 +45,18 @@ const PHASE: Record<BootPhase, string> = {
   creating:  "Filing form 27B/6",
 };
 
+const SIDEBAR_COLLAPSED_KEY = "tuttle-sidebar-collapsed";
+
+function loadSidebarCollapsed(): boolean {
+  try { return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1"; } catch { return false; }
+}
+
 export function Shell() {
   const theme = useThemeProvider();
   const [bootState, setBootState] = useState<BootState>("loading");
   const [bootPhase, setBootPhase] = useState<BootPhase>("init");
   const [selected, setSelected] = useState("dashboard");
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(loadSidebarCollapsed);
   const [navFilter, setNavFilter] = useState<NavigationFilter>({});
   const [activeUser, setActiveUser] = useState<RegisteredUser | null>(null);
   const [allUsers, setAllUsers] = useState<RegisteredUser[]>([]);
@@ -63,6 +69,12 @@ export function Shell() {
     setNavFilter(filter || {});
     setSelected(view);
   }, []);
+
+  const toggleSidebar = useCallback(() => setCollapsed((c) => !c), []);
+
+  useEffect(() => {
+    try { localStorage.setItem(SIDEBAR_COLLAPSED_KEY, collapsed ? "1" : "0"); } catch { /* remembering it is a convenience */ }
+  }, [collapsed]);
 
   const navContext = useMemo(
     () => ({ navigate, filter: navFilter }),
@@ -232,7 +244,7 @@ export function Shell() {
             folder. Reinstalling the previous version will let you keep working.
           </p>
           <button
-            className="rounded-lg bg-accent px-4 py-2 text-sm text-white"
+            className="rounded-lg bg-accent px-4 py-2 text-sm text-on-fill"
             onClick={() => window.location.reload()}
           >
             Try again
@@ -265,7 +277,7 @@ export function Shell() {
               selected={selected}
               onSelect={handleSidebarSelect}
               collapsed={collapsed}
-              onToggleCollapse={() => setCollapsed((c) => !c)}
+              onToggleCollapse={toggleSidebar}
               activeUser={activeUser}
               allUsers={allUsers}
               onSwitchUser={handleSwitchUser}
@@ -273,9 +285,11 @@ export function Shell() {
               onDeleteUser={handleDeleteUser}
             />
             <main className="flex-1 flex flex-col overflow-hidden">
-              <div className="drag-region h-13 shrink-0" />
-              <UpdateBanner />
-              <MigrationNoticeBanner notice={bootNotice} onDismiss={() => setBootNotice(null)} />
+              {/* Banners sit in the title-bar row above the view, so they drag the window too. */}
+              <div className="drag-region shrink-0">
+                <UpdateBanner />
+                <MigrationNoticeBanner notice={bootNotice} onDismiss={() => setBootNotice(null)} />
+              </div>
               <div className="flex-1 overflow-y-auto">
                 <ViewErrorBoundary key={selected} viewName={selected}>
                   <DetailView id={selected} />
