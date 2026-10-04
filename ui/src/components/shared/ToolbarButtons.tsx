@@ -26,20 +26,19 @@ export function ListDetailLayout({ list, detail, footer }: {
   );
 }
 
-/* ── Single-page layout: toolbar over a scrolling body ────────────────── */
+/* ── Single-page layout: toolbar over a scrolling, centered body ──────── */
 
-export function PageLayout({ title, actions, right, className = "", children }: {
-  title: string;
-  actions?: ReactNode;
-  right?: ReactNode;
+export function PageLayout({ className = "", children, ...toolbar }: Parameters<typeof Toolbar>[0] & {
   className?: string;
   children: ReactNode;
 }) {
   return (
     <div className="flex flex-col h-full">
-      <Toolbar title={title} actions={actions} right={right} />
-      <div className="flex-1 overflow-y-auto">
-        <div className={`p-6 ${className}`}>{children}</div>
+      <Toolbar {...toolbar} />
+      <div className="flex-1 overflow-y-auto [scrollbar-gutter:stable]">
+        <div className="@container max-w-5xl mx-auto p-6">
+          <div className={className}>{children}</div>
+        </div>
       </div>
     </div>
   );

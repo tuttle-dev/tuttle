@@ -4,7 +4,7 @@ import {
   ListFilter, CalendarDays,
 } from "lucide-react";
 import { rpc } from "../../api/rpc";
-import { Toolbar, ToolbarFilterGroup } from "../shared/ToolbarButtons";
+import { PageLayout, Toolbar, ToolbarFilterGroup } from "../shared/ToolbarButtons";
 import { EmptyStateIntro } from "../shared/EmptyStateIntro";
 import type { Entity } from "../../api/types";
 import { str, bool } from "../../api/entity";
@@ -138,15 +138,11 @@ export function TimelineView() {
   }
 
   return (
-    <div className="flex flex-col h-full">
-      <Toolbar title="Timeline"
-        center={<ToolbarFilterGroup options={FILTER_OPTIONS} value={activeFilter} onChange={setActiveFilter}
-          colors={CATEGORY_COLORS} icons={FILTER_ICONS} labels={FILTER_LABELS} />}
-        search={{ value: searchQuery, onChange: setSearchQuery, placeholder: "Search events…" }}
-      />
-
-      <div className="flex-1 overflow-y-auto p-6 max-w-3xl">
-
+    <PageLayout title="Timeline"
+      center={<ToolbarFilterGroup options={FILTER_OPTIONS} value={activeFilter} onChange={setActiveFilter}
+        colors={CATEGORY_COLORS} icons={FILTER_ICONS} labels={FILTER_LABELS} />}
+      search={{ value: searchQuery, onChange: setSearchQuery, placeholder: "Search events…" }}
+    >
       {/* Filtered-empty state */}
       {!filtered.length && (
         <div className="text-center py-12 text-muted text-sm">No events match your filter.</div>
@@ -182,8 +178,7 @@ export function TimelineView() {
             </div>
           ))}
       </div>
-    </div>
-    </div>
+    </PageLayout>
   );
 }
 

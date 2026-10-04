@@ -67,7 +67,7 @@ export function SalaryView() {
   }
 
   return (
-    <PageLayout title="Salary" className="space-y-6 max-w-3xl">
+    <PageLayout title="Salary" className="grid gap-6 items-start @4xl:grid-cols-2">
       <SalaryDial salary={salary} target={target!} onTargetChange={setTarget} />
       <MonthlyBreakdown salary={salary} countrySupported={countrySupported} taxCountry={taxCountry} />
     </PageLayout>

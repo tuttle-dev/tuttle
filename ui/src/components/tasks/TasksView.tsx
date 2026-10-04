@@ -53,7 +53,7 @@ export function TasksView() {
   const completed = tasks.filter((t) => t.status === "done" || t.status === "dismissed");
 
   return (
-    <PageLayout title="Tasks" className="max-w-2xl">
+    <PageLayout title="Tasks">
       {pending.length > 0 && (
         <div className="space-y-2 mb-6">
           {pending.map((task) => (
@@ -137,7 +137,7 @@ function TaskCard({ task, done, onDone, onDismiss, onReopen }: {
             {String(task.title ?? "")}
           </div>
           {!done && task.description ? (
-            <div className="text-xs text-tertiary mt-1 leading-relaxed">
+            <div className="text-xs text-tertiary mt-1 leading-relaxed max-w-xl">
               {String(task.description)}
             </div>
           ) : null}

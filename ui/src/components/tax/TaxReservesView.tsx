@@ -75,7 +75,7 @@ export function TaxReservesView() {
   }
 
   return (
-    <PageLayout title="Tax & Reserves" className="space-y-6 max-w-3xl"
+    <PageLayout title="Tax & Reserves" className="grid gap-6 items-start @4xl:grid-cols-2 @4xl:grid-rows-[auto_1fr]"
       right={availableYears.length > 1 && (
         <YearSelector years={availableYears} selected={selectedYear} onChange={setSelectedYear} />
       )}>
@@ -145,7 +145,7 @@ export function TaxReservesView() {
       </Section>
 
       {/* Monthly VAT */}
-      <Section title="Monthly VAT" icon={<ReceiptText size={16} />}>
+      <Section title="Monthly VAT" icon={<ReceiptText size={16} />} className="@4xl:col-start-2 @4xl:row-span-2">
         {months.length === 0 ? (
           <p className="text-sm text-muted">No VAT data available.</p>
         ) : (
@@ -262,9 +262,9 @@ function IncomeTaxSection({ data, currency }: { data: Entity; currency: string }
   );
 }
 
-function Section({ title, icon, children }: { title: string; icon?: React.ReactNode; children: React.ReactNode }) {
+function Section({ title, icon, className, children }: { title: string; icon?: React.ReactNode; className?: string; children: React.ReactNode }) {
   return (
-    <div>
+    <div className={className}>
       <div className="flex items-center gap-2 mb-2">
         {icon && <span className="text-secondary">{icon}</span>}
         <h2 className="text-sm font-semibold">{title}</h2>
