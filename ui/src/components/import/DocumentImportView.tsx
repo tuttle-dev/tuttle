@@ -1,12 +1,10 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
-  FileUp, Sparkles, Loader2, X, Check, CheckCheck,
-  Trash2, ChevronDown, ChevronRight, Link2, AlertTriangle,
-  Users, Building2, FileSignature, FolderKanban, Circle,
-  XCircle, ReceiptText, Plus, Minus,
+  FileUp, Sparkles, Loader2, X, Check, CheckCheck, Trash2, ChevronDown, ChevronRight, Link2, AlertTriangle, Users, Building2, FileSignature, FolderKanban, Circle, XCircle, ReceiptText, Plus, Minus,
 } from "lucide-react";
 import { rpc } from "../../api/rpc";
 import { Toolbar } from "../shared/ToolbarButtons";
+import { DocumentDropzone } from "../shared/DocumentDropzone";
 
 // ---------------------------------------------------------------------------
 // Types — RPC response shapes from `imports.parse_document_for_import`.
@@ -371,8 +369,6 @@ export function DocumentImportView() {
 // Upload Phase
 // ---------------------------------------------------------------------------
 
-const ACCEPT_EXTENSIONS = [".pdf", ".txt", ".md", ".text"];
-
 function StepIcon({ status }: { status: StepStatus }) {
   switch (status) {
     case "done":
@@ -545,17 +541,8 @@ function UploadPhase({ parsing, parseError, importSteps, streams, liveItems, onF
   liveItems: LiveItems | null;
   onFileSelected: (f: File) => void;
 }) {
-  const [dragOver, setDragOver] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
   const hasSteps = importSteps.length > 0;
   const hasError = importSteps.some((s) => s.status === "error");
-
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault(); setDragOver(false);
-    const file = e.dataTransfer.files[0];
-    if (file && ACCEPT_EXTENSIONS.some((ext) => file.name.toLowerCase().endsWith(ext)))
-      onFileSelected(file);
-  }, [onFileSelected]);
 
   return (
     <div className="max-w-xl mx-auto mt-12 space-y-5">
@@ -567,22 +554,7 @@ function UploadPhase({ parsing, parseError, importSteps, streams, liveItems, onF
       </div>
 
       {!parsing && !hasSteps && (
-        <div
-          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={handleDrop}
-          onClick={() => inputRef.current?.click()}
-          className={`flex flex-col items-center justify-center gap-3 p-10 rounded-xl border-2 border-dashed cursor-pointer transition-colors
-            ${dragOver ? "border-fuchsia-400 bg-fuchsia-500/5" : "border-border-subtle hover:border-fuchsia-400/50 hover:bg-fuchsia-500/5"}`}
-        >
-          <FileUp size={32} strokeWidth={1.4} className="text-fuchsia-400" />
-          <div className="text-center">
-            <p className="text-sm font-medium">Drop a document here</p>
-            <p className="text-xs text-tertiary mt-1">PDF, TXT, or Markdown</p>
-          </div>
-          <input ref={inputRef} type="file" className="hidden"
-            accept=".pdf,.txt,.md,.text" onChange={(e) => { const f = e.target.files?.[0]; if (f) onFileSelected(f); }} />
-        </div>
+        <DocumentDropzone hint="PDF, TXT, or Markdown" onFileSelected={onFileSelected} />
       )}
 
       {(parsing || hasSteps) && (

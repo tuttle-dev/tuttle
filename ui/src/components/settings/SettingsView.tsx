@@ -498,7 +498,7 @@ export function SettingsView() {
             onClick={() => setTab(id)}
             className={`flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm transition-colors ${
               tab === id
-                ? "bg-accent/10 text-primary font-medium"
+                ? "bg-bg-selected text-primary"
                 : "text-secondary hover:bg-bg-hover hover:text-primary"
             }`}
           >

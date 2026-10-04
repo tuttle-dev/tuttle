@@ -1,7 +1,6 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
-  Users, Plus, Trash2, X, Building2,
-  FileUp, Sparkles, Check, CheckCheck, Loader2, Tag, UserPlus,
+  Users, Plus, Trash2, X, Building2, FileUp, Sparkles, Check, UserPlus, Save,
 } from "lucide-react";
 import { rpc } from "../../api/rpc";
 import { str, num, entity as subEntity, fullName, initials, displayName } from "../../api/entity";
@@ -11,6 +10,8 @@ import { EmptyStateIntro } from "../shared/EmptyStateIntro";
 import { DetailHeader, DetailAction, DetailDeleteAction, DetailSubmit, DETAIL_PANE } from "../shared/DetailHeader";
 import { DetailFields, DetailField } from "../shared/DetailFields";
 import { LoadError, LoadingState } from "../shared/LoadStates";
+import { Section } from "../shared/Section";
+import { DocumentImportPanel } from "../shared/DocumentImportPanel";
 import { useFieldRequirements } from "../../hooks/useFieldRequirements";
 import { useAutoSelect } from "../../hooks/useAutoSelect";
 import type { Entity } from "../../api/types";
@@ -222,17 +223,21 @@ export function ContactsView() {
           ))
         }
         detail={mode === "import" ? (
-            <DocumentImportPanel
+            <DocumentImportPanel title="Import from Document" noun="contact" count={parsedContacts.length}
               parsing={parsing}
               parseError={parseError}
-              parsedContacts={parsedContacts}
               onFileSelected={handleFileImport}
-              onAccept={acceptContact}
               onAcceptAll={acceptAll}
-              onDiscard={discardContact}
-              onUpdate={updateParsedContact}
               onClose={() => setMode("view")}
-            />
+            >
+              {parsedContacts.map((c, i) => (
+                <ParsedContactCard key={i} contact={c}
+                  onAccept={() => acceptContact(c)}
+                  onDiscard={() => discardContact(c)}
+                  onUpdate={(updated) => updateParsedContact(i, updated)}
+                />
+              ))}
+            </DocumentImportPanel>
           ) : mode === "create" ? (
             <ContactForm clients={clients} onSave={handleSave} onCancel={() => { setMode("view"); }} error={saveError} />
           ) : mode === "edit" && selected ? (
@@ -591,15 +596,6 @@ function ContactForm({ contact, clients, onSave, onCancel, error }: {
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <div className="text-xs font-semibold uppercase tracking-wider text-secondary mb-2">{title}</div>
-      {children}
-    </div>
-  );
-}
-
 function FormField({ label, value, onChange, type = "text", autoFocus, required }: {
   label: string; value: string; onChange: (v: string) => void; type?: string; autoFocus?: boolean; required?: boolean;
 }) {
@@ -627,113 +623,6 @@ interface ParsedContact {
     postal_code: string;
     country: string;
   };
-}
-
-const ACCEPT_EXTENSIONS = [".pdf", ".txt", ".md", ".text"];
-
-function DocumentImportPanel({ parsing, parseError, parsedContacts, onFileSelected, onAccept, onAcceptAll, onDiscard, onUpdate, onClose }: {
-  parsing: boolean;
-  parseError: string | null;
-  parsedContacts: ParsedContact[];
-  onFileSelected: (file: File) => void;
-  onAccept: (c: ParsedContact) => void;
-  onAcceptAll: () => void;
-  onDiscard: (c: ParsedContact) => void;
-  onUpdate: (index: number, c: ParsedContact) => void;
-  onClose: () => void;
-}) {
-  const [dragOver, setDragOver] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(false);
-    const file = e.dataTransfer.files[0];
-    if (file && isAcceptedFile(file.name)) {
-      onFileSelected(file);
-    }
-  }, [onFileSelected]);
-
-  function isAcceptedFile(name: string) {
-    const lower = name.toLowerCase();
-    return ACCEPT_EXTENSIONS.some((ext) => lower.endsWith(ext));
-  }
-
-  function handleFileInput(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (file) onFileSelected(file);
-  }
-
-  const showDropzone = parsedContacts.length === 0 && !parsing;
-
-  return (
-    <div className="p-5 space-y-5">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Sparkles size={18} className="text-fuchsia-400" />
-          <h2 className="text-lg font-semibold">Import from Document</h2>
-        </div>
-        <button onClick={onClose}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm text-secondary hover:text-primary hover:bg-bg-hover transition-colors">
-          <X size={14} /> Close
-        </button>
-      </div>
-
-      {showDropzone && (
-        <div
-          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={handleDrop}
-          onClick={() => fileInputRef.current?.click()}
-          className={`flex flex-col items-center justify-center gap-3 p-10 rounded-xl border-2 border-dashed cursor-pointer transition-colors
-            ${dragOver ? "border-fuchsia-400 bg-fuchsia-500/5" : "border-border-subtle hover:border-fuchsia-400/50 hover:bg-fuchsia-500/5"}`}
-        >
-          <FileUp size={32} strokeWidth={1.4} className="text-fuchsia-400" />
-          <div className="text-center">
-            <p className="text-sm font-medium">Drop a document here</p>
-            <p className="text-xs text-tertiary mt-1">PDF, TXT, or Markdown — AI will extract contacts</p>
-          </div>
-          <input ref={fileInputRef} type="file" className="hidden"
-            accept=".pdf,.txt,.md,.text"
-            onChange={handleFileInput} />
-        </div>
-      )}
-
-      {parsing && (
-        <div className="flex items-center justify-center gap-3 py-10">
-          <Loader2 size={20} className="animate-spin text-fuchsia-400" />
-          <span className="text-sm text-secondary">Parsing document with AI…</span>
-        </div>
-      )}
-
-      {parseError && (
-        <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-400">
-          {parseError}
-        </div>
-      )}
-
-      {parsedContacts.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-secondary">
-              <span className="font-medium text-fuchsia-400">{parsedContacts.length}</span> contact{parsedContacts.length !== 1 ? "s" : ""} found
-            </p>
-            <button onClick={onAcceptAll}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium text-fuchsia-400 hover:bg-fuchsia-500/10 border border-fuchsia-400/30 transition-colors">
-              <CheckCheck size={14} /> Accept All
-            </button>
-          </div>
-          {parsedContacts.map((c, i) => (
-            <ParsedContactCard key={i} contact={c}
-              onAccept={() => onAccept(c)}
-              onDiscard={() => onDiscard(c)}
-              onUpdate={(updated) => onUpdate(i, updated)}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
 }
 
 /* ---------- Parsed Contact Approval Card ---------- */
