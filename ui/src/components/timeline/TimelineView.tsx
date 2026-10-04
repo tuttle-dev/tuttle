@@ -213,7 +213,7 @@ function EventCard({ event, isLast }: { event: Entity; isLast: boolean }) {
   const catLabel = CATEGORIES.find((c) => c.id === cat)?.label || cat;
 
   return (
-    <div className="flex">
+    <div className="flex" style={{ opacity: isFuture ? 0.7 : 1 }}>
       {/* Spine — upcoming events get a hollow dot */}
       <div className="w-9 flex flex-col items-center shrink-0">
         <div className="w-0.5 h-3.5 bg-border-subtle" />
