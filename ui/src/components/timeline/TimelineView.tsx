@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useMemo } from "react";
 import {
   FileText, FileSignature, FolderKanban, Flag,
   ListFilter, CalendarDays,
@@ -69,6 +69,7 @@ export function TimelineView() {
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState<Category>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const todayRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { load(); }, []);
 
@@ -126,6 +127,11 @@ export function TimelineView() {
     return null;
   }, [groups, todayISO]);
 
+  // Open at today, and re-anchor there whenever filter or search swaps the list.
+  useLayoutEffect(() => {
+    todayRef.current?.scrollIntoView({ block: "start", behavior: "instant" });
+  }, [loading, filtered]);
+
   if (loading) return <div className="flex items-center justify-center h-full text-secondary">Loading timeline…</div>;
 
   if (!events.length) {
@@ -168,13 +174,13 @@ export function TimelineView() {
 
                 return (
                   <div key={`${str(ev, "category")}-${ei}-${str(ev, "date")}`}>
-                    {showToday && <TodayMarker />}
+                    {showToday && <TodayMarker ref={todayRef} />}
                     <EventCard event={ev} isLast={isLast} />
                   </div>
                 );
               })}
 
-              {gi === groups.length - 1 && !todayPosition && <TodayMarker />}
+              {gi === groups.length - 1 && !todayPosition && <TodayMarker ref={todayRef} />}
             </div>
           ))}
       </div>
@@ -182,9 +188,9 @@ export function TimelineView() {
   );
 }
 
-function TodayMarker() {
+function TodayMarker({ ref }: { ref: React.Ref<HTMLDivElement> }) {
   return (
-    <div className="flex items-center gap-2">
+    <div ref={ref} className="flex items-center gap-2 scroll-mt-24">
       <div className="w-9 flex justify-center relative">
         <div className="w-0.5 h-8 bg-border-subtle" />
         <div className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-red-500" />
