@@ -17,6 +17,7 @@ import { EmptyStateIntro } from "../shared/EmptyStateIntro";
 import { DetailHeader, DetailAction, DetailDeleteAction, DetailSubmit, DETAIL_PANE } from "../shared/DetailHeader";
 import { DetailFields, DetailField } from "../shared/DetailFields";
 import { useFieldRequirements } from "../../hooks/useFieldRequirements";
+import { useAutoSelect } from "../../hooks/useAutoSelect";
 import type { Entity } from "../../api/types";
 import { formatHours } from "../timetracking/format";
 
@@ -75,7 +76,7 @@ export function ProjectsView() {
 
   useEffect(() => { load(); }, []);
 
-  async function load() {
+  async function load(selectId?: number) {
     setLoading(true);
     const [res, cRes, bRes] = await Promise.all([
       rpc<Entity[]>("projects.get_all"),
@@ -84,7 +85,7 @@ export function ProjectsView() {
     ]);
     if (res.ok && res.data) {
       setProjects(res.data);
-      const currentId = selectedIdRef.current;
+      const currentId = selectId ?? selectedIdRef.current;
       if (currentId != null) {
         const updated = res.data.find((p) => p.id === currentId);
         setSelected(updated || null);
@@ -116,15 +117,15 @@ export function ProjectsView() {
       contract_id: data.contractId,
     };
     if (mode === "edit" && selected) project.id = selected.id;
-    const res = await rpc("projects.save", { project });
-    if (res.ok) { setMode("view"); await load(); }
+    const res = await rpc<Entity>("projects.save", { project });
+    if (res.ok) { setMode("view"); await load(res.data?.id); }
     else setSaveError(res.error || "Failed to save project.");
   }
 
   async function handleDelete(id: number) {
     setDeleteError(null);
     const res = await rpc("projects.delete", { id });
-    if (res.ok) { setSelected(null); setMode("view"); await load(); }
+    if (res.ok) { setMode("view"); await load(); }
     else if (res.error) setDeleteError(res.error);
   }
 
@@ -190,6 +191,11 @@ export function ProjectsView() {
   const filtered = projects.filter((p) =>
     (statusFilter === "All" || projectStatus(p) === statusFilter) && matchesSearch(p));
   const boardFiltered = projects.filter(matchesSearch);
+
+  useAutoSelect(projects, filtered, selected, setSelected, {
+    enabled: mode === "view",
+    preferred: navFilter.contractId != null ? (p) => num(p, "contract_id") === navFilter.contractId : undefined,
+  });
 
   function moveToColumn(id: number, colId: string) {
     stageStore.setColumn(id, colId);

@@ -7,6 +7,7 @@ import { EmptyStateIntro } from "../shared/EmptyStateIntro";
 import { DetailHeader, DetailAction, DetailDeleteAction, DetailSubmit, DETAIL_PANE } from "../shared/DetailHeader";
 import { DetailFields, DetailField } from "../shared/DetailFields";
 import { useFieldRequirements } from "../../hooks/useFieldRequirements";
+import { useAutoSelect } from "../../hooks/useAutoSelect";
 import type { Entity } from "../../api/types";
 
 type Mode = "view" | "edit" | "create";
@@ -82,12 +83,12 @@ export function ExpensesView() {
   useEffect(() => { selectedIdRef.current = selected?.id ?? null; }, [selected]);
   useEffect(() => { load(); }, []);
 
-  async function load() {
+  async function load(selectId?: number) {
     setLoading(true);
     const res = await rpc<Entity[]>("salary.get_expenses");
     if (res.ok && res.data) {
       setExpenses(res.data);
-      const currentId = selectedIdRef.current;
+      const currentId = selectId ?? selectedIdRef.current;
       if (currentId != null) {
         const updated = res.data.find((e) => e.id === currentId);
         setSelected(updated || null);
@@ -126,11 +127,11 @@ export function ExpensesView() {
     if (mode === "edit" && selected) {
       expense.id = selected.id;
     }
-    const res = await rpc("salary.save_expense", expense);
+    const res = await rpc<Entity>("salary.save_expense", expense);
     if (res.ok) {
       setSaveError(null);
       setMode("view");
-      await load();
+      await load(res.data?.id);
     } else {
       setSaveError(res.error || "Failed to save recurring expense.");
     }
@@ -140,7 +141,6 @@ export function ExpensesView() {
     setDeleteError(null);
     const res = await rpc("salary.delete_expense", { expense_id: id });
     if (res.ok) {
-      setSelected(null);
       setMode("view");
       await load();
     } else {
@@ -170,6 +170,8 @@ export function ExpensesView() {
     if (!grouped.has(label)) grouped.set(label, []);
     grouped.get(label)!.push(e);
   }
+
+  useAutoSelect(expenses, Array.from(grouped.values()).flat(), selected, setSelected, { enabled: mode === "view" });
 
   // Monthly total of the fixed expenses. Dynamic ones depend on income the
   // backend knows about, so they are only counted, not summed, here.

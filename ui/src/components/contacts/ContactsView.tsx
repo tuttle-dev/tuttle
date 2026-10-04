@@ -11,6 +11,7 @@ import { EmptyStateIntro } from "../shared/EmptyStateIntro";
 import { DetailHeader, DetailAction, DetailDeleteAction, DetailSubmit, DETAIL_PANE } from "../shared/DetailHeader";
 import { DetailFields, DetailField } from "../shared/DetailFields";
 import { useFieldRequirements } from "../../hooks/useFieldRequirements";
+import { useAutoSelect } from "../../hooks/useAutoSelect";
 import type { Entity } from "../../api/types";
 
 type Mode = "view" | "edit" | "create" | "import";
@@ -31,7 +32,7 @@ export function ContactsView() {
   useEffect(() => { selectedIdRef.current = selected?.id ?? null; }, [selected]);
   useEffect(() => { load(); }, []);
 
-  async function load() {
+  async function load(selectId?: number) {
     setLoading(true);
     const [res, clRes] = await Promise.all([
       rpc<Entity[]>("contacts.get_all"),
@@ -39,7 +40,7 @@ export function ContactsView() {
     ]);
     if (res.ok && res.data) {
       setContacts(res.data);
-      const currentId = selectedIdRef.current;
+      const currentId = selectId ?? selectedIdRef.current;
       if (currentId != null) {
         const updated = res.data.find((c) => c.id === currentId);
         setSelected(updated || null);
@@ -99,11 +100,11 @@ export function ContactsView() {
         country: data.country,
       };
     }
-    const res = await rpc("contacts.save", { contact });
+    const res = await rpc<Entity>("contacts.save", { contact });
     if (res.ok) {
       setSaveError(null);
       setMode("view");
-      await load();
+      await load(res.data?.id);
     } else {
       setSaveError(res.error || "Failed to save contact.");
     }
@@ -112,7 +113,6 @@ export function ContactsView() {
   async function handleDelete(id: number) {
     const res = await rpc("contacts.delete", { id });
     if (res.ok) {
-      setSelected(null);
       setMode("view");
       await load();
     }
@@ -187,6 +187,8 @@ export function ContactsView() {
     const company = str(c, "company").toLowerCase();
     return name.includes(q) || email.includes(q) || company.includes(q);
   });
+
+  useAutoSelect(contacts, filtered, selected, setSelected, { enabled: mode === "view" });
 
   if (loading && contacts.length === 0)
     return <div className="flex items-center justify-center h-full text-secondary">Loading contacts…</div>;

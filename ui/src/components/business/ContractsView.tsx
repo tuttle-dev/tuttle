@@ -15,6 +15,7 @@ import { InfoHint } from "../shared/InfoHint";
 import { DetailHeader, DetailAction, DetailDeleteAction, DetailSubmit, DETAIL_PANE } from "../shared/DetailHeader";
 import { DetailFields, DetailField } from "../shared/DetailFields";
 import { useFieldRequirements } from "../../hooks/useFieldRequirements";
+import { useAutoSelect } from "../../hooks/useAutoSelect";
 import type { Entity } from "../../api/types";
 
 type Mode = "view" | "edit" | "create" | "import";
@@ -52,7 +53,7 @@ export function ContractsView() {
   useEffect(() => { selectedIdRef.current = selected?.id ?? null; }, [selected]);
   useEffect(() => { load(); }, []);
 
-  async function load() {
+  async function load(selectId?: number) {
     setLoading(true);
     const [res, clRes, curRes, supRes, accRes] = await Promise.all([
       rpc<Entity[]>("contracts.get_all"),
@@ -63,7 +64,7 @@ export function ContractsView() {
     ]);
     if (res.ok && res.data) {
       setContracts(res.data);
-      const currentId = selectedIdRef.current;
+      const currentId = selectId ?? selectedIdRef.current;
       if (currentId != null) {
         const updated = res.data.find((c) => c.id === currentId);
         setSelected(updated || null);
@@ -141,14 +142,14 @@ export function ContractsView() {
     }
 
     setMode("view");
-    await load();
+    await load(contractId);
     return true;
   }
 
   async function handleDelete(id: number) {
     setDeleteError(null);
     const res = await rpc("contracts.delete", { id });
-    if (res.ok) { setSelected(null); setMode("view"); await load(); }
+    if (res.ok) { setMode("view"); await load(); }
     else if (res.error) setDeleteError(res.error);
   }
 
@@ -215,6 +216,8 @@ export function ContractsView() {
     const clientName = cl ? str(cl, "name").toLowerCase() : "";
     return title.includes(q) || clientName.includes(q);
   });
+
+  useAutoSelect(contracts, filtered, selected, setSelected, { enabled: mode === "view" });
 
   if (loading && contracts.length === 0)
     return <div className="flex items-center justify-center h-full text-secondary">Loading contracts…</div>;

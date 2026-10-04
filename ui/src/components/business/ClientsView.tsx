@@ -11,6 +11,7 @@ import { EmptyStateIntro } from "../shared/EmptyStateIntro";
 import { DetailHeader, DetailAction, DetailDeleteAction, DetailSubmit, DETAIL_PANE } from "../shared/DetailHeader";
 import { DetailFields, DetailField } from "../shared/DetailFields";
 import { useFieldRequirements } from "../../hooks/useFieldRequirements";
+import { useAutoSelect } from "../../hooks/useAutoSelect";
 import type { Entity } from "../../api/types";
 
 type Mode = "view" | "edit" | "create" | "import";
@@ -32,7 +33,7 @@ export function ClientsView() {
   useEffect(() => { selectedIdRef.current = selected?.id ?? null; }, [selected]);
   useEffect(() => { load(); }, []);
 
-  async function load() {
+  async function load(selectId?: number) {
     setLoading(true);
     const [res, cRes] = await Promise.all([
       rpc<Entity[]>("clients.get_all"),
@@ -40,7 +41,7 @@ export function ClientsView() {
     ]);
     if (res.ok && res.data) {
       setClients(res.data);
-      const currentId = selectedIdRef.current;
+      const currentId = selectId ?? selectedIdRef.current;
       if (currentId != null) {
         const updated = res.data.find((c) => c.id === currentId);
         setSelected(updated || null);
@@ -78,15 +79,15 @@ export function ClientsView() {
         client.invoicing_contact = { id: ic.id };
       }
     }
-    const res = await rpc("clients.save", { client });
-    if (res.ok) { setSaveError(null); setMode("view"); await load(); }
+    const res = await rpc<Entity>("clients.save", { client });
+    if (res.ok) { setSaveError(null); setMode("view"); await load(res.data?.id); }
     else setSaveError(res.error || "Failed to save client.");
   }
 
   async function handleDelete(id: number) {
     setDeleteError(null);
     const res = await rpc("clients.delete", { id });
-    if (res.ok) { setSelected(null); setMode("view"); await load(); }
+    if (res.ok) { setMode("view"); await load(); }
     else if (res.error) setDeleteError(res.error);
   }
 
@@ -147,6 +148,8 @@ export function ClientsView() {
     return name.includes(q) || contactName.includes(q);
   });
 
+  useAutoSelect(clients, filtered, selected, setSelected, { enabled: mode === "view" });
+
   if (loading && clients.length === 0)
     return <div className="flex items-center justify-center h-full text-secondary">Loading clients…</div>;
 
@@ -186,7 +189,7 @@ export function ClientsView() {
             <ClientForm client={selected} contacts={contacts} onSave={handleSave} onCancel={() => setMode("view")} error={saveError} />
           ) : selected ? (
             <ClientDetail client={selected} contacts={contacts} onEdit={() => setMode("edit")}
-              onDelete={() => handleDelete(selected.id)} deleteError={deleteError} onReload={load} />
+              onDelete={() => handleDelete(selected.id)} deleteError={deleteError} onReload={() => load()} />
           ) : (
             <div className="flex flex-col items-center justify-center h-full gap-2 text-tertiary">
               <Building2 size={36} strokeWidth={1.2} />

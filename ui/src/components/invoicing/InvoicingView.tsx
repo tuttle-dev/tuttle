@@ -17,6 +17,7 @@ import { useNavigation } from "../shared/NavigationContext";
 import { EmptyStateIntro } from "../shared/EmptyStateIntro";
 import { StepDots } from "../shared/StepDots";
 import { useDismiss } from "../../hooks/useDismiss";
+import { useAutoSelect } from "../../hooks/useAutoSelect";
 import type { Entity } from "../../api/types";
 
 type InvoiceChain = { root: Entity; reminders: Entity[]; deposits: Entity[] };
@@ -60,9 +61,6 @@ export function InvoicingView() {
 
   useEffect(() => { load(); }, []);
   useEffect(() => { setMailError(null); }, [selected?.id]);
-  useEffect(() => {
-    if (selected && !filtered.some((inv) => inv.id === selected.id)) setSelected(null);
-  }, [statusFilter, search, invoices]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function load(selectId?: number) {
     setLoading(true);
@@ -116,6 +114,10 @@ export function InvoicingView() {
     return m;
   }, [boardChains]);
 
+  useAutoSelect(invoices, chains.flatMap((c) => [c.root, ...c.deposits, ...c.reminders]), selected, setSelected, {
+    preferred: navFilter.contractId != null ? (inv) => num(inv, "contract_id") === navFilter.contractId : undefined,
+  });
+
   async function toggleSent(id: number) { await rpc("invoicing.toggle_sent", { id }); load(); }
   async function togglePaid(id: number) { await rpc("invoicing.toggle_paid", { id }); load(); }
   async function toggleCancelled(id: number) { await rpc("invoicing.toggle_cancelled", { id }); load(); }
@@ -128,7 +130,7 @@ export function InvoicingView() {
   async function handleDelete(id: number) {
     setDeleteError(null);
     const res = await rpc("invoicing.delete", { id });
-    if (res.ok) { setSelected(null); load(); }
+    if (res.ok) load();
     else setDeleteError(res.error || "Failed to delete invoice.");
   }
 
