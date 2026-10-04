@@ -149,7 +149,7 @@ export function InvoicingView() {
   return (
     <div className="flex flex-col h-full">
       <Toolbar title="Invoicing"
-        actions={<ToolbarButtonPrimary icon={<Plus size={13} />} label="Create Invoice" onClick={() => setCreateOpen(true)} />}
+        actions={<ToolbarButtonPrimary icon={<Plus size={13} />} label="New" onClick={() => setCreateOpen(true)} />}
         center={viewMode === "list"
           ? <ToolbarFilterGroup options={STATUS_FILTERS} value={statusFilter} onChange={setStatusFilter} colors={FILTER_COLORS} />
           : undefined}
