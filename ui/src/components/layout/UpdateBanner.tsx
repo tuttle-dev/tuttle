@@ -40,7 +40,7 @@ export function UpdateBanner() {
   if (!update || key === dismissed) return null;
 
   return (
-    <div className="flex items-center gap-3 px-4 py-2 bg-accent/10 border-b border-accent/20 text-sm text-primary shrink-0">
+    <div className="flex items-center gap-3 px-4 py-2 min-h-13 bg-accent/10 border-b border-accent/20 text-sm text-primary shrink-0">
       <Download size={16} className="text-accent shrink-0" />
       <span className="flex-1">
         {update.status === "ready" ? (

@@ -70,7 +70,8 @@ export class ViewErrorBoundary extends Component<Props, State> {
     const viewLabel = this.props.viewName || "This view";
 
     return (
-      <div className="flex flex-col items-center justify-center h-full gap-5 px-6">
+      <div className="relative flex flex-col items-center justify-center h-full gap-5 px-6">
+        <div className="drag-region absolute inset-x-0 top-0 h-13" />
         <div className="flex flex-col items-center gap-3 max-w-md text-center">
           <div className="w-12 h-12 rounded-2xl bg-red-500/10 flex items-center justify-center">
             <AlertTriangle size={24} strokeWidth={1.5} className="text-red-400" />

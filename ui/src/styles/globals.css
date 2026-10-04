@@ -92,6 +92,8 @@ html, body {
 .drag-region {
   -webkit-app-region: drag;
 }
-.no-drag {
+/* Controls inside a drag region stay clickable. */
+.no-drag,
+.drag-region :is(button, input, select, textarea, label, a, [role="button"]) {
   -webkit-app-region: no-drag;
 }

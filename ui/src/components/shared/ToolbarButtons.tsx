@@ -46,7 +46,8 @@ export function PageLayout({ title, actions, right, className = "", children }: 
 }
 
 /*
- * Toolbar — consistent top bar for all views.
+ * Toolbar — consistent top bar for all views. It is also the window's title
+ * bar: empty space drags the window, controls stay clickable.
  *
  * Layout: Title | actions | ―flex― | center | ―flex― | right | Search
  *
@@ -64,7 +65,7 @@ export function Toolbar({ title, actions, center, right, search }: {
   search?: { value: string; onChange: (v: string) => void; placeholder?: string };
 }) {
   return (
-    <div className="flex items-center gap-2 px-4 h-13 shrink-0 border-b border-border-subtle">
+    <div className="drag-region flex items-center gap-2 px-4 h-13 shrink-0 border-b border-border-subtle">
       <h2 className="text-sm font-semibold mr-1">{title}</h2>
       {actions}
       <div className="flex-1" />
