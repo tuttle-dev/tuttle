@@ -1,10 +1,14 @@
 import { useEffect, useState, useRef } from "react";
-import { ReceiptText, Plus, Trash2, Save, X, Info, Percent } from "lucide-react";
+import { ReceiptText, Plus, Percent } from "lucide-react";
 import { rpc } from "../../api/rpc";
 import { str, num } from "../../api/entity";
 import { Toolbar, ToolbarButtonPrimary, ListDetailLayout, LIST_ROW_PADDING } from "../shared/ToolbarButtons";
 import { EmptyStateIntro } from "../shared/EmptyStateIntro";
+import { DetailHeader, DetailAction, DetailDeleteAction, DetailSubmit, DETAIL_PANE } from "../shared/DetailHeader";
+import { DetailFields, DetailField } from "../shared/DetailFields";
+import { LoadError, LoadingState } from "../shared/LoadStates";
 import { useFieldRequirements } from "../../hooks/useFieldRequirements";
+import { useAutoSelect } from "../../hooks/useAutoSelect";
 import type { Entity } from "../../api/types";
 
 type Mode = "view" | "edit" | "create";
@@ -71,6 +75,7 @@ export function ExpensesView() {
   const [expenses, setExpenses] = useState<Entity[]>([]);
   const [selected, setSelected] = useState<Entity | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [search, setSearch] = useState("");
   const [mode, setMode] = useState<Mode>("view");
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -80,12 +85,14 @@ export function ExpensesView() {
   useEffect(() => { selectedIdRef.current = selected?.id ?? null; }, [selected]);
   useEffect(() => { load(); }, []);
 
-  async function load() {
+  async function load(selectId?: number) {
     setLoading(true);
+    setLoadFailed(false);
     const res = await rpc<Entity[]>("salary.get_expenses");
+    setLoadFailed(!res.ok);
     if (res.ok && res.data) {
       setExpenses(res.data);
-      const currentId = selectedIdRef.current;
+      const currentId = selectId ?? selectedIdRef.current;
       if (currentId != null) {
         const updated = res.data.find((e) => e.id === currentId);
         setSelected(updated || null);
@@ -124,11 +131,11 @@ export function ExpensesView() {
     if (mode === "edit" && selected) {
       expense.id = selected.id;
     }
-    const res = await rpc("salary.save_expense", expense);
+    const res = await rpc<Entity>("salary.save_expense", expense);
     if (res.ok) {
       setSaveError(null);
       setMode("view");
-      await load();
+      await load(res.data?.id);
     } else {
       setSaveError(res.error || "Failed to save recurring expense.");
     }
@@ -138,7 +145,6 @@ export function ExpensesView() {
     setDeleteError(null);
     const res = await rpc("salary.delete_expense", { expense_id: id });
     if (res.ok) {
-      setSelected(null);
       setMode("view");
       await load();
     } else {
@@ -169,6 +175,8 @@ export function ExpensesView() {
     grouped.get(label)!.push(e);
   }
 
+  useAutoSelect(expenses, Array.from(grouped.values()).flat(), selected, setSelected, { enabled: mode === "view" });
+
   // Monthly total of the fixed expenses. Dynamic ones depend on income the
   // backend knows about, so they are only counted, not summed, here.
   const monthlyTotal = expenses.reduce((sum, e) => {
@@ -177,19 +185,19 @@ export function ExpensesView() {
   const dynamicCount = expenses.filter(isDynamic).length;
   const totalCurrency = expenses.length > 0 ? str(expenses[0], "currency") : "EUR";
 
-  if (loading && expenses.length === 0) {
-    return <div className="flex items-center justify-center h-full text-secondary">Loading recurring expenses…</div>;
-  }
-
   return (
     <div className="flex flex-col h-full">
       <Toolbar
-        title="Recurring Expenses"
+        title="Expenses"
         actions={<ToolbarButtonPrimary icon={<Plus size={13} />} label="New" onClick={startCreate} />}
         search={{ value: search, onChange: setSearch }}
       />
 
-      {expenses.length === 0 && mode === "view" ? (
+      {loadFailed && mode === "view" ? (
+        <LoadError what="expenses" onRetry={load} />
+      ) : loading && expenses.length === 0 ? (
+        <LoadingState />
+      ) : expenses.length === 0 && mode === "view" ? (
         <EmptyStateIntro
           icon={ReceiptText}
           description="Track your recurring business and personal expenses (e.g. health insurance, software) to accurately calculate your effective freelancer take-home salary."
@@ -286,11 +294,6 @@ function ExpenseRow({ expense, isSelected, onSelect }: {
 function ExpenseDetail({ expense, onEdit, onDelete, deleteError }: {
   expense: Entity; onEdit: () => void; onDelete: () => void; deleteError: string | null;
 }) {
-  const [deleteConfirm, setDeleteConfirm] = useState(false);
-
-  // Reset confirmation when the selected expense changes
-  useEffect(() => { setDeleteConfirm(false); }, [expense.id]);
-
   const title = str(expense, "title");
   const amount = num(expense, "amount");
   const currency = str(expense, "currency");
@@ -304,98 +307,53 @@ function ExpenseDetail({ expense, onEdit, onDelete, deleteError }: {
   const maxBase = expense.max_base != null ? num(expense, "max_base") : null;
 
   return (
-    <div className="p-6 space-y-6 max-w-xl">
-      <div className="flex items-center justify-between border-b border-border-subtle pb-4">
-        <div>
-          <h2 className="text-lg font-semibold">{title}</h2>
-          <span className="inline-block text-xs font-medium px-2 py-0.5 rounded bg-accent/15 text-accent capitalize mt-1">
+    <div className={`${DETAIL_PANE} space-y-6`}>
+      <DetailHeader title={title}
+        badges={
+          <span className="inline-block text-xs font-medium px-2 py-0.5 rounded bg-accent/15 text-accent capitalize">
             {category}
           </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <button onClick={onEdit}
-            className="px-3 py-1.5 rounded-md text-sm border border-border-subtle hover:bg-bg-hover transition-colors">
-            Edit
-          </button>
-          {!deleteConfirm ? (
-            <button onClick={() => setDeleteConfirm(true)}
-              className="p-2 rounded-md border border-border-subtle hover:border-red-500/30 hover:bg-red-500/10 text-secondary hover:text-red-400 transition-all"
-              title="Delete expense">
-              <Trash2 size={14} />
-            </button>
-          ) : (
-            <div className="flex items-center gap-1.5 ml-1">
-              <span className="text-xs text-red-400">Delete permanently?</span>
-              <button onClick={() => { setDeleteConfirm(false); onDelete(); }}
-                className="px-2 py-1 rounded-md text-xs font-medium bg-red-500 text-white hover:bg-red-600 transition-colors">
-                Delete
-              </button>
-              <button onClick={() => setDeleteConfirm(false)}
-                className="px-2 py-1 rounded-md text-xs font-medium text-secondary hover:text-primary border border-border-subtle transition-colors">
-                Keep
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
+        }
+        actions={<>
+          <DetailAction label="Edit" onClick={onEdit} />
+          <DetailDeleteAction key={expense.id} label="Delete expense" onDelete={onDelete} />
+        </>} />
 
       {deleteError && (
-        <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-400">{deleteError}</div>
+        <div className="p-3 rounded-lg bg-status-danger/10 border border-status-danger/30 text-sm text-status-danger">{deleteError}</div>
       )}
 
-      <div className="grid grid-cols-2 gap-4">
+      <DetailFields>
         {dynamic ? (
           <>
-            <InfoRow icon={<Percent size={14} />} label="Rate" value={fmtRate(rate)} />
-            <InfoRow
-              icon={<Info size={14} />}
-              label="Tax Treatment"
-              value={deductible ? "Deductible" : "Paid from taxed income"}
-            />
+            <DetailField label="Rate">{fmtRate(rate)}</DetailField>
+            <DetailField label="Tax Treatment">{deductible ? "Deductible" : "Paid from taxed income"}</DetailField>
           </>
         ) : (
           <>
-            <InfoRow icon={<ReceiptText size={14} />} label="Amount" value={fmt(amount, currency)} />
-            <InfoRow icon={<Info size={14} />} label="Period" value={period.charAt(0).toUpperCase() + period.slice(1)} />
+            <DetailField label="Amount">{fmt(amount, currency)}</DetailField>
+            <DetailField label="Period">{period.charAt(0).toUpperCase() + period.slice(1)}</DetailField>
           </>
         )}
-      </div>
-
-      <div className="p-3 rounded-lg bg-bg-card border border-border-subtle">
-        <div className="text-xs font-semibold uppercase tracking-wider text-tertiary">
-          {dynamic ? "Monthly Amount" : "Monthly Equivalent"}
-        </div>
-        <div className="text-sm font-medium mt-0.5">
+        <DetailField label={dynamic ? "Monthly Amount" : "Monthly Equivalent"}>
           {dynamic
             ? `${rate}% of ${deductible ? "your taxable profit" : "what is left after tax"}`
             : `${fmt(monthly, currency)}/mo`}
-        </div>
-        {dynamic && (minBase != null || maxBase != null) && (
-          <div className="text-xs text-tertiary mt-1">
-            {minBase != null && `charged on at least ${fmt(minBase, currency)}${basisSuffix(period)}`}
-            {minBase != null && maxBase != null && ", "}
-            {maxBase != null && (
-              <>
-                {minBase == null && "charged on "}
-                {`income up to ${fmt(maxBase, currency)}${basisSuffix(period)}`}
-                {` — at most ${fmt((maxBase * rate) / 100, currency)}${basisSuffix(period)}`}
-              </>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
-  return (
-    <div className="flex items-center gap-3 p-3 rounded-lg bg-bg-card border border-border-subtle">
-      <span className="text-tertiary">{icon}</span>
-      <div>
-        <div className="text-xs font-semibold uppercase tracking-wider text-tertiary">{label}</div>
-        <div className="text-sm">{value}</div>
-      </div>
+          {dynamic && (minBase != null || maxBase != null) && (
+            <div className="text-xs text-tertiary mt-1">
+              {minBase != null && `charged on at least ${fmt(minBase, currency)}${basisSuffix(period)}`}
+              {minBase != null && maxBase != null && ", "}
+              {maxBase != null && (
+                <>
+                  {minBase == null && "charged on "}
+                  {`income up to ${fmt(maxBase, currency)}${basisSuffix(period)}`}
+                  {` — at most ${fmt((maxBase * rate) / 100, currency)}${basisSuffix(period)}`}
+                </>
+              )}
+            </div>
+          )}
+        </DetailField>
+      </DetailFields>
     </div>
   );
 }
@@ -466,20 +424,12 @@ function ExpenseForm({ expense, onSave, onCancel, error }: {
   const canSave = title.trim() !== "" && (dynamic ? rateStr.trim() !== "" : amountStr.trim() !== "");
 
   return (
-    <form onSubmit={handleSubmit} className="p-5 space-y-5">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">{isNew ? "New Recurring Expense" : "Edit Recurring Expense"}</h2>
-        <div className="flex items-center gap-2">
-          <button type="button" onClick={onCancel}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm text-secondary hover:text-primary hover:bg-bg-hover transition-colors">
-            <X size={14} /> Cancel
-          </button>
-          <button type="submit" disabled={saving || !canSave}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium text-primary hover:bg-bg-hover transition-colors disabled:opacity-40">
-            <Save size={14} /> {saving ? "Saving…" : "Save"}
-          </button>
-        </div>
-      </div>
+    <form onSubmit={handleSubmit} className={`${DETAIL_PANE} space-y-5`}>
+      <DetailHeader title={isNew ? "New Recurring Expense" : "Edit Recurring Expense"}
+        actions={<>
+          <DetailAction label="Cancel" onClick={onCancel} />
+          <DetailSubmit label={saving ? "Saving…" : "Save"} disabled={saving || !canSave} />
+        </>} />
 
       <p className="text-xs text-muted"><span className="text-accent">*</span> Required</p>
 
@@ -669,7 +619,7 @@ function ExpenseForm({ expense, onSave, onCancel, error }: {
         </label>
       </div>
 
-      {error && <p className="text-xs text-red-400">{error}</p>}
+      {error && <p className="text-xs text-status-danger">{error}</p>}
     </form>
   );
 }

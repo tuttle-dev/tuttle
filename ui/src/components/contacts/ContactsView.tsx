@@ -1,14 +1,19 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
-  Users, Plus, Trash2, Save, X, Mail, Building2, MapPin,
-  FileUp, Sparkles, Check, CheckCheck, Loader2, Tag, UserPlus,
+  Users, Plus, Trash2, X, Building2, FileUp, Sparkles, Check, UserPlus, Save,
 } from "lucide-react";
 import { rpc } from "../../api/rpc";
 import { str, num, entity as subEntity, fullName, initials, displayName } from "../../api/entity";
 import { Toolbar, ToolbarButtonPrimary, ToolbarButtonSecondary, ListDetailLayout, LIST_ROW_PADDING } from "../shared/ToolbarButtons";
 import { EditableClientContactRole } from "../shared/EditableClientContactRole";
 import { EmptyStateIntro } from "../shared/EmptyStateIntro";
+import { DetailHeader, DetailAction, DetailDeleteAction, DetailSubmit, DETAIL_PANE } from "../shared/DetailHeader";
+import { DetailFields, DetailField } from "../shared/DetailFields";
+import { LoadError, LoadingState } from "../shared/LoadStates";
+import { Section } from "../shared/Section";
+import { DocumentImportPanel } from "../shared/DocumentImportPanel";
 import { useFieldRequirements } from "../../hooks/useFieldRequirements";
+import { useAutoSelect } from "../../hooks/useAutoSelect";
 import type { Entity } from "../../api/types";
 
 type Mode = "view" | "edit" | "create" | "import";
@@ -18,6 +23,7 @@ export function ContactsView() {
   const [clients, setClients] = useState<Record<string, Entity>>({});
   const [selected, setSelected] = useState<Entity | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [search, setSearch] = useState("");
   const [mode, setMode] = useState<Mode>("view");
   const [parsedContacts, setParsedContacts] = useState<ParsedContact[]>([]);
@@ -29,15 +35,17 @@ export function ContactsView() {
   useEffect(() => { selectedIdRef.current = selected?.id ?? null; }, [selected]);
   useEffect(() => { load(); }, []);
 
-  async function load() {
+  async function load(selectId?: number) {
     setLoading(true);
+    setLoadFailed(false);
     const [res, clRes] = await Promise.all([
       rpc<Entity[]>("contacts.get_all"),
       rpc<Record<string, Entity>>("contacts.get_all_clients"),
     ]);
+    setLoadFailed(!res.ok || !clRes.ok);
     if (res.ok && res.data) {
       setContacts(res.data);
-      const currentId = selectedIdRef.current;
+      const currentId = selectId ?? selectedIdRef.current;
       if (currentId != null) {
         const updated = res.data.find((c) => c.id === currentId);
         setSelected(updated || null);
@@ -97,11 +105,11 @@ export function ContactsView() {
         country: data.country,
       };
     }
-    const res = await rpc("contacts.save", { contact });
+    const res = await rpc<Entity>("contacts.save", { contact });
     if (res.ok) {
       setSaveError(null);
       setMode("view");
-      await load();
+      await load(res.data?.id);
     } else {
       setSaveError(res.error || "Failed to save contact.");
     }
@@ -110,7 +118,6 @@ export function ContactsView() {
   async function handleDelete(id: number) {
     const res = await rpc("contacts.delete", { id });
     if (res.ok) {
-      setSelected(null);
       setMode("view");
       await load();
     }
@@ -186,8 +193,7 @@ export function ContactsView() {
     return name.includes(q) || email.includes(q) || company.includes(q);
   });
 
-  if (loading && contacts.length === 0)
-    return <div className="flex items-center justify-center h-full text-secondary">Loading contacts…</div>;
+  useAutoSelect(contacts, filtered, selected, setSelected, { enabled: mode === "view" });
 
   return (
     <div className="flex flex-col h-full">
@@ -199,7 +205,11 @@ export function ContactsView() {
         search={{ value: search, onChange: setSearch }}
       />
 
-      {contacts.length === 0 && mode === "view" ? (
+      {loadFailed && mode === "view" ? (
+        <LoadError what="contacts" onRetry={load} />
+      ) : loading && contacts.length === 0 ? (
+        <LoadingState />
+      ) : contacts.length === 0 && mode === "view" ? (
         <EmptyStateIntro icon={Users} description="Contacts are people in your professional network — colleagues at client companies, or other collaborators." />
       ) : (
       <ListDetailLayout
@@ -213,17 +223,21 @@ export function ContactsView() {
           ))
         }
         detail={mode === "import" ? (
-            <DocumentImportPanel
+            <DocumentImportPanel title="Import from Document" noun="contact" count={parsedContacts.length}
               parsing={parsing}
               parseError={parseError}
-              parsedContacts={parsedContacts}
               onFileSelected={handleFileImport}
-              onAccept={acceptContact}
               onAcceptAll={acceptAll}
-              onDiscard={discardContact}
-              onUpdate={updateParsedContact}
               onClose={() => setMode("view")}
-            />
+            >
+              {parsedContacts.map((c, i) => (
+                <ParsedContactCard key={i} contact={c}
+                  onAccept={() => acceptContact(c)}
+                  onDiscard={() => discardContact(c)}
+                  onUpdate={(updated) => updateParsedContact(i, updated)}
+                />
+              ))}
+            </DocumentImportPanel>
           ) : mode === "create" ? (
             <ContactForm clients={clients} onSave={handleSave} onCancel={() => { setMode("view"); }} error={saveError} />
           ) : mode === "edit" && selected ? (
@@ -326,45 +340,23 @@ function ContactDetail({ contact, clients, onEdit, onDelete }: {
   const linkedClientIds = new Set(assocs.map((a) => num(a, "client_id")));
 
   return (
-    <div className="p-5 space-y-5">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <div className="w-14 h-14 rounded-full bg-bg-card flex items-center justify-center text-xl font-semibold text-secondary">
-          {ini}
-        </div>
-        <div className="flex-1 min-w-0">
-          <h1 className="text-lg font-semibold">{name}</h1>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <button onClick={onEdit}
-            className="px-3 py-1.5 rounded text-sm font-medium bg-bg-card text-secondary hover:text-primary border border-border-subtle transition-colors">
-            Edit
-          </button>
-          <button onClick={onDelete}
-            className="p-1.5 rounded text-secondary hover:text-red-400 border border-border-subtle transition-colors"
-            title="Delete contact">
-            <Trash2 size={14} />
-          </button>
-        </div>
-      </div>
+    <div className={`${DETAIL_PANE} space-y-6`}>
+      <DetailHeader avatar={ini} title={name}
+        actions={<>
+          <DetailAction label="Edit" onClick={onEdit} />
+          <DetailDeleteAction key={contact.id} label="Delete contact" onDelete={onDelete} />
+        </>} />
 
-      {/* Info cards */}
-      <div className="space-y-3">
-        {email && (
-          <InfoRow icon={<Mail size={14} />} label="Email" value={email} />
-        )}
-        {addrParts.length > 0 && (
-          <div className="flex items-start gap-3 p-3 rounded-lg bg-bg-card border border-border-subtle">
-            <span className="text-tertiary mt-0.5"><MapPin size={14} /></span>
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-wider text-tertiary mb-1">Address</div>
-              {addrParts.map((line, i) => (
-                <div key={i} className="text-sm">{line}</div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+      {(email || addrParts.length > 0) && (
+        <DetailFields>
+          {email && <DetailField label="Email">{email}</DetailField>}
+          {addrParts.length > 0 && (
+            <DetailField label="Address">
+              {addrParts.map((line, i) => <div key={i}>{line}</div>)}
+            </DetailField>
+          )}
+        </DetailFields>
+      )}
 
       {/* Companies (many-to-many via ClientContact) */}
       <div className="space-y-3">
@@ -394,7 +386,7 @@ function ContactDetail({ contact, clients, onEdit, onDelete }: {
                   updateMethod="contacts.update_client_contact_role" />
               </div>
               <button onClick={() => removeAssoc(a.id)}
-                className="opacity-0 group-hover:opacity-100 p-1 rounded text-secondary hover:text-red-400 transition-all"
+                className="opacity-0 group-hover:opacity-100 p-1 rounded text-secondary hover:text-status-danger transition-all"
                 title="Remove company">
                 <X size={14} />
               </button>
@@ -424,18 +416,6 @@ function ContactDetail({ contact, clients, onEdit, onDelete }: {
             </div>
           </div>
         )}
-      </div>
-    </div>
-  );
-}
-
-function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
-  return (
-    <div className="flex items-center gap-3 p-3 rounded-lg bg-bg-card border border-border-subtle">
-      <span className="text-tertiary">{icon}</span>
-      <div>
-        <div className="text-xs font-semibold uppercase tracking-wider text-tertiary">{label}</div>
-        <div className="text-sm">{value}</div>
       </div>
     </div>
   );
@@ -524,20 +504,12 @@ function ContactForm({ contact, clients, onSave, onCancel, error }: {
   const linkedClientIds = new Set(assocs.map((a) => num(a, "client_id")));
 
   return (
-    <form onSubmit={handleSubmit} className="p-5 space-y-5">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">{isNew ? "New Contact" : "Edit Contact"}</h2>
-        <div className="flex items-center gap-2">
-          <button type="button" onClick={onCancel}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm text-secondary hover:text-primary hover:bg-bg-hover transition-colors">
-            <X size={14} /> Cancel
-          </button>
-          <button type="submit" disabled={saving || !hasName}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium text-primary hover:bg-bg-hover transition-colors disabled:opacity-40">
-            <Save size={14} /> {saving ? "Saving…" : "Save"}
-          </button>
-        </div>
-      </div>
+    <form onSubmit={handleSubmit} className={`${DETAIL_PANE} space-y-5`}>
+      <DetailHeader title={isNew ? "New Contact" : "Edit Contact"}
+        actions={<>
+          <DetailAction label="Cancel" onClick={onCancel} />
+          <DetailSubmit label={saving ? "Saving…" : "Save"} disabled={saving || !hasName} />
+        </>} />
 
       <p className="text-xs text-muted"><span className="text-accent">*</span> Required</p>
 
@@ -562,7 +534,7 @@ function ContactForm({ contact, clients, onSave, onCancel, error }: {
         </div>
       </Section>
 
-      {error && <p className="text-xs text-red-400">{error}</p>}
+      {error && <p className="text-xs text-status-danger">{error}</p>}
 
       {/* Companies — live-managed via RPC (only for existing contacts) */}
       {contact && (
@@ -583,7 +555,7 @@ function ContactForm({ contact, clients, onSave, onCancel, error }: {
                   updateMethod="contacts.update_client_contact_role" />
                   </div>
                   <button type="button" onClick={() => removeAssoc(a.id)}
-                    className="opacity-0 group-hover:opacity-100 p-1 rounded text-secondary hover:text-red-400 transition-all"
+                    className="opacity-0 group-hover:opacity-100 p-1 rounded text-secondary hover:text-status-danger transition-all"
                     title="Remove company">
                     <X size={14} />
                   </button>
@@ -624,15 +596,6 @@ function ContactForm({ contact, clients, onSave, onCancel, error }: {
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <div className="text-xs font-semibold uppercase tracking-wider text-secondary mb-2">{title}</div>
-      {children}
-    </div>
-  );
-}
-
 function FormField({ label, value, onChange, type = "text", autoFocus, required }: {
   label: string; value: string; onChange: (v: string) => void; type?: string; autoFocus?: boolean; required?: boolean;
 }) {
@@ -660,113 +623,6 @@ interface ParsedContact {
     postal_code: string;
     country: string;
   };
-}
-
-const ACCEPT_EXTENSIONS = [".pdf", ".txt", ".md", ".text"];
-
-function DocumentImportPanel({ parsing, parseError, parsedContacts, onFileSelected, onAccept, onAcceptAll, onDiscard, onUpdate, onClose }: {
-  parsing: boolean;
-  parseError: string | null;
-  parsedContacts: ParsedContact[];
-  onFileSelected: (file: File) => void;
-  onAccept: (c: ParsedContact) => void;
-  onAcceptAll: () => void;
-  onDiscard: (c: ParsedContact) => void;
-  onUpdate: (index: number, c: ParsedContact) => void;
-  onClose: () => void;
-}) {
-  const [dragOver, setDragOver] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(false);
-    const file = e.dataTransfer.files[0];
-    if (file && isAcceptedFile(file.name)) {
-      onFileSelected(file);
-    }
-  }, [onFileSelected]);
-
-  function isAcceptedFile(name: string) {
-    const lower = name.toLowerCase();
-    return ACCEPT_EXTENSIONS.some((ext) => lower.endsWith(ext));
-  }
-
-  function handleFileInput(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (file) onFileSelected(file);
-  }
-
-  const showDropzone = parsedContacts.length === 0 && !parsing;
-
-  return (
-    <div className="p-5 space-y-5">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Sparkles size={18} className="text-fuchsia-400" />
-          <h2 className="text-lg font-semibold">Import from Document</h2>
-        </div>
-        <button onClick={onClose}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm text-secondary hover:text-primary hover:bg-bg-hover transition-colors">
-          <X size={14} /> Close
-        </button>
-      </div>
-
-      {showDropzone && (
-        <div
-          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={handleDrop}
-          onClick={() => fileInputRef.current?.click()}
-          className={`flex flex-col items-center justify-center gap-3 p-10 rounded-xl border-2 border-dashed cursor-pointer transition-colors
-            ${dragOver ? "border-fuchsia-400 bg-fuchsia-500/5" : "border-border-subtle hover:border-fuchsia-400/50 hover:bg-fuchsia-500/5"}`}
-        >
-          <FileUp size={32} strokeWidth={1.4} className="text-fuchsia-400" />
-          <div className="text-center">
-            <p className="text-sm font-medium">Drop a document here</p>
-            <p className="text-xs text-tertiary mt-1">PDF, TXT, or Markdown — AI will extract contacts</p>
-          </div>
-          <input ref={fileInputRef} type="file" className="hidden"
-            accept=".pdf,.txt,.md,.text"
-            onChange={handleFileInput} />
-        </div>
-      )}
-
-      {parsing && (
-        <div className="flex items-center justify-center gap-3 py-10">
-          <Loader2 size={20} className="animate-spin text-fuchsia-400" />
-          <span className="text-sm text-secondary">Parsing document with AI…</span>
-        </div>
-      )}
-
-      {parseError && (
-        <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-400">
-          {parseError}
-        </div>
-      )}
-
-      {parsedContacts.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-secondary">
-              <span className="font-medium text-fuchsia-400">{parsedContacts.length}</span> contact{parsedContacts.length !== 1 ? "s" : ""} found
-            </p>
-            <button onClick={onAcceptAll}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium text-fuchsia-400 hover:bg-fuchsia-500/10 border border-fuchsia-400/30 transition-colors">
-              <CheckCheck size={14} /> Accept All
-            </button>
-          </div>
-          {parsedContacts.map((c, i) => (
-            <ParsedContactCard key={i} contact={c}
-              onAccept={() => onAccept(c)}
-              onDiscard={() => onDiscard(c)}
-              onUpdate={(updated) => onUpdate(i, updated)}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
 }
 
 /* ---------- Parsed Contact Approval Card ---------- */
@@ -799,15 +655,15 @@ function ParsedContactCard({ contact, onAccept, onDiscard, onUpdate }: {
   const name = [contact.first_name, contact.last_name].filter(Boolean).join(" ") || contact.company || "(unnamed)";
 
   return (
-    <div className="rounded-xl border-2 border-fuchsia-400/40 bg-fuchsia-500/5 p-4 space-y-3">
+    <div className="rounded-xl border-2 border-status-purple/40 bg-status-purple/5 p-4 space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Sparkles size={14} className="text-fuchsia-400" />
+          <Sparkles size={14} className="text-status-purple" />
           <span className="text-sm font-semibold">{name}</span>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={onDiscard}
-            className="flex items-center gap-1 px-2 py-1 rounded text-xs text-secondary hover:text-red-400 hover:bg-red-500/10 transition-colors"
+            className="flex items-center gap-1 px-2 py-1 rounded text-xs text-secondary hover:text-status-danger hover:bg-status-danger/10 transition-colors"
             title="Discard">
             <Trash2 size={12} /> Discard
           </button>
@@ -815,7 +671,7 @@ function ParsedContactCard({ contact, onAccept, onDiscard, onUpdate }: {
             disabled={!valid}
             className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium border transition-colors ${
               valid
-                ? "text-fuchsia-400 hover:bg-fuchsia-500/10 border-fuchsia-400/30"
+                ? "text-status-purple hover:bg-status-purple/10 border-status-purple/30"
                 : "text-muted border-border-subtle cursor-not-allowed opacity-50"
             }`}
             title={valid ? "Accept and save" : `Missing: ${missing.join(", ")}`}>
@@ -825,7 +681,7 @@ function ParsedContactCard({ contact, onAccept, onDiscard, onUpdate }: {
       </div>
 
       {!valid && (
-        <p className="text-xs text-amber-400">
+        <p className="text-xs text-status-warning">
           Required: {missing.join(", ")}
         </p>
       )}
@@ -860,13 +716,13 @@ function AiField({ label, value, onChange, required, missing, addressRequired }:
   const showWarning = (required && missing) || addressRequired;
   return (
     <div>
-      <label className="block text-xs text-fuchsia-300/70 mb-0.5">
-        {label}{required && <span className="text-amber-400 ml-0.5">*</span>}
+      <label className="block text-xs text-status-purple/70 mb-0.5">
+        {label}{required && <span className="text-status-warning ml-0.5">*</span>}
       </label>
       <input type="text" value={value} onChange={(e) => onChange(e.target.value)}
         className={`w-full px-2.5 py-1.5 rounded-md text-sm bg-bg-card text-primary outline-none
-          focus:border-fuchsia-400 transition-colors placeholder:text-muted border ${
-          showWarning ? "border-amber-400/60" : "border-fuchsia-400/30"
+          focus:border-status-purple transition-colors placeholder:text-muted border ${
+          showWarning ? "border-status-warning/60" : "border-status-purple/30"
         }`} />
     </div>
   );

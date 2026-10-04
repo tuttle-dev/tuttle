@@ -6,8 +6,10 @@ import {
 } from "lucide-react";
 import { rpc } from "../../api/rpc";
 import { Toolbar, ToolbarButtonSecondary } from "../shared/ToolbarButtons";
+import { LoadError, LoadingState } from "../shared/LoadStates";
 import { useStatusBar } from "../shared/status-bar-context";
 import { useNavigation } from "../shared/NavigationContext";
+import { useDismiss } from "../../hooks/useDismiss";
 import { useTimer } from "./timer-context";
 import { formatElapsed, formatHours, parseDuration } from "./format";
 
@@ -34,13 +36,15 @@ type DayMarker = { tag: string; source: string };
 
 type DayInfo = { date: string; hours: number; all_day_count?: number; markers: DayMarker[]; count: number };
 
+type ProjectHours = { tag: string; title: string; hours: number; event_count: number };
+
 type CalendarData = {
   year: number;
   month: number;
   first_weekday: number;
   days_in_month: number;
   events: TimeEvent[];
-  projects: { tag: string; title: string; hours: number; event_count: number }[];
+  projects: ProjectHours[];
   days: Record<string, DayInfo>;
   summary: { total_events: number; total_hours: number; planned_hours: number; planned_events: number };
 };
@@ -63,8 +67,8 @@ type EntryValues = { tag: string; title: string; start: string; end: string; dur
 // ---------------------------------------------------------------------------
 
 const PROJECT_COLORS = [
-  "#0A84FF", "#30D158", "#FFD60A", "#BF5AF2",
-  "#FF9F0A", "#FF375F", "#64D2FF", "#AC8E68",
+  "#3a78c9", "#2f9a5c", "#c49a12", "#8b5cc9",
+  "#d97b2a", "#c94a62", "#2f9bb3", "#9a7a52",
 ];
 
 function tagColor(tag: string, allTags: string[]): string {
@@ -104,9 +108,10 @@ export function TimeTrackingView() {
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [filterTag, setFilterTag] = useState<string | null>(null);
-  const [availableTags, setAvailableTags] = useState<string[]>([]);
+  const [monthProjects, setMonthProjects] = useState<ProjectHours[]>([]);
   const [projectTags, setProjectTags] = useState<ProjectTag[]>([]);
   const [restoringSource, setRestoringSource] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
 
   const [calendarSource, setCalendarSource] = useState<CalendarSource>(null);
   const [connectionLost, setConnectionLost] = useState(false);
@@ -121,32 +126,42 @@ export function TimeTrackingView() {
   const timer = useTimer();
   const { navigate } = useNavigation();
   const isMac = typeof window !== "undefined" && window.tuttle?.platform === "darwin";
+  const closeSourceDialog = () => setShowSourceDialog(false);
+  const sourceBackdrop = useDismiss(closeSourceDialog, showSourceDialog);
 
   const loadData = useCallback(async () => {
-    const res = await rpc<CalendarData>("timetracking.get_calendar_data", { year, month, project_tag: filterTag });
+    // While filtered, the projects panel still lists every project of the month.
+    const [res, unfiltered] = await Promise.all([
+      rpc<CalendarData>("timetracking.get_calendar_data", { year, month, project_tag: filterTag }),
+      filterTag ? rpc<CalendarData>("timetracking.get_calendar_data", { year, month }) : null,
+    ]);
+    setLoadFailed(!res.ok || (unfiltered !== null && !unfiltered.ok));
     if (res.ok && res.data) {
       setCalData(res.data);
-      if (!filterTag) {
-        const tags = res.data.projects.map((p) => p.tag);
-        setAvailableTags((prev) =>
-          prev.length === tags.length && prev.every((t, i) => t === tags[i]) ? prev : tags,
-        );
-      }
+      setMonthProjects((unfiltered?.ok && unfiltered.data ? unfiltered.data : res.data).projects);
     }
   }, [year, month, filterTag]);
 
-  useEffect(() => {
-    (async () => {
-      const cfg = await rpc<{ source_type: string; has_data: boolean }>("timetracking.get_source_config");
-      if (cfg.ok && cfg.data?.source_type) {
-        if (cfg.data.has_data) setCalendarSource(cfg.data.source_type as CalendarSource);
-        else setConnectionLost(true);
-      }
-      const tags = await rpc<ProjectTag[]>("timetracking.get_project_tags");
-      if (tags.ok && tags.data) setProjectTags(tags.data);
-      setRestoringSource(false);
-    })();
+  // Until this succeeds the calendar source is unknown, so the toolbar shows no calendar actions.
+  const restoreSource = useCallback(async () => {
+    const cfg = await rpc<{ source_type: string; has_data: boolean }>("timetracking.get_source_config");
+    const tags = await rpc<ProjectTag[]>("timetracking.get_project_tags");
+    if (!cfg.ok || !tags.ok) { setLoadFailed(true); return; }
+    if (cfg.data?.source_type) {
+      if (cfg.data.has_data) setCalendarSource(cfg.data.source_type as CalendarSource);
+      else setConnectionLost(true);
+    }
+    if (tags.data) setProjectTags(tags.data);
+    setRestoringSource(false);
   }, []);
+
+  useEffect(() => { restoreSource(); }, [restoreSource]);
+
+  function retryLoad() {
+    setLoadFailed(false);
+    if (restoringSource) restoreSource();
+    else loadData();
+  }
 
   useEffect(() => {
     if (!restoringSource) loadData();
@@ -236,35 +251,34 @@ export function TimeTrackingView() {
     setConnectionLost(false);
     setSystemCals(null);
     setFilterTag(null);
-    setAvailableTags([]);
     loadData();
   }
 
   // ── Derived data ────────────────────────────────────────────────────────
 
-  const allTags = useMemo(() => {
-    if (availableTags.length > 0) return availableTags;
-    return calData?.projects.map((p) => p.tag) ?? [];
-  }, [calData, availableTags]);
+  // Keep the filtered project listed even in a month without its entries, so it can be cleared.
+  const panelProjects = useMemo(() => {
+    if (!filterTag || monthProjects.some((p) => p.tag === filterTag)) return monthProjects;
+    const title = projectTags.find((p) => p.tag === filterTag)?.title ?? filterTag;
+    return [...monthProjects, { tag: filterTag, title, hours: 0, event_count: 0 }];
+  }, [monthProjects, filterTag, projectTags]);
+
+  const allTags = useMemo(() => panelProjects.map((p) => p.tag), [panelProjects]);
 
   const dayEvents = useMemo(() => {
     if (!selectedDay || !calData) return [];
     return calData.events.filter((ev) => ev.date === selectedDay);
   }, [selectedDay, calData]);
 
-  const monthHasEvents = !!calData && calData.summary.total_events > 0;
+  const showPanel = panelProjects.length > 0 || (!!calData && calData.summary.total_events > 0);
   const defaultTag = timer.state.tag || projectTags[0]?.tag || "";
 
   // ── Render ──────────────────────────────────────────────────────────────
 
-  if (!calData) {
-    return <div className="flex items-center justify-center h-full text-secondary">Loading time tracking…</div>;
-  }
-
   return (
     <div className="flex flex-col h-full">
       <Toolbar title="Time Tracking"
-        actions={calendarSource ? (
+        actions={restoringSource ? undefined : calendarSource ? (
           <>
             <ToolbarButtonSecondary
               icon={<RefreshCw size={13} className={syncing ? "animate-spin" : ""} />}
@@ -283,6 +297,11 @@ export function TimeTrackingView() {
         )}
       />
 
+      {loadFailed ? (
+        <LoadError what="your time entries" onRetry={retryLoad} />
+      ) : !calData ? (
+        <LoadingState />
+      ) : (<>
       <TimerBar projectTags={projectTags} onCreateProject={() => navigate("projects", {})} onLogged={loadData} />
 
       {connectionLost && !calendarSource && (
@@ -318,25 +337,6 @@ export function TimeTrackingView() {
               </h3>
               <button onClick={nextMonth} className="p-1.5 rounded-md hover:bg-bg-hover text-primary"><ChevronRight size={18} /></button>
               <button onClick={goToday} className="text-xs font-medium text-secondary hover:text-primary hover:underline">Today</button>
-              <div className="flex-1" />
-              {(availableTags.length > 1 || filterTag) && (
-                <div className="flex items-center gap-1 flex-wrap justify-end">
-                  <button
-                    onClick={() => setFilterTag(null)}
-                    className={`px-2 py-0.5 rounded-full text-[11px] font-medium transition-colors ${!filterTag ? "bg-accent text-white" : "text-tertiary hover:text-secondary"}`}
-                  >All</button>
-                  {allTags.map((t) => (
-                    <button key={t} onClick={() => setFilterTag(t === filterTag ? null : t)}
-                      className="px-2 py-0.5 rounded-full text-[11px] font-medium transition-colors"
-                      style={{
-                        backgroundColor: filterTag === t ? tagColor(t, allTags) : "transparent",
-                        color: filterTag === t ? "#fff" : tagColor(t, allTags),
-                        border: `1px solid ${tagColor(t, allTags)}44`,
-                      }}
-                    >{t}</button>
-                  ))}
-                </div>
-              )}
             </div>
 
             <MonthGrid
@@ -361,33 +361,41 @@ export function TimeTrackingView() {
           )}
         </div>
 
-        {monthHasEvents && (
+        {showPanel && (
           <div className="w-60 shrink-0 border-l border-border-subtle overflow-y-auto p-4 space-y-4">
-            <div className="text-[11px] font-bold uppercase tracking-wider text-primary mb-2">Projects</div>
-            {calData.projects.map((p) => (
-              <div key={p.tag} className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: tagColor(p.tag, allTags) }} />
-                  <div className="min-w-0">
-                    <div className="text-[13px] font-semibold truncate text-primary">{p.title || p.tag}</div>
-                    {p.title && p.title !== p.tag && (
-                      <div className="text-[11px] text-tertiary truncate">{p.tag}</div>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 ml-5">
-                  <span className="text-xs tabular-nums font-medium text-primary">{formatHours(p.hours)}</span>
-                  <span className="text-[11px] text-secondary">{p.event_count} {p.event_count === 1 ? "entry" : "entries"}</span>
-                </div>
+            <div>
+              <div className="text-[11px] font-bold uppercase tracking-wider text-primary mb-2">Projects</div>
+              <div className="-mx-2 space-y-1">
+                {panelProjects.map((p) => {
+                  const selected = p.tag === filterTag;
+                  return (
+                    <button key={p.tag} onClick={() => setFilterTag(selected ? null : p.tag)} aria-pressed={selected}
+                      className={`block w-full text-left rounded-lg px-2 py-1.5 space-y-1 transition-colors ${selected ? "bg-bg-selected" : "hover:bg-bg-hover"}`}>
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: tagColor(p.tag, allTags) }} />
+                        <div className="min-w-0">
+                          <div className="text-[13px] font-semibold truncate text-primary">{p.title || p.tag}</div>
+                          {p.title && p.title !== p.tag && (
+                            <div className="text-[11px] text-tertiary truncate">{p.tag}</div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 ml-5">
+                        <span className="text-xs tabular-nums font-medium text-primary">{formatHours(p.hours)}</span>
+                        <span className="text-[11px] text-secondary">{p.event_count} {p.event_count === 1 ? "entry" : "entries"}</span>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
-            ))}
+            </div>
 
             <div className="border-t border-border-subtle pt-3">
               <div className="text-[11px] font-bold uppercase tracking-wider text-primary mb-1">Total</div>
               <div className="text-xl font-bold tabular-nums text-primary">{formatHours(calData.summary.total_hours)}</div>
               <div className="text-xs text-secondary">{calData.summary.total_events} {calData.summary.total_events === 1 ? "entry" : "entries"}</div>
               {calData.summary.planned_hours > 0 && (
-                <div className="text-xs text-blue-400 mt-1">
+                <div className="text-xs text-status-info mt-1">
                   {formatHours(calData.summary.planned_hours)} planned
                 </div>
               )}
@@ -395,14 +403,14 @@ export function TimeTrackingView() {
           </div>
         )}
       </div>
+      </>)}
 
       {showSourceDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowSourceDialog(false)}>
-          <div className="bg-bg-content rounded-xl border border-border-subtle shadow-2xl w-[680px] max-h-[85vh] flex flex-col overflow-hidden"
-            onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" {...sourceBackdrop}>
+          <div className="bg-bg-content rounded-xl border border-border-subtle shadow-2xl w-[680px] max-h-[85vh] flex flex-col overflow-hidden">
             <div className="flex items-center justify-between px-5 py-4 border-b border-border-subtle shrink-0">
               <h2 className="text-base font-semibold text-primary">Import from calendar</h2>
-              <button onClick={() => setShowSourceDialog(false)} className="p-1 rounded text-muted hover:text-primary hover:bg-bg-hover transition-colors">
+              <button onClick={closeSourceDialog} className="p-1 rounded text-muted hover:text-primary hover:bg-bg-hover transition-colors">
                 <X size={16} />
               </button>
             </div>
@@ -508,13 +516,13 @@ function TimerBar({ projectTags, onCreateProject, onLogged }: {
     else logEntry();
   }
 
-  const roundBtn = "w-9 h-9 rounded-full flex items-center justify-center text-white transition-opacity shrink-0 disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90";
+  const roundBtn = "w-9 h-9 rounded-full flex items-center justify-center text-on-fill transition-opacity shrink-0 disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90";
 
   return (
-    <div className={`mx-5 mt-4 rounded-xl border bg-bg-card shadow-sm transition-colors ${running ? "border-green-500/40" : pending ? "border-accent/40" : "border-border-subtle"}`}>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5">
+    <div className={`mx-5 mt-4 rounded-xl border bg-bg-card shadow-sm transition-colors ${running ? "border-status-success/40" : pending ? "border-accent/40" : "border-border-subtle"}`}>
+      <div className="flex items-center gap-3 px-4 py-2.5">
         {running
-          ? <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse shrink-0" />
+          ? <span className="w-2.5 h-2.5 rounded-full bg-status-success animate-pulse shrink-0" />
           : pending
             ? <Pause size={15} className="text-accent shrink-0" />
             : (
@@ -535,14 +543,15 @@ function TimerBar({ projectTags, onCreateProject, onLogged }: {
           onBlur={(e) => timer.update({ title: e.target.value })}
           onKeyDown={submitOnEnter}
           placeholder={mode === "timer" ? "What are you working on?" : "What did you work on?"}
-          className="flex-1 min-w-[160px] bg-transparent text-sm text-primary placeholder:text-muted outline-none"
+          className="flex-1 min-w-[80px] bg-transparent text-sm text-primary placeholder:text-muted outline-none"
         />
-        <div className="flex items-center gap-3 ml-auto">
+        {/* One line at the minimum window width: the title gives way first, then the project select. */}
+        <div className="flex items-center gap-3 ml-auto min-w-0">
           <select
             value={tag}
             onChange={(e) => timer.update({ tag: e.target.value })}
             disabled={noProjects}
-            className={`max-w-[200px] px-2 py-1 rounded-md bg-bg-content border text-sm text-primary outline-none disabled:opacity-50 ${pending && !tag ? "border-accent ring-2 ring-accent/30" : "border-border-subtle"}`}
+            className={`min-w-0 max-w-[200px] px-2 py-1 rounded-md bg-bg-content border text-sm text-primary outline-none disabled:opacity-50 ${pending && !tag ? "border-accent ring-2 ring-accent/30" : "border-border-subtle"}`}
           >
             <option value="">{noProjects ? "No projects yet" : mode === "timer" ? "No project" : "Choose project"}</option>
             {projectTags.map((p) => (
@@ -555,7 +564,7 @@ function TimerBar({ projectTags, onCreateProject, onLogged }: {
               {formatElapsed(elapsed)}
             </span>
           ) : (
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 shrink-0">
               <input type="date" value={date} onChange={(e) => setDate(e.target.value)} disabled={noProjects}
                 title="Day" className={barInputCls} />
               {mode === "duration" ? (
@@ -568,7 +577,7 @@ function TimerBar({ projectTags, onCreateProject, onLogged }: {
                   disabled={noProjects}
                   placeholder="e.g. 1h 30m"
                   title="Duration"
-                  className={`${barInputBase} w-[104px] tabular-nums ${durationUnreadable ? "border-red-400" : "border-border-subtle"}`}
+                  className={`${barInputBase} w-[104px] tabular-nums ${durationUnreadable ? "border-status-danger" : "border-border-subtle"}`}
                 />
               ) : (
                 <>
@@ -593,7 +602,7 @@ function TimerBar({ projectTags, onCreateProject, onLogged }: {
             </button>
           )}
           {running && (
-            <button onClick={() => timer.stop()} title="Stop timer" className={`${roundBtn} bg-red-500`}>
+            <button onClick={() => timer.stop()} title="Stop timer" className={`${roundBtn} bg-status-danger`}>
               <Square size={12} fill="currentColor" />
             </button>
           )}
@@ -604,7 +613,7 @@ function TimerBar({ projectTags, onCreateProject, onLogged }: {
           )}
           {!idle && (
             <button onClick={() => timer.discard()} title="Discard timer"
-              className="p-1 rounded text-muted hover:text-red-400 hover:bg-bg-hover transition-colors shrink-0">
+              className="p-1 rounded text-muted hover:text-status-danger hover:bg-bg-hover transition-colors shrink-0">
               <X size={14} />
             </button>
           )}
@@ -815,9 +824,9 @@ function MonthGrid({
               className={`bg-bg-card min-h-[80px] p-2 text-left transition-colors relative group
                 ${isSelected ? "ring-2 ring-accent ring-inset bg-bg-selected" : "hover:bg-bg-hover"}
                 ${isWeekend ? "opacity-60" : ""}
-                ${isFuture && info ? "bg-blue-500/[0.03]" : ""}`}
+                ${isFuture && info ? "bg-status-info/[0.03]" : ""}`}
             >
-              <span className={`text-[13px] font-semibold ${isToday ? "bg-accent text-white px-1.5 py-0.5 rounded-full" : "text-primary"}`}>
+              <span className={`text-[13px] font-semibold ${isToday ? "bg-accent text-on-fill px-1.5 py-0.5 rounded-full" : "text-primary"}`}>
                 {day}
               </span>
               {info && (
@@ -833,7 +842,7 @@ function MonthGrid({
                       );
                     })}
                   </div>
-                  <div className={`text-[11px] font-medium tabular-nums ${isFuture ? "text-blue-400/70" : "text-secondary"}`}>
+                  <div className={`text-[11px] font-medium tabular-nums ${isFuture ? "text-status-info/70" : "text-secondary"}`}>
                     {formatDayDuration(info)}
                   </div>
                 </div>
@@ -901,7 +910,7 @@ function EntryForm({
         onKeyDown={(e) => e.key === "Enter" && submit()}
         placeholder="Title (optional)" className={`${inputCls} flex-1 min-w-[140px]`} />
       <button onClick={submit} disabled={!valid || saving}
-        className="px-2.5 py-1 rounded-md bg-accent text-white text-xs font-medium hover:bg-accent/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+        className="px-2.5 py-1 rounded-md bg-accent text-on-fill text-xs font-medium hover:bg-accent/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
         {submitLabel}
       </button>
       <button onClick={onCancel} className="px-2 py-1 text-xs text-muted hover:text-secondary transition-colors">Cancel</button>
@@ -1023,11 +1032,11 @@ function DayDetail({
                   <div className="flex items-center gap-2">
                     <span className={`text-sm font-medium truncate ${ev.title ? "text-primary" : "text-muted"}`}>{ev.title || "No title"}</span>
                     {ev.is_future && (
-                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-blue-500/10 text-blue-400 shrink-0">planned</span>
+                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-status-info/10 text-status-info shrink-0">planned</span>
                     )}
                     {ev.tag && (
                       <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0"
-                        style={{ color: tagColor(ev.tag, allTags), backgroundColor: tagColor(ev.tag, allTags) + "1F" }}>
+                        style={{ color: `color-mix(in srgb, ${tagColor(ev.tag, allTags)} 55%, var(--color-primary))`, backgroundColor: tagColor(ev.tag, allTags) + "1F" }}>
                         {ev.tag}
                       </span>
                     )}
@@ -1045,8 +1054,8 @@ function DayDetail({
                   )}
                   {deleting === key && (
                     <div className="mt-1.5 flex items-center gap-2 text-xs">
-                      <span className="text-red-400">Delete this entry?</span>
-                      <button onClick={() => deleteEntry(ev)} className="font-medium text-red-400 hover:underline">Delete</button>
+                      <span className="text-status-danger">Delete this entry?</span>
+                      <button onClick={() => deleteEntry(ev)} className="font-medium text-status-danger hover:underline">Delete</button>
                       <button onClick={() => setDeleting(null)} className="text-muted hover:text-secondary">Cancel</button>
                     </div>
                   )}
@@ -1058,7 +1067,7 @@ function DayDetail({
                       <Pencil size={12} />
                     </button>
                     <button onClick={() => setDeleting(key)}
-                      className="p-1 rounded text-muted hover:text-red-400 hover:bg-bg-hover transition-colors" title="Delete">
+                      className="p-1 rounded text-muted hover:text-status-danger hover:bg-bg-hover transition-colors" title="Delete">
                       <Trash2 size={12} />
                     </button>
                   </div>

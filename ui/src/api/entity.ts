@@ -77,20 +77,14 @@ export function displayName(e: Entity): string {
   return "—";
 }
 
+/** Avatar initials for a contact or client: the first letters of the first
+ * two words of its name, or the first two letters of a one-word name. */
 export function initials(e: Entity): string {
-  const parts = [str(e, "first_name"), str(e, "last_name")].filter(Boolean);
-  if (parts.length === 0) {
-    const name = str(e, "name");
-    if (name) {
-      return name
-        .split(" ")
-        .slice(0, 2)
-        .map((w) => w[0]?.toUpperCase())
-        .join("");
-    }
-    return "?";
-  }
-  return parts.map((p) => p[0]?.toUpperCase()).join("");
+  const name = fullName(e) || str(e, "company") || str(e, "name");
+  const words = name.split(/\s+/).filter(Boolean);
+  if (words.length === 0) return "?";
+  const letters = words.length === 1 ? words[0].slice(0, 2) : words[0][0] + words[1][0];
+  return letters.toUpperCase();
 }
 
 export function formatDate(iso: string): string {
@@ -103,6 +97,18 @@ export function formatDate(iso: string): string {
     });
   } catch {
     return iso;
+  }
+}
+
+/** Money in the core's en-US currency style ("€3,451.00"), dropping zero cents ("€24,000"). */
+export function formatMoney(value: number, currency: string): string {
+  const digits = Number.isInteger(value) ? 0 : 2;
+  try {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency", currency, minimumFractionDigits: digits, maximumFractionDigits: digits,
+    }).format(value);
+  } catch {
+    return `${value} ${currency}`;
   }
 }
 

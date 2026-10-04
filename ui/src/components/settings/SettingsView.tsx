@@ -11,12 +11,16 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { Settings, Plus, RefreshCw, Save, CheckCircle2, AlertCircle, User, Bot, FileText, RotateCcw, Trash2, AlertTriangle, Monitor, Globe, Info, Image as ImageIcon, X, Sun, Moon, Laptop, Palette, Terminal, Clipboard, Check } from "lucide-react";
+import { Plus, RefreshCw, Save, CheckCircle2, AlertCircle, User, Bot, FileText, RotateCcw, Trash2, AlertTriangle, Monitor, Globe, Info, Image as ImageIcon, X, Sun, Moon, Laptop, Palette, Terminal, Clipboard, Check } from "lucide-react";
 import { useTheme, type ThemeChoice } from "../../hooks/useTheme";
+import { useDismiss } from "../../hooks/useDismiss";
 import { rpc } from "../../api/rpc";
 import type { Entity } from "../../api/types";
 import { str, bool, list as entityList } from "../../api/entity";
 import { useStatusBar, type StatusMessage, type MessageType } from "../shared/status-bar-context";
+import { Toolbar } from "../shared/ToolbarButtons";
+import { useNavigation } from "../shared/NavigationContext";
+import { LoadError, LoadingState } from "../shared/LoadStates";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -136,11 +140,15 @@ const TABS: { id: Tab; label: string; icon: typeof User }[] = [
 // ---------------------------------------------------------------------------
 
 export function SettingsView() {
-  const [tab, setTab] = useState<Tab>("profile");
+  const { filter: navFilter } = useNavigation();
+  const [tab, setTab] = useState<Tab>(
+    () => TABS.find((t) => t.id === navFilter.tab)?.id ?? "profile",
+  );
 
   const [config, setConfig] = useState<LLMConfig>(DEFAULT_CONFIG);
   const [models, setModels] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [fetchingModels, setFetchingModels] = useState(false);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<{ type: "success" | "error"; msg: string } | null>(null);
@@ -157,6 +165,8 @@ export function SettingsView() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const closeDeleteConfirm = () => setDeleteConfirmOpen(false);
+  const deleteBackdrop = useDismiss(closeDeleteConfirm, deleteConfirmOpen && !deleting);
 
   const [invoicing, setInvoicing] = useState<InvoicingPrefs>({ ...DEFAULT_INVOICING });
   const [availableTemplates, setAvailableTemplates] = useState<Record<string, string>>({});
@@ -173,6 +183,12 @@ export function SettingsView() {
 
   useEffect(() => { loadConfig(); loadProfile(); loadSupportedCountries(); loadSavedNotes(); }, []);
 
+  function retryLoad() {
+    setLoadFailed(false);
+    loadConfig();
+    loadProfile();
+  }
+
   useEffect(() => {
     if (tab === "invoicing") loadInvoicingPrefs();
   }, [tab]);
@@ -182,6 +198,7 @@ export function SettingsView() {
   async function loadConfig() {
     setLoading(true);
     const res = await rpc<LLMConfig>("llm.get_config");
+    if (!res.ok) setLoadFailed(true);
     if (res.ok && res.data) {
       setConfig(res.data);
       if (res.data.base_url) await fetchModels(res.data);
@@ -234,6 +251,7 @@ export function SettingsView() {
   async function loadProfile() {
     setProfileLoading(true);
     const res = await rpc<Entity>("users.get_active");
+    if (!res.ok) setLoadFailed(true);
     if (res.ok && res.data) {
       const d = res.data as Entity;
       setIsDemoUser(!!d.is_demo);
@@ -456,28 +474,31 @@ export function SettingsView() {
 
   // -- Render --------------------------------------------------------------
 
-  if (loading || profileLoading) {
-    return <div className="flex items-center justify-center h-full text-secondary">Loading settings…</div>;
+  if (loadFailed || loading || profileLoading) {
+    return (
+      <div className="flex flex-col h-full">
+        <Toolbar title="Settings" />
+        {loadFailed ? <LoadError what="settings" onRetry={retryLoad} /> : <LoadingState />}
+      </div>
+    );
   }
 
   const inputCls = "w-full px-3 py-2 rounded-md text-sm bg-bg-card text-primary border border-border-subtle outline-none focus:border-accent transition-colors placeholder:text-muted";
   const labelCls = "block text-xs text-tertiary mb-1";
 
   return (
-    <div className="flex h-full">
+    <div className="grid grid-cols-[auto_minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)] h-full">
+      <div className="col-span-2"><Toolbar title="Settings" /></div>
+
       {/* Sidebar tabs */}
       <nav className="w-48 shrink-0 border-r border-border-subtle py-4 px-2 space-y-1">
-        <div className="flex items-center gap-2 px-3 pb-3">
-          <Settings size={18} strokeWidth={1.6} className="text-secondary" />
-          <span className="text-sm font-semibold">Settings</span>
-        </div>
         {TABS.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
             onClick={() => setTab(id)}
             className={`flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm transition-colors ${
               tab === id
-                ? "bg-accent/10 text-primary font-medium"
+                ? "bg-bg-selected text-primary"
                 : "text-secondary hover:bg-bg-hover hover:text-primary"
             }`}
           >
@@ -616,7 +637,7 @@ export function SettingsView() {
                           bank_accounts: p.bank_accounts.filter((_, i) => i !== idx),
                         }))
                       }
-                      className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs text-secondary hover:text-red-400 border border-border-subtle hover:bg-red-400/10 transition-colors w-fit"
+                      className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs text-secondary hover:text-status-danger border border-border-subtle hover:bg-status-danger/10 transition-colors w-fit"
                     >
                       <Trash2 size={12} />
                       Remove
@@ -645,7 +666,7 @@ export function SettingsView() {
           </fieldset>
 
           {profileStatus && (
-            <div className={`flex items-center gap-2 text-sm ${profileStatus.type === "success" ? "text-green-400" : "text-red-400"}`}>
+            <div className={`flex items-center gap-2 text-sm ${profileStatus.type === "success" ? "text-status-success" : "text-status-danger"}`}>
               {profileStatus.type === "success" ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
               <span>{profileStatus.msg}</span>
             </div>
@@ -661,15 +682,15 @@ export function SettingsView() {
           </button>
 
           {/* Danger zone */}
-          <div className="mt-8 pt-6 border-t border-red-500/20">
-            <h3 className="text-sm font-semibold text-red-400 mb-2">Danger zone</h3>
+          <div className="mt-8 pt-6 border-t border-status-danger/20">
+            <h3 className="text-sm font-semibold text-status-danger mb-2">Danger zone</h3>
             <p className="text-xs text-muted mb-3">
               Permanently delete this user and all associated data (contracts, invoices, time tracking, etc.). This action cannot be undone.
             </p>
             <button
               onClick={() => { setDeleteConfirmOpen(true); setDeleteConfirmText(""); }}
               disabled={deleting}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium text-red-400 border border-red-500/30 hover:bg-red-500/10 transition-colors disabled:opacity-40"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium text-status-danger border border-status-danger/30 hover:bg-status-danger/10 transition-colors disabled:opacity-40"
             >
               <Trash2 size={14} />
               Delete user and data
@@ -680,12 +701,12 @@ export function SettingsView() {
 
       {/* Delete confirmation modal */}
       {deleteConfirmOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-bg-sidebar rounded-xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
-            <div className="px-5 py-4 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" {...deleteBackdrop}>
+          <div className="bg-bg-sidebar rounded-xl shadow-2xl w-full max-w-sm mx-4 max-h-[85vh] flex flex-col overflow-hidden">
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
               <div className="flex items-center gap-3">
-                <div className="flex items-center justify-center w-10 h-10 rounded-full bg-red-500/10">
-                  <AlertTriangle size={20} className="text-red-400" />
+                <div className="flex items-center justify-center w-10 h-10 rounded-full bg-status-danger/10">
+                  <AlertTriangle size={20} className="text-status-danger" />
                 </div>
                 <div>
                   <h3 className="text-base font-semibold text-primary">Delete user?</h3>
@@ -703,9 +724,9 @@ export function SettingsView() {
                 autoFocus
               />
             </div>
-            <div className="flex justify-end gap-2 px-5 py-3 border-t border-border-subtle">
+            <div className="flex justify-end gap-2 px-5 py-3 border-t border-border-subtle shrink-0">
               <button
-                onClick={() => setDeleteConfirmOpen(false)}
+                onClick={closeDeleteConfirm}
                 disabled={deleting}
                 className="px-4 py-1.5 text-sm rounded-md text-secondary hover:bg-bg-hover transition-colors"
               >
@@ -714,7 +735,7 @@ export function SettingsView() {
               <button
                 onClick={handleDeleteUser}
                 disabled={deleting || deleteConfirmText !== profile.name}
-                className="px-4 py-1.5 text-sm rounded-md bg-red-500 text-white font-medium hover:bg-red-600 transition-colors disabled:opacity-40"
+                className="px-4 py-1.5 text-sm rounded-md bg-status-danger text-on-fill font-medium hover:bg-status-danger/90 transition-colors disabled:opacity-40"
               >
                 {deleting ? "Deleting…" : "Delete permanently"}
               </button>
@@ -753,7 +774,7 @@ export function SettingsView() {
                     <button
                       type="button"
                       onClick={() => setProfile((p) => ({ ...p, logo: "" }))}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs text-secondary hover:text-red-400 border border-border-subtle hover:bg-bg-hover transition-colors w-fit"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs text-secondary hover:text-status-danger border border-border-subtle hover:bg-bg-hover transition-colors w-fit"
                     >
                       <X size={13} />
                       Remove
@@ -804,7 +825,7 @@ export function SettingsView() {
                   <button
                     type="button"
                     onClick={() => setProfile((p) => ({ ...p, signature: "" }))}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs text-secondary hover:text-red-400 border border-border-subtle hover:bg-bg-hover transition-colors w-fit"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs text-secondary hover:text-status-danger border border-border-subtle hover:bg-bg-hover transition-colors w-fit"
                   >
                     <X size={13} />
                     Remove
@@ -824,7 +845,7 @@ export function SettingsView() {
             {profileSaving ? "Saving…" : "Save Branding"}
           </button>
           {profileStatus && (
-            <div className={`flex items-center gap-2 text-sm ${profileStatus.type === "success" ? "text-green-400" : "text-red-400"}`}>
+            <div className={`flex items-center gap-2 text-sm ${profileStatus.type === "success" ? "text-status-success" : "text-status-danger"}`}>
               {profileStatus.type === "success" ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
               <span>{profileStatus.msg}</span>
             </div>
@@ -940,7 +961,7 @@ export function SettingsView() {
           </div>
 
           {invoicingStatus && (
-            <div className={`flex items-center gap-2 text-sm ${invoicingStatus.type === "success" ? "text-green-400" : "text-red-400"}`}>
+            <div className={`flex items-center gap-2 text-sm ${invoicingStatus.type === "success" ? "text-status-success" : "text-status-danger"}`}>
               {invoicingStatus.type === "success" ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
               <span>{invoicingStatus.msg}</span>
             </div>
@@ -966,7 +987,7 @@ export function SettingsView() {
                     <span className="flex-1 text-xs text-primary whitespace-pre-wrap break-words">{str(n, "text")}</span>
                     <button
                       onClick={() => handleDeleteNote(n.id)}
-                      className="shrink-0 p-1 rounded text-muted hover:text-red-400 hover:bg-red-400/10 transition-colors"
+                      className="shrink-0 p-1 rounded text-muted hover:text-status-danger hover:bg-status-danger/10 transition-colors"
                       title="Delete note"
                     >
                       <Trash2 size={13} />
@@ -1120,7 +1141,7 @@ export function SettingsView() {
           </div>
 
           {status && (
-            <div className={`flex items-center gap-2 text-sm ${status.type === "success" ? "text-green-400" : "text-red-400"}`}>
+            <div className={`flex items-center gap-2 text-sm ${status.type === "success" ? "text-status-success" : "text-status-danger"}`}>
               {status.type === "success" ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
               <span>{status.msg}</span>
             </div>
@@ -1148,9 +1169,9 @@ export function SettingsView() {
 // ---------------------------------------------------------------------------
 
 const LOG_TYPE_STYLES: Record<MessageType, string> = {
-  info: "text-blue-400",
-  error: "text-red-400",
-  success: "text-green-400",
+  info: "text-status-info",
+  error: "text-status-danger",
+  success: "text-status-success",
 };
 
 const LOG_TYPE_ICONS: Record<MessageType, typeof Info> = {
@@ -1239,10 +1260,7 @@ function RegionTab({ operatingCountry, supportedCountries, onCountryChange, vatN
         </div>
         {operatingCountry && !taxModelCountries.has(operatingCountry) && (
           <div className="mt-3 px-3 py-2 rounded-md bg-status-warning/10 border border-status-warning/20 text-xs text-secondary">
-            Income tax estimation is not yet available for {operatingCountry}. VAT and invoicing still work.{" "}
-            <a href="https://github.com/tuttle-dev/tuttle/issues" target="_blank" rel="noopener noreferrer" className="underline text-accent hover:text-primary">
-              Request this tax model on GitHub
-            </a>
+            No tax model for {operatingCountry} yet. VAT and invoicing still work.
           </div>
         )}
       </fieldset>
@@ -1392,9 +1410,9 @@ function SystemTab() {
 // ---------------------------------------------------------------------------
 
 const LEVEL_STYLES: Record<string, string> = {
-  ERROR: "text-red-400",
-  WARNING: "text-amber-400",
-  INFO: "text-blue-400",
+  ERROR: "text-status-danger",
+  WARNING: "text-status-warning",
+  INFO: "text-status-info",
   DEBUG: "text-muted",
 };
 
@@ -1497,7 +1515,7 @@ function BackendLogs() {
                 <span className={levelCls}>{tag}</span>{" "}
                 {entry.message}
                 {entry.exception && (
-                  <span className="text-red-400">{"\n     " + entry.exception}</span>
+                  <span className="text-status-danger">{"\n     " + entry.exception}</span>
                 )}
                 {"\n"}
               </span>

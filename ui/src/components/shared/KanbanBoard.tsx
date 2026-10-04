@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, type ReactNode } from "react";
 import { GripVertical } from "lucide-react";
+import { tint, onTint } from "./status-colors";
 
 export type BoardColumn = { id: string; label: string; color: string };
 
@@ -51,7 +52,7 @@ export function KanbanBoard<T extends { id: number }>({ entities, columns, colum
             <span className="w-2 h-2 rounded-full" style={{ background: col.color }} />
             <span className="text-sm font-medium text-secondary">{col.label}</span>
             <span className="text-xs font-bold px-1.5 py-px rounded-full"
-              style={{ background: `${col.color}33`, color: col.color }}>
+              style={{ background: tint(col.color, 20), color: onTint(col.color) }}>
               {inCol(col.id).length}
             </span>
           </div>
@@ -67,18 +68,18 @@ export function KanbanBoard<T extends { id: number }>({ entities, columns, colum
           return (
             <div key={col.id}
               className={`flex-1 flex flex-col overflow-hidden transition-colors ${i < columns.length - 1 ? "border-r border-border-subtle" : ""}`}
-              style={{ background: isTarget ? `${col.color}0d` : undefined }}
+              style={{ background: isTarget ? tint(col.color, 5) : undefined }}
               onDragOver={(e) => { e.preventDefault(); setDropTarget(col.id); }}
               onDragLeave={() => setDropTarget(null)}
               onDrop={(e) => { e.preventDefault(); setDropTarget(null); if (dragRef.current != null) onMove(dragRef.current, col.id); setDragId(null); dragRef.current = null; }}>
-              <div className="px-3 pt-3 pb-2">
+              <div className="px-2 pt-3 pb-2">
                 <div className="flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full" style={{ background: col.color }} />
                   <span className="text-xs font-bold uppercase tracking-wider text-secondary">{col.label}</span>
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-2">
+              <div className="flex-1 overflow-y-auto px-2 pb-3 space-y-2">
                 {items.map((ent) => (
                   <div key={ent.id} draggable
                     onDragStart={() => { setDragId(ent.id); dragRef.current = ent.id; }}
@@ -88,9 +89,10 @@ export function KanbanBoard<T extends { id: number }>({ entities, columns, colum
                       border: `1px solid ${dragId === ent.id ? col.color : "var(--color-border-subtle)"}`,
                       opacity: dragId === ent.id ? 0.5 : 1,
                     }}>
-                    <div className="flex items-start gap-1.5 p-3">
-                      <GripVertical size={12} className="mt-0.5 shrink-0 text-muted" />
-                      <div className="flex-1 min-w-0">{renderCard(ent, col)}</div>
+                    <div className="relative py-3 pr-3 pl-4">
+                      {/* Handle sits in the card's left padding so content gets the full column width. */}
+                      <GripVertical size={12} className="absolute left-0.5 top-3.5 text-muted" />
+                      <div>{renderCard(ent, col)}</div>
                     </div>
                   </div>
                 ))}
