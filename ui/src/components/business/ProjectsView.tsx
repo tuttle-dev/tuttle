@@ -18,6 +18,7 @@ import { DetailHeader, DetailAction, DetailDeleteAction, DetailSubmit, DETAIL_PA
 import { DetailFields, DetailField } from "../shared/DetailFields";
 import { useFieldRequirements } from "../../hooks/useFieldRequirements";
 import type { Entity } from "../../api/types";
+import { formatHours } from "../timetracking/format";
 
 interface BudgetEntry {
   project_id: number;
@@ -364,43 +365,16 @@ function ProjectCard({ project, budgetsMap }: { project: Entity; color: string; 
 }
 
 function BudgetBar({ budget: b }: { budget: BudgetEntry }) {
-  const trackedPct = b.hours_budget > 0 ? Math.min(b.hours_tracked / b.hours_budget, 1) : 0;
-  const plannedPct = b.hours_budget > 0 ? Math.min(b.hours_planned / b.hours_budget, 1 - trackedPct) : 0;
+  const share = (h: number) => (b.hours_budget > 0 ? h / b.hours_budget : 0);
   const subtitle = b.hours_planned > 0
-    ? `${b.hours_tracked.toFixed(1)}h tracked + ${b.hours_planned.toFixed(1)}h planned / ${b.hours_budget.toFixed(0)}h`
-    : `${b.hours_tracked.toFixed(1)}h / ${b.hours_budget.toFixed(0)}h`;
+    ? `${formatHours(b.hours_tracked)} tracked + ${formatHours(b.hours_planned)} planned / ${formatHours(b.hours_budget)}`
+    : `${formatHours(b.hours_tracked)} / ${formatHours(b.hours_budget)}`;
 
   return (
-    <div className="space-y-1">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-2">
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs font-medium truncate">Time Budget</span>
-          {b.budget_exceeded && (
-            <AlertTriangle size={12} className="text-status-warning shrink-0" />
-          )}
-        </div>
-        <span className="ml-auto text-xs text-secondary tabular-nums text-right">{subtitle}</span>
-      </div>
-      <div className="h-1.5 w-full rounded-full bg-bg-hover overflow-hidden flex">
-        <div
-          className="h-full rounded-l-full bg-progress transition-all duration-300"
-          style={{ width: `${trackedPct * 100}%` }}
-        />
-        {plannedPct > 0 && (
-          <div
-            className="h-full transition-all duration-300"
-            style={{
-              width: `${plannedPct * 100}%`,
-              background: "repeating-linear-gradient(45deg, #3b82f6 0, #3b82f6 2px, transparent 2px, transparent 5px)",
-              opacity: 0.5,
-            }}
-          />
-        )}
-      </div>
-      {b.budget_exceeded && (
-        <div className="text-[11px] text-status-warning font-medium">Budget exceeded</div>
-      )}
-    </div>
+    <ProgressBar label="Time Budget" subtitle={subtitle}
+      progress={share(b.hours_tracked)} planned={share(b.hours_planned)}
+      tone={b.budget_exceeded ? "warning" : "neutral"}
+      icon={b.budget_exceeded && <AlertTriangle size={12} className="text-status-warning shrink-0" />} />
   );
 }
 
