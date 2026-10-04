@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import {
-  Users, Plus, Trash2, Save, X, Mail, Building2, MapPin,
+  Users, Plus, Trash2, X, Building2,
   FileUp, Sparkles, Check, CheckCheck, Loader2, Tag, UserPlus,
 } from "lucide-react";
 import { rpc } from "../../api/rpc";
@@ -8,6 +8,8 @@ import { str, num, entity as subEntity, fullName, initials, displayName } from "
 import { Toolbar, ToolbarButtonPrimary, ToolbarButtonSecondary, ListDetailLayout, LIST_ROW_PADDING } from "../shared/ToolbarButtons";
 import { EditableClientContactRole } from "../shared/EditableClientContactRole";
 import { EmptyStateIntro } from "../shared/EmptyStateIntro";
+import { DetailHeader, DetailAction, DetailDeleteAction, DetailSubmit, DETAIL_PANE } from "../shared/DetailHeader";
+import { DetailFields, DetailField } from "../shared/DetailFields";
 import { useFieldRequirements } from "../../hooks/useFieldRequirements";
 import type { Entity } from "../../api/types";
 
@@ -326,45 +328,23 @@ function ContactDetail({ contact, clients, onEdit, onDelete }: {
   const linkedClientIds = new Set(assocs.map((a) => num(a, "client_id")));
 
   return (
-    <div className="p-5 space-y-5">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <div className="w-14 h-14 rounded-full bg-bg-card flex items-center justify-center text-xl font-semibold text-secondary shrink-0">
-          {ini}
-        </div>
-        <div className="flex-1 min-w-0">
-          <h1 className="text-lg font-semibold break-words">{name}</h1>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <button onClick={onEdit}
-            className="px-3 py-1.5 rounded text-sm font-medium bg-bg-card text-secondary hover:text-primary border border-border-subtle transition-colors">
-            Edit
-          </button>
-          <button onClick={onDelete}
-            className="p-1.5 rounded text-secondary hover:text-red-400 border border-border-subtle transition-colors"
-            title="Delete contact">
-            <Trash2 size={14} />
-          </button>
-        </div>
-      </div>
+    <div className={`${DETAIL_PANE} space-y-6`}>
+      <DetailHeader avatar={ini} title={name}
+        actions={<>
+          <DetailAction label="Edit" onClick={onEdit} />
+          <DetailDeleteAction key={contact.id} label="Delete contact" onDelete={onDelete} />
+        </>} />
 
-      {/* Info cards */}
-      <div className="space-y-3">
-        {email && (
-          <InfoRow icon={<Mail size={14} />} label="Email" value={email} />
-        )}
-        {addrParts.length > 0 && (
-          <div className="flex items-start gap-3 p-3 rounded-lg bg-bg-card border border-border-subtle">
-            <span className="text-tertiary mt-0.5"><MapPin size={14} /></span>
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-wider text-tertiary mb-1">Address</div>
-              {addrParts.map((line, i) => (
-                <div key={i} className="text-sm">{line}</div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+      {(email || addrParts.length > 0) && (
+        <DetailFields>
+          {email && <DetailField label="Email">{email}</DetailField>}
+          {addrParts.length > 0 && (
+            <DetailField label="Address">
+              {addrParts.map((line, i) => <div key={i}>{line}</div>)}
+            </DetailField>
+          )}
+        </DetailFields>
+      )}
 
       {/* Companies (many-to-many via ClientContact) */}
       <div className="space-y-3">
@@ -424,18 +404,6 @@ function ContactDetail({ contact, clients, onEdit, onDelete }: {
             </div>
           </div>
         )}
-      </div>
-    </div>
-  );
-}
-
-function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
-  return (
-    <div className="flex items-center gap-3 p-3 rounded-lg bg-bg-card border border-border-subtle">
-      <span className="text-tertiary">{icon}</span>
-      <div>
-        <div className="text-xs font-semibold uppercase tracking-wider text-tertiary">{label}</div>
-        <div className="text-sm">{value}</div>
       </div>
     </div>
   );
@@ -524,20 +492,12 @@ function ContactForm({ contact, clients, onSave, onCancel, error }: {
   const linkedClientIds = new Set(assocs.map((a) => num(a, "client_id")));
 
   return (
-    <form onSubmit={handleSubmit} className="p-5 space-y-5">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">{isNew ? "New Contact" : "Edit Contact"}</h2>
-        <div className="flex items-center gap-2">
-          <button type="button" onClick={onCancel}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm text-secondary hover:text-primary hover:bg-bg-hover transition-colors">
-            <X size={14} /> Cancel
-          </button>
-          <button type="submit" disabled={saving || !hasName}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium text-primary hover:bg-bg-hover transition-colors disabled:opacity-40">
-            <Save size={14} /> {saving ? "Saving…" : "Save"}
-          </button>
-        </div>
-      </div>
+    <form onSubmit={handleSubmit} className={`${DETAIL_PANE} space-y-5`}>
+      <DetailHeader title={isNew ? "New Contact" : "Edit Contact"}
+        actions={<>
+          <DetailAction label="Cancel" onClick={onCancel} />
+          <DetailSubmit label={saving ? "Saving…" : "Save"} disabled={saving || !hasName} />
+        </>} />
 
       <p className="text-xs text-muted"><span className="text-accent">*</span> Required</p>
 
