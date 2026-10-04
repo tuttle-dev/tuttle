@@ -183,7 +183,6 @@ export function InvoicingView() {
                 <div key={inv.id} className={chainAccentClass(chain)}>
                   <InvoiceRow invoice={inv} isSelected={isSelected} isHighlighted={isHighlighted}
                     reminderCount={chain.reminders.length}
-                    depositCount={chain.deposits.length}
                     schedule={milestoneScheduleStatus(inv, chain.deposits)}
                     onSelect={() => { setNewlyCreatedId(null); setSelected(inv); }} />
                   {chain.deposits.map((dep) => {
@@ -892,9 +891,11 @@ function MilestoneScheduleBadge({ schedule }: { schedule: MilestoneScheduleStatu
   );
 }
 
-function InvoiceRow({ invoice, isSelected, isHighlighted, reminderCount, depositCount, schedule, onSelect }: {
+// A chain's deposits are listed as rows right below it and its schedule badge
+// marks a settlement, so neither gets a badge of its own here.
+function InvoiceRow({ invoice, isSelected, isHighlighted, reminderCount, schedule, onSelect }: {
   invoice: Entity; isSelected: boolean; isHighlighted?: boolean;
-  reminderCount?: number; depositCount?: number; schedule?: MilestoneScheduleStatus | null; onSelect: () => void;
+  reminderCount?: number; schedule?: MilestoneScheduleStatus | null; onSelect: () => void;
 }) {
   const status = invoiceStatus(invoice);
   const depositLabel = depositMilestoneLabel(invoice);
@@ -909,17 +910,9 @@ function InvoiceRow({ invoice, isSelected, isHighlighted, reminderCount, deposit
           {isDeposit(invoice) && depositLabel && (
             <span className="text-xs font-semibold text-blue-400 truncate">{depositLabel}</span>
           )}
-          {isFinal && (
-            <span className="text-xs font-semibold text-blue-300 truncate">Settlement</span>
-          )}
           <span className="text-xs text-tertiary shrink-0">{formatDate(str(invoice, "date"))}</span>
           {isDeposit(invoice) && <DocumentTypeBadge type="deposit" />}
-          {isFinal && <DocumentTypeBadge type="final" />}
-          {(depositCount ?? 0) > 0 && !isDeposit(invoice) && (
-            <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-500/15 text-blue-400">
-              <Milestone size={10} />{depositCount}
-            </span>
-          )}
+          {isFinal && !schedule && <DocumentTypeBadge type="final" />}
           {(reminderCount ?? 0) > 0 && (
             <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-status-warning/15 text-status-warning">
               <AlertTriangle size={10} />{reminderCount}
@@ -977,7 +970,6 @@ function DepositRow({ invoice, isSelected, onSelect }: { invoice: Entity; isSele
             {depositLabel || "Deposit"}
           </span>
           <DocumentTypeBadge type="deposit" />
-          <span className="text-xs text-tertiary shrink-0">{str(invoice, "number")}</span>
           <span className="text-xs text-tertiary shrink-0">{formatDate(str(invoice, "date"))}</span>
         </div>
         <div className="flex items-center gap-2 shrink-0 ml-2">

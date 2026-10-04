@@ -4,7 +4,7 @@ import {
   FileUp, Sparkles, Check, CheckCheck, Loader2, UserPlus,
 } from "lucide-react";
 import { rpc } from "../../api/rpc";
-import { str, num, entity as subEntity, displayName, fullName } from "../../api/entity";
+import { str, num, entity as subEntity, displayName, fullName, initials } from "../../api/entity";
 import { Toolbar, ToolbarButtonPrimary, ToolbarButtonSecondary, ListDetailLayout, LIST_ROW_PADDING } from "../shared/ToolbarButtons";
 import { EditableClientContactRole } from "../shared/EditableClientContactRole";
 import { EmptyStateIntro } from "../shared/EmptyStateIntro";
@@ -214,7 +214,7 @@ function ClientRow({ client, isSelected, onSelect }: {
       className={`w-full text-left ${LIST_ROW_PADDING} border-b border-border-subtle transition-colors flex items-center gap-3
         ${isSelected ? "bg-bg-selected" : "hover:bg-bg-hover"}`}>
       <div className="w-9 h-9 rounded-full bg-bg-card flex items-center justify-center text-sm font-semibold text-secondary shrink-0">
-        {name.slice(0, 2).toUpperCase()}
+        {initials(client)}
       </div>
       <div className="min-w-0">
         <div className="text-sm font-medium truncate">{name}</div>
@@ -284,7 +284,7 @@ function ClientDetail({ client, contacts, onEdit, onDelete, deleteError, onReloa
 
   return (
     <div className={`${DETAIL_PANE} space-y-6`}>
-      <DetailHeader avatar={name.slice(0, 2).toUpperCase()} title={name}
+      <DetailHeader avatar={initials(client)} title={name}
         actions={<>
           <DetailAction label="Edit" onClick={onEdit} />
           <DetailDeleteAction key={client.id} label="Delete client" onDelete={onDelete} />

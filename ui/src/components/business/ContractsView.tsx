@@ -1,11 +1,11 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import {
-  FileText, FileSignature, Plus, Trash2, X, DollarSign, Calendar,
+  FileText, Plus, Trash2, Save, X, DollarSign, Calendar,
   FileUp, Sparkles, Check, CheckCheck, Loader2, CheckCircle2,
   FolderKanban, ReceiptText, ArrowRight, ChevronDown, ChevronRight, XCircle, Milestone, Copy,
 } from "lucide-react";
 import { rpc } from "../../api/rpc";
-import { str, num, bool, entity as subEntity, list as entityList, displayName, formatDate } from "../../api/entity";
+import { str, num, bool, entity as subEntity, list as entityList, displayName, formatDate, formatMoney } from "../../api/entity";
 import { TAX_CATEGORY_LABELS, taxCategory, taxTreatment, type TaxCategory } from "../../api/tax";
 import { Toolbar, ToolbarButtonPrimary, ToolbarButtonSecondary, ToolbarFilterGroup, ListDetailLayout, LIST_ROW_PADDING } from "../shared/ToolbarButtons";
 import { StatusBadge } from "../shared/StatusBadge";
@@ -285,18 +285,16 @@ function ContractRow({ contract, isSelected, onSelect }: {
   const fixedPrice = num(contract, "fixed_price");
   const rate = num(contract, "rate");
   const currency = str(contract, "currency") || "EUR";
+  const unit = str(contract, "unit") || "hour";
   const status = contractStatus(contract);
   const priceLabel = fixedPrice > 0
-    ? `${fixedPrice} ${currency}`
-    : rate > 0 ? `${rate} ${currency}/${str(contract, "unit_abbrev") || "h"}` : "";
+    ? formatMoney(fixedPrice, currency)
+    : rate > 0 ? `${formatMoney(rate, currency)}/${unit === "hour" ? "h" : unit}` : "";
 
   return (
     <button onClick={onSelect}
       className={`w-full text-left ${LIST_ROW_PADDING} border-b border-border-subtle transition-colors flex items-center gap-3
         ${isSelected ? "bg-bg-selected" : "hover:bg-bg-hover"}`}>
-      <div className="w-9 h-9 rounded-full bg-bg-card flex items-center justify-center text-sm font-semibold text-secondary shrink-0">
-        <FileSignature size={16} />
-      </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">
           <div className="text-sm font-medium truncate">{title}</div>
