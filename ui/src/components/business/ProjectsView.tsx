@@ -16,6 +16,7 @@ import { useNavigation } from "../shared/NavigationContext";
 import { EmptyStateIntro } from "../shared/EmptyStateIntro";
 import { DetailHeader, DetailAction, DetailDeleteAction, DetailSubmit, DETAIL_PANE } from "../shared/DetailHeader";
 import { DetailFields, DetailField } from "../shared/DetailFields";
+import { LoadError, LoadingState } from "../shared/LoadStates";
 import { useFieldRequirements } from "../../hooks/useFieldRequirements";
 import { useAutoSelect } from "../../hooks/useAutoSelect";
 import type { Entity } from "../../api/types";
@@ -53,6 +54,7 @@ export function ProjectsView() {
   const [budgetsMap, setBudgetsMap] = useState<Record<number, BudgetEntry>>({});
   const [selected, setSelected] = useState<Entity | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [viewMode, setViewMode] = useState<"list" | "board">("list");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("All");
   const [search, setSearch] = useState("");
@@ -78,11 +80,13 @@ export function ProjectsView() {
 
   async function load(selectId?: number) {
     setLoading(true);
+    setLoadFailed(false);
     const [res, cRes, bRes] = await Promise.all([
       rpc<Entity[]>("projects.get_all"),
       rpc<Record<string, Entity>>("projects.get_all_contracts"),
       rpc<BudgetEntry[]>("dashboard.get_project_budgets"),
     ]);
+    setLoadFailed(!res.ok || !cRes.ok || !bRes.ok);
     if (res.ok && res.data) {
       setProjects(res.data);
       const currentId = selectId ?? selectedIdRef.current;
@@ -207,9 +211,6 @@ export function ProjectsView() {
   const selectedContract = selected ? entity(selected, "contract") : null;
   const selectedClient = selectedContract ? entity(selectedContract, "client") : null;
 
-  if (loading && projects.length === 0)
-    return <div className="flex items-center justify-center h-full text-secondary">Loading projects…</div>;
-
   return (
     <div className="flex flex-col h-full">
       <Toolbar title="Projects"
@@ -224,7 +225,11 @@ export function ProjectsView() {
         search={{ value: search, onChange: setSearch }}
       />
 
-      {projects.length === 0 && mode === "view" ? (
+      {loadFailed && mode === "view" ? (
+        <LoadError what="projects" onRetry={load} />
+      ) : loading && projects.length === 0 ? (
+        <LoadingState />
+      ) : projects.length === 0 && mode === "view" ? (
         <EmptyStateIntro icon={FolderKanban} description="A project is a unit of work you do under a contract. Track time against projects to generate invoices." />
       ) : viewMode === "list" ? (
         <ListDetailLayout

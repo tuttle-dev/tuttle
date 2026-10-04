@@ -10,6 +10,7 @@ import { EditableClientContactRole } from "../shared/EditableClientContactRole";
 import { EmptyStateIntro } from "../shared/EmptyStateIntro";
 import { DetailHeader, DetailAction, DetailDeleteAction, DetailSubmit, DETAIL_PANE } from "../shared/DetailHeader";
 import { DetailFields, DetailField } from "../shared/DetailFields";
+import { LoadError, LoadingState } from "../shared/LoadStates";
 import { useFieldRequirements } from "../../hooks/useFieldRequirements";
 import { useAutoSelect } from "../../hooks/useAutoSelect";
 import type { Entity } from "../../api/types";
@@ -21,6 +22,7 @@ export function ClientsView() {
   const [contacts, setContacts] = useState<Record<string, Entity>>({});
   const [selected, setSelected] = useState<Entity | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [search, setSearch] = useState("");
   const [mode, setMode] = useState<Mode>("view");
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -35,10 +37,12 @@ export function ClientsView() {
 
   async function load(selectId?: number) {
     setLoading(true);
+    setLoadFailed(false);
     const [res, cRes] = await Promise.all([
       rpc<Entity[]>("clients.get_all"),
       rpc<Record<string, Entity>>("clients.get_all_contacts"),
     ]);
+    setLoadFailed(!res.ok || !cRes.ok);
     if (res.ok && res.data) {
       setClients(res.data);
       const currentId = selectId ?? selectedIdRef.current;
@@ -150,9 +154,6 @@ export function ClientsView() {
 
   useAutoSelect(clients, filtered, selected, setSelected, { enabled: mode === "view" });
 
-  if (loading && clients.length === 0)
-    return <div className="flex items-center justify-center h-full text-secondary">Loading clients…</div>;
-
   return (
     <div className="flex flex-col h-full">
       <Toolbar title="Clients"
@@ -163,7 +164,11 @@ export function ClientsView() {
         search={{ value: search, onChange: setSearch }}
       />
 
-      {clients.length === 0 && mode === "view" ? (
+      {loadFailed && mode === "view" ? (
+        <LoadError what="clients" onRetry={load} />
+      ) : loading && clients.length === 0 ? (
+        <LoadingState />
+      ) : clients.length === 0 && mode === "view" ? (
         <EmptyStateIntro icon={Building2} description="A client is a company or person you do business with. Add clients to link them to contracts and invoices." />
       ) : (
       <ListDetailLayout

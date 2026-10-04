@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Wallet, BarChart3 } from "lucide-react";
 import { rpc } from "../../api/rpc";
 import { EmptyStateIntro } from "../shared/EmptyStateIntro";
+import { LoadError, LoadingState } from "../shared/LoadStates";
 import { PageLayout } from "../shared/ToolbarButtons";
 import type { Entity } from "../../api/types";
 import { num, type DynamicLine } from "../../api/entity";
@@ -26,6 +27,7 @@ export function SalaryView() {
   const [salary, setSalary] = useState<SalaryData | null>(null);
   const [target, setTarget] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [countrySupported, setCountrySupported] = useState(true);
   const [taxCountry, setTaxCountry] = useState("");
 
@@ -33,7 +35,9 @@ export function SalaryView() {
 
   async function load() {
     setLoading(true);
+    setLoadFailed(false);
     const res = await rpc<Entity>("salary.get_effective_salary");
+    setLoadFailed(!res.ok);
     if (res.ok && res.data) {
       const d = res.data as Entity;
       const sal = d.salary as Entity | undefined;
@@ -58,11 +62,13 @@ export function SalaryView() {
     setLoading(false);
   }
 
-  if (loading) return <div className="flex items-center justify-center h-full text-secondary">Loading salary data…</div>;
-
+  if (loadFailed) return <PageLayout title="Salary" fallback={<LoadError what="your salary" onRetry={load} />} />;
+  if (loading) return <PageLayout title="Salary" fallback={<LoadingState />} />;
   if (!salary) {
     return (
-      <EmptyStateIntro icon={Wallet} description="Your effective salary is what remains after taxes and business expenses — your actual take-home as a freelancer." />
+      <PageLayout title="Salary" fallback={
+        <EmptyStateIntro icon={Wallet} description="Your effective salary is what remains after taxes and business expenses — your actual take-home as a freelancer." />
+      } />
     );
   }
 

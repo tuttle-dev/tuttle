@@ -10,6 +10,7 @@ import { EditableClientContactRole } from "../shared/EditableClientContactRole";
 import { EmptyStateIntro } from "../shared/EmptyStateIntro";
 import { DetailHeader, DetailAction, DetailDeleteAction, DetailSubmit, DETAIL_PANE } from "../shared/DetailHeader";
 import { DetailFields, DetailField } from "../shared/DetailFields";
+import { LoadError, LoadingState } from "../shared/LoadStates";
 import { useFieldRequirements } from "../../hooks/useFieldRequirements";
 import { useAutoSelect } from "../../hooks/useAutoSelect";
 import type { Entity } from "../../api/types";
@@ -21,6 +22,7 @@ export function ContactsView() {
   const [clients, setClients] = useState<Record<string, Entity>>({});
   const [selected, setSelected] = useState<Entity | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [search, setSearch] = useState("");
   const [mode, setMode] = useState<Mode>("view");
   const [parsedContacts, setParsedContacts] = useState<ParsedContact[]>([]);
@@ -34,10 +36,12 @@ export function ContactsView() {
 
   async function load(selectId?: number) {
     setLoading(true);
+    setLoadFailed(false);
     const [res, clRes] = await Promise.all([
       rpc<Entity[]>("contacts.get_all"),
       rpc<Record<string, Entity>>("contacts.get_all_clients"),
     ]);
+    setLoadFailed(!res.ok || !clRes.ok);
     if (res.ok && res.data) {
       setContacts(res.data);
       const currentId = selectId ?? selectedIdRef.current;
@@ -190,9 +194,6 @@ export function ContactsView() {
 
   useAutoSelect(contacts, filtered, selected, setSelected, { enabled: mode === "view" });
 
-  if (loading && contacts.length === 0)
-    return <div className="flex items-center justify-center h-full text-secondary">Loading contacts…</div>;
-
   return (
     <div className="flex flex-col h-full">
       <Toolbar title="Contacts"
@@ -203,7 +204,11 @@ export function ContactsView() {
         search={{ value: search, onChange: setSearch }}
       />
 
-      {contacts.length === 0 && mode === "view" ? (
+      {loadFailed && mode === "view" ? (
+        <LoadError what="contacts" onRetry={load} />
+      ) : loading && contacts.length === 0 ? (
+        <LoadingState />
+      ) : contacts.length === 0 && mode === "view" ? (
         <EmptyStateIntro icon={Users} description="Contacts are people in your professional network — colleagues at client companies, or other collaborators." />
       ) : (
       <ListDetailLayout

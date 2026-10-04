@@ -18,6 +18,7 @@ import { EmptyStateIntro } from "../shared/EmptyStateIntro";
 import { StepDots } from "../shared/StepDots";
 import { useDismiss } from "../../hooks/useDismiss";
 import { useAutoSelect } from "../../hooks/useAutoSelect";
+import { LoadError, LoadingState } from "../shared/LoadStates";
 import type { Entity } from "../../api/types";
 
 type InvoiceChain = { root: Entity; reminders: Entity[]; deposits: Entity[] };
@@ -46,6 +47,7 @@ export function InvoicingView() {
   const [invoices, setInvoices] = useState<Entity[]>([]);
   const [selected, setSelected] = useState<Entity | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [viewMode, setViewMode] = useState<"list" | "board">("list");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("All");
   const [search, setSearch] = useState("");
@@ -71,7 +73,9 @@ export function InvoicingView() {
 
   async function load(selectId?: number) {
     setLoading(true);
+    setLoadFailed(false);
     const res = await rpc<Entity[]>("invoicing.get_all");
+    setLoadFailed(!res.ok);
     if (res.ok && res.data) {
       const sorted = [...res.data].sort((a, b) => {
         const na = str(a, "number") || "";
@@ -155,9 +159,6 @@ export function InvoicingView() {
     load();
   }
 
-  if (loading && invoices.length === 0)
-    return <div className="flex items-center justify-center h-full text-secondary">Loading invoices…</div>;
-
   return (
     <div className="flex flex-col h-full">
       <Toolbar title="Invoicing"
@@ -177,7 +178,11 @@ export function InvoicingView() {
         </div>
       )}
 
-      {invoices.length === 0 ? (
+      {loadFailed ? (
+        <LoadError what="invoices" onRetry={() => load()} />
+      ) : loading && invoices.length === 0 ? (
+        <LoadingState />
+      ) : invoices.length === 0 ? (
         <EmptyStateIntro icon={FileText} description="Invoices are how you bill clients for completed work. Create, track, and send them from here." />
       ) : viewMode === "list" ? (
         <ListDetailLayout

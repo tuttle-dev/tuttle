@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { BarChart3, ReceiptText, Calculator, ChevronDown } from "lucide-react";
 import { rpc } from "../../api/rpc";
 import { EmptyStateIntro } from "../shared/EmptyStateIntro";
+import { LoadError, LoadingState } from "../shared/LoadStates";
 import { PageLayout } from "../shared/ToolbarButtons";
 import type { Entity } from "../../api/types";
 import { str, num, bool, type DynamicLine } from "../../api/entity";
@@ -26,6 +27,7 @@ export function TaxReservesView() {
   const [months, setMonths] = useState<Entity[]>([]);
   const [currency, setCurrency] = useState("EUR");
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
 
@@ -46,12 +48,14 @@ export function TaxReservesView() {
 
   async function load(year: number) {
     setLoading(true);
+    setLoadFailed(false);
     const params = { year };
     const [spRes, taxRes, vatRes] = await Promise.all([
       rpc<Entity>("tax.get_spendable_income", params),
       rpc<Entity>("tax.get_income_tax_estimate", params),
       rpc<Entity>("tax.get_monthly_vat", params),
     ]);
+    setLoadFailed(!spRes.ok || !taxRes.ok || !vatRes.ok);
     if (spRes.ok && spRes.data) {
       setSpending(spRes.data as Entity);
       setCurrency(str(spRes.data as Entity, "currency") || "EUR");
@@ -65,7 +69,14 @@ export function TaxReservesView() {
     setLoading(false);
   }
 
-  if (loading) return <div className="flex items-center justify-center h-full text-secondary">Loading tax data…</div>;
+  const yearSelector = availableYears.length > 1 && (
+    <YearSelector years={availableYears} selected={selectedYear} onChange={setSelectedYear} />
+  );
+  if (loadFailed) {
+    return <PageLayout title="Tax & Reserves" right={yearSelector}
+      fallback={<LoadError what="tax data" onRetry={() => load(selectedYear)} />} />;
+  }
+  if (loading) return <PageLayout title="Tax & Reserves" right={yearSelector} fallback={<LoadingState />} />;
 
   const sp = spending?.spending as Entity | undefined;
   const hasAnyIncome = sp && (num(sp, "gross_revenue_ytd") > 0 || num(sp, "planned_revenue") > 0);
@@ -75,14 +86,13 @@ export function TaxReservesView() {
   const taxCountry = taxEstimate ? str(taxEstimate, "country") : "";
 
   if (!hasAnyIncome && months.length === 0) {
-    return <EmptyStateIntro icon={Calculator} description="Tax reserves help you set aside money for income tax and VAT throughout the year, so nothing comes as a surprise." />;
+    return <PageLayout title="Tax & Reserves" right={yearSelector}
+      fallback={<EmptyStateIntro icon={Calculator} description="Tax reserves help you set aside money for income tax and VAT throughout the year, so nothing comes as a surprise." />} />;
   }
 
   return (
     <PageLayout title="Tax & Reserves" className="grid gap-6 items-start @4xl:grid-cols-2 @4xl:grid-rows-[auto_1fr]"
-      right={availableYears.length > 1 && (
-        <YearSelector years={availableYears} selected={selectedYear} onChange={setSelectedYear} />
-      )}>
+      right={yearSelector}>
       {/* Revenue Waterfall */}
       <Section title={`Revenue Breakdown (${periodLabel})`} icon={<BarChart3 size={16} />}>
         {!hasAnyIncome ? (

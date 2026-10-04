@@ -8,6 +8,7 @@ import { str, num, int } from "../../api/entity";
 import { KPICard } from "../shared/KPICard";
 import { ProgressBar } from "../shared/ProgressBar";
 import { EmptyStateIntro } from "../shared/EmptyStateIntro";
+import { LoadError, LoadingState } from "../shared/LoadStates";
 import { PageLayout } from "../shared/ToolbarButtons";
 import { RevenueChart } from "./RevenueChart";
 import { FinancialGoalsCard } from "./FinancialGoalsCard";
@@ -31,23 +32,29 @@ export function DashboardView() {
   const [kpis, setKpis] = useState<Entity | null>(null);
   const [budgets, setBudgets] = useState<BudgetEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
 
   useEffect(() => { load(); }, []);
 
   async function load() {
     setLoading(true);
+    setLoadFailed(false);
     const [kpiRes, budgetRes] = await Promise.all([
       rpc("dashboard.get_kpis"),
       rpc<BudgetEntry[]>("dashboard.get_project_budgets"),
     ]);
+    setLoadFailed(!kpiRes.ok || !budgetRes.ok);
     if (kpiRes.ok && kpiRes.data) setKpis(kpiRes.data as Entity);
     if (budgetRes.ok && Array.isArray(budgetRes.data)) setBudgets(budgetRes.data);
     setLoading(false);
   }
 
-  if (loading) return <div className="flex items-center justify-center h-full text-secondary">Loading dashboard…</div>;
+  if (loadFailed) return <PageLayout title="Dashboard" fallback={<LoadError what="the dashboard" onRetry={load} />} />;
+  if (loading) return <PageLayout title="Dashboard" fallback={<LoadingState />} />;
   if (!kpis) return (
-    <EmptyStateIntro icon={BarChart3} description="Your key business metrics — revenue, outstanding payments, and project progress — will appear here." />
+    <PageLayout title="Dashboard" fallback={
+      <EmptyStateIntro icon={BarChart3} description="Your key business metrics — revenue, outstanding payments, and project progress — will appear here." />
+    } />
   );
 
   return (

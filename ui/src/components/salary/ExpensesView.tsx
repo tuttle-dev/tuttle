@@ -6,6 +6,7 @@ import { Toolbar, ToolbarButtonPrimary, ListDetailLayout, LIST_ROW_PADDING } fro
 import { EmptyStateIntro } from "../shared/EmptyStateIntro";
 import { DetailHeader, DetailAction, DetailDeleteAction, DetailSubmit, DETAIL_PANE } from "../shared/DetailHeader";
 import { DetailFields, DetailField } from "../shared/DetailFields";
+import { LoadError, LoadingState } from "../shared/LoadStates";
 import { useFieldRequirements } from "../../hooks/useFieldRequirements";
 import { useAutoSelect } from "../../hooks/useAutoSelect";
 import type { Entity } from "../../api/types";
@@ -74,6 +75,7 @@ export function ExpensesView() {
   const [expenses, setExpenses] = useState<Entity[]>([]);
   const [selected, setSelected] = useState<Entity | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [search, setSearch] = useState("");
   const [mode, setMode] = useState<Mode>("view");
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -85,7 +87,9 @@ export function ExpensesView() {
 
   async function load(selectId?: number) {
     setLoading(true);
+    setLoadFailed(false);
     const res = await rpc<Entity[]>("salary.get_expenses");
+    setLoadFailed(!res.ok);
     if (res.ok && res.data) {
       setExpenses(res.data);
       const currentId = selectId ?? selectedIdRef.current;
@@ -181,10 +185,6 @@ export function ExpensesView() {
   const dynamicCount = expenses.filter(isDynamic).length;
   const totalCurrency = expenses.length > 0 ? str(expenses[0], "currency") : "EUR";
 
-  if (loading && expenses.length === 0) {
-    return <div className="flex items-center justify-center h-full text-secondary">Loading recurring expenses…</div>;
-  }
-
   return (
     <div className="flex flex-col h-full">
       <Toolbar
@@ -193,7 +193,11 @@ export function ExpensesView() {
         search={{ value: search, onChange: setSearch }}
       />
 
-      {expenses.length === 0 && mode === "view" ? (
+      {loadFailed && mode === "view" ? (
+        <LoadError what="expenses" onRetry={load} />
+      ) : loading && expenses.length === 0 ? (
+        <LoadingState />
+      ) : expenses.length === 0 && mode === "view" ? (
         <EmptyStateIntro
           icon={ReceiptText}
           description="Track your recurring business and personal expenses (e.g. health insurance, software) to accurately calculate your effective freelancer take-home salary."

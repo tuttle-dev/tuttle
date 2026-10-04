@@ -31,18 +31,22 @@ export function ListDetailLayout({ list, detail, footer }: {
 
 /* ── Single-page layout: toolbar over a scrolling, centered body ──────── */
 
-export function PageLayout({ className = "", children, ...toolbar }: Parameters<typeof Toolbar>[0] & {
+/** `fallback` (loading, empty or error state) replaces the body, keeping the toolbar. */
+export function PageLayout({ className = "", fallback, children, ...toolbar }: Parameters<typeof Toolbar>[0] & {
   className?: string;
-  children: ReactNode;
+  fallback?: ReactNode;
+  children?: ReactNode;
 }) {
   return (
     <div className="flex flex-col h-full">
       <Toolbar {...toolbar} />
-      <div className="flex-1 overflow-y-auto [scrollbar-gutter:stable]">
-        <div className="@container max-w-5xl mx-auto p-6">
-          <div className={className}>{children}</div>
+      {fallback ?? (
+        <div className="flex-1 overflow-y-auto [scrollbar-gutter:stable]">
+          <div className="@container max-w-5xl mx-auto p-6">
+            <div className={className}>{children}</div>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

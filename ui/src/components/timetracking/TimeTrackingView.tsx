@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { rpc } from "../../api/rpc";
 import { Toolbar, ToolbarButtonSecondary } from "../shared/ToolbarButtons";
+import { LoadError, LoadingState } from "../shared/LoadStates";
 import { useStatusBar } from "../shared/status-bar-context";
 import { useNavigation } from "../shared/NavigationContext";
 import { useDismiss } from "../../hooks/useDismiss";
@@ -110,6 +111,7 @@ export function TimeTrackingView() {
   const [monthProjects, setMonthProjects] = useState<ProjectHours[]>([]);
   const [projectTags, setProjectTags] = useState<ProjectTag[]>([]);
   const [restoringSource, setRestoringSource] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
 
   const [calendarSource, setCalendarSource] = useState<CalendarSource>(null);
   const [connectionLost, setConnectionLost] = useState(false);
@@ -133,24 +135,33 @@ export function TimeTrackingView() {
       rpc<CalendarData>("timetracking.get_calendar_data", { year, month, project_tag: filterTag }),
       filterTag ? rpc<CalendarData>("timetracking.get_calendar_data", { year, month }) : null,
     ]);
+    setLoadFailed(!res.ok || (unfiltered !== null && !unfiltered.ok));
     if (res.ok && res.data) {
       setCalData(res.data);
       setMonthProjects((unfiltered?.ok && unfiltered.data ? unfiltered.data : res.data).projects);
     }
   }, [year, month, filterTag]);
 
-  useEffect(() => {
-    (async () => {
-      const cfg = await rpc<{ source_type: string; has_data: boolean }>("timetracking.get_source_config");
-      if (cfg.ok && cfg.data?.source_type) {
-        if (cfg.data.has_data) setCalendarSource(cfg.data.source_type as CalendarSource);
-        else setConnectionLost(true);
-      }
-      const tags = await rpc<ProjectTag[]>("timetracking.get_project_tags");
-      if (tags.ok && tags.data) setProjectTags(tags.data);
-      setRestoringSource(false);
-    })();
+  // Until this succeeds the calendar source is unknown, so the toolbar shows no calendar actions.
+  const restoreSource = useCallback(async () => {
+    const cfg = await rpc<{ source_type: string; has_data: boolean }>("timetracking.get_source_config");
+    const tags = await rpc<ProjectTag[]>("timetracking.get_project_tags");
+    if (!cfg.ok || !tags.ok) { setLoadFailed(true); return; }
+    if (cfg.data?.source_type) {
+      if (cfg.data.has_data) setCalendarSource(cfg.data.source_type as CalendarSource);
+      else setConnectionLost(true);
+    }
+    if (tags.data) setProjectTags(tags.data);
+    setRestoringSource(false);
   }, []);
+
+  useEffect(() => { restoreSource(); }, [restoreSource]);
+
+  function retryLoad() {
+    setLoadFailed(false);
+    if (restoringSource) restoreSource();
+    else loadData();
+  }
 
   useEffect(() => {
     if (!restoringSource) loadData();
@@ -264,14 +275,10 @@ export function TimeTrackingView() {
 
   // ── Render ──────────────────────────────────────────────────────────────
 
-  if (!calData) {
-    return <div className="flex items-center justify-center h-full text-secondary">Loading time tracking…</div>;
-  }
-
   return (
     <div className="flex flex-col h-full">
       <Toolbar title="Time Tracking"
-        actions={calendarSource ? (
+        actions={restoringSource ? undefined : calendarSource ? (
           <>
             <ToolbarButtonSecondary
               icon={<RefreshCw size={13} className={syncing ? "animate-spin" : ""} />}
@@ -290,6 +297,11 @@ export function TimeTrackingView() {
         )}
       />
 
+      {loadFailed ? (
+        <LoadError what="your time entries" onRetry={retryLoad} />
+      ) : !calData ? (
+        <LoadingState />
+      ) : (<>
       <TimerBar projectTags={projectTags} onCreateProject={() => navigate("projects", {})} onLogged={loadData} />
 
       {connectionLost && !calendarSource && (
@@ -391,6 +403,7 @@ export function TimeTrackingView() {
           </div>
         )}
       </div>
+      </>)}
 
       {showSourceDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" {...sourceBackdrop}>
