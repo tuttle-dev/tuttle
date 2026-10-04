@@ -15,6 +15,8 @@ import { KanbanBoard, useStageStore, type BoardColumn } from "../shared/KanbanBo
 import { Toolbar, ToolbarButtonPrimary, ToolbarFilterGroup, ListDetailLayout, LIST_ROW_PADDING } from "../shared/ToolbarButtons";
 import { useNavigation } from "../shared/NavigationContext";
 import { EmptyStateIntro } from "../shared/EmptyStateIntro";
+import { StepDots } from "../shared/StepDots";
+import { useDismiss } from "../../hooks/useDismiss";
 import type { Entity } from "../../api/types";
 
 type InvoiceChain = { root: Entity; reminders: Entity[]; deposits: Entity[] };
@@ -253,6 +255,8 @@ interface LineItem {
 
 const UNIT_OPTIONS = ["hour", "day", "piece", "flat"] as const;
 
+const CREATE_INVOICE_STEPS = ["Project", "Details"] as const;
+
 const CHARGE_BASIS_LABELS: Record<string, string> = {
   per_unit: "per billed unit",
   per_invoice: "every invoice",
@@ -381,6 +385,8 @@ function CreateInvoiceDialog({ onClose, onCreated }: { onClose: () => void; onCr
 
   const [docType, setDocType] = useState<DocumentType>("invoice");
   const [selectedMilestoneId, setSelectedMilestoneId] = useState<number | null>(null);
+  const [step, setStep] = useState(0);
+  const backdrop = useDismiss(onClose);
 
   const selectedProject = projects.find((p) => p.id === projectId) ?? null;
   const isFixedPrice = selectedProject ? bool(selectedProject, "is_fixed_price") : false;
@@ -460,6 +466,8 @@ function CreateInvoiceDialog({ onClose, onCreated }: { onClose: () => void; onCr
   function removeItem(idx: number) {
     setLineItems((prev) => prev.length <= 1 ? prev : prev.filter((_, i) => i !== idx));
   }
+
+  const canAdvance = projectId != null && (docType !== "deposit" || selectedMilestoneId != null);
 
   function itemsValid(): boolean {
     return lineItems.every((it) => {
@@ -543,30 +551,33 @@ function CreateInvoiceDialog({ onClose, onCreated }: { onClose: () => void; onCr
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
-      <div className="bg-bg-content rounded-xl border border-border-subtle shadow-2xl w-[560px] max-h-[90vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}>
-        <div className="px-5 py-4 border-b border-border-subtle">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" {...backdrop}>
+      <div className="bg-bg-content rounded-xl border border-border-subtle shadow-2xl w-[560px] max-h-[85vh] flex flex-col overflow-hidden">
+        <div className="px-5 py-4 border-b border-border-subtle shrink-0 flex items-center justify-between">
           <h2 className="text-base font-semibold">Create Invoice</h2>
+          <StepDots steps={CREATE_INVOICE_STEPS} current={step} />
         </div>
-        <div className="px-5 py-4 space-y-4">
+        {/* min-h: same size on both steps, and room for the contract tooltip */}
+        <div className="flex-1 min-h-84 overflow-y-auto px-5 py-4 space-y-4">
           <p className="text-xs text-muted"><span className="text-accent">*</span> Required</p>
-          {/* Project */}
-          <div>
-            <label className="block">
-              <span className="text-xs font-semibold text-secondary uppercase tracking-wider">Project<span className="text-accent ml-0.5">*</span></span>
-              <select value={projectId ?? ""} onChange={(e) => handleProjectChange(Number(e.target.value))}
-                className="mt-1 w-full px-3 py-1.5 rounded-md bg-bg-card border border-border-subtle text-sm text-primary">
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>{str(p, "title")}</option>
-                ))}
-              </select>
-            </label>
-            {selectedContract && <ContractPreview contract={selectedContract} />}
-          </div>
+          {/* Step 1: project, document type and source */}
+          {step === 0 && (
+            <div>
+              <label className="block">
+                <span className="text-xs font-semibold text-secondary uppercase tracking-wider">Project<span className="text-accent ml-0.5">*</span></span>
+                <select value={projectId ?? ""} onChange={(e) => handleProjectChange(Number(e.target.value))}
+                  className="mt-1 w-full px-3 py-1.5 rounded-md bg-bg-card border border-border-subtle text-sm text-primary">
+                  {projects.map((p) => (
+                    <option key={p.id} value={p.id}>{str(p, "title")}</option>
+                  ))}
+                </select>
+              </label>
+              {selectedContract && <ContractPreview contract={selectedContract} />}
+            </div>
+          )}
 
           {/* Document type (only when contract has milestones) */}
-          {hasMilestones && isFixedPrice && (
+          {step === 0 && hasMilestones && isFixedPrice && (
             <div>
               <span className="text-xs font-semibold text-secondary uppercase tracking-wider">Document Type</span>
               <div className="flex gap-2 mt-1">
@@ -594,7 +605,7 @@ function CreateInvoiceDialog({ onClose, onCreated }: { onClose: () => void; onCr
           )}
 
           {/* Milestone picker (deposit only) */}
-          {docType === "deposit" && hasMilestones && (
+          {step === 0 && docType === "deposit" && hasMilestones && (
             <label className="block">
               <span className="text-xs font-semibold text-secondary uppercase tracking-wider">Milestone</span>
               <select value={selectedMilestoneId ?? ""} onChange={(e) => setSelectedMilestoneId(e.target.value ? Number(e.target.value) : null)}
@@ -619,7 +630,7 @@ function CreateInvoiceDialog({ onClose, onCreated }: { onClose: () => void; onCr
           )}
 
           {/* Additional charges the contract will add on top — only when it has any */}
-          {mode !== "manual" && charges.length > 0 && (
+          {step === 0 && mode !== "manual" && charges.length > 0 && (
             <div className="px-3 py-2.5 rounded-lg bg-bg-card border border-border-subtle">
               <div className="text-[10px] font-semibold text-muted uppercase tracking-wider">Additional charges</div>
               <div className="mt-1.5 space-y-1">
@@ -642,7 +653,7 @@ function CreateInvoiceDialog({ onClose, onCreated }: { onClose: () => void; onCr
           )}
 
           {/* Mode toggle (time-based only, not for deposit/final) */}
-          {!isFixedPrice && docType === "invoice" && (
+          {step === 0 && !isFixedPrice && docType === "invoice" && (
             <div>
               <span className="text-xs font-semibold text-secondary uppercase tracking-wider">Source</span>
               <div className="flex gap-2 mt-1">
@@ -665,7 +676,7 @@ function CreateInvoiceDialog({ onClose, onCreated }: { onClose: () => void; onCr
           )}
 
           {/* Timesheet opt-out (time-tracking mode only, not for deposit/final) */}
-          {!isFixedPrice && mode === "timetracking" && docType === "invoice" && (
+          {step === 0 && !isFixedPrice && mode === "timetracking" && docType === "invoice" && (
             <div>
               <label className="flex items-start gap-2 cursor-pointer">
                 <input type="checkbox" checked={withTimesheet}
@@ -681,43 +692,45 @@ function CreateInvoiceDialog({ onClose, onCreated }: { onClose: () => void; onCr
             </div>
           )}
 
-          {/* Dates */}
-          <div className="space-y-2">
-            <label className="block">
-              <span className="text-[10px] font-semibold text-muted uppercase">Invoice Date<span className="text-accent ml-0.5">*</span></span>
-              <input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)}
-                className="mt-1 w-full px-2 py-1.5 rounded-md bg-bg-card border border-border-subtle text-xs text-primary" />
-            </label>
-            {!isFixedPrice && docType === "invoice" && (
-              <div>
-                <span className="text-[10px] font-semibold text-muted uppercase">Billing Period<span className="text-accent ml-0.5">*</span></span>
-                <div className="mt-1 flex items-center gap-2">
-                  <button type="button" onClick={() => shiftMonth(-1)}
-                    className="p-1 rounded hover:bg-bg-hover text-secondary transition-colors" title="Previous month">
-                    <ChevronLeft size={14} />
-                  </button>
-                  <label className="block flex-1">
-                    <span className="text-[10px] font-semibold text-muted uppercase">From</span>
-                    <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)}
-                      className="mt-0.5 w-full px-2 py-1.5 rounded-md bg-bg-card border border-border-subtle text-xs text-primary" />
-                  </label>
-                  <span className="text-muted text-xs pt-3">–</span>
-                  <label className="block flex-1">
-                    <span className="text-[10px] font-semibold text-muted uppercase">To</span>
-                    <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)}
-                      className="mt-0.5 w-full px-2 py-1.5 rounded-md bg-bg-card border border-border-subtle text-xs text-primary" />
-                  </label>
-                  <button type="button" onClick={() => shiftMonth(1)}
-                    className="p-1 rounded hover:bg-bg-hover text-secondary transition-colors" title="Next month">
-                    <ChevronRight size={14} />
-                  </button>
+          {/* Step 2: dates, line items and notes */}
+          {step === 1 && (
+            <div className="space-y-2">
+              <label className="block">
+                <span className="text-[10px] font-semibold text-muted uppercase">Invoice Date<span className="text-accent ml-0.5">*</span></span>
+                <input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)}
+                  className="mt-1 w-full px-2 py-1.5 rounded-md bg-bg-card border border-border-subtle text-xs text-primary" />
+              </label>
+              {!isFixedPrice && docType === "invoice" && (
+                <div>
+                  <span className="text-[10px] font-semibold text-muted uppercase">Billing Period<span className="text-accent ml-0.5">*</span></span>
+                  <div className="mt-1 flex items-center gap-2">
+                    <button type="button" onClick={() => shiftMonth(-1)}
+                      className="p-1 rounded hover:bg-bg-hover text-secondary transition-colors" title="Previous month">
+                      <ChevronLeft size={14} />
+                    </button>
+                    <label className="block flex-1">
+                      <span className="text-[10px] font-semibold text-muted uppercase">From</span>
+                      <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)}
+                        className="mt-0.5 w-full px-2 py-1.5 rounded-md bg-bg-card border border-border-subtle text-xs text-primary" />
+                    </label>
+                    <span className="text-muted text-xs pt-3">–</span>
+                    <label className="block flex-1">
+                      <span className="text-[10px] font-semibold text-muted uppercase">To</span>
+                      <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)}
+                        className="mt-0.5 w-full px-2 py-1.5 rounded-md bg-bg-card border border-border-subtle text-xs text-primary" />
+                    </label>
+                    <button type="button" onClick={() => shiftMonth(1)}
+                      className="p-1 rounded hover:bg-bg-hover text-secondary transition-colors" title="Next month">
+                      <ChevronRight size={14} />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
 
           {/* Line items editor (time-based manual only, not for deposit/final) */}
-          {!isFixedPrice && mode === "manual" && docType === "invoice" && (
+          {step === 1 && !isFixedPrice && mode === "manual" && docType === "invoice" && (
             <div>
               <span className="text-xs font-semibold text-secondary uppercase tracking-wider">Line Items</span>
               <div className="mt-1 space-y-2">
@@ -760,56 +773,71 @@ function CreateInvoiceDialog({ onClose, onCreated }: { onClose: () => void; onCr
           )}
 
           {/* Notes */}
-          <div>
-            <span className="text-xs font-semibold text-secondary uppercase tracking-wider">Closing Notes</span>
-            <p className="text-[10px] text-muted mt-0.5 mb-1.5">Optional text printed at the bottom of the invoice (e.g. VAT exemption, reverse charge).</p>
-            {savedNotes.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mb-2">
-                {savedNotes.map((n) => {
-                  const active = selectedNoteIds.has(n.id);
-                  return (
-                    <button key={n.id} type="button"
-                      onClick={() => setSelectedNoteIds((prev) => {
-                        const next = new Set(prev);
-                        if (active) next.delete(n.id); else next.add(n.id);
-                        return next;
-                      })}
-                      className={`px-2.5 py-1 rounded-full text-[11px] leading-tight border transition-colors truncate max-w-[280px]
-                        ${active
-                          ? "border-accent bg-accent/15 text-primary"
-                          : "border-border-subtle text-secondary hover:border-accent/50 hover:text-primary"}`}
-                      title={str(n, "text")}
-                    >
-                      {str(n, "text")}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-            <textarea
-              value={customNoteText}
-              onChange={(e) => setCustomNoteText(e.target.value)}
-              placeholder="Type additional notes…"
-              rows={2}
-              className="w-full px-2.5 py-1.5 rounded-md bg-bg-card border border-border-subtle text-xs text-primary placeholder:text-muted resize-y"
-            />
-          </div>
+          {step === 1 && (
+            <div>
+              <span className="text-xs font-semibold text-secondary uppercase tracking-wider">Closing Notes</span>
+              <p className="text-[10px] text-muted mt-0.5 mb-1.5">Optional text printed at the bottom of the invoice (e.g. VAT exemption, reverse charge).</p>
+              {savedNotes.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {savedNotes.map((n) => {
+                    const active = selectedNoteIds.has(n.id);
+                    return (
+                      <button key={n.id} type="button"
+                        onClick={() => setSelectedNoteIds((prev) => {
+                          const next = new Set(prev);
+                          if (active) next.delete(n.id); else next.add(n.id);
+                          return next;
+                        })}
+                        className={`px-2.5 py-1 rounded-full text-[11px] leading-tight border transition-colors truncate max-w-[280px]
+                          ${active
+                            ? "border-accent bg-accent/15 text-primary"
+                            : "border-border-subtle text-secondary hover:border-accent/50 hover:text-primary"}`}
+                        title={str(n, "text")}
+                      >
+                        {str(n, "text")}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              <textarea
+                value={customNoteText}
+                onChange={(e) => setCustomNoteText(e.target.value)}
+                placeholder="Type additional notes…"
+                rows={2}
+                className="w-full px-2.5 py-1.5 rounded-md bg-bg-card border border-border-subtle text-xs text-primary placeholder:text-muted resize-y"
+              />
+            </div>
+          )}
 
           {error && <p className="text-xs text-red-400">{error}</p>}
         </div>
 
-        <div className="px-5 py-3 border-t border-border-subtle flex justify-end gap-2">
+        <div className="px-5 py-3 border-t border-border-subtle flex items-center gap-2 shrink-0">
+          {step === 1 && (
+            <button onClick={() => setStep(0)}
+              className="flex items-center gap-1.5 px-4 py-1.5 rounded-md text-sm text-secondary hover:text-primary hover:bg-bg-hover transition-colors">
+              <ChevronLeft size={14} /> Back
+            </button>
+          )}
           <button onClick={onClose}
-            className="px-4 py-1.5 rounded-md text-sm text-secondary hover:text-primary hover:bg-bg-hover transition-colors">
+            className="ml-auto px-4 py-1.5 rounded-md text-sm text-secondary hover:text-primary hover:bg-bg-hover transition-colors">
             Cancel
           </button>
-          <button onClick={submit} disabled={submitting}
-            className="px-4 py-1.5 rounded-md text-sm font-medium bg-accent text-white hover:bg-accent/90 transition-colors disabled:opacity-50">
-            {submitting ? "Creating…"
-              : docType === "final" ? "Create Final Invoice"
-              : docType === "deposit" ? (isLastOpenMilestone ? "Create Final Invoice" : "Create Deposit Invoice")
-              : "Create Invoice"}
-          </button>
+          {step === 0 ? (
+            <button onClick={() => setStep(1)} disabled={!canAdvance}
+              className="flex items-center gap-1.5 px-4 py-1.5 rounded-md text-sm font-medium bg-accent text-white hover:bg-accent/90 transition-colors disabled:opacity-50">
+              Next <ChevronRight size={14} />
+            </button>
+          ) : (
+            <button onClick={submit} disabled={submitting}
+              className="px-4 py-1.5 rounded-md text-sm font-medium bg-accent text-white hover:bg-accent/90 transition-colors disabled:opacity-50">
+              {submitting ? "Creating…"
+                : docType === "final" ? "Create Final Invoice"
+                : docType === "deposit" ? (isLastOpenMilestone ? "Create Final Invoice" : "Create Deposit Invoice")
+                : "Create Invoice"}
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -1637,6 +1665,7 @@ function CreateReminderDialog({ invoiceId, invoiceNumber, onClose, onCreated }: 
   const [fee, setFee] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const backdrop = useDismiss(onClose);
 
   async function submit() {
     if (!newDueDate) { setError("New due date is required"); return; }
@@ -1659,14 +1688,13 @@ function CreateReminderDialog({ invoiceId, invoiceNumber, onClose, onCreated }: 
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
-      <div className="bg-bg-content rounded-xl border border-border-subtle shadow-2xl w-[420px]"
-        onClick={(e) => e.stopPropagation()}>
-        <div className="px-5 py-4 border-b border-border-subtle">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" {...backdrop}>
+      <div className="bg-bg-content rounded-xl border border-border-subtle shadow-2xl w-[420px] max-h-[85vh] flex flex-col overflow-hidden">
+        <div className="px-5 py-4 border-b border-border-subtle shrink-0">
           <h2 className="text-base font-semibold">Create Reminder</h2>
           <p className="text-xs text-tertiary mt-0.5">for invoice {invoiceNumber}</p>
         </div>
-        <div className="px-5 py-4 space-y-4">
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
           <p className="text-xs text-muted"><span className="text-accent">*</span> Required</p>
           <label className="block">
             <span className="text-[10px] font-semibold text-muted uppercase">Reminder Date<span className="text-accent ml-0.5">*</span></span>
@@ -1686,7 +1714,7 @@ function CreateReminderDialog({ invoiceId, invoiceNumber, onClose, onCreated }: 
           </label>
           {error && <p className="text-xs text-red-400">{error}</p>}
         </div>
-        <div className="px-5 py-3 border-t border-border-subtle flex justify-end gap-2">
+        <div className="px-5 py-3 border-t border-border-subtle flex justify-end gap-2 shrink-0">
           <button onClick={onClose}
             className="px-4 py-1.5 rounded-md text-sm text-secondary hover:text-primary hover:bg-bg-hover transition-colors">
             Cancel

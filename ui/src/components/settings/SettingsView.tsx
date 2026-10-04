@@ -13,6 +13,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Plus, RefreshCw, Save, CheckCircle2, AlertCircle, User, Bot, FileText, RotateCcw, Trash2, AlertTriangle, Monitor, Globe, Info, Image as ImageIcon, X, Sun, Moon, Laptop, Palette, Terminal, Clipboard, Check } from "lucide-react";
 import { useTheme, type ThemeChoice } from "../../hooks/useTheme";
+import { useDismiss } from "../../hooks/useDismiss";
 import { rpc } from "../../api/rpc";
 import type { Entity } from "../../api/types";
 import { str, bool, list as entityList } from "../../api/entity";
@@ -158,6 +159,8 @@ export function SettingsView() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const closeDeleteConfirm = () => setDeleteConfirmOpen(false);
+  const deleteBackdrop = useDismiss(closeDeleteConfirm, deleteConfirmOpen && !deleting);
 
   const [invoicing, setInvoicing] = useState<InvoicingPrefs>({ ...DEFAULT_INVOICING });
   const [availableTemplates, setAvailableTemplates] = useState<Record<string, string>>({});
@@ -679,9 +682,9 @@ export function SettingsView() {
 
       {/* Delete confirmation modal */}
       {deleteConfirmOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-bg-sidebar rounded-xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
-            <div className="px-5 py-4 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" {...deleteBackdrop}>
+          <div className="bg-bg-sidebar rounded-xl shadow-2xl w-full max-w-sm mx-4 max-h-[85vh] flex flex-col overflow-hidden">
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
               <div className="flex items-center gap-3">
                 <div className="flex items-center justify-center w-10 h-10 rounded-full bg-red-500/10">
                   <AlertTriangle size={20} className="text-red-400" />
@@ -702,9 +705,9 @@ export function SettingsView() {
                 autoFocus
               />
             </div>
-            <div className="flex justify-end gap-2 px-5 py-3 border-t border-border-subtle">
+            <div className="flex justify-end gap-2 px-5 py-3 border-t border-border-subtle shrink-0">
               <button
-                onClick={() => setDeleteConfirmOpen(false)}
+                onClick={closeDeleteConfirm}
                 disabled={deleting}
                 className="px-4 py-1.5 text-sm rounded-md text-secondary hover:bg-bg-hover transition-colors"
               >
