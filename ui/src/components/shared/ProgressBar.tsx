@@ -17,7 +17,7 @@ export function ProgressBar({ progress, label, subtitle }: ProgressBarProps) {
       )}
       <div className="h-1 w-full rounded-full bg-bg-hover overflow-hidden">
         <div
-          className="h-full rounded-full bg-secondary transition-all duration-300"
+          className="h-full rounded-full bg-progress transition-all duration-300"
           style={{ width: `${clamped * 100}%` }}
         />
       </div>

@@ -13,6 +13,7 @@
   --color-secondary: #3a3a3c;
   --color-tertiary: #6e6e73;
   --color-muted: #8e8e93;
+  --color-progress: #6e6e73;
   --color-accent: #007AFF;
   --color-chart-label: #6e6e73;
   --color-surface-overlay: rgba(0, 0, 0, 0.05);
@@ -36,6 +37,7 @@
   --color-secondary: #e0e0e4;
   --color-tertiary: #bbbbc1;
   --color-muted: #a1a1a6;
+  --color-progress: #8e8e93;
   --color-chart-label: #b8b8bc;
   --color-surface-overlay: rgba(255, 255, 255, 0.03);
   --color-surface-overlay-hover: rgba(255, 255, 255, 0.07);

@@ -394,7 +394,7 @@ function BudgetBar({ budget: b }: { budget: BudgetEntry }) {
       </div>
       <div className="h-1.5 w-full rounded-full bg-bg-hover overflow-hidden flex">
         <div
-          className="h-full rounded-l-full bg-secondary transition-all duration-300"
+          className="h-full rounded-l-full bg-progress transition-all duration-300"
           style={{ width: `${trackedPct * 100}%` }}
         />
         {plannedPct > 0 && (
