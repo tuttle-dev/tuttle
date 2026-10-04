@@ -1392,7 +1392,7 @@ function SystemTab() {
 
 const LEVEL_STYLES: Record<string, string> = {
   ERROR: "text-red-400",
-  WARNING: "text-amber-400",
+  WARNING: "text-status-warning",
   INFO: "text-blue-400",
   DEBUG: "text-muted",
 };

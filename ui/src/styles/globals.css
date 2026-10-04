@@ -19,9 +19,11 @@
   --color-surface-overlay: rgba(0, 0, 0, 0.05);
   --color-surface-overlay-hover: rgba(0, 0, 0, 0.08);
   --color-status-success: #15803d;
-  --color-status-warning: #c2410c;
+  --color-status-warning: #b45309;
   --color-status-danger: #dc2626;
   --color-status-info: #2563eb;
+  --color-status-neutral: #6e6e73;
+  --color-status-purple: #9333ea;
 }
 
 /* Dark palette — activated by .dark on <html> */
@@ -42,9 +44,11 @@
   --color-surface-overlay: rgba(255, 255, 255, 0.03);
   --color-surface-overlay-hover: rgba(255, 255, 255, 0.07);
   --color-status-success: #4ade80;
-  --color-status-warning: #facc15;
+  --color-status-warning: #fb923c;
   --color-status-danger: #f87171;
   --color-status-info: #60a5fa;
+  --color-status-neutral: #a1a1a6;
+  --color-status-purple: #c084fc;
 }
 
 :root {

@@ -1005,7 +1005,7 @@ function ContractForm({ contract, isDuplicate = false, clients, defaultCurrency,
                     const total = milestones.reduce((s, m) => s + (parseFloat(m.percentage) || 0), 0);
                     const ok = Math.abs(total - 100) < 0.01;
                     return (
-                      <div className={`mt-2 text-xs ${ok ? "text-green-500" : "text-amber-400"}`}>
+                      <div className={`mt-2 text-xs ${ok ? "text-green-500" : "text-status-warning"}`}>
                         Total: {total.toFixed(1)}%{!ok && " (must be 100%)"}
                       </div>
                     );

@@ -92,7 +92,7 @@ export function DashboardView() {
                 <div className="flex items-baseline justify-between">
                   <div className="flex items-center gap-1.5">
                     <span className="text-xs font-medium truncate">{b.project}</span>
-                    {b.budget_exceeded && <AlertTriangle size={12} className="text-amber-400 shrink-0" />}
+                    {b.budget_exceeded && <AlertTriangle size={12} className="text-status-warning shrink-0" />}
                   </div>
                   <span className="text-xs text-secondary tabular-nums">{subtitle}</span>
                 </div>
@@ -109,7 +109,7 @@ export function DashboardView() {
                   )}
                 </div>
                 {b.budget_exceeded && (
-                  <div className="text-[11px] text-amber-400 font-medium">Budget exceeded</div>
+                  <div className="text-[11px] text-status-warning font-medium">Budget exceeded</div>
                 )}
               </div>
             );

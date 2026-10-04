@@ -650,7 +650,7 @@ function CommittedPhase({ result, onDone }: {
         )}
         {updated.length > 0 && (
           <div>
-            <div className="text-xs font-semibold uppercase tracking-wider text-amber-400 mb-1">Updated</div>
+            <div className="text-xs font-semibold uppercase tracking-wider text-status-warning mb-1">Updated</div>
             {updated.map((s, i) => <div key={i} className="text-sm text-secondary">{s}</div>)}
           </div>
         )}
@@ -1319,7 +1319,7 @@ function AiField({ label, value, dbValue, onChange, type = "text", required, opt
   const fieldCls = `w-full px-2.5 py-1.5 rounded-md text-sm bg-bg-card text-primary outline-none
     focus:border-fuchsia-400 transition-colors placeholder:text-muted border ${
     missing ? "border-red-400/70 bg-red-500/5" :
-    differs ? "border-amber-400/60" : "border-fuchsia-400/30"
+    differs ? "border-status-warning/60" : "border-fuchsia-400/30"
   }`;
 
   return (
@@ -1339,7 +1339,7 @@ function AiField({ label, value, dbValue, onChange, type = "text", required, opt
         <div className="text-[10px] text-red-400 mt-0.5">Required</div>
       )}
       {!missing && differs && (
-        <div className="text-[10px] text-amber-400/80 mt-0.5 truncate" title={`DB: ${dbValue}`}>
+        <div className="text-[10px] text-status-warning/80 mt-0.5 truncate" title={`DB: ${dbValue}`}>
           DB: {dbValue}
         </div>
       )}
@@ -1362,7 +1362,7 @@ function RefDropdown({ label, currentRef, options, onChange, hint }: {
       <label className="block text-xs text-fuchsia-300/70 mb-0.5">
         {label}
         {noLink && options.length > 0 && (
-          <span className="ml-1.5 text-amber-400">
+          <span className="ml-1.5 text-status-warning">
             <AlertTriangle size={10} className="inline -mt-0.5" /> not linked
           </span>
         )}

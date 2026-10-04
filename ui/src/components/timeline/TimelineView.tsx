@@ -6,6 +6,7 @@ import {
 import { rpc } from "../../api/rpc";
 import { PageLayout, Toolbar, ToolbarFilterGroup } from "../shared/ToolbarButtons";
 import { EmptyStateIntro } from "../shared/EmptyStateIntro";
+import { tint, onTint } from "../shared/status-colors";
 import type { Entity } from "../../api/types";
 import { str, bool } from "../../api/entity";
 
@@ -24,7 +25,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   invoice:  "var(--color-status-info)",
   contract: "var(--color-status-success)",
   project:  "var(--color-status-warning)",
-  goal:     "#BF5AF2",
+  goal:     "var(--color-status-purple)",
 };
 
 const FILTER_OPTIONS = ["all", "invoice", "contract", "project", "goal"] as const;
@@ -206,19 +207,20 @@ function TodayMarker({ ref }: { ref: React.Ref<HTMLDivElement> }) {
 function EventCard({ event, isLast }: { event: Entity; isLast: boolean }) {
   const cat = str(event, "category");
   const color = dotColor(event);
-  const catColor = CATEGORY_COLORS[cat] || "#0A84FF";
+  const catColor = CATEGORY_COLORS[cat] || "var(--color-status-info)";
   const isFuture = bool(event, "is_future");
   const CatIcon = CATEGORIES.find((c) => c.id === cat)?.icon || FileText;
   const catLabel = CATEGORIES.find((c) => c.id === cat)?.label || cat;
 
   return (
-    <div className="flex" style={{ opacity: isFuture ? 0.5 : 1 }}>
-      {/* Spine */}
+    <div className="flex">
+      {/* Spine — upcoming events get a hollow dot */}
       <div className="w-9 flex flex-col items-center shrink-0">
         <div className="w-0.5 h-3.5 bg-border-subtle" />
         <div className="relative flex items-center justify-center">
-          <div className="w-[18px] h-[18px] rounded-full" style={{ backgroundColor: color + "26" }} />
-          <div className="absolute w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
+          <div className="w-[18px] h-[18px] rounded-full" style={{ backgroundColor: tint(color, 15) }} />
+          <div className="absolute w-2.5 h-2.5 rounded-full border-2"
+            style={{ borderColor: color, backgroundColor: isFuture ? "var(--color-bg-content)" : color }} />
         </div>
         {!isLast && <div className="w-0.5 flex-1 min-h-[46px] bg-border-subtle" />}
       </div>
@@ -240,7 +242,7 @@ function EventCard({ event, isLast }: { event: Entity; isLast: boolean }) {
           )}
           <span
             className="inline-block mt-1.5 text-[10px] font-semibold px-2 py-0.5 rounded-full"
-            style={{ color: catColor, backgroundColor: catColor + "1F" }}
+            style={{ color: onTint(catColor), backgroundColor: tint(catColor, 12) }}
           >
             {catLabel}
           </span>
