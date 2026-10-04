@@ -58,7 +58,7 @@ export function DetailAction({ icon, label, onClick, title }: {
 export function DetailSubmit({ label, disabled }: { label: string; disabled?: boolean }) {
   return (
     <button type="submit" disabled={disabled}
-      className={`${ACTION_BASE} border-accent bg-accent text-white hover:bg-accent/90 disabled:opacity-40`}>
+      className={`${ACTION_BASE} border-accent bg-accent text-on-fill hover:bg-accent/90 disabled:opacity-40`}>
       {label}
     </button>
   );
@@ -79,7 +79,7 @@ export function DetailDeleteAction({ label, onDelete }: { label: string; onDelet
     <div className="flex items-center gap-1.5">
       <span className="text-xs text-status-danger">Delete permanently?</span>
       <button type="button" onClick={() => { setConfirming(false); onDelete(); }}
-        className={`${ACTION_BASE} border-red-500 bg-red-500 text-white hover:bg-red-600`}>
+        className={`${ACTION_BASE} border-status-danger bg-status-danger text-on-fill hover:bg-status-danger/90`}>
         Delete
       </button>
       <button type="button" onClick={() => setConfirming(false)} className={ACTION_SECONDARY}>

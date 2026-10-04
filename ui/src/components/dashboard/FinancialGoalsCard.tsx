@@ -102,7 +102,7 @@ export function FinancialGoalsCard() {
       </div>
 
       {error && (
-        <div className="p-2 rounded-md bg-red-500/10 border border-red-500/30 text-xs text-red-400">{error}</div>
+        <div className="p-2 rounded-md bg-status-danger/10 border border-status-danger/30 text-xs text-status-danger">{error}</div>
       )}
 
       {entries.length === 0 && !showForm ? (
@@ -166,15 +166,15 @@ function GoalRow({ entry, onEdit, onDelete }: {
                 <Pencil size={11} />
               </button>
               <button onClick={() => setConfirmDelete(true)} title="Delete goal"
-                className="p-1 rounded text-tertiary hover:text-red-400 hover:bg-red-500/10 transition-colors">
+                className="p-1 rounded text-tertiary hover:text-status-danger hover:bg-status-danger/10 transition-colors">
                 <Trash2 size={11} />
               </button>
             </div>
           ) : (
             <div className="flex items-center gap-1.5">
-              <span className="text-[11px] text-red-400">Delete?</span>
+              <span className="text-[11px] text-status-danger">Delete?</span>
               <button onClick={() => { setConfirmDelete(false); onDelete(); }}
-                className="px-1.5 py-0.5 rounded text-[11px] font-medium bg-red-500 text-white hover:bg-red-600 transition-colors">
+                className="px-1.5 py-0.5 rounded text-[11px] font-medium bg-status-danger text-on-fill hover:bg-status-danger/90 transition-colors">
                 Delete
               </button>
               <button onClick={() => setConfirmDelete(false)}

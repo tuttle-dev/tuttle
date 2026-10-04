@@ -55,7 +55,7 @@ export function StatusBar() {
         title="Open time tracking"
       >
         {status === "running"
-          ? <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+          ? <span className="w-2 h-2 rounded-full bg-status-success animate-pulse" />
           : <Pause size={11} className="text-status-warning" />}
         <span className="tabular-nums font-medium">{formatElapsed(elapsed)}</span>
         <span className={tag ? "text-secondary" : "text-muted italic"}>
@@ -65,7 +65,7 @@ export function StatusBar() {
       {status === "running" && (
         <button
           onClick={handleStop}
-          className="p-1 rounded text-muted hover:text-red-400 hover:bg-bg-hover transition-colors"
+          className="p-1 rounded text-muted hover:text-status-danger hover:bg-bg-hover transition-colors"
           title="Stop timer"
         >
           <Square size={10} fill="currentColor" />

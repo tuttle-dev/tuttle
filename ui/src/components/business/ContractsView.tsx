@@ -359,7 +359,7 @@ function ContractDetail({ contract, onEdit, onDuplicate, onDelete, onToggle, del
         </>} />
 
       {deleteError && (
-        <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-400">{deleteError}</div>
+        <div className="p-3 rounded-lg bg-status-danger/10 border border-status-danger/30 text-sm text-status-danger">{deleteError}</div>
       )}
 
       {/* Terms */}
@@ -427,7 +427,7 @@ function ContractDetail({ contract, onEdit, onDuplicate, onDelete, onToggle, del
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-secondary tabular-nums">{num(m, "percentage")}%</span>
                     {bool(m, "invoiced")
-                      ? <span className="text-[10px] text-green-500 font-medium px-1.5 py-0.5 rounded bg-green-500/10">Invoiced</span>
+                      ? <span className="text-[10px] text-status-success font-medium px-1.5 py-0.5 rounded bg-status-success/10">Invoiced</span>
                       : <span className="text-[10px] text-tertiary font-medium px-1.5 py-0.5 rounded bg-bg-hover">Open</span>}
                   </div>
                 </div>
@@ -730,7 +730,7 @@ function ContractForm({ contract, isDuplicate = false, clients, defaultCurrency,
       <p className="text-xs text-muted"><span className="text-accent">*</span> Required</p>
 
       {(validationError || error) && (
-        <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-400">{validationError || error}</div>
+        <div className="p-3 rounded-lg bg-status-danger/10 border border-status-danger/30 text-sm text-status-danger">{validationError || error}</div>
       )}
 
       <Section title="Basic">
@@ -754,7 +754,7 @@ function ContractForm({ contract, isDuplicate = false, clients, defaultCurrency,
           {(["time_based", "fixed_price"] as const).map((mode) => (
             <button key={mode} type="button" onClick={() => switchPricingMode(mode)}
               className={`px-4 py-1.5 text-xs font-medium transition-colors ${pricingMode === mode
-                ? "bg-accent text-white" : "bg-bg-card text-secondary hover:text-primary hover:bg-bg-hover"}`}>
+                ? "bg-accent text-on-fill" : "bg-bg-card text-secondary hover:text-primary hover:bg-bg-hover"}`}>
               {mode === "time_based" ? "Time-Based" : "Fixed Price"}
             </button>
           ))}
@@ -952,11 +952,11 @@ function ContractForm({ contract, isDuplicate = false, clients, defaultCurrency,
                           <span className="text-xs text-muted">%</span>
                         </div>
                         {m.invoiced ? (
-                          <span className="text-[10px] text-green-500 font-medium px-1.5 py-0.5 rounded bg-green-500/10">Invoiced</span>
+                          <span className="text-[10px] text-status-success font-medium px-1.5 py-0.5 rounded bg-status-success/10">Invoiced</span>
                         ) : (
                           <button type="button" onClick={() => setMilestones((prev) => prev.filter((_, i) => i !== idx))}
                             disabled={milestones.length <= 1}
-                            className="p-1 rounded text-muted hover:text-red-400 disabled:opacity-30 transition-colors">
+                            className="p-1 rounded text-muted hover:text-status-danger disabled:opacity-30 transition-colors">
                             <X size={14} />
                           </button>
                         )}
@@ -973,7 +973,7 @@ function ContractForm({ contract, isDuplicate = false, clients, defaultCurrency,
                     const total = milestones.reduce((s, m) => s + (parseFloat(m.percentage) || 0), 0);
                     const ok = Math.abs(total - 100) < 0.01;
                     return (
-                      <div className={`mt-2 text-xs ${ok ? "text-green-500" : "text-status-warning"}`}>
+                      <div className={`mt-2 text-xs ${ok ? "text-status-success" : "text-status-warning"}`}>
                         Total: {total.toFixed(1)}%{!ok && " (must be 100%)"}
                       </div>
                     );
@@ -1052,7 +1052,7 @@ function ChargesEditor({ charges, expanded, onToggle, isFixed, currency, unitLab
                 </p>
               </div>
               <button type="button" onClick={() => onRemove(idx)}
-                className="mt-1 p-1 rounded text-muted hover:text-red-400 hover:bg-red-400/10 transition-colors"
+                className="mt-1 p-1 rounded text-muted hover:text-status-danger hover:bg-status-danger/10 transition-colors"
                 title="Remove charge">
                 <XCircle size={14} />
               </button>
@@ -1093,19 +1093,19 @@ function ParsedContractCard({ contract, clients, onAccept, onDiscard, onUpdate }
   onAccept: () => void; onDiscard: () => void; onUpdate: (c: ParsedContract) => void;
 }) {
   return (
-    <div className="rounded-xl border-2 border-fuchsia-400/40 bg-fuchsia-500/5 p-4 space-y-3">
+    <div className="rounded-xl border-2 border-status-purple/40 bg-status-purple/5 p-4 space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Sparkles size={14} className="text-fuchsia-400" />
+          <Sparkles size={14} className="text-status-purple" />
           <span className="text-sm font-semibold">{contract.title || "Untitled"}</span>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={onDiscard}
-            className="flex items-center gap-1 px-2 py-1 rounded text-xs text-secondary hover:text-red-400 hover:bg-red-500/10 transition-colors">
+            className="flex items-center gap-1 px-2 py-1 rounded text-xs text-secondary hover:text-status-danger hover:bg-status-danger/10 transition-colors">
             <Trash2 size={12} /> Discard
           </button>
           <button onClick={onAccept}
-            className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium text-fuchsia-400 hover:bg-fuchsia-500/10 border border-fuchsia-400/30 transition-colors">
+            className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium text-status-purple hover:bg-status-purple/10 border border-status-purple/30 transition-colors">
             <Check size={12} /> Accept
           </button>
         </div>
@@ -1120,11 +1120,11 @@ function ParsedContractCard({ contract, clients, onAccept, onDiscard, onUpdate }
         <AiField label="End Date" value={contract.end_date} onChange={(v) => onUpdate({ ...contract, end_date: v })} />
       </div>
       <div>
-        <label className="block text-xs text-fuchsia-300/70 mb-0.5">
-          Client {contract.client_name_hint && <span className="text-fuchsia-400/60">(hint: {contract.client_name_hint})</span>}
+        <label className="block text-xs text-status-purple/70 mb-0.5">
+          Client {contract.client_name_hint && <span className="text-status-purple/60">(hint: {contract.client_name_hint})</span>}
         </label>
         <select value={contract.selectedClientId ?? ""} onChange={(e) => onUpdate({ ...contract, selectedClientId: e.target.value ? Number(e.target.value) : undefined })}
-          className="w-full px-2.5 py-1.5 rounded-md text-sm bg-bg-card text-primary border border-fuchsia-400/30 outline-none focus:border-fuchsia-400 transition-colors">
+          className="w-full px-2.5 py-1.5 rounded-md text-sm bg-bg-card text-primary border border-status-purple/30 outline-none focus:border-status-purple transition-colors">
           <option value="">— Select —</option>
           {clients.map((c) => <option key={c.id} value={c.id}>{str(c, "name")}</option>)}
         </select>
@@ -1136,9 +1136,9 @@ function ParsedContractCard({ contract, clients, onAccept, onDiscard, onUpdate }
 function AiField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   return (
     <div>
-      <label className="block text-xs text-fuchsia-300/70 mb-0.5">{label}</label>
+      <label className="block text-xs text-status-purple/70 mb-0.5">{label}</label>
       <input type="text" value={value} onChange={(e) => onChange(e.target.value)}
-        className="w-full px-2.5 py-1.5 rounded-md text-sm bg-bg-card text-primary border border-fuchsia-400/30 outline-none focus:border-fuchsia-400 transition-colors" />
+        className="w-full px-2.5 py-1.5 rounded-md text-sm bg-bg-card text-primary border border-status-purple/30 outline-none focus:border-status-purple transition-colors" />
     </div>
   );
 }

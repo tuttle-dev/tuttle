@@ -24,9 +24,9 @@ export function DocumentDropzone({ hint, onFileSelected }: {
       onDrop={handleDrop}
       onClick={() => fileInputRef.current?.click()}
       className={`flex flex-col items-center justify-center gap-3 p-10 rounded-xl border-2 border-dashed cursor-pointer transition-colors
-        ${dragOver ? "border-fuchsia-400 bg-fuchsia-500/5" : "border-border-subtle hover:border-fuchsia-400/50 hover:bg-fuchsia-500/5"}`}
+        ${dragOver ? "border-status-purple bg-status-purple/5" : "border-border-subtle hover:border-status-purple/50 hover:bg-status-purple/5"}`}
     >
-      <FileUp size={32} strokeWidth={1.4} className="text-fuchsia-400" />
+      <FileUp size={32} strokeWidth={1.4} className="text-status-purple" />
       <div className="text-center">
         <p className="text-sm font-medium">Drop a document here</p>
         <p className="text-xs text-tertiary mt-1">{hint}</p>

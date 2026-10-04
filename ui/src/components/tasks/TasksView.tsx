@@ -160,10 +160,10 @@ function TaskCard({ task, done, onOpen, onDone, onDismiss, onReopen }: {
           disabled={done && !onReopen}
           className={`mt-0.5 shrink-0 transition-colors ${
             done && onReopen
-              ? "text-green-500 hover:text-secondary cursor-default"
+              ? "text-status-success hover:text-secondary cursor-default"
               : done
-              ? "text-green-500 cursor-default"
-              : "text-secondary hover:text-green-500 cursor-default"
+              ? "text-status-success cursor-default"
+              : "text-secondary hover:text-status-success cursor-default"
           }`}
           title={done ? (onReopen ? "Reopen" : "Completed") : "Mark done"}
         >
@@ -198,7 +198,7 @@ function TaskCard({ task, done, onOpen, onDone, onDismiss, onReopen }: {
           <div className="shrink-0 flex items-center gap-1.5">
             <button
               onClick={own(onDismiss)}
-              className="text-[11px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors"
+              className="text-[11px] px-1.5 py-0.5 rounded bg-status-danger/10 text-status-danger hover:bg-status-danger/20 transition-colors"
             >
               Remove
             </button>

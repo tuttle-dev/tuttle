@@ -249,7 +249,7 @@ function IncomeTaxSection({ data, currency }: { data: Entity; currency: string }
                 return (
                   <div
                     key={i}
-                    className={`flex justify-between px-3 py-1.5 rounded-md text-sm ${current ? "bg-accent text-white font-semibold" : "bg-surface-overlay text-secondary"}`}
+                    className={`flex justify-between px-3 py-1.5 rounded-md text-sm ${current ? "bg-accent text-on-fill font-semibold" : "bg-surface-overlay text-secondary"}`}
                   >
                     <span>{str(b, "label")}</span>
                     <span>

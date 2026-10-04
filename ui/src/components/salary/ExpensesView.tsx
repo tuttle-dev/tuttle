@@ -320,7 +320,7 @@ function ExpenseDetail({ expense, onEdit, onDelete, deleteError }: {
         </>} />
 
       {deleteError && (
-        <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-400">{deleteError}</div>
+        <div className="p-3 rounded-lg bg-status-danger/10 border border-status-danger/30 text-sm text-status-danger">{deleteError}</div>
       )}
 
       <DetailFields>
@@ -619,7 +619,7 @@ function ExpenseForm({ expense, onSave, onCancel, error }: {
         </label>
       </div>
 
-      {error && <p className="text-xs text-red-400">{error}</p>}
+      {error && <p className="text-xs text-status-danger">{error}</p>}
     </form>
   );
 }
