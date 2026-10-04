@@ -187,7 +187,7 @@ function GoalRow({ entry, onEdit, onDelete }: {
 
       <div className="h-1.5 w-full rounded-full bg-bg-hover overflow-hidden">
         <div
-          className={`h-full rounded-full transition-all duration-300 ${reached ? "bg-emerald-400" : "bg-secondary"}`}
+          className={`h-full rounded-full transition-all duration-300 ${reached ? "bg-emerald-400" : "bg-progress"}`}
           style={{ width: `${Math.max(0, Math.min(progress, 1)) * 100}%` }}
         />
       </div>
