@@ -96,7 +96,7 @@ export function Sidebar({
     : "?";
 
   return (
-    <aside className={`flex flex-col bg-bg-sidebar border-r border-border-subtle transition-all duration-200 ${collapsed ? "w-20" : "w-52"}`}>
+    <aside className={`flex flex-col bg-bg-sidebar border-r border-border-subtle transition-all duration-200 ${collapsed ? "w-24" : "w-52"}`}>
       <div className="drag-region h-13 shrink-0" />
 
       <nav className="flex-1 overflow-y-auto py-2 px-2 space-y-4">
