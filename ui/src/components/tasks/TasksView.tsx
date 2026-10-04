@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { CheckSquare, Circle, CheckCircle2, X } from "lucide-react";
 import { rpc } from "../../api/rpc";
 import { EmptyStateIntro } from "../shared/EmptyStateIntro";
+import { PageLayout } from "../shared/ToolbarButtons";
 import type { Entity } from "../../api/types";
 
 export function TasksView() {
@@ -52,9 +53,7 @@ export function TasksView() {
   const completed = tasks.filter((t) => t.status === "done" || t.status === "dismissed");
 
   return (
-    <div className="p-6 max-w-2xl">
-      <h1 className="text-lg font-semibold mb-5">Tasks</h1>
-
+    <PageLayout title="Tasks" className="max-w-2xl">
       {pending.length > 0 && (
         <div className="space-y-2 mb-6">
           {pending.map((task) => (
@@ -95,7 +94,7 @@ export function TasksView() {
           })}
         </div>
       )}
-    </div>
+    </PageLayout>
   );
 }
 

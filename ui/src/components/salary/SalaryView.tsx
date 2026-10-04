@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Wallet, BarChart3 } from "lucide-react";
 import { rpc } from "../../api/rpc";
 import { EmptyStateIntro } from "../shared/EmptyStateIntro";
+import { PageLayout } from "../shared/ToolbarButtons";
 import type { Entity } from "../../api/types";
 import { num, type DynamicLine } from "../../api/entity";
 
@@ -66,15 +67,10 @@ export function SalaryView() {
   }
 
   return (
-    <div className="p-6 space-y-6 max-w-3xl">
-      <div>
-        <h1 className="text-xl font-bold">Effective Salary</h1>
-        <p className="text-sm text-muted mt-1">How much can you safely pay yourself each month?</p>
-      </div>
-
+    <PageLayout title="Salary" className="space-y-6 max-w-3xl">
       <SalaryDial salary={salary} target={target!} onTargetChange={setTarget} />
       <MonthlyBreakdown salary={salary} countrySupported={countrySupported} taxCountry={taxCountry} />
-    </div>
+    </PageLayout>
   );
 }
 

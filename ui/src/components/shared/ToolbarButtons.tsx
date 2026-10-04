@@ -26,8 +26,27 @@ export function ListDetailLayout({ list, detail, footer }: {
   );
 }
 
+/* ── Single-page layout: toolbar over a scrolling body ────────────────── */
+
+export function PageLayout({ title, actions, right, className = "", children }: {
+  title: string;
+  actions?: ReactNode;
+  right?: ReactNode;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex flex-col h-full">
+      <Toolbar title={title} actions={actions} right={right} />
+      <div className="flex-1 overflow-y-auto">
+        <div className={`p-6 ${className}`}>{children}</div>
+      </div>
+    </div>
+  );
+}
+
 /*
- * Toolbar — consistent top bar for all list/entity views.
+ * Toolbar — consistent top bar for all views.
  *
  * Layout: Title | actions | ―flex― | center | ―flex― | right | Search
  *
@@ -45,7 +64,7 @@ export function Toolbar({ title, actions, center, right, search }: {
   search?: { value: string; onChange: (v: string) => void; placeholder?: string };
 }) {
   return (
-    <div className="flex items-center gap-2 px-4 py-2 shrink-0 border-b border-border-subtle">
+    <div className="flex items-center gap-2 px-4 h-13 shrink-0 border-b border-border-subtle">
       <h2 className="text-sm font-semibold mr-1">{title}</h2>
       {actions}
       <div className="flex-1" />
