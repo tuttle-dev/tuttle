@@ -710,6 +710,21 @@ class TestCrudSaveBehavior:
         assert result["ok"] is False
         assert result["error"] == "The billing period ends before it starts."
 
+    def test_invoice_create_accepts_fractional_unit_price(self, rpc_env):
+        project_id = assert_ok(dispatch("projects.get_all", {}))["data"][0]["id"]
+        result = dispatch(
+            "invoicing.create",
+            {
+                "project_id": project_id,
+                "invoice_date": "2026-09-22",
+                "from_date": "2026-08-01",
+                "to_date": "2026-08-31",
+                "manual_items": [{"description": "Work", "quantity": 1.5, "unit": "hour", "unit_price": 85.5}],
+            },
+        )
+        invoice = assert_ok(result)["data"]
+        assert Decimal(str(invoice["sum"])) == Decimal("128.25")
+
 
 class TestFinancialGoals:
     """CRUD and progress rules for financial goals (issue #499)."""
