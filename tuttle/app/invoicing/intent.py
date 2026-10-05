@@ -44,6 +44,15 @@ def _as_date(value, what: str) -> date:
         raise ValueError(f"Enter a valid {what}.") from None
 
 
+def _pdf_failure(document: str, ex: Exception) -> str:
+    """User-facing warning for a saved document whose PDF could not be created."""
+    if isinstance(ex, rendering.PdfEngineUnavailable):
+        # Same text for every document, so a timesheet and an invoice failing
+        # together read as one warning.
+        return f"Saved without a PDF. {ex}"
+    return f"{document} PDF could not be generated. Details are in the application log."
+
+
 class InvoicingIntent(Intent):
     """Invoicing CRUD, creation orchestration, and status toggles."""
 
@@ -348,7 +357,7 @@ class InvoicingIntent(Intent):
         except Exception as ex:
             logger.error(f"Error rendering {description}: {ex}")
             logger.exception(ex)
-            warnings.append(f"Invoice PDF could not be generated: {ex}")
+            warnings.append(_pdf_failure("Invoice", ex))
         return invoice, warnings
 
     def _resolved_render_options(self) -> dict:
@@ -630,7 +639,7 @@ class InvoicingIntent(Intent):
                     except Exception as ex:
                         logger.error(f"Error rendering timesheet for {project.title}: {ex}")
                         logger.exception(ex)
-                        render_warnings.append(f"Timesheet PDF could not be generated: {ex}")
+                        render_warnings.append(_pdf_failure("Timesheet", ex))
 
                 resolved_template = template_name or DEFAULT_INVOICE_TEMPLATE
                 if not template_name:
@@ -678,10 +687,10 @@ class InvoicingIntent(Intent):
                 except Exception as ex:
                     logger.error(f"Error rendering invoice for {project.title}: {ex}")
                     logger.exception(ex)
-                    render_warnings.append(f"Invoice PDF could not be generated: {ex}")
+                    render_warnings.append(_pdf_failure("Invoice", ex))
 
             self._invoicing_data_source.save_invoice(invoice)
-            warning_msg = "; ".join(render_warnings) if render_warnings else ""
+            warning_msg = "; ".join(dict.fromkeys(render_warnings))
             return IntentResult(
                 was_intent_successful=True,
                 data=invoice,
@@ -817,7 +826,7 @@ class InvoicingIntent(Intent):
                 except Exception as ex:
                     logger.error(f"Error rendering reminder: {ex}")
                     logger.exception(ex)
-                    render_warning = f"Reminder PDF could not be generated: {ex}"
+                    render_warning = _pdf_failure("Reminder", ex)
 
             # Final re-load for clean RPC serialization
             final = self._invoicing_data_source.get_invoice_by_id(reminder.id)
@@ -1145,26 +1154,22 @@ Best regards,
                 was_intent_successful=True,
                 data=reload.data if reload.was_intent_successful else invoice,
             )
+        except rendering.PdfEngineUnavailable as ex:
+            return IntentResult(was_intent_successful=False, error_msg=str(ex))
         except Exception as ex:
             logger.error(f"Error rendering timesheet for invoice {id}: {ex}")
             logger.exception(ex)
             return IntentResult(
                 was_intent_successful=False,
-                error_msg=f"Failed to render the timesheet: {ex}",
+                error_msg=_pdf_failure("Timesheet", ex),
             )
 
     def check_rendering(self) -> IntentResult:
         """Verify that the PDF rendering engine is loadable."""
-        try:
-            import plutoprint  # noqa: F401
-
-            return IntentResult(was_intent_successful=True)
-        except Exception as ex:
-            logger.error(f"Rendering health check failed: {ex}")
-            return IntentResult(
-                was_intent_successful=False,
-                error_msg=f"PDF rendering unavailable: {ex}",
-            )
+        unavailable = rendering.pdf_engine_unavailable_message()
+        if unavailable:
+            return IntentResult(was_intent_successful=False, error_msg=unavailable)
+        return IntentResult(was_intent_successful=True)
 
     def get_time_tracking_data_as_dataframe(self) -> Optional[DataFrame]:
         result = self._timetracking_intent.get_timetracking_data()

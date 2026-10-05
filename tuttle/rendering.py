@@ -3,6 +3,7 @@
 import base64
 import glob
 import io
+import platform
 import shutil
 from pathlib import Path
 from typing import Optional
@@ -16,6 +17,15 @@ from loguru import logger
 from segno.helpers import make_epc_qr
 
 from .model import BankAccount, Invoice, Timesheet, User
+
+try:
+    import plutoprint
+except ImportError as ex:
+    # plutoprint's macOS build needs macOS 14 or newer; on older systems its
+    # native library fails to load. Keep the app usable and explain the
+    # problem when a PDF is requested.
+    logger.warning(f"PDF engine could not be loaded: {ex}")
+    plutoprint = None
 
 LANGUAGE_TO_LOCALE = {
     "en": "en_US",
@@ -190,6 +200,20 @@ def get_shared_template_path() -> Path:
     return Path(__file__).parent.parent.resolve() / "templates" / "_shared"
 
 
+class PdfEngineUnavailable(RuntimeError):
+    """The PDF engine cannot run on this system. The message says what to do."""
+
+
+def pdf_engine_unavailable_message() -> Optional[str]:
+    """Why PDFs can't be created on this system, or None if they can."""
+    if plutoprint is not None:
+        return None
+    mac_version = platform.mac_ver()[0]
+    if mac_version and int(mac_version.split(".")[0]) < 14:
+        return "Creating PDFs requires macOS 14 (Sonoma) or newer. Update macOS to create PDFs."
+    return "The PDF engine could not be loaded. Reinstall Tuttle to create PDFs."
+
+
 def convert_html_to_pdf(
     in_path,
     out_path,
@@ -202,8 +226,9 @@ def convert_html_to_pdf(
     interface compatibility but ignored.
     """
     logger.info(f"converting html to pdf: {in_path} -> {out_path}")
-    import plutoprint
-
+    unavailable = pdf_engine_unavailable_message()
+    if unavailable:
+        raise PdfEngineUnavailable(unavailable)
     book = plutoprint.Book(plutoprint.PAGE_SIZE_A4)
     book.load_url(Path(in_path).resolve().as_uri())
     book.write_to_pdf(str(out_path))
