@@ -109,8 +109,8 @@ app.whenReady().then(async () => {
 
   createWindow();
 
-  if (!process.env.VITE_DEV_SERVER_URL && mainWindow) {
-    initUpdater(mainWindow);
+  if (!process.env.VITE_DEV_SERVER_URL) {
+    initUpdater(() => mainWindow);
   }
 
   ipcMain.on("check-for-update", () => {
@@ -121,7 +121,7 @@ app.whenReady().then(async () => {
       });
       return;
     }
-    checkForUpdates(mainWindow, true);
+    checkForUpdates(true);
   });
 
   ipcMain.handle("get-update-state", () => getUpdateState());
