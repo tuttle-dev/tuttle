@@ -521,7 +521,7 @@ class InvoicingIntent(Intent):
                         end_date=to_date,
                         quantity=float(it["quantity"]),
                         unit=it.get("unit") or unit_fallback,
-                        unit_price=it["unit_price"],
+                        unit_price=Decimal(str(it["unit_price"])),
                         description=it.get("description", project.title),
                         VAT_rate=contract.VAT_rate,
                         VAT_category=contract.VAT_category,
