@@ -88,8 +88,8 @@ def _(message: str, **values) -> str:
 def ngettext(singular: str, plural: str, n, **values) -> str:
     """The form of ``singular``/``plural`` that matches the quantity ``n`` in the current language."""
     count = float(n)
-    # Plural rules are defined on whole numbers. A fraction (1.5 hours) takes
-    # the form of 2, which is right for English, German, Spanish and Czech.
+    # gettext plural rules are defined on whole numbers. A fraction (1.5 hours)
+    # takes the form of 2: the plural in English, German and Spanish.
     count = int(count) if count.is_integer() else 2
     source = singular if count == 1 else plural
     return _fill(_translations(_current.get()).ngettext(singular, plural, count), source, values)
