@@ -634,18 +634,17 @@ def cash_flow_series(
     dynamic_expenses = [e for e in expenses if e.rate is not None]
     monthly_fixed = sum((_normalize_to_monthly(e) for e in fixed_expenses), Decimal(0))
 
-    # 4. Net flow, cumulative balance, and summary totals
-    running_balance = 0.0
-    rows = []
-    previous_year = None
-
+    # Precompute inflows and taxable profit base per bucket, and derive a single effective
+    # tax rate from the window's annualized taxable income so uneven income is not taxed
+    # at artificially high progressive brackets.
+    month_data = {}
+    total_tax_base = Decimal(0)
     for period in periods:
         row = buckets[period]
         row["inflow_invoiced"] = round(row["inflow_invoiced"], 2)
         row["inflow_planned"] = round(row["inflow_planned"], 2)
         row["inflow_total"] = round(row["inflow_invoiced"] + row["inflow_planned"], 2)
 
-        # Dynamic rate-based contributions and estimated income tax reserves
         month_inflow = Decimal(str(row["inflow_total"]))
         base_profit = max(Decimal(0), month_inflow - monthly_fixed)
 
@@ -653,10 +652,27 @@ def cash_flow_series(
         dyn_deductible = _lines_total(deductible_lines)
 
         month_tax_base = max(Decimal(0), base_profit - dyn_deductible)
-        annual_tax_base = month_tax_base * 12
-        tax_res = compute_income_tax_reserve(annual_tax_base, country, year=row["year"])
-        monthly_tax = (tax_res.total_annual_reserve / 12).quantize(Decimal("0.01"))
+        total_tax_base += month_tax_base
+        month_data[period] = (month_tax_base, dyn_deductible)
 
+    num_months = len(periods)
+    if num_months > 0 and total_tax_base > 0:
+        annual_tax_base = (total_tax_base / Decimal(num_months)) * Decimal(12)
+        tax_res = compute_income_tax_reserve(annual_tax_base, country, year=forecast_start.year)
+        effective_tax_rate = tax_res.effective_rate
+    else:
+        effective_tax_rate = Decimal(0)
+
+    # 4. Net flow, cumulative balance, and summary totals
+    running_balance = 0.0
+    rows = []
+    previous_year = None
+
+    for period in periods:
+        row = buckets[period]
+        month_tax_base, dyn_deductible = month_data[period]
+
+        monthly_tax = (month_tax_base * effective_tax_rate).quantize(Decimal("0.01"))
         post_tax = max(Decimal(0), month_tax_base - monthly_tax)
         nondeductible_lines = _dynamic_lines(dynamic_expenses, post_tax, deductible=False)
         dyn_nondeductible = _lines_total(nondeductible_lines)

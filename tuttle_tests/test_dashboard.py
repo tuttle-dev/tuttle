@@ -704,6 +704,76 @@ class TestCashFlowSeries:
         assert result["total_outflow"] == 900.0
         assert result["net_cash_flow"] == -900.0
 
+    def test_effective_tax_rate_consistent_for_uneven_income(self, active_contract, project):
+        active_contract.term_of_payment = 0
+        # 6 invoices of 5000 spread evenly across the 6-month forecast window
+        invoices_even = [
+            Invoice(
+                number=f"2026-EVEN-{i}",
+                date=datetime.date(2026 if 10 + i <= 12 else 2027, 10 + i if 10 + i <= 12 else 10 + i - 12, 1),
+                contract=active_contract,
+                project=project,
+                sent=True,
+                paid=False,
+                cancelled=False,
+            )
+            for i in range(6)
+        ]
+        for inv in invoices_even:
+            InvoiceItem(
+                invoice=inv,
+                quantity=50,
+                unit="hour",
+                unit_price=Decimal("100.00"),
+                VAT_rate=Decimal("0"),
+            )
+
+        # 1 invoice of 30,000 arriving all at once in the current month
+        inv_lumpy = Invoice(
+            number="2026-LUMPY",
+            date=datetime.date(2026, 10, 1),
+            contract=active_contract,
+            project=project,
+            sent=True,
+            paid=False,
+            cancelled=False,
+        )
+        InvoiceItem(
+            invoice=inv_lumpy,
+            quantity=300,
+            unit="hour",
+            unit_price=Decimal("100.00"),
+            VAT_rate=Decimal("0"),
+        )
+
+        res_even = cash_flow_series(
+            invoices_even,
+            [active_contract],
+            [project],
+            [],
+            None,
+            forecast_months=6,
+            country="Germany",
+            today=self.TODAY,
+        )
+        res_lumpy = cash_flow_series(
+            [inv_lumpy],
+            [active_contract],
+            [project],
+            [],
+            None,
+            forecast_months=6,
+            country="Germany",
+            today=self.TODAY,
+        )
+
+        assert res_even["total_inflow"] == 30000.0
+        assert res_lumpy["total_inflow"] == 30000.0
+        # The same total income over the window must result in the same total tax outflow
+        assert res_even["total_outflow"] == res_lumpy["total_outflow"]
+        assert res_even["net_cash_flow"] == res_lumpy["net_cash_flow"]
+
+
 
 class TestRevenueHistory:
     def test_empty_invoices(self):
