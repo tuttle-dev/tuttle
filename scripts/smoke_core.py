@@ -1,6 +1,6 @@
 """Smoke-test the frozen PyInstaller core binary.
 
-Spawns the actual ``dist/tuttle-rpc`` binary and runs two independent checks:
+Spawns the actual ``dist/tuttle-rpc`` binary and runs three independent checks:
 
 1. **Domain probes** — every RPC domain (a ``tuttle/app/<domain>/intent.py`` on
    disk) is bundled and importable. Catches the regression where a
@@ -17,6 +17,10 @@ Spawns the actual ``dist/tuttle-rpc`` binary and runs two independent checks:
    migration failed, ``db.ensure`` aborted before selecting a database, and the
    app started with "No user" against an empty default DB — with the domain
    probes passing.
+
+3. **Document languages** — every translation catalog in ``tuttle/locales`` is
+   bundled. A missing catalog does not fail anywhere: the documents silently
+   come out in English.
 
 How the domain probes work: the dispatcher imports ``tuttle.app.<domain>.intent``
 on the first call to any method of that domain. We send each domain a sentinel
@@ -47,6 +51,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 APP_DIR = REPO_ROOT / "tuttle" / "app"
+LOCALES_DIR = REPO_ROOT / "tuttle" / "locales"
 PROBE_METHOD = "__smoke_probe__"
 TIMEOUT_SECONDS = 180
 SMOKE_USER_NAME = "Smoke Test User"
@@ -213,6 +218,25 @@ def check_lifecycle(binary: Path) -> list[str]:
     return failures
 
 
+def check_document_languages(binary: Path) -> list[str]:
+    """Every translation catalog in the repo is bundled."""
+    print("\nChecking document languages")
+    expected = sorted(p.parent.parent.name for p in LOCALES_DIR.glob("*/LC_MESSAGES/messages.po"))
+    with tempfile.TemporaryDirectory(prefix="tuttle-smoke-") as tmp:
+        try:
+            responses = run_calls(binary, [("invoicing.available_languages", {})], data_dir=Path(tmp))
+        except TimeoutError as exc:
+            return [f"document languages: {exc}"]
+    result, error = _payload(responses.get(1))
+    if error:
+        return [f"invoicing.available_languages: {error}"]
+    missing = [lang for lang in expected if lang not in (result or {}).get("data", {})]
+    if missing:
+        return [f"document languages {missing} are not bundled. Check that tuttle-rpc.spec includes tuttle/locales."]
+    print(f"  ok   {', '.join(expected)}")
+    return []
+
+
 def main() -> int:
     binary = core_binary()
     if not binary.exists():
@@ -228,7 +252,7 @@ def main() -> int:
         print("ERROR: no domains discovered under tuttle/app/", file=sys.stderr)
         return 1
 
-    failures = check_domains(binary, domains) + check_lifecycle(binary)
+    failures = check_domains(binary, domains) + check_lifecycle(binary) + check_document_languages(binary)
 
     if failures:
         print("\nSMOKE TEST FAILED:", file=sys.stderr)

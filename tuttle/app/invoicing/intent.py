@@ -1,5 +1,4 @@
 import datetime as _dt
-import textwrap
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
@@ -11,7 +10,8 @@ from pandas import DataFrame
 from ... import invoicing, mail, rendering, timetracking
 from ...app_db import AppDatabase
 from ...data_dir import get_data_dir
-from ...model import Invoice, InvoiceItem, Project, Timesheet, User
+from ...i18n import SUPPORTED, use_language
+from ...model import Client, Invoice, InvoiceItem, Project, Timesheet, User
 from ...time import ChargeBasis
 from ..auth.data_source import UserDataSource
 from ..auth.intent import AuthIntent
@@ -25,7 +25,6 @@ from ..preferences.model import (
     E_INVOICE_PROFILES,
     INVOICE_NUMBER_SCHEMES,
     INVOICE_TEMPLATES,
-    SUPPORTED_INVOICE_LANGUAGES,
     PreferencesStorageKeys,
 )
 from ..projects.intent import ProjectsIntent
@@ -51,6 +50,13 @@ def _pdf_failure(document: str, ex: Exception) -> str:
         # together read as one warning.
         return f"Saved without a PDF. {ex}"
     return f"{document} PDF could not be generated. Details are in the application log."
+
+
+def _document_language(client: Optional[Client]) -> str:
+    """Language of documents for ``client``: its own, else the app-wide default."""
+    if client is not None and client.language:
+        return client.language
+    return AppDatabase().get_setting(PreferencesStorageKeys.language_key.value) or "en"
 
 
 class InvoicingIntent(Intent):
@@ -98,7 +104,6 @@ class InvoicingIntent(Intent):
         if not proj_result.was_intent_successful:
             return proj_result
         app_db = AppDatabase()
-        language = app_db.get_setting(PreferencesStorageKeys.language_key.value) or "en"
         template_name = app_db.get_setting(PreferencesStorageKeys.invoice_template_key.value) or DEFAULT_INVOICE_TEMPLATE
         number_scheme = (
             app_db.get_setting(PreferencesStorageKeys.invoice_number_scheme_key.value) or DEFAULT_INVOICE_NUMBER_SCHEME
@@ -113,7 +118,6 @@ class InvoicingIntent(Intent):
             render=render,
             manual_quantity=manual_quantity,
             manual_items=manual_items,
-            language=language,
             template_name=template_name,
             number_scheme=number_scheme,
             with_timesheet=with_timesheet,
@@ -151,7 +155,6 @@ class InvoicingIntent(Intent):
             return v if isinstance(v, date) else _dt.date.fromisoformat(v)
 
         app_db = AppDatabase()
-        language = app_db.get_setting(PreferencesStorageKeys.language_key.value) or "en"
         template_name = app_db.get_setting(PreferencesStorageKeys.invoice_template_key.value) or DEFAULT_INVOICE_TEMPLATE
         fee = Decimal(str(reminder_fee)) if reminder_fee else None
         return self._create_reminder(
@@ -159,7 +162,6 @@ class InvoicingIntent(Intent):
             reminder_date=_to_date(reminder_date),
             new_due_date=_to_date(new_due_date),
             reminder_fee=fee,
-            language=language,
             template_name=template_name,
         )
 
@@ -344,7 +346,7 @@ class InvoicingIntent(Intent):
             warnings.append(f"The {description} was saved but could not be reloaded for rendering.")
             return invoice, warnings
 
-        options = self._resolved_render_options()
+        options = self._resolved_render_options(invoice)
         try:
             rendering.render_invoice(
                 user=self._user_data_source.get_user(),
@@ -360,10 +362,9 @@ class InvoicingIntent(Intent):
             warnings.append(_pdf_failure("Invoice", ex))
         return invoice, warnings
 
-    def _resolved_render_options(self) -> dict:
-        """Template, language and layout preferences for rendering a document."""
+    def _resolved_render_options(self, invoice: Invoice) -> dict:
+        """Template, language and layout preferences for rendering ``invoice``."""
         app_db = AppDatabase()
-        language = app_db.get_setting(PreferencesStorageKeys.language_key.value) or "en"
 
         def _pref(getter, default):
             result = getter()
@@ -376,7 +377,7 @@ class InvoicingIntent(Intent):
         e_invoice_profile = app_db.get_setting(PreferencesStorageKeys.e_invoice_profile_key.value) or DEFAULT_E_INVOICE_PROFILE
 
         return {
-            "language": language,
+            "language": _document_language(invoice.client),
             "e_invoice_profile": e_invoice_profile or None,
             "template_name": _pref(
                 self._preferences_intent.get_preferred_invoice_template,
@@ -403,7 +404,7 @@ class InvoicingIntent(Intent):
         return IntentResult(was_intent_successful=True, data=INVOICE_TEMPLATES)
 
     def available_languages(self) -> IntentResult:
-        return IntentResult(was_intent_successful=True, data=SUPPORTED_INVOICE_LANGUAGES)
+        return IntentResult(was_intent_successful=True, data=SUPPORTED)
 
     def available_number_schemes(self) -> IntentResult:
         return IntentResult(was_intent_successful=True, data=INVOICE_NUMBER_SCHEMES)
@@ -493,7 +494,7 @@ class InvoicingIntent(Intent):
         render: bool = True,
         manual_quantity: Optional[float] = None,
         manual_items: Optional[list] = None,
-        language: str = "en",
+        language: Optional[str] = None,
         template_name: Optional[str] = None,
         number_scheme: str = DEFAULT_INVOICE_NUMBER_SCHEME,
         with_timesheet: bool = True,
@@ -510,6 +511,8 @@ class InvoicingIntent(Intent):
         is built from that single quantity and the contract rate.
 
         Otherwise the existing time-tracking flow is used.
+
+        Documents are written in *language*, by default the client's.
         """
         logger.info(f"Creating invoice for {project.title}...")
         contract = project.contract
@@ -518,6 +521,7 @@ class InvoicingIntent(Intent):
                 was_intent_successful=False,
                 error_msg=f"Project “{project.title}” has no contract. Create a contract and assign it to the project before invoicing.",
             )
+        language = language or _document_language(contract.client)
         user = self._user_data_source.get_user()
         try:
             invoice_number = self._invoicing_data_source.generate_invoice_number(invoice_date, scheme=number_scheme)
@@ -635,6 +639,7 @@ class InvoicingIntent(Intent):
                             timesheet=timesheet,
                             out_dir=get_data_dir() / "Timesheets",
                             only_final=True,
+                            language=language,
                         )
                     except Exception as ex:
                         logger.error(f"Error rendering timesheet for {project.title}: {ex}")
@@ -711,10 +716,13 @@ class InvoicingIntent(Intent):
         new_due_date: date,
         reminder_fee: Optional[Decimal] = None,
         render: bool = True,
-        language: str = "en",
+        language: Optional[str] = None,
         template_name: Optional[str] = None,
     ) -> IntentResult[Invoice]:
-        """Create a payment reminder for an overdue invoice or previous reminder."""
+        """Create a payment reminder for an overdue invoice or previous reminder.
+
+        The reminder is written in *language*, by default the client's.
+        """
         result = self._invoicing_data_source.get_invoice_by_id(invoice_id)
         if not result.was_intent_successful or not result.data:
             return IntentResult(was_intent_successful=False, error_msg="Invoice not found.")
@@ -730,6 +738,7 @@ class InvoicingIntent(Intent):
                 was_intent_successful=False,
                 error_msg="Cannot create a reminder for a cancelled invoice.",
             )
+        language = language or _document_language(predecessor.client)
 
         try:
             user = self._user_data_source.get_user()
@@ -861,32 +870,17 @@ class InvoicingIntent(Intent):
             )
         try:
             user = self._user_data_source.get_user()
-            client = invoice.contract.client
-            contact = client.invoice_recipient_contact if client else None
-            greeting = contact.name if contact and contact.name else client.name
-            recipient = contact.email if contact and contact.email else None
-            if not recipient:
+            with use_language(_document_language(invoice.client)):
+                email = invoicing.generate_invoice_email(invoice, user)
+            if email is None:
                 return IntentResult(
                     was_intent_successful=False,
                     error_msg="No contact email available for this client.",
                 )
-
-            level_label = f"{'2nd ' if invoice.reminder_level == 2 else '3rd ' if invoice.reminder_level >= 3 else ''}reminder"
-            email_body = textwrap.dedent(
-                f"""\
-Dear {greeting},
-
-This is a {level_label} regarding the outstanding invoice {invoice.number} for {invoice.project.title}.
-
-Please find attached the payment reminder.
-
-Best regards,
-{user.name}"""
-            )
             mail.compose_email(
-                to=recipient,
-                subject=f"Payment Reminder: Invoice {invoice.number}",
-                body=email_body,
+                to=email["recipient"],
+                subject=email["subject"],
+                body=email["body"],
                 attachment_paths=[invoice_path],
             )
             return IntentResult(was_intent_successful=True)
@@ -922,31 +916,17 @@ Best regards,
             )
         try:
             user = self._user_data_source.get_user()
-            # open email client with message pre-filled
-            client = invoice.contract.client
-            contact = client.invoice_recipient_contact if client else None
-            greeting = contact.name if contact and contact.name else client.name
-            recipient = contact.email if contact and contact.email else None
-
-            if not recipient:
+            with use_language(_document_language(invoice.client)):
+                email = invoicing.generate_invoice_email(invoice, user)
+            if email is None:
                 return IntentResult(
                     was_intent_successful=False,
                     error_msg="No contact email available for this client.",
                 )
-
-            email_body = textwrap.dedent(
-                f"""\
-Dear {greeting},
-
-Please find attached the invoice for {invoice.project.title}.
-
-Best regards,
-{user.name}"""
-            )
             mail.compose_email(
-                to=recipient,
-                subject=f"Invoice {invoice.number}",
-                body=email_body,
+                to=email["recipient"],
+                subject=email["subject"],
+                body=email["body"],
                 attachment_paths=[invoice_path],
             )
             if not invoice.sent:
@@ -1147,6 +1127,7 @@ Best regards,
                 timesheet=timesheet,
                 out_dir=get_data_dir() / "Timesheets",
                 only_final=True,
+                language=_document_language(invoice.client),
             )
             self._invoicing_data_source.save_timesheet(timesheet)
             reload = self._invoicing_data_source.get_invoice_by_id(invoice.id)

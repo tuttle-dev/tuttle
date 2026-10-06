@@ -14,6 +14,7 @@ from drafthorse.pdf import attach_xml
 from loguru import logger
 
 from .fx import convert
+from .i18n import _, ngettext
 from .model import Invoice, TaxCategory, User, normalize_tax_category
 from .tax import get_tax_system
 
@@ -78,9 +79,8 @@ def _rate_to_percent(vat_rate: Decimal) -> Decimal:
     return Decimal("0") if pct == 0 else pct
 
 
-#: BT-121 exemption reason code and BT-120 text required by EN16931 BR-O-10.
+#: BT-121 exemption reason code required by EN16931 BR-O-10 (BT-120 carries the text).
 VATEX_OUTSIDE_SCOPE = "VATEX-EU-O"
-VATEX_OUTSIDE_SCOPE_REASON = "Not subject to VAT"
 
 
 def _tax_currency(user: User) -> str:
@@ -152,6 +152,9 @@ def build_zugferd_document(
     profile: str = "EN16931",
 ) -> Document:
     """Build a drafthorse Document from a Tuttle Invoice.
+
+    Free text such as the payment terms is written in the current document
+    language (see ``i18n.use_language``).
 
     Args:
         invoice: A Tuttle Invoice with loaded relationships (contract, items, project).
@@ -245,7 +248,7 @@ def build_zugferd_document(
         for idx, item in enumerate(invoice.items, start=1):
             li = LineItem()
             li.document.line_id = str(idx)
-            li.product.name = item.description or f"Item {idx}"
+            li.product.name = item.description or _("Item {n}", n=idx)
 
             unit_code = unit_to_unece(item.unit)
             quantity = Decimal(str(item.quantity))
@@ -279,7 +282,7 @@ def build_zugferd_document(
             if category == TaxCategory.outside_scope.value:
                 # BR-O-10 requires a reason; BR-48 exempts O from carrying a rate.
                 trade_tax.exemption_reason_code = VATEX_OUTSIDE_SCOPE
-                trade_tax.exemption_reason = VATEX_OUTSIDE_SCOPE_REASON
+                trade_tax.exemption_reason = _("Not subject to VAT")
             else:
                 trade_tax.rate_applicable_percent = rate_pct
             doc.trade.settlement.trade_tax.add(trade_tax)
@@ -336,7 +339,9 @@ def build_zugferd_document(
         terms = PaymentTerms()
         due_date = invoice.date + timedelta(days=contract.term_of_payment)
         terms.due = datetime(due_date.year, due_date.month, due_date.day, tzinfo=timezone.utc)
-        terms.description = f"Net {contract.term_of_payment} days"
+        terms.description = ngettext(
+            "Net {days} day", "Net {days} days", contract.term_of_payment, days=contract.term_of_payment
+        )
         doc.trade.settlement.terms.add(terms)
 
     return doc

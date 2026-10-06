@@ -12,10 +12,11 @@ import jinja2
 import pandas
 import PyPDF2
 from babel.dates import format_date
-from babel.numbers import format_currency
+from babel.numbers import format_currency, format_decimal
 from loguru import logger
 from segno.helpers import make_epc_qr
 
+from .i18n import _, babel_locale, ngettext, use_language
 from .model import BankAccount, Invoice, Timesheet, User
 
 try:
@@ -27,159 +28,32 @@ except ImportError as ex:
     logger.warning(f"PDF engine could not be loaded: {ex}")
     plutoprint = None
 
-LANGUAGE_TO_LOCALE = {
-    "en": "en_US",
-    "de": "de_DE",
-    "es": "es_ES",
-}
 
-INVOICE_LABELS = {
-    "en": {
-        "invoice": "Invoice",
-        "invoice_no": "Invoice No.",
-        "date": "Date",
-        "due_date": "Due Date",
-        "bill_to": "Bill To",
-        "from": "From",
-        "billed_to": "Billed to",
-        "qty": "Qty",
-        "unit": "Unit",
-        "unit_price": "Unit Price",
-        "vat": "VAT",
-        "vat_number": "VAT No.",
-        "tax_number": "Tax No.",
-        "subtotal": "Subtotal",
-        "total_due": "Total Due",
-        "payment": "Payment",
-        "payment_details": "Payment Details",
-        "account_holder": "Account",
-        "description": "Description",
-        "closing": "Thank you for your business.",
-        "outside_scope_note": (
-            "Not subject to German VAT — the place of supply is the recipient's "
-            "country (§ 3a (2) UStG / Art. 44 VAT Directive)."
-        ),
-        "reminder": "Payment Reminder",
-        "reminder_n": "{n}. Payment Reminder",
-        "reminder_fee": "Reminder Fee",
-        "original_invoice": "Original Invoice",
-        "document_type": "Document type",
-        "reminder_closing": "Please settle the outstanding amount by the new due date.",
-        "deposit_invoice": "Deposit Invoice",
-        "final_invoice": "Final Invoice",
-        "total_fee": "Total fee",
-        "less_deposit": "less deposit per invoice no.",
-        "vat_included_therein": "VAT included therein",
-        "remaining_balance": "Remaining balance",
-        "gross": "Gross",
-        "deposit_due": "Deposit due",
-        "in_respect_of": "In respect of",
-        "payment_milestone": "Payment milestone",
-        "contract_total": "Contract total",
-        "deposit_closing": "This is a partial payment (deposit invoice) towards the contract total.",
-        "units": {
-            "hour": ("hour", "hours"),
-            "day": ("day", "days"),
-            "fixed_price": ("fixed price", "fixed price"),
-        },
-    },
-    "de": {
-        "invoice": "Rechnung",
-        "invoice_no": "Rechnung Nr.",
-        "date": "Datum",
-        "due_date": "Fälligkeitsdatum",
-        "bill_to": "Rechnungsempfänger",
-        "from": "Von",
-        "billed_to": "Rechnungsempfänger",
-        "qty": "Menge",
-        "unit": "Einheit",
-        "unit_price": "Einzelpreis",
-        "vat": "USt.",
-        "vat_number": "USt-IdNr.",
-        "tax_number": "St.-Nr.",
-        "subtotal": "Zwischensumme",
-        "total_due": "Gesamtbetrag",
-        "payment": "Zahlung",
-        "payment_details": "Zahlungsdetails",
-        "account_holder": "Konto",
-        "description": "Beschreibung",
-        "closing": "Vielen Dank für Ihren Auftrag.",
-        "outside_scope_note": (
-            "Nicht steuerbare sonstige Leistung — Leistungsort im Ausland gemäß § 3a Abs. 2 UStG / Art. 44 MwStSystRL."
-        ),
-        "reminder": "Zahlungserinnerung",
-        "reminder_n": "{n}. Mahnung",
-        "reminder_fee": "Mahngebühr",
-        "original_invoice": "Ursprungsrechnung",
-        "document_type": "Belegart",
-        "reminder_closing": "Bitte begleichen Sie den offenen Betrag bis zum neuen Fälligkeitsdatum.",
-        "deposit_invoice": "Abschlagsrechnung",
-        "final_invoice": "Schlussrechnung",
-        "total_fee": "Gesamthonorar",
-        "less_deposit": "abzgl. Abschlag lt. Rechnung Nr.",
-        "vat_included_therein": "darin enthaltene USt.",
-        "remaining_balance": "Restbetrag",
-        "gross": "Brutto",
-        "deposit_due": "Abschlagsbetrag",
-        "in_respect_of": "Betreffend",
-        "payment_milestone": "Zahlungsmeilenstein",
-        "contract_total": "Vertragsgesamtbetrag",
-        "deposit_closing": "Dies ist eine Teilzahlung (Abschlagsrechnung) auf den Vertragsgesamtbetrag.",
-        "units": {
-            "hour": ("Stunde", "Stunden"),
-            "day": ("Tag", "Tage"),
-            "fixed_price": ("pauschal", "pauschal"),
-        },
-    },
-    "es": {
-        "invoice": "Factura",
-        "invoice_no": "N.º de factura",
-        "date": "Fecha",
-        "due_date": "Fecha de vencimiento",
-        "bill_to": "Facturar a",
-        "from": "De",
-        "billed_to": "Facturar a",
-        "qty": "Cant.",
-        "unit": "Unidad",
-        "unit_price": "Precio unit.",
-        "vat": "IVA",
-        "vat_number": "N.º IVA",
-        "tax_number": "N.º fiscal",
-        "subtotal": "Subtotal",
-        "total_due": "Total a pagar",
-        "payment": "Pago",
-        "payment_details": "Datos de pago",
-        "account_holder": "Titular",
-        "description": "Descripción",
-        "closing": "Gracias por su confianza.",
-        "outside_scope_note": (
-            "No sujeto al IVA alemán — el lugar de prestación es el país del destinatario (art. 44 de la Directiva del IVA)."
-        ),
-        "reminder": "Recordatorio de pago",
-        "reminder_n": "{n}.º recordatorio de pago",
-        "reminder_fee": "Cargo por recordatorio",
-        "original_invoice": "Factura original",
-        "document_type": "Tipo de documento",
-        "reminder_closing": "Le rogamos abone el importe pendiente antes de la nueva fecha de vencimiento.",
-        "deposit_invoice": "Factura de anticipo",
-        "final_invoice": "Factura final",
-        "total_fee": "Honorario total",
-        "less_deposit": "menos anticipo según factura n.º",
-        "vat_included_therein": "IVA incluido",
-        "remaining_balance": "Saldo pendiente",
-        "gross": "Bruto",
-        "deposit_due": "Anticipo a pagar",
-        "in_respect_of": "Referente a",
-        "payment_milestone": "Hito de pago",
-        "contract_total": "Importe total del contrato",
-        "deposit_closing": "Este documento es un pago parcial (factura de anticipo) sobre el importe total del contrato.",
-        "units": {
-            "hour": ("hora", "horas"),
-            "day": ("día", "días"),
-            "fixed_price": ("precio fijo", "precio fijo"),
-        },
-    },
-}
+def unit_label(raw_unit, quantity=None) -> str:
+    """Name of a TimeUnit value (e.g. "hour") in the current language.
+
+    When ``quantity`` is given, the form matches it ("1 hour", "2 hours").
+    Unknown units pass through unchanged.
+    """
+    try:
+        count = 1 if quantity is None else float(quantity)
+    except (TypeError, ValueError):
+        count = 1
+    unit = raw_unit.replace(" ", "_")
+    if unit == "hour":
+        return ngettext("hour", "hours", count)
+    if unit == "day":
+        return ngettext("day", "days", count)
+    if unit == "fixed_price":
+        return _("fixed price")
+    return raw_unit
+
+
+def _document_environment(*template_dirs) -> jinja2.Environment:
+    """Jinja environment for a client-facing document in the current language."""
+    env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_dirs))
+    env.globals.update(_=_, ngettext=ngettext)
+    return env
 
 
 def get_template_path(template_name) -> str:
@@ -284,7 +158,7 @@ def render_invoice(
         document_format: "pdf" or "html".
         template_name: Directory name under templates/ (e.g. "invoice-modern").
         only_final: Keep only the final output file and remove intermediates.
-        language: Language code for labels and date/currency formatting ("en", "de", "es").
+        language: Language of labels, dates and amounts, a key of ``i18n.SUPPORTED``.
         e_invoice_profile: If set, embed ZUGFeRD/Factur-X XML into the PDF.
             One of "EN16931", "EXTENDED", "BASIC", "MINIMUM", "XRECHNUNG", or None.
         include_qr_code: Whether to render a SEPA payment (EPC/Girocode) QR code in the
@@ -292,172 +166,149 @@ def render_invoice(
         accent_color: Hex color string (e.g. "#C8281E") to use as the invoice accent color.
             Falls back to the template's hardcoded default when None or empty.
     """
-    babel_locale = LANGUAGE_TO_LOCALE.get(language, "en_US")
-    labels = INVOICE_LABELS.get(language, INVOICE_LABELS["en"])
+    with use_language(language):
 
-    def as_currency(number):
-        return format_currency(number, currency=invoice.contract.currency, locale=babel_locale)
+        def as_currency(number):
+            return format_currency(number, currency=invoice.contract.currency, locale=babel_locale())
 
-    def as_date(d):
-        if d is None:
-            return ""
-        return format_date(d, format="long", locale=babel_locale)
+        def as_date(d):
+            if d is None:
+                return ""
+            return format_date(d, format="long", locale=babel_locale())
 
-    def as_date_short(d):
-        if d is None:
-            return ""
-        return format_date(d, format="medium", locale=babel_locale)
+        def as_date_short(d):
+            if d is None:
+                return ""
+            return format_date(d, format="medium", locale=babel_locale())
 
-    def as_percentage(number):
-        return f"{number * 100:.1f} %"
+        def as_percentage(number):
+            return f"{format_decimal(number * 100, format='0.0', locale=babel_locale())} %"
 
-    def unit_label(raw_unit, quantity=None):
-        """Translate a TimeUnit value (e.g. "hour", "day") into the active language.
+        template_path = get_template_path(template_name)
+        shared_path = get_shared_template_path()
+        template_env = _document_environment(template_path, shared_path)
 
-        When ``quantity`` is given, choose between singular and plural form.
-        Unknown units pass through unchanged.
-        """
-        units = labels.get("units", {})
-        normalized = raw_unit.replace(" ", "_")
-        forms = units.get(normalized)
-        if not forms:
-            return raw_unit
-        singular, plural = forms
-        if quantity is None:
-            return singular
-        try:
-            q = float(quantity)
-        except (TypeError, ValueError):
-            return singular
-        return singular if abs(q - 1) < 1e-9 else plural
+        template_env.filters["as_currency"] = as_currency
+        template_env.filters["as_date"] = as_date
+        template_env.filters["as_date_short"] = as_date_short
+        template_env.filters["as_percentage"] = as_percentage
+        template_env.filters["unit_label"] = unit_label
 
-    template_path = get_template_path(template_name)
-    shared_path = get_shared_template_path()
-    template_env = jinja2.Environment(loader=jinja2.FileSystemLoader([template_path, shared_path]))
+        is_reminder = getattr(invoice, "is_reminder", False)
+        reminder_title = ""
+        if is_reminder:
+            reminder_title = _("{n}. Payment Reminder", n=getattr(invoice, "reminder_level", 1))
 
-    template_env.filters["as_currency"] = as_currency
-    template_env.filters["as_date"] = as_date
-    template_env.filters["as_date_short"] = as_date_short
-    template_env.filters["as_percentage"] = as_percentage
-    template_env.filters["unit_label"] = unit_label
-
-    is_reminder = getattr(invoice, "is_reminder", False)
-    reminder_title = ""
-    if is_reminder:
-        n = getattr(invoice, "reminder_level", 1)
-        tpl = labels.get("reminder_n", "{n}. Payment Reminder")
-        reminder_title = tpl.format(n=n)
-
-    # Mirror the XML (einvoice.py): VAT number when it may appear and is set,
-    # else the tax number, else nothing.
-    if not invoice.is_outside_scope and user.VAT_number:
-        seller_tax_id_label = labels.get("vat_number", "VAT No.")
-        seller_tax_id = user.VAT_number
-    else:
-        seller_tax_id_label = labels.get("tax_number", "Tax No.")
-        seller_tax_id = user.tax_number or ""
-
-    # The bank account named on the contract takes precedence; without one the
-    # user's default account is used.
-    payee_account = (invoice.contract.bank_account if invoice.contract else None) or user.bank_account
-    qr_code_data_uri = generate_payment_qr(payee_account, invoice) if include_qr_code else None
-
-    # Deposit and final invoices are the two halves of one settlement: the
-    # deposit states what share of the contract it bills, the final states the
-    # whole contract and deducts every deposit already issued. Both need the
-    # invoice fully hydrated — callers render from a session-loaded instance.
-    is_deposit = invoice.is_deposit
-    is_final = invoice.is_final_invoice
-    deposit_deductions = invoice.deposit_deductions
-    remaining_balance = invoice.remaining_balance
-
-    contract_title = ""
-    contract_total = None
-    milestone_title = ""
-    milestone_percentage = None
-    if invoice.contract:
-        contract_title = invoice.contract.title or ""
-        contract_total = invoice.contract.fixed_price
-    if is_deposit and invoice.milestone is not None:
-        milestone_title = invoice.milestone.title or ""
-        milestone_percentage = invoice.milestone.percentage
-
-    invoice_template = template_env.get_template("invoice.html")
-    html = invoice_template.render(
-        user=user,
-        invoice=invoice,
-        l=labels,
-        seller_tax_id=seller_tax_id,
-        seller_tax_id_label=seller_tax_id_label,
-        is_reminder=is_reminder,
-        reminder_title=reminder_title,
-        is_deposit=is_deposit,
-        is_final=is_final,
-        deposit_deductions=deposit_deductions,
-        remaining_balance=remaining_balance,
-        contract_title=contract_title,
-        contract_total=contract_total,
-        milestone_title=milestone_title,
-        milestone_percentage=milestone_percentage,
-        notes=invoice.notes,
-        include_logo=include_logo,
-        include_due_date=include_due_date,
-        include_signature=include_signature,
-        qr_code_data_uri=qr_code_data_uri,
-        accent_color=accent_color or "",
-        bank_account=payee_account,
-    )
-    if out_dir is None:
-        return html
-
-    invoice_dir = Path(out_dir) / Path(invoice.prefix)
-    invoice_dir.mkdir(parents=True, exist_ok=True)
-    invoice_path = invoice_dir / Path(f"{invoice.prefix}.html")
-    with open(invoice_path, "w", encoding="utf-8") as invoice_file:
-        invoice_file.write(html)
-
-    # Copy all CSS files and subdirectories from the template. Shared
-    # stylesheets go first so a template's own rules can override them.
-    for css in shared_path.glob("*.css"):
-        shutil.copy(css, invoice_dir / css.name)
-    for item in template_path.iterdir():
-        dest = invoice_dir / item.name
-        if item.is_file() and item.suffix == ".css":
-            shutil.copy(item, dest)
-        elif item.is_dir() and not item.name.startswith("."):
-            shutil.copytree(item, dest, dirs_exist_ok=True)
-
-    if document_format == "pdf":
-        css_paths = [path for path in glob.glob(f"{invoice_dir}/**/*.css", recursive=True)]
-        pdf_out = invoice_dir / Path(f"{invoice.prefix}.pdf")
-        convert_html_to_pdf(
-            in_path=str(invoice_path),
-            css_paths=css_paths,
-            out_path=pdf_out,
-        )
-        if e_invoice_profile:
-            from .einvoice import embed_zugferd_in_pdf, unsupported_reason
-
-            reason = unsupported_reason(invoice)
-            if reason:
-                logger.warning(
-                    f"Skipping e-invoice XML for {invoice.number or invoice.id}: {reason}. "
-                    "The PDF is written without embedded XML."
-                )
-            else:
-                embed_zugferd_in_pdf(
-                    pdf_path=str(pdf_out),
-                    invoice=invoice,
-                    user=user,
-                    profile=e_invoice_profile,
-                )
-    if only_final:
-        final_output_path = out_dir / Path(f"{invoice.prefix}.{document_format}")
-        if document_format == "pdf":
-            shutil.move(invoice_dir / Path(f"{invoice.prefix}.pdf"), final_output_path)
+        # Mirror the XML (einvoice.py): VAT number when it may appear and is set,
+        # else the tax number, else nothing.
+        if not invoice.is_outside_scope and user.VAT_number:
+            seller_tax_id_label = _("VAT No.")
+            seller_tax_id = user.VAT_number
         else:
-            shutil.move(invoice_dir / Path(f"{invoice.prefix}.html"), final_output_path)
-        shutil.rmtree(invoice_dir)
+            seller_tax_id_label = _("Tax No.")
+            seller_tax_id = user.tax_number or ""
+
+        # The bank account named on the contract takes precedence; without one the
+        # user's default account is used.
+        payee_account = (invoice.contract.bank_account if invoice.contract else None) or user.bank_account
+        qr_code_data_uri = generate_payment_qr(payee_account, invoice) if include_qr_code else None
+
+        # Deposit and final invoices are the two halves of one settlement: the
+        # deposit states what share of the contract it bills, the final states the
+        # whole contract and deducts every deposit already issued. Both need the
+        # invoice fully hydrated — callers render from a session-loaded instance.
+        is_deposit = invoice.is_deposit
+        is_final = invoice.is_final_invoice
+        deposit_deductions = invoice.deposit_deductions
+        remaining_balance = invoice.remaining_balance
+
+        contract_title = ""
+        contract_total = None
+        milestone_title = ""
+        milestone_percentage = None
+        if invoice.contract:
+            contract_title = invoice.contract.title or ""
+            contract_total = invoice.contract.fixed_price
+        if is_deposit and invoice.milestone is not None:
+            milestone_title = invoice.milestone.title or ""
+            milestone_percentage = invoice.milestone.percentage
+
+        invoice_template = template_env.get_template("invoice.html")
+        html = invoice_template.render(
+            user=user,
+            invoice=invoice,
+            lang=language,
+            seller_tax_id=seller_tax_id,
+            seller_tax_id_label=seller_tax_id_label,
+            is_reminder=is_reminder,
+            reminder_title=reminder_title,
+            is_deposit=is_deposit,
+            is_final=is_final,
+            deposit_deductions=deposit_deductions,
+            remaining_balance=remaining_balance,
+            contract_title=contract_title,
+            contract_total=contract_total,
+            milestone_title=milestone_title,
+            milestone_percentage=milestone_percentage,
+            notes=invoice.notes,
+            include_logo=include_logo,
+            include_due_date=include_due_date,
+            include_signature=include_signature,
+            qr_code_data_uri=qr_code_data_uri,
+            accent_color=accent_color or "",
+            bank_account=payee_account,
+        )
+        if out_dir is None:
+            return html
+
+        invoice_dir = Path(out_dir) / Path(invoice.prefix)
+        invoice_dir.mkdir(parents=True, exist_ok=True)
+        invoice_path = invoice_dir / Path(f"{invoice.prefix}.html")
+        with open(invoice_path, "w", encoding="utf-8") as invoice_file:
+            invoice_file.write(html)
+
+        # Copy all CSS files and subdirectories from the template. Shared
+        # stylesheets go first so a template's own rules can override them.
+        for css in shared_path.glob("*.css"):
+            shutil.copy(css, invoice_dir / css.name)
+        for item in template_path.iterdir():
+            dest = invoice_dir / item.name
+            if item.is_file() and item.suffix == ".css":
+                shutil.copy(item, dest)
+            elif item.is_dir() and not item.name.startswith("."):
+                shutil.copytree(item, dest, dirs_exist_ok=True)
+
+        if document_format == "pdf":
+            css_paths = [path for path in glob.glob(f"{invoice_dir}/**/*.css", recursive=True)]
+            pdf_out = invoice_dir / Path(f"{invoice.prefix}.pdf")
+            convert_html_to_pdf(
+                in_path=str(invoice_path),
+                css_paths=css_paths,
+                out_path=pdf_out,
+            )
+            if e_invoice_profile:
+                from .einvoice import embed_zugferd_in_pdf, unsupported_reason
+
+                reason = unsupported_reason(invoice)
+                if reason:
+                    logger.warning(
+                        f"Skipping e-invoice XML for {invoice.number or invoice.id}: {reason}. "
+                        "The PDF is written without embedded XML."
+                    )
+                else:
+                    embed_zugferd_in_pdf(
+                        pdf_path=str(pdf_out),
+                        invoice=invoice,
+                        user=user,
+                        profile=e_invoice_profile,
+                    )
+        if only_final:
+            final_output_path = out_dir / Path(f"{invoice.prefix}.{document_format}")
+            if document_format == "pdf":
+                shutil.move(invoice_dir / Path(f"{invoice.prefix}.pdf"), final_output_path)
+            else:
+                shutil.move(invoice_dir / Path(f"{invoice.prefix}.html"), final_output_path)
+            shutil.rmtree(invoice_dir)
     invoice.rendered = True
 
 
@@ -468,23 +319,22 @@ def render_timesheet(
     document_format: str = "pdf",
     style: str = "anvil",
     only_final: bool = False,
+    language: str = "en",
 ):
-    """Render a Timeseheet using an HTML template.
+    """Render a timesheet using an HTML template.
 
     Args:
-        user (User): [description]
-        timesheet (Timesheet): [description]
-        out_dir (str, optional): [description]. Defaults to None.
-
-    Returns:
-        str: [description]
+        user: The freelancer / app user.
+        timesheet: The timesheet to render.
+        out_dir: Output directory. If None, returns the raw HTML string.
+        language: Language of labels and dates, a key of ``i18n.SUPPORTED``.
     """
     template_name = "timesheet-anvil"
     template_path = get_template_path(template_name)
-    template_env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_path))
+    template_env = _document_environment(template_path)
     # filters
     template_env.filters["as_hours"] = lambda td: td / pandas.Timedelta("1 hour")
-    template_env.filters["date"] = lambda dt: dt.strftime("%Y-%m-%d") if dt else ""
+    template_env.filters["date"] = lambda dt: format_date(dt, format="medium", locale=babel_locale()) if dt else ""
     template_env.filters["time"] = lambda dt: dt.strftime("%H:%M") if dt else ""
     template_env.filters["datetime"] = lambda dt: dt.strftime("%Y-%m-%d %H:%M") if dt else ""
     template_env.filters["hours_minutes"] = lambda td: (
@@ -504,7 +354,7 @@ def render_timesheet(
         if item.duration_only:
             return ""
         if _is_all_day(item):
-            return "All day"
+            return _("All day")
         return f"{item.begin.strftime('%H:%M')} – {item.end.strftime('%H:%M')}"
 
     def _clean_title(item) -> str:
@@ -530,7 +380,8 @@ def render_timesheet(
     template_env.filters["clean_notes"] = _clean_notes
 
     timesheet_template = template_env.get_template("timesheet.html")
-    html = timesheet_template.render(user=user, timesheet=timesheet, style=style)
+    with use_language(language):
+        html = timesheet_template.render(user=user, timesheet=timesheet, style=style, lang=language)
     # output
     if out_dir is None:
         return html

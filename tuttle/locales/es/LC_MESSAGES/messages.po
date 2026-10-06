@@ -1,0 +1,296 @@
+# Spanish translations for Tuttle.
+# Copyright (C) 2026 Tuttle contributors
+# This file is distributed under the same license as the Tuttle project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Tuttle VERSION\n"
+"Report-Msgid-Bugs-To: https://github.com/tuttle-dev/tuttle/issues\n"
+"POT-Creation-Date: 2026-10-06 15:12+0200\n"
+"PO-Revision-Date: 2026-10-06 15:12+0200\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: es\n"
+"Language-Team: es <LL@li.org>\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+msgid "Deposit Invoice"
+msgstr "Factura de anticipo"
+
+msgid "Final Invoice"
+msgstr "Factura final"
+
+msgid "Invoice No."
+msgstr "N.º de factura"
+
+msgid "In respect of"
+msgstr "Referente a"
+
+msgid "Payment milestone"
+msgstr "Hito de pago"
+
+msgid "Contract total"
+msgstr "Importe total del contrato"
+
+msgid "Gross"
+msgstr "Bruto"
+
+msgid "less deposit per invoice no."
+msgstr "menos anticipo según factura n.º"
+
+msgid "VAT included therein"
+msgstr "IVA incluido"
+
+msgid "Remaining balance"
+msgstr "Saldo pendiente"
+
+msgid "Deposit due"
+msgstr "Anticipo a pagar"
+
+msgid "Total Due"
+msgstr "Total a pagar"
+
+msgid "Please settle the outstanding amount by the new due date."
+msgstr ""
+"Le rogamos abone el importe pendiente antes de la nueva fecha de "
+"vencimiento."
+
+msgid "This is a partial payment (deposit invoice) towards the contract total."
+msgstr ""
+"Este documento es un pago parcial (factura de anticipo) sobre el importe "
+"total del contrato."
+
+msgid "Thank you for your business."
+msgstr "Gracias por su confianza."
+
+msgid "Document type"
+msgstr "Tipo de documento"
+
+msgid ""
+"Not subject to German VAT — the place of supply is the recipient's "
+"country (§ 3a (2) UStG / Art. 44 VAT Directive)."
+msgstr ""
+"No sujeto al IVA alemán — el lugar de prestación es el país del "
+"destinatario (art. 44 de la Directiva del IVA)."
+
+msgid "Billed to"
+msgstr "Facturar a"
+
+msgid "Original Invoice"
+msgstr "Factura original"
+
+msgid "Date"
+msgstr "Fecha"
+
+msgid "Due Date"
+msgstr "Fecha de vencimiento"
+
+msgid "Description"
+msgstr "Descripción"
+
+msgid "Qty"
+msgstr "Cant."
+
+msgid "Unit"
+msgstr "Unidad"
+
+msgid "Unit Price"
+msgstr "Precio unit."
+
+msgid "VAT"
+msgstr "IVA"
+
+msgid "Subtotal"
+msgstr "Subtotal"
+
+msgid "Payment"
+msgstr "Pago"
+
+msgid "Account"
+msgstr "Titular"
+
+msgid "Payment QR code"
+msgstr "Código QR de pago"
+
+msgid "Total fee"
+msgstr "Honorario total"
+
+msgid "Reminder Fee"
+msgstr "Cargo por recordatorio"
+
+msgid "Invoice"
+msgstr "Factura"
+
+msgid "From"
+msgstr "De"
+
+msgid "Bill To"
+msgstr "Facturar a"
+
+msgid "Payment Details"
+msgstr "Datos de pago"
+
+#, python-brace-format
+msgid "Timesheet {title}"
+msgstr "Hoja de horas {title}"
+
+msgid "Client"
+msgstr "Cliente"
+
+msgid "Prepared by"
+msgstr "Elaborado por"
+
+msgid "Project"
+msgstr "Proyecto"
+
+msgid "Period"
+msgstr "Periodo"
+
+msgid "Issued"
+msgstr "Fecha de emisión"
+
+msgid "Time"
+msgstr "Hora"
+
+msgid "Notes"
+msgstr "Notas"
+
+msgid "Hours"
+msgstr "Horas"
+
+msgid "Total"
+msgstr "Total"
+
+#, python-brace-format
+msgid "Item {n}"
+msgstr "Concepto {n}"
+
+msgid "Not subject to VAT"
+msgstr "No sujeto a IVA"
+
+#, python-brace-format
+msgid "Net {days} day"
+msgid_plural "Net {days} days"
+msgstr[0] "Pago a {days} día"
+msgstr[1] "Pago a {days} días"
+
+#, python-brace-format
+msgid "Invoice {number}"
+msgstr "Factura {number}"
+
+#, python-brace-format
+msgid ""
+"Dear {name},\n"
+"\n"
+"Please find attached the invoice for {project}.\n"
+"\n"
+"Best regards,\n"
+"{sender}"
+msgstr ""
+"Hola, {name}:\n"
+"\n"
+"Adjunto le envío la factura de {project}.\n"
+"\n"
+"Saludos cordiales,\n"
+"{sender}"
+
+#, python-brace-format
+msgid "Payment Reminder: Invoice {number}"
+msgstr "Recordatorio de pago: factura {number}"
+
+#, python-brace-format
+msgid ""
+"Dear {name},\n"
+"\n"
+"This is a reminder regarding the outstanding invoice {number} for "
+"{project}.\n"
+"\n"
+"Please find attached the payment reminder.\n"
+"\n"
+"Best regards,\n"
+"{sender}"
+msgstr ""
+"Hola, {name}:\n"
+"\n"
+"Este es un recordatorio sobre la factura pendiente {number} de {project}."
+"\n"
+"\n"
+"Adjunto encontrará el recordatorio de pago.\n"
+"\n"
+"Saludos cordiales,\n"
+"{sender}"
+
+#, python-brace-format
+msgid ""
+"Dear {name},\n"
+"\n"
+"This is a 2nd reminder regarding the outstanding invoice {number} for "
+"{project}.\n"
+"\n"
+"Please find attached the payment reminder.\n"
+"\n"
+"Best regards,\n"
+"{sender}"
+msgstr ""
+"Hola, {name}:\n"
+"\n"
+"Este es el segundo recordatorio sobre la factura pendiente {number} de "
+"{project}.\n"
+"\n"
+"Adjunto encontrará el recordatorio de pago.\n"
+"\n"
+"Saludos cordiales,\n"
+"{sender}"
+
+#, python-brace-format
+msgid ""
+"Dear {name},\n"
+"\n"
+"This is a 3rd reminder regarding the outstanding invoice {number} for "
+"{project}.\n"
+"\n"
+"Please find attached the payment reminder.\n"
+"\n"
+"Best regards,\n"
+"{sender}"
+msgstr ""
+"Hola, {name}:\n"
+"\n"
+"Este es el tercer recordatorio sobre la factura pendiente {number} de "
+"{project}.\n"
+"\n"
+"Adjunto encontrará el recordatorio de pago.\n"
+"\n"
+"Saludos cordiales,\n"
+"{sender}"
+
+msgid "hour"
+msgid_plural "hours"
+msgstr[0] "hora"
+msgstr[1] "horas"
+
+msgid "day"
+msgid_plural "days"
+msgstr[0] "día"
+msgstr[1] "días"
+
+msgid "fixed price"
+msgstr "precio fijo"
+
+#, python-brace-format
+msgid "{n}. Payment Reminder"
+msgstr "{n}.º recordatorio de pago"
+
+msgid "VAT No."
+msgstr "N.º IVA"
+
+msgid "Tax No."
+msgstr "N.º fiscal"
+
+msgid "All day"
+msgstr "Todo el día"
+

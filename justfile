@@ -122,6 +122,24 @@ migrate message:
     echo "  - no \`from tuttle.model import ...\`"
     echo "  - PRAGMA foreign_key_check after batch ops on FK tables"
 
+# Refresh the document translation catalogs (tuttle/locales) from the code and templates.
+i18n:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    pot=$(mktemp -t tuttle_messages.XXXXXX.pot)
+    trap 'rm -f "$pot"' EXIT
+    uv run --no-sync pybabel -q extract --ignore-dirs=".* node_modules" -F "{{repo}}/babel.cfg" -o "$pot" --no-location --add-comments=Translators: --project=Tuttle --copyright-holder="Tuttle contributors" --msgid-bugs-address=https://github.com/tuttle-dev/tuttle/issues "{{repo}}"
+    uv run --no-sync pybabel update -i "$pot" -d "{{repo}}/tuttle/locales" --ignore-pot-creation-date --ignore-obsolete
+
+# Start the catalog for a new document language, e.g. `just i18n-add fr`.
+i18n-add lang:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    pot=$(mktemp -t tuttle_messages.XXXXXX.pot)
+    trap 'rm -f "$pot"' EXIT
+    uv run --no-sync pybabel -q extract --ignore-dirs=".* node_modules" -F "{{repo}}/babel.cfg" -o "$pot" --no-location --add-comments=Translators: --project=Tuttle --copyright-holder="Tuttle contributors" --msgid-bugs-address=https://github.com/tuttle-dev/tuttle/issues "{{repo}}"
+    uv run --no-sync pybabel init -i "$pot" -d "{{repo}}/tuttle/locales" -l "{{lang}}"
+
 
 # Fail if tuttle/model.py and tuttle/migrations/versions/ disagree.
 # Wire this into CI to prevent silent schema drift.
