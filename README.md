@@ -104,7 +104,7 @@ Drop an invoice or contract PDF and Tuttle extracts the data — with a local mo
 
 Tuttle is a desktop application for Windows, macOS, and Linux.
 
-1. Go to the [Releases page](https://github.com/tuttle-dev/tuttle/releases) and download the build for your operating system.
+1. Go to the [Releases page](https://github.com/tuttle-dev/tuttle/releases) and download the build for your operating system. On a Mac, Tuttle needs macOS 14 (Sonoma) or newer.
 2. Install and launch it like any other desktop application.
 
 Your data is stored locally on your device — there is no account to create and no central server involved.

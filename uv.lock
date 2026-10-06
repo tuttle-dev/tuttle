@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.13"
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'win32'",
@@ -2532,7 +2532,7 @@ wheels = [
 
 [[package]]
 name = "tuttle"
-version = "4.6.2"
+version = "5.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "alembic" },

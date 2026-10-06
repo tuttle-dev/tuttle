@@ -334,3 +334,29 @@ class TestSellerTaxIdentifierInFooter:
             language=language,
         )
         assert f"{label}: 21/815/08150" in html
+
+
+class TestPdfEngineUnavailable:
+    """plutoprint's macOS build needs macOS 14; older systems get a plain message, not a dlopen error."""
+
+    MACOS_14 = "Creating PDFs requires macOS 14 (Sonoma) or newer. Update macOS to create PDFs."
+
+    def test_old_macos_asks_for_macos_14(self, monkeypatch, tmp_path):
+        monkeypatch.setattr(rendering, "plutoprint", None)
+        monkeypatch.setattr(rendering.platform, "mac_ver", lambda: ("13.6.1", ("", "", ""), "arm64"))
+        html = tmp_path / "doc.html"
+        html.write_text("<p>Hi</p>")
+        with pytest.raises(rendering.PdfEngineUnavailable, match=r"^Creating PDFs requires macOS 14"):
+            rendering.convert_html_to_pdf(in_path=html, out_path=tmp_path / "doc.pdf")
+        assert str(rendering.pdf_engine_unavailable_message()) == self.MACOS_14
+
+    def test_other_systems_ask_for_reinstall(self, monkeypatch):
+        monkeypatch.setattr(rendering, "plutoprint", None)
+        monkeypatch.setattr(rendering.platform, "mac_ver", lambda: ("", ("", "", ""), ""))
+        assert rendering.pdf_engine_unavailable_message() == (
+            "The PDF engine could not be loaded. Reinstall Tuttle to create PDFs."
+        )
+
+    def test_available_engine_has_no_message(self):
+        assert rendering.plutoprint is not None
+        assert rendering.pdf_engine_unavailable_message() is None
