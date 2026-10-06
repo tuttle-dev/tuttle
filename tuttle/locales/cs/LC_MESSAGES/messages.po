@@ -279,6 +279,15 @@ msgstr[0] "den"
 msgstr[1] "den"
 msgstr[2] "den"
 
+msgid "piece"
+msgid_plural "pieces"
+msgstr[0] "ks"
+msgstr[1] "ks"
+msgstr[2] "ks"
+
+msgid "flat"
+msgstr "paušál"
+
 msgid "fixed price"
 msgstr "paušál"
 
