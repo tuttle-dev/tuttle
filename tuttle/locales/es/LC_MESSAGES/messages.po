@@ -278,6 +278,14 @@ msgid_plural "days"
 msgstr[0] "día"
 msgstr[1] "días"
 
+msgid "piece"
+msgid_plural "pieces"
+msgstr[0] "unidad"
+msgstr[1] "unidades"
+
+msgid "flat"
+msgstr "tarifa plana"
+
 msgid "fixed price"
 msgstr "precio fijo"
 
