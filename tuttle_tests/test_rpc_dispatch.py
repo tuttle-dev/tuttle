@@ -24,6 +24,7 @@ import tuttle.app_db as app_db_mod
 from tuttle import rendering, timetracking
 from tuttle.app.core.dispatch import _intents, dispatch
 from tuttle.app.core.rpc_utils import reset_all
+from tuttle.app.invoicing.intent import _document_language
 from tuttle.app.projects.intent import ProjectsIntent
 from tuttle.app.timetracking.aggregation import merge_dataframes
 from tuttle.app.timetracking.data_source import TimeTrackingDataFrameSource
@@ -724,6 +725,34 @@ class TestCrudSaveBehavior:
         )
         invoice = assert_ok(result)["data"]
         assert Decimal(str(invoice["sum"])) == Decimal("128.25")
+
+
+class TestDocumentLanguage:
+    """Documents go out in the client's language, else the app-wide default."""
+
+    def test_client_language_round_trips(self, rpc_env):
+        saved = assert_ok(dispatch("clients.save", {"client": {"name": "Sprachkunde GmbH", "language": "de"}}))["data"]
+        assert saved["language"] == "de"
+        cleared = assert_ok(
+            dispatch("clients.save", {"client": {"id": saved["id"], "name": "Sprachkunde GmbH", "language": None}})
+        )["data"]
+        assert cleared["language"] is None
+
+    def test_language_without_a_catalog_is_rejected_plainly(self, rpc_env):
+        result = dispatch("clients.save", {"client": {"name": "Client Sans Catalogue", "language": "xx"}})
+        assert result["ok"] is False
+        assert "Documents are not available in 'xx'. Choose one of:" in result["error"]
+
+    def test_client_language_wins_over_the_default(self, rpc_env):
+        assert _document_language(Client(name="Sprachkunde GmbH", language="de")) == "de"
+
+    def test_clients_without_one_follow_the_default(self, rpc_env):
+        previous = assert_ok(dispatch("preferences.get", {}))["data"]["language"]
+        try:
+            assert_ok(dispatch("preferences.save", {"language": "es"}))
+            assert _document_language(Client(name="Sprachkunde GmbH")) == "es"
+        finally:
+            assert_ok(dispatch("preferences.save", {"language": previous or "en"}))
 
 
 class TestFinancialGoals:

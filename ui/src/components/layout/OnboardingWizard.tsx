@@ -401,7 +401,7 @@ export function OnboardingWizard({ open, onClose, onSubmit, onDemo, loading, ove
         </div>
 
         <div>
-          <label className={labelCls}>Invoice language</label>
+          <label className={labelCls}>Default document language</label>
           <select
             className={inputCls}
             value={invoicing.language}
@@ -411,7 +411,7 @@ export function OnboardingWizard({ open, onClose, onSubmit, onDemo, loading, ove
               <option key={code} value={code}>{label}</option>
             ))}
           </select>
-          <p className="mt-1 text-xs text-muted">Language for invoice labels, dates, and currency formatting.</p>
+          <p className="mt-1 text-xs text-muted">Language of invoices, timesheets and emails, unless a client has its own.</p>
         </div>
 
         <div>

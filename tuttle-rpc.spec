@@ -25,6 +25,7 @@ block_cipher = None
 datas = [
     ("templates", "templates"),
     ("tuttle/tax_data", "tuttle/tax_data"),
+    ("tuttle/locales", "tuttle/locales"),
     # Alembic migration scripts are loaded by path at runtime, so
     # PyInstaller's import analyzer cannot discover them. Bundle the
     # whole migrations tree (env.py, script.py.mako, versions/*.py)

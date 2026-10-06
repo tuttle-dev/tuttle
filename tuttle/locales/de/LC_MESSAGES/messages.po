@@ -1,0 +1,294 @@
+# German translations for Tuttle.
+# Copyright (C) 2026 Tuttle contributors
+# This file is distributed under the same license as the Tuttle project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Tuttle VERSION\n"
+"Report-Msgid-Bugs-To: https://github.com/tuttle-dev/tuttle/issues\n"
+"POT-Creation-Date: 2026-10-06 15:12+0200\n"
+"PO-Revision-Date: 2026-10-06 15:12+0200\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: de\n"
+"Language-Team: de <LL@li.org>\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+msgid "Deposit Invoice"
+msgstr "Abschlagsrechnung"
+
+msgid "Final Invoice"
+msgstr "Schlussrechnung"
+
+msgid "Invoice No."
+msgstr "Rechnung Nr."
+
+msgid "In respect of"
+msgstr "Betreffend"
+
+msgid "Payment milestone"
+msgstr "Zahlungsmeilenstein"
+
+msgid "Contract total"
+msgstr "Vertragsgesamtbetrag"
+
+msgid "Gross"
+msgstr "Brutto"
+
+msgid "less deposit per invoice no."
+msgstr "abzgl. Abschlag lt. Rechnung Nr."
+
+msgid "VAT included therein"
+msgstr "darin enthaltene USt."
+
+msgid "Remaining balance"
+msgstr "Restbetrag"
+
+msgid "Deposit due"
+msgstr "Abschlagsbetrag"
+
+msgid "Total Due"
+msgstr "Gesamtbetrag"
+
+msgid "Please settle the outstanding amount by the new due date."
+msgstr "Bitte begleichen Sie den offenen Betrag bis zum neuen Fälligkeitsdatum."
+
+msgid "This is a partial payment (deposit invoice) towards the contract total."
+msgstr ""
+"Dies ist eine Teilzahlung (Abschlagsrechnung) auf den "
+"Vertragsgesamtbetrag."
+
+msgid "Thank you for your business."
+msgstr "Vielen Dank für Ihren Auftrag."
+
+msgid "Document type"
+msgstr "Belegart"
+
+msgid ""
+"Not subject to German VAT — the place of supply is the recipient's "
+"country (§ 3a (2) UStG / Art. 44 VAT Directive)."
+msgstr ""
+"Nicht steuerbare sonstige Leistung — Leistungsort im Ausland gemäß § 3a "
+"Abs. 2 UStG / Art. 44 MwStSystRL."
+
+msgid "Billed to"
+msgstr "Rechnungsempfänger"
+
+msgid "Original Invoice"
+msgstr "Ursprungsrechnung"
+
+msgid "Date"
+msgstr "Datum"
+
+msgid "Due Date"
+msgstr "Fälligkeitsdatum"
+
+msgid "Description"
+msgstr "Beschreibung"
+
+msgid "Qty"
+msgstr "Menge"
+
+msgid "Unit"
+msgstr "Einheit"
+
+msgid "Unit Price"
+msgstr "Einzelpreis"
+
+msgid "VAT"
+msgstr "USt."
+
+msgid "Subtotal"
+msgstr "Zwischensumme"
+
+msgid "Payment"
+msgstr "Zahlung"
+
+msgid "Account"
+msgstr "Konto"
+
+msgid "Payment QR code"
+msgstr "Zahlungs-QR-Code"
+
+msgid "Total fee"
+msgstr "Gesamthonorar"
+
+msgid "Reminder Fee"
+msgstr "Mahngebühr"
+
+msgid "Invoice"
+msgstr "Rechnung"
+
+msgid "From"
+msgstr "Von"
+
+msgid "Bill To"
+msgstr "Rechnungsempfänger"
+
+msgid "Payment Details"
+msgstr "Zahlungsdetails"
+
+#, python-brace-format
+msgid "Timesheet {title}"
+msgstr "Stundennachweis {title}"
+
+msgid "Client"
+msgstr "Auftraggeber"
+
+msgid "Prepared by"
+msgstr "Erstellt von"
+
+msgid "Project"
+msgstr "Projekt"
+
+msgid "Period"
+msgstr "Zeitraum"
+
+msgid "Issued"
+msgstr "Ausgestellt am"
+
+msgid "Time"
+msgstr "Uhrzeit"
+
+msgid "Notes"
+msgstr "Notizen"
+
+msgid "Hours"
+msgstr "Stunden"
+
+msgid "Total"
+msgstr "Gesamt"
+
+#, python-brace-format
+msgid "Item {n}"
+msgstr "Position {n}"
+
+msgid "Not subject to VAT"
+msgstr "Nicht steuerbar"
+
+#, python-brace-format
+msgid "Net {days} day"
+msgid_plural "Net {days} days"
+msgstr[0] "Zahlbar innerhalb von {days} Tag ohne Abzug"
+msgstr[1] "Zahlbar innerhalb von {days} Tagen ohne Abzug"
+
+#, python-brace-format
+msgid "Invoice {number}"
+msgstr "Rechnung {number}"
+
+#, python-brace-format
+msgid ""
+"Dear {name},\n"
+"\n"
+"Please find attached the invoice for {project}.\n"
+"\n"
+"Best regards,\n"
+"{sender}"
+msgstr ""
+"Guten Tag {name},\n"
+"\n"
+"anbei erhalten Sie die Rechnung für {project}.\n"
+"\n"
+"Mit freundlichen Grüßen\n"
+"{sender}"
+
+#, python-brace-format
+msgid "Payment Reminder: Invoice {number}"
+msgstr "Zahlungserinnerung: Rechnung {number}"
+
+#, python-brace-format
+msgid ""
+"Dear {name},\n"
+"\n"
+"This is a reminder regarding the outstanding invoice {number} for "
+"{project}.\n"
+"\n"
+"Please find attached the payment reminder.\n"
+"\n"
+"Best regards,\n"
+"{sender}"
+msgstr ""
+"Guten Tag {name},\n"
+"\n"
+"dies ist eine Erinnerung an die noch offene Rechnung {number} für "
+"{project}.\n"
+"\n"
+"Anbei finden Sie die Zahlungserinnerung.\n"
+"\n"
+"Mit freundlichen Grüßen\n"
+"{sender}"
+
+#, python-brace-format
+msgid ""
+"Dear {name},\n"
+"\n"
+"This is a 2nd reminder regarding the outstanding invoice {number} for "
+"{project}.\n"
+"\n"
+"Please find attached the payment reminder.\n"
+"\n"
+"Best regards,\n"
+"{sender}"
+msgstr ""
+"Guten Tag {name},\n"
+"\n"
+"dies ist die zweite Erinnerung an die noch offene Rechnung {number} für "
+"{project}.\n"
+"\n"
+"Anbei finden Sie die Mahnung.\n"
+"\n"
+"Mit freundlichen Grüßen\n"
+"{sender}"
+
+#, python-brace-format
+msgid ""
+"Dear {name},\n"
+"\n"
+"This is a 3rd reminder regarding the outstanding invoice {number} for "
+"{project}.\n"
+"\n"
+"Please find attached the payment reminder.\n"
+"\n"
+"Best regards,\n"
+"{sender}"
+msgstr ""
+"Guten Tag {name},\n"
+"\n"
+"dies ist die dritte Erinnerung an die noch offene Rechnung {number} für "
+"{project}.\n"
+"\n"
+"Anbei finden Sie die Mahnung.\n"
+"\n"
+"Mit freundlichen Grüßen\n"
+"{sender}"
+
+msgid "hour"
+msgid_plural "hours"
+msgstr[0] "Stunde"
+msgstr[1] "Stunden"
+
+msgid "day"
+msgid_plural "days"
+msgstr[0] "Tag"
+msgstr[1] "Tage"
+
+msgid "fixed price"
+msgstr "pauschal"
+
+#, python-brace-format
+msgid "{n}. Payment Reminder"
+msgstr "{n}. Mahnung"
+
+msgid "VAT No."
+msgstr "USt-IdNr."
+
+msgid "Tax No."
+msgstr "St.-Nr."
+
+msgid "All day"
+msgstr "Ganztägig"
+
