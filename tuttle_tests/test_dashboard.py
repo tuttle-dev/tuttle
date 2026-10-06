@@ -585,6 +585,125 @@ class TestCashFlowSeries:
         # Last month balance must match total net_cash_flow
         assert result["buckets"][-1]["balance"] == result["net_cash_flow"]
 
+    def test_draft_invoices_included_in_cash_flow(self, active_contract, project):
+        active_contract.term_of_payment = 14
+        draft_inv = Invoice(
+            number="2026-DRAFT",
+            date=datetime.date(2026, 10, 25),
+            contract=active_contract,
+            project=project,
+            sent=False,
+            paid=False,
+            cancelled=False,
+        )
+        InvoiceItem(
+            invoice=draft_inv,
+            quantity=8,
+            unit="hour",
+            unit_price=Decimal("100.00"),
+            VAT_rate=Decimal("0"),
+        )
+        result = cash_flow_series([draft_inv], [active_contract], [project], [], None, forecast_months=6, today=self.TODAY)
+        # Due date is Nov 8, 2026 (Month 1)
+        assert result["buckets"][1]["inflow_invoiced"] == 800.0
+        assert result["total_inflow"] == 800.0
+
+    def test_past_uninvoiced_work_placed_into_current_month(self, project, active_contract):
+        active_contract.id = 1
+        project.contract_id = 1
+        active_contract.term_of_payment = 14
+        # Work done in August 2026; due date would have been before Oct window
+        time_data = TestMonthlyRevenueFromCalendar._time_data(project.tag, datetime.date(2026, 8, 10))
+        result = cash_flow_series([], [active_contract], [project], [], time_data, forecast_months=6, today=self.TODAY)
+        # Should be placed into current month (Month 0: Oct 2026) instead of dropped
+        assert result["buckets"][0]["inflow_planned"] > 0.0
+        assert result["total_inflow"] > 0.0
+
+    def test_vat_basis_net_invoiced(self, active_contract, project):
+        active_contract.term_of_payment = 10
+        inv = Invoice(
+            number="2026-VAT",
+            date=datetime.date(2026, 10, 1),
+            contract=active_contract,
+            project=project,
+            sent=True,
+            paid=False,
+            cancelled=False,
+        )
+        InvoiceItem(
+            invoice=inv,
+            quantity=10,
+            unit="hour",
+            unit_price=Decimal("100.00"),
+            VAT_rate=Decimal("19"),
+        )
+        result = cash_flow_series([inv], [active_contract], [project], [], None, forecast_months=6, today=self.TODAY)
+        # Gross is 1190, but net basis is 1000.0
+        assert result["buckets"][0]["inflow_invoiced"] == 1000.0
+        assert result["total_inflow"] == 1000.0
+
+    def test_dynamic_rate_based_expenses_included_in_outflows(self, active_contract, project):
+        active_contract.term_of_payment = 0
+        inv = Invoice(
+            number="2026-REV",
+            date=datetime.date(2026, 10, 1),
+            contract=active_contract,
+            project=project,
+            sent=True,
+            paid=False,
+            cancelled=False,
+        )
+        InvoiceItem(
+            invoice=inv,
+            quantity=30,
+            unit="hour",
+            unit_price=Decimal("100.00"),
+            VAT_rate=Decimal("0"),
+        )
+        exp_dynamic = RecurringExpense(
+            title="Health Insurance",
+            amount=Decimal("0"),
+            rate=Decimal("14.6"),
+            period=Cycle.monthly,
+            tax_deductible=True,
+        )
+        result = cash_flow_series(
+            [inv],
+            [active_contract],
+            [project],
+            [exp_dynamic],
+            None,
+            forecast_months=6,
+            today=self.TODAY,
+        )
+        # Month 0 has 3000 inflow; dynamic rate 14.6% of 3000 is 438.0
+        assert result["buckets"][0]["inflow_invoiced"] == 3000.0
+        assert result["buckets"][0]["outflow"] == 438.0
+        assert result["buckets"][0]["net"] == 2562.0
+
+    def test_dynamic_expense_with_min_base_creates_deficit_on_zero_income(self):
+        exp_dynamic = RecurringExpense(
+            title="Health Insurance",
+            amount=Decimal("0"),
+            rate=Decimal("15.0"),
+            period=Cycle.monthly,
+            min_base=Decimal("1000.00"),
+            tax_deductible=True,
+        )
+        result = cash_flow_series(
+            [],
+            [],
+            [],
+            [exp_dynamic],
+            None,
+            forecast_months=6,
+            today=self.TODAY,
+        )
+        # Even with 0 income, min_base 1000 * 15% = 150.0 outflow per month
+        assert all(b["outflow"] == 150.0 for b in result["buckets"])
+        assert result["total_outflow"] == 900.0
+        assert result["net_cash_flow"] == -900.0
+
 
 class TestRevenueHistory:
     def test_empty_invoices(self):

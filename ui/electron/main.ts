@@ -36,8 +36,8 @@ function createWindow() {
     minWidth: MIN_WIDTH,
     minHeight: MIN_HEIGHT,
     show: false,
-    titleBarStyle: "hiddenInset",
-    trafficLightPosition: { x: 16, y: 18 },
+    titleBarStyle: process.platform === "darwin" ? "hiddenInset" : "default",
+    trafficLightPosition: process.platform === "darwin" ? { x: 16, y: 18 } : undefined,
     backgroundColor: "#292929",
     webPreferences: {
       preload: path.join(__dirname, "../electron/preload.cjs"),

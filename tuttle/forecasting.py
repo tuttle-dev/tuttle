@@ -10,7 +10,13 @@ from pandas import DataFrame
 
 from .fx import primary_currency
 from .model import Contract, Invoice, Project, RecurringExpense
-from .tax_reserves import _normalize_to_monthly, convert_invoice
+from .tax_reserves import (
+    _dynamic_lines,
+    _lines_total,
+    _normalize_to_monthly,
+    compute_income_tax_reserve,
+    convert_invoice,
+)
 from .time import TimeUnit
 from .timetracking import event_hours
 
@@ -529,10 +535,12 @@ def cash_flow_series(
     """Project monthly cash inflows, expense outflows, and cumulative balance.
 
     Reconciles upcoming cash movements for a forward-looking forecast window:
-    - Inflows from sent, unpaid invoices placed in their effective due date bucket
+    - Inflows from unpaid invoices (both draft and sent) placed in their effective due date bucket
       (overdue invoices map to the current month).
-    - Inflows from planned calendar work shifted forward by contract payment terms.
-    - Outflows from normalized fixed recurring expenses.
+    - Inflows from planned calendar work shifted forward by contract payment terms
+      (past un-invoiced work maps to the current month).
+    - Outflows from normalized fixed recurring expenses, rate-based contributions,
+      and estimated income tax reserves.
     - Net flow and running cumulative balance across the forecast window.
 
     Empty buckets are included so the time axis stays continuous.
@@ -564,14 +572,16 @@ def cash_flow_series(
         for p in periods
     }
 
-    # 1. Inflows from sent unpaid invoices
+    # 1. Inflows from unpaid invoices (both draft and sent)
     for inv in invoices:
-        if not inv.sent or inv.paid or inv.cancelled:
+        if inv.paid or inv.cancelled:
             continue
         converted = convert_invoice(inv, currency)
         if converted is None:
             continue
-        amount = float(converted[0])
+        # Use net basis: total minus VAT to align with net planned revenue
+        net_amount = converted[0] - (converted[1] or Decimal(0))
+        amount = float(net_amount)
 
         due_date = inv.effective_due_date
         if due_date is None:
@@ -593,7 +603,8 @@ def cash_flow_series(
     # 2. Inflows from planned calendar work shifted by contract payment terms
     if time_data is not None and not time_data.empty:
         contract_map = {c.id: c for c in contracts if c.id is not None}
-        cal_start = (forecast_start - pandas.DateOffset(months=2)).date().replace(day=1)
+        min_date = time_data.index.date.min()
+        cal_start = min(forecast_start, min_date.replace(day=1))
         cal = monthly_revenue_from_calendar(time_data, projects, cal_start, window_end, invoices=invoices)
         if not cal.empty:
             for _, row in cal.iterrows():
@@ -611,13 +622,17 @@ def cash_flow_series(
                 work_month_end = (work_month_start + datetime.timedelta(days=32)).replace(day=1) - datetime.timedelta(days=1)
                 inflow_date = work_month_end + datetime.timedelta(days=payment_delay)
                 inflow_period = pandas.Period(inflow_date, freq="M")
-                target_bucket = buckets.get(inflow_period)
+                if inflow_date < today or inflow_period < current_period:
+                    target_bucket = buckets.get(current_period)
+                else:
+                    target_bucket = buckets.get(inflow_period)
                 if target_bucket is not None:
                     target_bucket["inflow_planned"] += max(0.0, float(row["revenue"]))
 
-    # 3. Outflows from normalized fixed recurring expenses
+    # 3. Outflows from normalized fixed recurring expenses, dynamic expenses, and tax reserves
     fixed_expenses = [e for e in expenses if e.rate is None and e.amount is not None]
-    monthly_outflow = float(sum((_normalize_to_monthly(e) for e in fixed_expenses), Decimal(0)))
+    dynamic_expenses = [e for e in expenses if e.rate is not None]
+    monthly_fixed = sum((_normalize_to_monthly(e) for e in fixed_expenses), Decimal(0))
 
     # 4. Net flow, cumulative balance, and summary totals
     running_balance = 0.0
@@ -629,7 +644,26 @@ def cash_flow_series(
         row["inflow_invoiced"] = round(row["inflow_invoiced"], 2)
         row["inflow_planned"] = round(row["inflow_planned"], 2)
         row["inflow_total"] = round(row["inflow_invoiced"] + row["inflow_planned"], 2)
-        row["outflow"] = round(monthly_outflow, 2)
+
+        # Dynamic rate-based contributions and estimated income tax reserves
+        month_inflow = Decimal(str(row["inflow_total"]))
+        base_profit = max(Decimal(0), month_inflow - monthly_fixed)
+
+        deductible_lines = _dynamic_lines(dynamic_expenses, base_profit, deductible=True)
+        dyn_deductible = _lines_total(deductible_lines)
+
+        month_tax_base = max(Decimal(0), base_profit - dyn_deductible)
+        annual_tax_base = month_tax_base * 12
+        tax_res = compute_income_tax_reserve(annual_tax_base, country, year=row["year"])
+        monthly_tax = (tax_res.total_annual_reserve / 12).quantize(Decimal("0.01"))
+
+        post_tax = max(Decimal(0), month_tax_base - monthly_tax)
+        nondeductible_lines = _dynamic_lines(dynamic_expenses, post_tax, deductible=False)
+        dyn_nondeductible = _lines_total(nondeductible_lines)
+
+        total_outflow = monthly_fixed + dyn_deductible + monthly_tax + dyn_nondeductible
+        row["outflow"] = round(float(total_outflow), 2)
+
         net = round(row["inflow_total"] - row["outflow"], 2)
         row["net"] = net
         running_balance = round(running_balance + net, 2)

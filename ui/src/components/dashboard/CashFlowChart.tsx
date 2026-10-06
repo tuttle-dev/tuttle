@@ -51,7 +51,7 @@ const SERIES: SeriesDef[] = [
     name: "Invoiced",
     color: "var(--color-status-warning)",
     opacity: 1,
-    hint: "Unpaid sent invoices placed by due date",
+    hint: "Unpaid invoices placed by due date",
   },
   {
     key: "inflow_planned",
@@ -65,7 +65,7 @@ const SERIES: SeriesDef[] = [
     name: "Outflows",
     color: "var(--color-status-danger)",
     opacity: 0.85,
-    hint: "Fixed recurring expenses",
+    hint: "Recurring expenses, dynamic contributions, and tax reserves",
   },
   {
     key: "balance",
@@ -173,26 +173,38 @@ export function CashFlowChart() {
             <span
               className="text-xl font-semibold tabular-nums"
               style={{
-                color: isPositive ? "var(--color-status-success)" : "var(--color-status-danger)",
-              }}
-            >
-              {isPositive ? "+" : "−"}
-              {fmtFull(Math.abs(netCashFlow))}
-            </span>
-            <span className="text-[11px] text-tertiary">{windowLabel}</span>
-            <span
-              className="text-[11px] px-1.5 py-0.5 rounded font-medium"
-              style={{
-                backgroundColor: isPositive
-                  ? "rgba(21, 128, 61, 0.12)"
-                  : "rgba(220, 38, 38, 0.12)",
-                color: isPositive
+                color: !data
+                  ? "var(--color-tertiary)"
+                  : isPositive
                   ? "var(--color-status-success)"
                   : "var(--color-status-danger)",
               }}
             >
-              {isPositive ? "Net Positive" : "Net Deficit"}
+              {!data ? (
+                loading ? "…" : "—"
+              ) : (
+                <>
+                  {isPositive ? "+" : "−"}
+                  {fmtFull(Math.abs(netCashFlow))}
+                </>
+              )}
             </span>
+            {data && <span className="text-[11px] text-tertiary">{windowLabel}</span>}
+            {data && (
+              <span
+                className="text-[11px] px-1.5 py-0.5 rounded font-medium"
+                style={{
+                  backgroundColor: isPositive
+                    ? "color-mix(in srgb, var(--color-status-success) 14%, transparent)"
+                    : "color-mix(in srgb, var(--color-status-danger) 14%, transparent)",
+                  color: isPositive
+                    ? "var(--color-status-success)"
+                    : "var(--color-status-danger)",
+                }}
+              >
+                {isPositive ? "Net Positive" : "Net Deficit"}
+              </span>
+            )}
           </div>
         </div>
 
