@@ -276,6 +276,14 @@ msgid_plural "days"
 msgstr[0] "Tag"
 msgstr[1] "Tage"
 
+msgid "piece"
+msgid_plural "pieces"
+msgstr[0] "Stück"
+msgstr[1] "Stück"
+
+msgid "flat"
+msgstr "pauschal"
+
 msgid "fixed price"
 msgstr "pauschal"
 

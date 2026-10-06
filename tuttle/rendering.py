@@ -30,20 +30,25 @@ except ImportError as ex:
 
 
 def unit_label(raw_unit, quantity=None) -> str:
-    """Name of a TimeUnit value (e.g. "hour") in the current language.
+    """Name of an invoice item's unit (e.g. "hour") in the current language.
 
     When ``quantity`` is given, the form matches it ("1 hour", "2 hours").
+    Plural spellings ("hours") are accepted, as in ``einvoice.unit_to_unece``.
     Unknown units pass through unchanged.
     """
     try:
         count = 1 if quantity is None else float(quantity)
     except (TypeError, ValueError):
         count = 1
-    unit = raw_unit.replace(" ", "_")
+    unit = raw_unit.lower().replace(" ", "_").rstrip("s")
     if unit == "hour":
         return ngettext("hour", "hours", count)
     if unit == "day":
         return ngettext("day", "days", count)
+    if unit == "piece":
+        return ngettext("piece", "pieces", count)
+    if unit == "flat":
+        return _("flat")
     if unit == "fixed_price":
         return _("fixed price")
     return raw_unit

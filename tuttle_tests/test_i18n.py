@@ -38,6 +38,22 @@ class TestLookup:
         with use_language("de"):
             assert ngettext("hour", "hours", quantity) == expected
 
+    @pytest.mark.parametrize(
+        "unit,quantity,expected",
+        [
+            ("hours", 1, "Stunde"),
+            ("hours", 3, "Stunden"),
+            ("day", 2, "Tage"),
+            ("piece", 2, "Stück"),
+            ("flat", 1, "pauschal"),
+            ("fixed price", 1, "pauschal"),
+            ("m²", 2, "m²"),
+        ],
+    )
+    def test_invoice_units_are_translated(self, unit, quantity, expected):
+        with use_language("de"):
+            assert rendering.unit_label(unit, quantity) == expected
+
     def test_broken_placeholder_in_a_translation_falls_back_to_english(self, tmp_path, monkeypatch):
         catalog = tmp_path / "xx" / "LC_MESSAGES" / "messages.po"
         catalog.parent.mkdir(parents=True)
