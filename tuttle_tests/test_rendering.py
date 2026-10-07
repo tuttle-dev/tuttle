@@ -238,6 +238,7 @@ class TestRenderOutsideScopeInvoice:
             ("en", "§ 3a (2) UStG"),
             ("de", "Nicht steuerbare sonstige Leistung"),
             ("es", "No sujeto al IVA alemán"),
+            ("it", "Non soggetto all'IVA tedesca"),
         ],
     )
     def test_note_is_localized(self, fake, language, needle):
