@@ -71,7 +71,7 @@ export function Toolbar({ title, actions, center, right, search }: {
   search?: { value: string; onChange: (v: string) => void; placeholder?: string };
 }) {
   return (
-    <div className="drag-region flex items-center gap-2 px-4 h-13 shrink-0 border-b border-border-subtle">
+    <div className="view-toolbar drag-region flex items-center gap-2 px-4 h-13 shrink-0 border-b border-border-subtle">
       <h2 className="text-sm font-semibold mr-1">{title}</h2>
       {actions}
       {center ? <ToolbarCenter>{center}</ToolbarCenter> : <div className="flex-1" />}

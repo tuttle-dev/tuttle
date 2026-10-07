@@ -106,3 +106,16 @@ html, body {
 .drag-region :is(button, input, select, textarea, label, a, [role="button"]) {
   -webkit-app-region: no-drag;
 }
+
+/* Windows and Linux draw the window buttons over the title-bar row, at its
+   end (and on some Linux desktops at its start). These insets keep content
+   clear of them; on macOS there is no such overlay and they are zero. */
+:root {
+  --title-bar-inset-start: env(titlebar-area-x, 0px);
+  --title-bar-inset-end: calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw));
+}
+/* The row is the first banner if one shows, otherwise the view's toolbar. */
+.title-bar-banners > :first-child,
+.title-bar-banners:empty + * .view-toolbar {
+  padding-right: calc(1rem + var(--title-bar-inset-end));
+}
