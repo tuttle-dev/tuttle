@@ -774,7 +774,6 @@ class TestCashFlowSeries:
         assert res_even["net_cash_flow"] == res_lumpy["net_cash_flow"]
 
 
-
 class TestRevenueHistory:
     def test_empty_invoices(self):
         result = revenue_history([])
