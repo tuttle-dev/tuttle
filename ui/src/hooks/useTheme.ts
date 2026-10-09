@@ -13,6 +13,12 @@ function resolveTheme(choice: ThemeChoice): "light" | "dark" {
 
 function applyTheme(resolved: "light" | "dark") {
   document.documentElement.classList.toggle("dark", resolved === "dark");
+  // Windows and Linux draw the window buttons on the toolbar: give them its colours.
+  const style = getComputedStyle(document.documentElement);
+  window.tuttle?.setTitleBarColors({
+    color: style.getPropertyValue("--color-bg-content").trim(),
+    symbolColor: style.getPropertyValue("--color-primary").trim(),
+  });
 }
 
 function cacheChoice(choice: ThemeChoice) {
@@ -72,6 +78,13 @@ export function useThemeProvider() {
   useEffect(() => {
     applyTheme(resolved);
   }, [resolved]);
+
+  // Forcing a theme also forces prefers-color-scheme, so this runs before
+  // the listener below subscribes: releasing it back to "system" then
+  // arrives there as a change.
+  useEffect(() => {
+    window.tuttle?.setThemeSource(choice);
+  }, [choice]);
 
   useEffect(() => {
     if (choice !== "system") return;

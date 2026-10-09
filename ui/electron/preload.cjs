@@ -40,4 +40,6 @@ contextBridge.exposeInMainWorld("tuttle", {
   checkForUpdate: () => ipcRenderer.send("check-for-update"),
   openExternal: (url) => ipcRenderer.send("open-external", url),
   quitAndInstall: () => ipcRenderer.send("quit-and-install"),
+  setThemeSource: (source) => ipcRenderer.send("set-theme-source", source),
+  setTitleBarColors: (colors) => ipcRenderer.send("set-title-bar-colors", colors),
 });

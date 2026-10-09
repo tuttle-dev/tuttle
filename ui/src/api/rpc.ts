@@ -19,6 +19,10 @@ declare global {
       checkForUpdate: () => void;
       openExternal: (url: string) => void;
       quitAndInstall: () => void;
+      /** Theme for native UI: menus, dialogs, window buttons. */
+      setThemeSource: (source: "light" | "dark" | "system") => void;
+      /** Colours of the window buttons drawn over the toolbar (Windows, Linux). */
+      setTitleBarColors: (colors: { color: string; symbolColor: string }) => void;
     };
   }
 }

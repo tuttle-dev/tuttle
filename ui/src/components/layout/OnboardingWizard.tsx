@@ -639,7 +639,8 @@ export function OnboardingWizard({ open, onClose, onSubmit, onDemo, loading, ove
   }
 
   return (
-    <div className="flex h-screen w-screen items-center justify-center bg-bg-content">
+    <div className="relative flex h-screen w-screen items-center justify-center bg-bg-content">
+      <div className="drag-region absolute inset-x-0 top-0 h-13" />
       <div className="bg-bg-sidebar rounded-xl shadow-2xl w-full max-w-lg mx-4 max-h-[85vh] flex flex-col overflow-hidden">
         {content}
       </div>

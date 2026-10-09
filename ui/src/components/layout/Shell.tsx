@@ -224,7 +224,8 @@ export function Shell() {
 
   if (bootState === "loading") {
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-bg-content text-secondary">
+      <div className="relative flex h-screen w-screen items-center justify-center bg-bg-content text-secondary">
+        <div className="drag-region absolute inset-x-0 top-0 h-13" />
         <div className="text-center space-y-2">
           <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="text-sm">{PHASE[bootPhase]}…</p>
@@ -235,7 +236,8 @@ export function Shell() {
 
   if (bootState === "failed") {
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-bg-content p-8 text-primary">
+      <div className="relative flex h-screen w-screen items-center justify-center bg-bg-content p-8 text-primary">
+        <div className="drag-region absolute inset-x-0 top-0 h-13" />
         <div className="max-w-lg space-y-4 text-center">
           <h1 className="text-lg font-medium">Tuttle could not start</h1>
           <p className="text-sm text-secondary">{bootError}</p>
@@ -286,7 +288,7 @@ export function Shell() {
             />
             <main className="flex-1 flex flex-col overflow-hidden">
               {/* Banners sit in the title-bar row above the view, so they drag the window too. */}
-              <div className="drag-region shrink-0">
+              <div className="title-bar-banners drag-region shrink-0">
                 <UpdateBanner />
                 <MigrationNoticeBanner notice={bootNotice} onDismiss={() => setBootNotice(null)} />
               </div>
