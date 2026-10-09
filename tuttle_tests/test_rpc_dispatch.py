@@ -310,11 +310,13 @@ DASHBOARD_ROUTES = [
     ("dashboard.get_revenue_series", {"granularity": "week", "offset": 0}),
     ("dashboard.get_revenue_series", {"granularity": "month", "offset": -1}),
     ("dashboard.get_revenue_series", {"granularity": "year", "offset": 0}),
+    ("dashboard.get_cash_flow", {"forecast_months": 6}),
 ]
 
 
 @pytest.mark.parametrize("method,params", DASHBOARD_ROUTES)
 def test_dashboard_routes(rpc_env, method, params):
+    dispatch("users.switch", {"db_file": "harry-tuttle.db"})
     result = dispatch(method, params)
     assert_ok(result)
 

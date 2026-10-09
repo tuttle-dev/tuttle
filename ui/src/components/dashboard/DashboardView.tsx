@@ -11,6 +11,7 @@ import { EmptyStateIntro } from "../shared/EmptyStateIntro";
 import { LoadError, LoadingState } from "../shared/LoadStates";
 import { PageLayout } from "../shared/ToolbarButtons";
 import { RevenueChart } from "./RevenueChart";
+import { CashFlowChart } from "./CashFlowChart";
 import { FinancialGoalsCard } from "./FinancialGoalsCard";
 import { formatHours } from "../timetracking/format";
 import type { Entity } from "../../api/types";
@@ -81,6 +82,8 @@ export function DashboardView() {
       </div>
 
       <RevenueChart />
+
+      <CashFlowChart />
 
       <FinancialGoalsCard />
 

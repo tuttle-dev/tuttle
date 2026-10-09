@@ -9,8 +9,14 @@ import pandas
 from pandas import DataFrame
 
 from .fx import primary_currency
-from .model import Contract, Invoice, Project
-from .tax_reserves import convert_invoice
+from .model import Contract, Invoice, Project, RecurringExpense
+from .tax_reserves import (
+    _dynamic_lines,
+    _lines_total,
+    _normalize_to_monthly,
+    compute_income_tax_reserve,
+    convert_invoice,
+)
 from .time import TimeUnit
 from .timetracking import event_hours
 
@@ -513,4 +519,185 @@ def revenue_series(
         "total": round(sum(r["total"] for r in rows), 2),
         "has_earlier": bool(paged and extent_start and extent_start < window_start),
         "has_later": bool(paged and offset < 0),
+    }
+
+
+def cash_flow_series(
+    invoices: List[Invoice],
+    contracts: List[Contract],
+    projects: List[Project],
+    expenses: List[RecurringExpense],
+    time_data: Optional[DataFrame],
+    forecast_months: int = 6,
+    country: str = "",
+    today: Optional[datetime.date] = None,
+) -> dict:
+    """Project monthly cash inflows, expense outflows, and cumulative balance.
+
+    Reconciles upcoming cash movements for a forward-looking forecast window:
+    - Inflows from unpaid invoices (both draft and sent) placed in their effective due date bucket
+      (overdue invoices map to the current month).
+    - Inflows from planned calendar work shifted forward by contract payment terms
+      (past un-invoiced work maps to the current month).
+    - Outflows from normalized fixed recurring expenses, rate-based contributions,
+      and estimated income tax reserves.
+    - Net flow and running cumulative balance across the forecast window.
+
+    Empty buckets are included so the time axis stays continuous.
+    """
+    if forecast_months <= 0:
+        forecast_months = 6
+
+    today = today or datetime.date.today()
+    forecast_start = today.replace(day=1)
+    currency = primary_currency(country)
+
+    periods = pandas.period_range(start=forecast_start, periods=forecast_months, freq="M")
+    current_period = pandas.Period(today, freq="M")
+    window_end = periods[-1].end_time.date()
+
+    buckets = {
+        p: {
+            "month": p.start_time.date().isoformat(),
+            "label": calendar.month_abbr[p.start_time.month],
+            "year": p.start_time.year,
+            "inflow_invoiced": 0.0,
+            "inflow_planned": 0.0,
+            "inflow_total": 0.0,
+            "outflow": 0.0,
+            "net": 0.0,
+            "balance": 0.0,
+            "is_current": p == current_period,
+        }
+        for p in periods
+    }
+
+    # 1. Inflows from unpaid invoices (both draft and sent)
+    for inv in invoices:
+        if inv.paid or inv.cancelled:
+            continue
+        converted = convert_invoice(inv, currency)
+        if converted is None:
+            continue
+        # Use net basis: total minus VAT to align with net planned revenue
+        net_amount = converted[0] - (converted[1] or Decimal(0))
+        amount = float(net_amount)
+
+        due_date = inv.effective_due_date
+        if due_date is None:
+            delay = inv.contract.term_of_payment if (inv.contract and inv.contract.term_of_payment is not None) else 31
+            due_date = (inv.date + datetime.timedelta(days=delay)) if inv.date else today
+
+        if isinstance(due_date, datetime.datetime):
+            due_date = due_date.date()
+
+        if due_date < today:
+            target_bucket = buckets.get(current_period)
+        else:
+            inv_period = pandas.Period(due_date, freq="M")
+            target_bucket = buckets.get(inv_period)
+
+        if target_bucket is not None:
+            target_bucket["inflow_invoiced"] += amount
+
+    # 2. Inflows from planned calendar work shifted by contract payment terms
+    if time_data is not None and not time_data.empty:
+        contract_map = {c.id: c for c in contracts if c.id is not None}
+        min_date = time_data.index.date.min()
+        cal_start = min(forecast_start, min_date.replace(day=1))
+        cal = monthly_revenue_from_calendar(time_data, projects, cal_start, window_end, invoices=invoices)
+        if not cal.empty:
+            for _, row in cal.iterrows():
+                cid = row.get("contract_id")
+                contract = contract_map.get(cid)
+                payment_delay = contract.term_of_payment if (contract and contract.term_of_payment is not None) else 30
+                work_month = row["month"]
+                if isinstance(work_month, pandas.Timestamp):
+                    work_month_date = work_month.date()
+                elif isinstance(work_month, datetime.datetime):
+                    work_month_date = work_month.date()
+                else:
+                    work_month_date = work_month
+                work_month_start = work_month_date.replace(day=1)
+                work_month_end = (work_month_start + datetime.timedelta(days=32)).replace(day=1) - datetime.timedelta(days=1)
+                inflow_date = work_month_end + datetime.timedelta(days=payment_delay)
+                inflow_period = pandas.Period(inflow_date, freq="M")
+                if inflow_date < today or inflow_period < current_period:
+                    target_bucket = buckets.get(current_period)
+                else:
+                    target_bucket = buckets.get(inflow_period)
+                if target_bucket is not None:
+                    target_bucket["inflow_planned"] += max(0.0, float(row["revenue"]))
+
+    # 3. Outflows from normalized fixed recurring expenses, dynamic expenses, and tax reserves
+    fixed_expenses = [e for e in expenses if e.rate is None and e.amount is not None]
+    dynamic_expenses = [e for e in expenses if e.rate is not None]
+    monthly_fixed = sum((_normalize_to_monthly(e) for e in fixed_expenses), Decimal(0))
+
+    # Precompute inflows and taxable profit base per bucket, and derive a single effective
+    # tax rate from the window's annualized taxable income so uneven income is not taxed
+    # at artificially high progressive brackets.
+    month_data = {}
+    total_tax_base = Decimal(0)
+    for period in periods:
+        row = buckets[period]
+        row["inflow_invoiced"] = round(row["inflow_invoiced"], 2)
+        row["inflow_planned"] = round(row["inflow_planned"], 2)
+        row["inflow_total"] = round(row["inflow_invoiced"] + row["inflow_planned"], 2)
+
+        month_inflow = Decimal(str(row["inflow_total"]))
+        base_profit = max(Decimal(0), month_inflow - monthly_fixed)
+
+        deductible_lines = _dynamic_lines(dynamic_expenses, base_profit, deductible=True)
+        dyn_deductible = _lines_total(deductible_lines)
+
+        month_tax_base = max(Decimal(0), base_profit - dyn_deductible)
+        total_tax_base += month_tax_base
+        month_data[period] = (month_tax_base, dyn_deductible)
+
+    num_months = len(periods)
+    if num_months > 0 and total_tax_base > 0:
+        annual_tax_base = (total_tax_base / Decimal(num_months)) * Decimal(12)
+        tax_res = compute_income_tax_reserve(annual_tax_base, country, year=forecast_start.year)
+        effective_tax_rate = tax_res.effective_rate
+    else:
+        effective_tax_rate = Decimal(0)
+
+    # 4. Net flow, cumulative balance, and summary totals
+    running_balance = 0.0
+    rows = []
+    previous_year = None
+
+    for period in periods:
+        row = buckets[period]
+        month_tax_base, dyn_deductible = month_data[period]
+
+        monthly_tax = (month_tax_base * effective_tax_rate).quantize(Decimal("0.01"))
+        post_tax = max(Decimal(0), month_tax_base - monthly_tax)
+        nondeductible_lines = _dynamic_lines(dynamic_expenses, post_tax, deductible=False)
+        dyn_nondeductible = _lines_total(nondeductible_lines)
+
+        total_outflow = monthly_fixed + dyn_deductible + monthly_tax + dyn_nondeductible
+        row["outflow"] = round(float(total_outflow), 2)
+
+        net = round(row["inflow_total"] - row["outflow"], 2)
+        row["net"] = net
+        running_balance = round(running_balance + net, 2)
+        row["balance"] = running_balance
+        row["is_year_start"] = previous_year is not None and row["year"] != previous_year
+        previous_year = row["year"]
+        rows.append(row)
+
+    total_inflow = round(sum(r["inflow_total"] for r in rows), 2)
+    total_outflow = round(sum(r["outflow"] for r in rows), 2)
+    net_cash_flow = round(total_inflow - total_outflow, 2)
+
+    return {
+        "currency": currency,
+        "window_start": forecast_start.isoformat(),
+        "window_end": window_end.isoformat(),
+        "buckets": rows,
+        "total_inflow": total_inflow,
+        "total_outflow": total_outflow,
+        "net_cash_flow": net_cash_flow,
     }
