@@ -17,6 +17,7 @@ class TestLookup:
         assert i18n.SUPPORTED["en"] == "English"
         assert i18n.SUPPORTED["de"] == "Deutsch"
         assert i18n.SUPPORTED["es"] == "Español"
+        assert i18n.SUPPORTED["it"] == "Italiano"
 
     def test_translates_only_inside_use_language(self):
         with use_language("de"):
