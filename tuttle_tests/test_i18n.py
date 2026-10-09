@@ -118,3 +118,26 @@ class TestTimesheet:
         assert "Stundennachweis" in html
         assert "Auftraggeber" in html
         assert ">Client<" not in html
+
+
+class TestCzech:
+    def test_is_listed_by_its_own_name(self):
+        assert i18n.SUPPORTED["cs"] == "Čeština"
+
+    @pytest.mark.parametrize("days,expected", [(1, "Splatnost 1 den"), (3, "Splatnost 3 dny"), (14, "Splatnost 14 dní")])
+    def test_uses_all_three_plural_forms(self, days, expected):
+        with use_language("cs"):
+            assert ngettext("Net {days} day", "Net {days} days", days, days=days) == expected
+
+    def test_invoice_is_written_in_czech(self):
+        fake = faker.Faker()
+        html = rendering.render_invoice(
+            user=demo.create_fake_user(fake),
+            invoice=demo.create_fake_invoice(fake),
+            out_dir=None,
+            document_format="html",
+            language="cs",
+        )
+        assert '<html lang="cs">' in html
+        assert "Faktura č." in html
+        assert "Celkem k úhradě" in html
