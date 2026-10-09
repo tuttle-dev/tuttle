@@ -31,10 +31,22 @@ export function ClientsView() {
   const [parsedClients, setParsedClients] = useState<ParsedClient[]>([]);
   const [parsing, setParsing] = useState(false);
   const [parseError, setParseError] = useState<string | null>(null);
+  const [languages, setLanguages] = useState<DocumentLanguages>({ names: {}, fallback: "en" });
   const selectedIdRef = useRef<number | null>(null);
 
   useEffect(() => { selectedIdRef.current = selected?.id ?? null; }, [selected]);
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); loadLanguages(); }, []);
+
+  async function loadLanguages() {
+    const [langRes, prefsRes] = await Promise.all([
+      rpc<Record<string, string>>("invoicing.available_languages"),
+      rpc<{ language?: string }>("preferences.get"),
+    ]);
+    setLanguages({
+      names: langRes.ok && langRes.data ? langRes.data : {},
+      fallback: (prefsRes.ok && prefsRes.data?.language) || "en",
+    });
+  }
 
   async function load(selectId?: number) {
     setLoading(true);
@@ -70,6 +82,7 @@ export function ClientsView() {
     const client: Record<string, unknown> = {
       name: data.name,
       vat_number: data.vatNumber || null,
+      language: data.language || null,
       invoicing_contact: data.contactId
         ? { id: data.contactId }
         : undefined,
@@ -196,11 +209,11 @@ export function ClientsView() {
               ))}
             </DocumentImportPanel>
           ) : mode === "create" ? (
-            <ClientForm contacts={contacts} onSave={handleSave} onCancel={() => setMode("view")} error={saveError} />
+            <ClientForm contacts={contacts} languages={languages} onSave={handleSave} onCancel={() => setMode("view")} error={saveError} />
           ) : mode === "edit" && selected ? (
-            <ClientForm client={selected} contacts={contacts} onSave={handleSave} onCancel={() => setMode("view")} error={saveError} />
+            <ClientForm client={selected} contacts={contacts} languages={languages} onSave={handleSave} onCancel={() => setMode("view")} error={saveError} />
           ) : selected ? (
-            <ClientDetail client={selected} contacts={contacts} onEdit={() => setMode("edit")}
+            <ClientDetail client={selected} contacts={contacts} languages={languages} onEdit={() => setMode("edit")}
               onDelete={() => handleDelete(selected.id)} deleteError={deleteError} onReload={() => load()} />
           ) : (
             <div className="flex flex-col items-center justify-center h-full gap-2 text-tertiary">
@@ -241,8 +254,8 @@ function ClientRow({ client, isSelected, onSelect }: {
 
 /* ---------- Detail view ---------- */
 
-function ClientDetail({ client, contacts, onEdit, onDelete, deleteError, onReload }: {
-  client: Entity; contacts: Record<string, Entity>;
+function ClientDetail({ client, contacts, languages, onEdit, onDelete, deleteError, onReload }: {
+  client: Entity; contacts: Record<string, Entity>; languages: DocumentLanguages;
   onEdit: () => void; onDelete: () => void; deleteError: string | null;
   onReload: () => void;
 }) {
@@ -251,6 +264,7 @@ function ClientDetail({ client, contacts, onEdit, onDelete, deleteError, onReloa
   const contactName = ic ? displayName(ic) : "";
   const email = ic ? str(ic, "email") : "";
   const company = ic ? str(ic, "company") : "";
+  const language = str(client, "language");
 
   const clientAddr = subEntity(client, "address");
   const clientAddrParts = clientAddr ? [
@@ -309,9 +323,10 @@ function ClientDetail({ client, contacts, onEdit, onDelete, deleteError, onReloa
         <div className="p-3 rounded-lg bg-status-danger/10 border border-status-danger/30 text-sm text-status-danger">{deleteError}</div>
       )}
 
-      {(str(client, "vat_number") || clientAddrParts.length > 0) && (
+      {(str(client, "vat_number") || language || clientAddrParts.length > 0) && (
         <DetailFields>
           {str(client, "vat_number") && <DetailField label="VAT Number">{str(client, "vat_number")}</DetailField>}
+          {language && <DetailField label="Document Language">{languages.names[language] ?? language}</DetailField>}
           {clientAddrParts.length > 0 && (
             <DetailField label="Address">
               {clientAddrParts.map((line, i) => <div key={i}>{line}</div>)}
@@ -411,11 +426,19 @@ interface ClientFormData {
   postalCode: string;
   country: string;
   vatNumber: string;
+  language: string;
 }
 
-function ClientForm({ client, contacts, onSave, onCancel, error }: {
+/** Languages documents can be written in, and the app-wide default for clients without one. */
+interface DocumentLanguages {
+  names: Record<string, string>;
+  fallback: string;
+}
+
+function ClientForm({ client, contacts, languages, onSave, onCancel, error }: {
   client?: Entity;
   contacts: Record<string, Entity>;
+  languages: DocumentLanguages;
   onSave: (data: ClientFormData) => void;
   onCancel: () => void;
   error?: string | null;
@@ -431,6 +454,7 @@ function ClientForm({ client, contacts, onSave, onCancel, error }: {
   const [postalCode, setPostalCode] = useState(addr ? str(addr, "postal_code") : "");
   const [country, setCountry] = useState(addr ? str(addr, "country") : "");
   const [vatNumber, setVatNumber] = useState(client ? str(client, "vat_number") : "");
+  const [language, setLanguage] = useState(client ? str(client, "language") : "");
   const [saving, setSaving] = useState(false);
   const isNew = !client;
 
@@ -439,7 +463,7 @@ function ClientForm({ client, contacts, onSave, onCancel, error }: {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
-    await onSave({ name, contactId, street, number, city, postalCode, country, vatNumber });
+    await onSave({ name, contactId, street, number, city, postalCode, country, vatNumber, language });
     setSaving(false);
   }
 
@@ -457,6 +481,16 @@ function ClientForm({ client, contacts, onSave, onCancel, error }: {
         <FormField label="Name" value={name} onChange={setName} autoFocus required={isRequired("name")} />
         <div className="mt-3">
           <FormField label="VAT Number" value={vatNumber} onChange={setVatNumber} />
+        </div>
+        <div className="mt-3">
+          <label className="block text-xs text-tertiary mb-1">Document Language</label>
+          <select value={language} onChange={(e) => setLanguage(e.target.value)}
+            className="w-full px-3 py-2 rounded-md text-sm bg-bg-card text-primary border border-border-subtle outline-none focus:border-accent transition-colors">
+            <option value="">Default ({languages.names[languages.fallback] ?? languages.fallback})</option>
+            {Object.entries(languages.names).map(([code, label]) => (
+              <option key={code} value={code}>{label}</option>
+            ))}
+          </select>
         </div>
       </Section>
 

@@ -4,6 +4,8 @@ repos:
     hooks:
     -   id: check-yaml
     -   id: end-of-file-fixer
+        # Translation catalogs are written by `just i18n`; keep its formatting.
+        exclude: \.po$
     -   id: trailing-whitespace
 -   repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.12.0

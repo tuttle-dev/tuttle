@@ -36,6 +36,7 @@ from .app.core.formatting import fmt_currency
 from .data_dir import get_data_dir
 from .dev import deprecated
 from .fx import convert, primary_currency, rate
+from .i18n import SUPPORTED
 from .time import ChargeBasis, ContractType, Cycle, TimeUnit
 
 DocumentType = Literal["invoice", "reminder", "deposit", "final"]
@@ -369,6 +370,10 @@ class Client(RpcMixin, SQLModel, table=True):
         default=None,
         description="VAT identification number of the client (for e-invoicing).",
     )
+    language: Optional[str] = Field(
+        default=None,
+        description="Language of invoices, timesheets and emails for this client. None means the app-wide default.",
+    )
     # Client n:1 Address (optional, for direct invoicing)
     address_id: Optional[int] = Field(default=None, foreign_key="address.id")
     address: Optional[Address] = Relationship(
@@ -390,6 +395,14 @@ class Client(RpcMixin, SQLModel, table=True):
         back_populates="client",
         sa_relationship_kwargs={"lazy": "subquery", "cascade": "all, delete-orphan"},
     )
+
+    @validator("language")
+    def language_must_have_catalog(cls, v):
+        if not v:
+            return None
+        if v not in SUPPORTED:
+            raise ValueError(f"Documents are not available in '{v}'. Choose one of: {', '.join(SUPPORTED.values())}.")
+        return v
 
     @property
     def invoice_recipient_contact(self) -> Optional[Contact]:
