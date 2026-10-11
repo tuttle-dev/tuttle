@@ -15,9 +15,9 @@ from .model import (
     DEFAULT_INCLUDE_QR_CODE,
     DEFAULT_INCLUDE_SIGNATURE,
     DEFAULT_INVOICE_NUMBER_SCHEME,
-    DEFAULT_INVOICE_TEMPLATE,
     DEFAULT_THEME_MODE,
     PreferencesStorageKeys,
+    invoice_template_or_default,
 )
 
 
@@ -67,10 +67,11 @@ class PreferencesIntent:
                     PreferencesStorageKeys.theme_mode_key.value,
                 )
                 or DEFAULT_THEME_MODE,
-                "invoice_template": self._app_db.get_setting(
-                    PreferencesStorageKeys.invoice_template_key.value,
-                )
-                or DEFAULT_INVOICE_TEMPLATE,
+                "invoice_template": invoice_template_or_default(
+                    self._app_db.get_setting(
+                        PreferencesStorageKeys.invoice_template_key.value,
+                    )
+                ),
                 "language": self._app_db.get_setting(
                     PreferencesStorageKeys.language_key.value,
                 )
@@ -159,11 +160,10 @@ class PreferencesIntent:
         )
 
     def get_preferred_invoice_template(self) -> IntentResult:
-        tmpl = (
+        tmpl = invoice_template_or_default(
             self._app_db.get_setting(
                 PreferencesStorageKeys.invoice_template_key.value,
             )
-            or DEFAULT_INVOICE_TEMPLATE
         )
         return IntentResult(was_intent_successful=True, data=tmpl)
 

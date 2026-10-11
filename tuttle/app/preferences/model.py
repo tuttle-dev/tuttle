@@ -10,6 +10,12 @@ INVOICE_TEMPLATES = {
 
 DEFAULT_INVOICE_TEMPLATE = "invoice-modern"
 
+
+def invoice_template_or_default(saved: str | None) -> str:
+    """The saved invoice template, or the default if none is saved or it was removed."""
+    return saved if saved in INVOICE_TEMPLATES else DEFAULT_INVOICE_TEMPLATE
+
+
 INVOICE_NUMBER_SCHEMES = {
     "daily": "YYYY-MM-DD-NN (daily sequence)",
     "yearly": "YYYY-NN (yearly sequence)",

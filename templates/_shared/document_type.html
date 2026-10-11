@@ -29,13 +29,6 @@
 {%- endif -%}
 {%- endmacro %}
 
-{% macro number_label(is_deposit=False, is_final=False) -%}
-{%- if is_deposit -%}{{ _("Deposit Invoice") }}
-{%- elif is_final -%}{{ _("Final Invoice") }}
-{%- else -%}{{ _("Invoice No.") }}
-{%- endif -%}
-{%- endmacro %}
-
 {# What a deposit bills: which contract, which milestone, and of what total. #}
 {% macro deposit_context(contract_title="", milestone_title="", milestone_percentage=None, contract_total=None) %}
 {%- if contract_title or milestone_title %}
@@ -92,33 +85,6 @@
   <td class="{{ value }}"></td>
 </tr>
 {%- endfor %}
-{% endmacro %}
-
-{#
-  A self-contained settlement breakdown, for templates whose totals are laid
-  out horizontally and so have nowhere to append the deduction lines.
-#}
-{% macro settlement_summary(invoice, deposit_deductions, remaining_balance) %}
-<table class="settlement-summary">
-  <tr>
-    <td class="settlement-label">{{ _("Gross") }}</td>
-    <td class="settlement-value">{{ invoice.total | as_currency }}</td>
-  </tr>
-  {%- for dep in deposit_deductions %}
-  <tr class="deposit-deduction">
-    <td class="settlement-label">{{ _("less deposit per invoice no.") }} {{ dep.invoice_number }}</td>
-    <td class="settlement-value">−{{ dep.gross | as_currency }}</td>
-  </tr>
-  <tr class="deposit-deduction-vat">
-    <td class="settlement-label">({{ _("VAT included therein") }}: {{ dep.vat | as_currency }})</td>
-    <td class="settlement-value"></td>
-  </tr>
-  {%- endfor %}
-  <tr class="settlement-total">
-    <td class="settlement-label">{{ _("Remaining balance") }}</td>
-    <td class="settlement-value">{{ remaining_balance | as_currency }}</td>
-  </tr>
-</table>
 {% endmacro %}
 
 {# The bottom line: remaining balance on a settlement, total due otherwise. #}
