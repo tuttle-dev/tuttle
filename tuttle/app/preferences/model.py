@@ -8,12 +8,6 @@ INVOICE_TEMPLATES = {
     "invoice-grayshades": "Grayshades",
 }
 
-SUPPORTED_INVOICE_LANGUAGES = {
-    "en": "English",
-    "de": "Deutsch",
-    "es": "Español",
-}
-
 DEFAULT_INVOICE_TEMPLATE = "invoice-modern"
 
 INVOICE_NUMBER_SCHEMES = {
