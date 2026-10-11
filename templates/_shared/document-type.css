@@ -67,25 +67,3 @@
   flex-shrink: 0;
   white-space: nowrap;
 }
-
-/* Standalone settlement breakdown, for templates that lay their totals out
- * horizontally and have nowhere to append the deduction lines. */
-.settlement-summary {
-  margin-left: auto;
-  margin-top: 10pt;
-  border-collapse: collapse;
-}
-
-.settlement-summary td {
-  padding: 2pt 0 2pt 14pt;
-}
-
-.settlement-summary .settlement-value {
-  text-align: right;
-  white-space: nowrap;
-}
-
-.settlement-summary .settlement-total td {
-  font-weight: 700;
-  border-top: 1pt solid currentColor;
-}

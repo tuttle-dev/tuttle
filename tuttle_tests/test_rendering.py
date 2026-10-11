@@ -6,7 +6,10 @@ import faker
 import pytest
 
 from tuttle import demo, rendering
+from tuttle.app.preferences.model import INVOICE_TEMPLATES
 from tuttle.model import TimeTrackingItem
+
+pytestmark = pytest.mark.real_pdf_engine
 
 
 @pytest.fixture
@@ -168,15 +171,14 @@ class TestRenderInvoice:
         assert "Due Date" not in html
 
 
-ALL_INVOICE_TEMPLATES = [
-    "invoice",
-    "invoice-classic",
-    "invoice-modern",
-    "invoice-bold",
-    "invoice-minimal",
-    "invoice-anvil",
-    "invoice-grayshades",
-]
+ALL_INVOICE_TEMPLATES = list(INVOICE_TEMPLATES)
+
+
+def test_every_invoice_template_can_be_chosen():
+    """A template nobody can choose still has to be maintained, and drifts."""
+    templates = Path(rendering.__file__).parent.parent / "templates"
+    assert {path.parent.name for path in templates.glob("invoice*/invoice.html")} == set(INVOICE_TEMPLATES)
+
 
 #: invoice-grayshades reports VAT only in the totals block, not per line item.
 VAT_COLUMN_TEMPLATES = [t for t in ALL_INVOICE_TEMPLATES if t != "invoice-grayshades"]
@@ -238,6 +240,7 @@ class TestRenderOutsideScopeInvoice:
             ("en", "§ 3a (2) UStG"),
             ("de", "Nicht steuerbare sonstige Leistung"),
             ("es", "No sujeto al IVA alemán"),
+            ("it", "Non soggetto all'IVA tedesca"),
         ],
     )
     def test_note_is_localized(self, fake, language, needle):

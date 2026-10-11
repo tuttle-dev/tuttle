@@ -59,6 +59,7 @@ dev = [
     "ruff",
     "pre-commit",
     "bump-my-version>=1.3.0",
+    "pytest-xdist>=3.8.0",
 ]
 build = [
     "pyinstaller",
@@ -75,7 +76,12 @@ packages = ["tuttle"]
 [tool.pytest.ini_options]
 testpaths = ["tuttle_tests"]
 collect_ignore = ["setup.py"]
-addopts = ""
+# Run in parallel, one file per worker: test_rpc_dispatch.py shares one demo
+# database across its tests and relies on their order. -n0 runs serially (pdb).
+addopts = "-n auto --dist loadfile"
+markers = [
+    "real_pdf_engine: write real PDFs instead of the blank page conftest.py stubs in",
+]
 
 [tool.ruff]
 target-version = "py313"

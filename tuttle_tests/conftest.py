@@ -3,16 +3,30 @@
 import datetime
 from decimal import Decimal
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
+from pypdf import PdfWriter
 
 import tuttle
-from tuttle import fx
+from tuttle import fx, rendering
 from tuttle.model import Address, BankAccount, Client, Contact, Contract, Project, User
 
 # Every non-EUR amount in the suite converts at this rate. A fixed number keeps
 # assertions stable; the real ECB average would make them depend on the day.
 STUB_FX_RATE = Decimal("0.9")
+
+REAL_PDF_ENGINE = rendering.plutoprint
+
+
+@pytest.fixture(autouse=True, scope="session")
+def session_data_dir(tmp_path_factory):
+    """The data directory of session-scoped fixtures, which are set up before
+    ``isolated_data_dir`` and would otherwise write into ~/.tuttle-dev."""
+    data_dir = tmp_path_factory.mktemp("tuttle-data")
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setenv("TUTTLE_DATA_DIR", str(data_dir))
+        yield data_dir
 
 
 @pytest.fixture(autouse=True)
@@ -37,6 +51,41 @@ def offline_fx(monkeypatch):
         "_fetch_monthly_average",
         lambda base, quote, month: STUB_FX_RATE,
     )
+
+
+class BlankPdfBook:
+    """Stands in for ``plutoprint.Book`` and writes a blank A4 page."""
+
+    def __init__(self, page_size):
+        pass
+
+    def load_url(self, url):
+        pass
+
+    def write_to_pdf(self, path):
+        writer = PdfWriter()
+        writer.add_blank_page(width=595, height=842)
+        writer.write(path)
+
+
+@pytest.fixture(autouse=True, scope="session")
+def blank_pdfs():
+    """Replace the PDF engine, which takes ~0.1 s per document: installing the
+    demo data renders 140 of them. Templates still render to HTML, and the blank
+    page is a valid PDF that e-invoice XML can be embedded into.
+
+    Session-scoped so it also covers session fixtures such as ``rpc_env``.
+    Tests that check the PDFs themselves are marked ``real_pdf_engine``.
+    """
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(rendering, "plutoprint", SimpleNamespace(Book=BlankPdfBook, PAGE_SIZE_A4=None))
+        yield
+
+
+@pytest.fixture(autouse=True)
+def real_pdf_engine(request, monkeypatch):
+    if request.node.get_closest_marker("real_pdf_engine"):
+        monkeypatch.setattr(rendering, "plutoprint", REAL_PDF_ENGINE)
 
 
 @pytest.fixture
