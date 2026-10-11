@@ -1,6 +1,7 @@
 """Document rendering."""
 
 import base64
+import functools
 import glob
 import io
 import platform
@@ -139,6 +140,42 @@ def generate_payment_qr(bank_account: Optional[BankAccount], invoice: Invoice) -
     return qr.svg_data_uri(scale=4)
 
 
+@functools.cache
+def invoice_template_env(template_name: str, language: str, currency: str) -> jinja2.Environment:
+    """Jinja environment for an invoice template, cached per language and currency.
+
+    Cached because compiling the templates takes longer than rendering them;
+    Jinja still reloads a template whose file has changed. The filters read the
+    language when they run, but Jinja already applies them to constants
+    (``"hour" | unit_label``) when it compiles. So the language is part of the
+    key, and templates must be compiled inside ``use_language(language)``.
+    """
+
+    def as_currency(number):
+        return format_currency(number, currency=currency, locale=babel_locale())
+
+    def as_date(d):
+        if d is None:
+            return ""
+        return format_date(d, format="long", locale=babel_locale())
+
+    def as_date_short(d):
+        if d is None:
+            return ""
+        return format_date(d, format="medium", locale=babel_locale())
+
+    def as_percentage(number):
+        return f"{format_decimal(number * 100, format='0.0', locale=babel_locale())} %"
+
+    template_env = _document_environment(get_template_path(template_name), get_shared_template_path())
+    template_env.filters["as_currency"] = as_currency
+    template_env.filters["as_date"] = as_date
+    template_env.filters["as_date_short"] = as_date_short
+    template_env.filters["as_percentage"] = as_percentage
+    template_env.filters["unit_label"] = unit_label
+    return template_env
+
+
 def render_invoice(
     user: User,
     invoice: Invoice,
@@ -172,32 +209,9 @@ def render_invoice(
             Falls back to the template's hardcoded default when None or empty.
     """
     with use_language(language):
-
-        def as_currency(number):
-            return format_currency(number, currency=invoice.contract.currency, locale=babel_locale())
-
-        def as_date(d):
-            if d is None:
-                return ""
-            return format_date(d, format="long", locale=babel_locale())
-
-        def as_date_short(d):
-            if d is None:
-                return ""
-            return format_date(d, format="medium", locale=babel_locale())
-
-        def as_percentage(number):
-            return f"{format_decimal(number * 100, format='0.0', locale=babel_locale())} %"
-
         template_path = get_template_path(template_name)
         shared_path = get_shared_template_path()
-        template_env = _document_environment(template_path, shared_path)
-
-        template_env.filters["as_currency"] = as_currency
-        template_env.filters["as_date"] = as_date
-        template_env.filters["as_date_short"] = as_date_short
-        template_env.filters["as_percentage"] = as_percentage
-        template_env.filters["unit_label"] = unit_label
+        template_env = invoice_template_env(template_name, language, invoice.contract.currency)
 
         is_reminder = getattr(invoice, "is_reminder", False)
         reminder_title = ""
@@ -317,26 +331,10 @@ def render_invoice(
     invoice.rendered = True
 
 
-def render_timesheet(
-    user: User,
-    timesheet: Timesheet,
-    out_dir,
-    document_format: str = "pdf",
-    style: str = "anvil",
-    only_final: bool = False,
-    language: str = "en",
-):
-    """Render a timesheet using an HTML template.
-
-    Args:
-        user: The freelancer / app user.
-        timesheet: The timesheet to render.
-        out_dir: Output directory. If None, returns the raw HTML string.
-        language: Language of labels and dates, a key of ``i18n.SUPPORTED``.
-    """
-    template_name = "timesheet-anvil"
-    template_path = get_template_path(template_name)
-    template_env = _document_environment(template_path)
+@functools.cache
+def timesheet_template_env(template_name: str, language: str) -> jinja2.Environment:
+    """Jinja environment for a timesheet template, cached like ``invoice_template_env``."""
+    template_env = _document_environment(get_template_path(template_name))
     # filters
     template_env.filters["as_hours"] = lambda td: td / pandas.Timedelta("1 hour")
     template_env.filters["date"] = lambda dt: format_date(dt, format="medium", locale=babel_locale()) if dt else ""
@@ -383,9 +381,30 @@ def render_timesheet(
     template_env.filters["time_range"] = _time_range
     template_env.filters["clean_title"] = _clean_title
     template_env.filters["clean_notes"] = _clean_notes
+    return template_env
 
-    timesheet_template = template_env.get_template("timesheet.html")
+
+def render_timesheet(
+    user: User,
+    timesheet: Timesheet,
+    out_dir,
+    document_format: str = "pdf",
+    style: str = "anvil",
+    only_final: bool = False,
+    language: str = "en",
+):
+    """Render a timesheet using an HTML template.
+
+    Args:
+        user: The freelancer / app user.
+        timesheet: The timesheet to render.
+        out_dir: Output directory. If None, returns the raw HTML string.
+        language: Language of labels and dates, a key of ``i18n.SUPPORTED``.
+    """
+    template_name = "timesheet-anvil"
+    template_path = get_template_path(template_name)
     with use_language(language):
+        timesheet_template = timesheet_template_env(template_name, language).get_template("timesheet.html")
         html = timesheet_template.render(user=user, timesheet=timesheet, style=style, lang=language)
     # output
     if out_dir is None:
