@@ -3,7 +3,7 @@
 from ...app_db import AppDatabase
 from ..core.intent_result import IntentResult
 from ..core.rpc_utils import reset_all
-from ..preferences.model import DEFAULT_INVOICE_TEMPLATE, PreferencesStorageKeys
+from ..preferences.model import PreferencesStorageKeys, invoice_template_or_default
 from ..users.intent import UsersIntent
 
 
@@ -19,7 +19,7 @@ class DemoIntent:
     def reset(self) -> IntentResult:
         app_db = AppDatabase()
         lang = app_db.get_setting(PreferencesStorageKeys.language_key.value) or "en"
-        tmpl = app_db.get_setting(PreferencesStorageKeys.invoice_template_key.value) or DEFAULT_INVOICE_TEMPLATE
+        tmpl = invoice_template_or_default(app_db.get_setting(PreferencesStorageKeys.invoice_template_key.value))
         app_db.remove_user("harry-tuttle.db")
         reset_all()
 

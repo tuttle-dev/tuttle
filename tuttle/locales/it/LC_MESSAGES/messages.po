@@ -65,11 +65,20 @@ msgstr ""
 msgid "Thank you for your business."
 msgstr "Grazie per la collaborazione."
 
+msgid "Billed to"
+msgstr "Destinatario"
+
+msgid "Original Invoice"
+msgstr "Fattura originale"
+
 msgid "Document type"
 msgstr "Tipo di documento"
 
 msgid "Date"
 msgstr "Data"
+
+msgid "Due Date"
+msgstr "Scadenza"
 
 msgid "Description"
 msgstr "Descrizione"
@@ -83,33 +92,11 @@ msgstr "Unità"
 msgid "Unit Price"
 msgstr "Prezzo unitario"
 
-msgid "VAT Rate"
-msgstr "Aliquota IVA"
-
-msgid "Subtotal"
-msgstr "Subtotale"
-
 msgid "VAT"
 msgstr "IVA"
 
-msgid ""
-"Not subject to German VAT — the place of supply is the recipient's "
-"country (§ 3a (2) UStG / Art. 44 VAT Directive)."
-msgstr ""
-"Non soggetto all'IVA tedesca — il luogo della prestazione è il paese del "
-"destinatario (§ 3a, comma 2, UStG / art. 44 della direttiva IVA)."
-
-msgid "Due Date"
-msgstr "Scadenza"
-
-msgid "Payment Details"
-msgstr "Dati di pagamento"
-
-msgid "Billed to"
-msgstr "Destinatario"
-
-msgid "Original Invoice"
-msgstr "Fattura originale"
+msgid "Subtotal"
+msgstr "Subtotale"
 
 msgid "Payment"
 msgstr "Pagamento"
@@ -126,14 +113,12 @@ msgstr "Compenso totale"
 msgid "Reminder Fee"
 msgstr "Spese di sollecito"
 
-msgid "Invoice"
-msgstr "Fattura"
-
-msgid "From"
-msgstr "Da"
-
-msgid "Bill To"
-msgstr "Destinatario"
+msgid ""
+"Not subject to German VAT — the place of supply is the recipient's "
+"country (§ 3a (2) UStG / Art. 44 VAT Directive)."
+msgstr ""
+"Non soggetto all'IVA tedesca — il luogo della prestazione è il paese del "
+"destinatario (§ 3a, comma 2, UStG / art. 44 della direttiva IVA)."
 
 msgid "Tel."
 msgstr "Tel."
