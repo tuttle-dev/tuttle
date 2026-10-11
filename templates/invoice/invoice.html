@@ -1,5 +1,5 @@
 {% import "document_type.html" as doc %}
-<html>
+<html lang="{{ lang }}">
 <head>
     <meta charset="utf-8">
     <meta name="description" content="Invoice">
@@ -27,13 +27,13 @@
 
     <link rel="stylesheet" href="./document-type.css">
 
-    <title>{{ doc.document_title(l, invoice, is_reminder, is_deposit, is_final, reminder_title) }}</title>
+    <title>{{ doc.document_title(invoice, is_reminder, is_deposit, is_final, reminder_title) }}</title>
 </head>
 
 <body>
   <div class="container" style="width: 80%;margin-left: 1%;">
 
-  <h1>{% if is_reminder %}{{ reminder_title }}{% else %}{{ doc.document_title(l, invoice, is_reminder, is_deposit, is_final, reminder_title) }}{% endif %}</h1>
+  <h1>{% if is_reminder %}{{ reminder_title }}{% else %}{{ doc.document_title(invoice, is_reminder, is_deposit, is_final, reminder_title) }}{% endif %}</h1>
 
 
   <div>
@@ -61,26 +61,26 @@
 
   <div>
   <p>
-    <b>{{ l.invoice_no }}: {{ invoice.number }}</b>{% if is_deposit or is_final %}<br>
-    <b>{{ l.document_type }}: {% if is_deposit %}{{ l.deposit_invoice }}{% else %}{{ l.final_invoice }}{% endif %}</b>{% endif %}<br>
-    <b>Date: {{ invoice.date }}</b> <br>
+    <b>{{ _("Invoice No.") }}: {{ invoice.number }}</b>{% if is_deposit or is_final %}<br>
+    <b>{{ _("Document type") }}: {% if is_deposit %}{{ _("Deposit Invoice") }}{% else %}{{ _("Final Invoice") }}{% endif %}</b>{% endif %}<br>
+    <b>{{ _("Date") }}: {{ invoice.date | as_date_short }}</b> <br>
   </p>
 </div>
 
-  {% if is_deposit %}{{ doc.deposit_context(l, contract_title, milestone_title, milestone_percentage, contract_total) }}{% endif %}
+  {% if is_deposit %}{{ doc.deposit_context(contract_title, milestone_title, milestone_percentage, contract_total) }}{% endif %}
 
   <div>
   <table>
     <thead>
       <tr>
-        <th>Date</th>
-        <th>Description</th>
-        <th>Quantity</th>
-        <th>Unit</th>
-        <th>Unit Price</th>
-        <th>VAT Rate</th>
-        <th>Subtotal</th>
-        <th>VAT</th>
+        <th>{{ _("Date") }}</th>
+        <th>{{ _("Description") }}</th>
+        <th>{{ _("Qty") }}</th>
+        <th>{{ _("Unit") }}</th>
+        <th>{{ _("Unit Price") }}</th>
+        <th>{{ _("VAT Rate") }}</th>
+        <th>{{ _("Subtotal") }}</th>
+        <th>{{ _("VAT") }}</th>
       </tr>
     </thead>
     <tbody>
@@ -100,29 +100,29 @@
   </table>
 
   {% if invoice.is_outside_scope %}
-  <div class="tax-note">{{ l.outside_scope_note }}</div>
+  <div class="tax-note">{{ _("Not subject to German VAT — the place of supply is the recipient's country (§ 3a (2) UStG / Art. 44 VAT Directive).") }}</div>
   {% endif %}
 
-  {% if is_final %}{{ doc.settlement_summary(l, invoice, deposit_deductions, remaining_balance) }}{% endif %}
+  {% if is_final %}{{ doc.settlement_summary(invoice, deposit_deductions, remaining_balance) }}{% endif %}
 
   <table id="total">
     <thead>
       <tr>
-        <th>Due by</th>
-        <th>Account number</th>
-        <th>{{ doc.amount_due_label(l, is_deposit, is_final) }}</th>
+        <th>{{ _("Due Date") }}</th>
+        <th>IBAN</th>
+        <th>{{ doc.amount_due_label(is_deposit, is_final) }}</th>
       </tr>
     </thead>
     <tbody>
       <tr>
-        <td>{{ invoice.effective_due_date }}</td>
+        <td>{{ invoice.effective_due_date | as_date_short }}</td>
         <td>{% if bank_account %}{{ bank_account.IBAN }}{% endif %}</td>
         <td>{{ remaining_balance | as_currency }}</td>
       </tr>
     </tbody>
   </table>
 
-  {% if is_deposit %}<p>{{ l.deposit_closing }}</p>{% endif %}
+  {% if is_deposit %}<p>{{ _("This is a partial payment (deposit invoice) towards the contract total.") }}</p>{% endif %}
 </div>
 
 </div>

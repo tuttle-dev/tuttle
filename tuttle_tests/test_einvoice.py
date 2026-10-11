@@ -13,6 +13,7 @@ from tuttle.einvoice import (
     serialize_zugferd_xml,
     unit_to_unece,
 )
+from tuttle.i18n import use_language
 from tuttle.model import (
     Address,
     BankAccount,
@@ -399,6 +400,11 @@ class TestOutsideScopeOfTax:
         breakdown = self._breakdowns(self._xml())[0]
         assert "<ram:ExemptionReasonCode>VATEX-EU-O</ram:ExemptionReasonCode>" in breakdown
         assert "<ram:ExemptionReason>Not subject to VAT</ram:ExemptionReason>" in breakdown
+
+    def test_exemption_reason_is_in_the_document_language(self):
+        with use_language("de"):
+            breakdown = self._breakdowns(self._xml())[0]
+        assert "<ram:ExemptionReason>Nicht steuerbar</ram:ExemptionReason>" in breakdown
 
     def test_totals_carry_no_tax(self):
         """Net 7200 with nothing added, against 8568 on the standard invoice."""

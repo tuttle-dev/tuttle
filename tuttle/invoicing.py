@@ -4,6 +4,7 @@ import datetime
 from decimal import Decimal
 from typing import Dict, List, Optional, Sequence
 
+from .i18n import _
 from .model import (
     Contract,
     ContractCharge,
@@ -298,30 +299,49 @@ def generate_invoice_email(
     invoice: Invoice,
     user: User,
 ) -> Optional[Dict]:
-    """Generate an email with the invoice attached.
+    """Email that sends an invoice or payment reminder, in the current document language.
 
     Returns None when no contact email is available.
     """
     client = invoice.client
     contact = client.invoice_recipient_contact if client else None
-    greeting = contact.first_name if contact and contact.first_name else client.name
     recipient = contact.email if contact and contact.email else None
-
     if not recipient:
         return None
 
-    body = f"""
-    Dear {greeting}
-
-    Please find attached the invoice number {invoice.number}.
-
-    Best regards
-    {user.name}
-    """
-
-    email = {
-        "subject": f"Invoice {invoice.number}",
-        "body": body,
-        "recipient": recipient,
+    values = {
+        "name": contact.name if contact.name else client.name,
+        "number": invoice.number,
+        "project": invoice.project.title if invoice.project else "",
+        "sender": user.name,
     }
-    return email
+    if not invoice.is_reminder:
+        subject = _("Invoice {number}", **values)
+        body = _(
+            "Dear {name},\n\nPlease find attached the invoice for {project}.\n\nBest regards,\n{sender}",
+            **values,
+        )
+    else:
+        subject = _("Payment Reminder: Invoice {number}", **values)
+        if invoice.reminder_level <= 1:
+            body = _(
+                "Dear {name},\n\n"
+                "This is a reminder regarding the outstanding invoice {number} for {project}.\n\n"
+                "Please find attached the payment reminder.\n\nBest regards,\n{sender}",
+                **values,
+            )
+        elif invoice.reminder_level == 2:
+            body = _(
+                "Dear {name},\n\n"
+                "This is a 2nd reminder regarding the outstanding invoice {number} for {project}.\n\n"
+                "Please find attached the payment reminder.\n\nBest regards,\n{sender}",
+                **values,
+            )
+        else:
+            body = _(
+                "Dear {name},\n\n"
+                "This is a 3rd reminder regarding the outstanding invoice {number} for {project}.\n\n"
+                "Please find attached the payment reminder.\n\nBest regards,\n{sender}",
+                **values,
+            )
+    return {"subject": subject, "body": body, "recipient": recipient}

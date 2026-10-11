@@ -1,9 +1,9 @@
 <!doctype html>
-<html class="no-js" lang="">
+<html class="no-js" lang="{{ lang }}">
 
 <head>
   <meta charset="utf-8">
-  <title>Timesheet {{ timesheet.title }}</title>
+  <title>{{ _("Timesheet {title}", title=timesheet.title) }}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   {% if style == "anvil" %}
@@ -34,7 +34,7 @@
   <table class="ts-header">
     <tr>
       <td class="ts-header-client">
-        <div class="ts-header-label">Client</div>
+        <div class="ts-header-label">{{ _("Client") }}</div>
         <div class="ts-header-value">
           {{ timesheet.project.client.name }}
           {% if timesheet.project.client.invoicing_contact %}
@@ -46,7 +46,7 @@
         </div>
       </td>
       <td class="ts-header-user">
-        <div class="ts-header-label">Prepared by</div>
+        <div class="ts-header-label">{{ _("Prepared by") }}</div>
         <div class="ts-header-value">
           {{ user.name }}
           <div class="ts-header-sub">{{ user.address.html }}</div>
@@ -58,15 +58,15 @@
   <table class="ts-meta">
     <tr>
       <td>
-        <div class="ts-header-label">Project</div>
+        <div class="ts-header-label">{{ _("Project") }}</div>
         <div class="ts-meta-value">{{ timesheet.project.title }}</div>
       </td>
       <td>
-        <div class="ts-header-label">Period</div>
+        <div class="ts-header-label">{{ _("Period") }}</div>
         <div class="ts-meta-value">{{ timesheet.period_start | date }} — {{ timesheet.period_end | date }}</div>
       </td>
       <td>
-        <div class="ts-header-label">Issued</div>
+        <div class="ts-header-label">{{ _("Issued") }}</div>
         <div class="ts-meta-value">{{ timesheet.date | date }}</div>
       </td>
     </tr>
@@ -77,10 +77,10 @@
   <table class="ts-entries has-bottom-border">
     <thead>
       <tr>
-        <th class="col-date">Date</th>
-        <th class="col-time">Time</th>
-        <th class="col-task">Notes</th>
-        <th class="col-hours">Hours</th>
+        <th class="col-date">{{ _("Date") }}</th>
+        <th class="col-time">{{ _("Time") }}</th>
+        <th class="col-task">{{ _("Notes") }}</th>
+        <th class="col-hours">{{ _("Hours") }}</th>
       </tr>
     </thead>
     <tbody>
@@ -95,7 +95,7 @@
     </tbody>
     <tfoot>
       <tr>
-        <th colspan="3" class="ts-total-label">Total</th>
+        <th colspan="3" class="ts-total-label">{{ _("Total") }}</th>
         <th class="col-hours">{{ timesheet.total | hours_minutes }}</th>
       </tr>
     </tfoot>
@@ -103,7 +103,7 @@
 
   {% if timesheet.comment %}
   <div class="ts-comment">
-    <div class="ts-header-label">Notes</div>
+    <div class="ts-header-label">{{ _("Notes") }}</div>
     <p>{{ timesheet.comment }}</p>
   </div>
   {% endif %}
