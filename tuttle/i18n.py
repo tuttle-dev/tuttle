@@ -23,7 +23,7 @@ SOURCE_LANGUAGE = "en"
 
 # Region whose conventions format numbers, dates and money in a language.
 # Languages not listed use the language's own defaults.
-_FORMAT_LOCALES = {"en": "en_US", "de": "de_DE", "es": "es_ES"}
+_FORMAT_LOCALES = {"en": "en_US", "de": "de_DE", "es": "es_ES", "pt": "pt_PT"}
 
 _current: ContextVar[str] = ContextVar("language", default=SOURCE_LANGUAGE)
 
