@@ -65,11 +65,20 @@ msgstr ""
 msgid "Thank you for your business."
 msgstr "Děkujeme za spolupráci."
 
+msgid "Billed to"
+msgstr "Odběratel"
+
+msgid "Original Invoice"
+msgstr "Původní faktura"
+
 msgid "Document type"
 msgstr "Typ dokladu"
 
 msgid "Date"
 msgstr "Datum"
+
+msgid "Due Date"
+msgstr "Datum splatnosti"
 
 msgid "Description"
 msgstr "Popis"
@@ -83,33 +92,11 @@ msgstr "Jednotka"
 msgid "Unit Price"
 msgstr "Cena za jedn."
 
-msgid "VAT Rate"
-msgstr "Sazba DPH"
-
-msgid "Subtotal"
-msgstr "Mezisoučet"
-
 msgid "VAT"
 msgstr "DPH"
 
-msgid ""
-"Not subject to German VAT — the place of supply is the recipient's "
-"country (§ 3a (2) UStG / Art. 44 VAT Directive)."
-msgstr ""
-"Nepodléhá německé DPH — místem plnění je země příjemce (§ 3a odst. 2 UStG"
-" / čl. 44 směrnice o DPH)."
-
-msgid "Due Date"
-msgstr "Datum splatnosti"
-
-msgid "Payment Details"
-msgstr "Platební údaje"
-
-msgid "Billed to"
-msgstr "Odběratel"
-
-msgid "Original Invoice"
-msgstr "Původní faktura"
+msgid "Subtotal"
+msgstr "Mezisoučet"
 
 msgid "Payment"
 msgstr "Platba"
@@ -126,14 +113,12 @@ msgstr "Celková odměna"
 msgid "Reminder Fee"
 msgstr "Upomínkový poplatek"
 
-msgid "Invoice"
-msgstr "Faktura"
-
-msgid "From"
-msgstr "Dodavatel"
-
-msgid "Bill To"
-msgstr "Odběratel"
+msgid ""
+"Not subject to German VAT — the place of supply is the recipient's "
+"country (§ 3a (2) UStG / Art. 44 VAT Directive)."
+msgstr ""
+"Nepodléhá německé DPH — místem plnění je země příjemce (§ 3a odst. 2 UStG"
+" / čl. 44 směrnice o DPH)."
 
 msgid "Tel."
 msgstr "Tel."
