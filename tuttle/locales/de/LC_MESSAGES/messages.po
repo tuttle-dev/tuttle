@@ -65,11 +65,20 @@ msgstr ""
 msgid "Thank you for your business."
 msgstr "Vielen Dank für Ihren Auftrag."
 
+msgid "Billed to"
+msgstr "Rechnungsempfänger"
+
+msgid "Original Invoice"
+msgstr "Ursprungsrechnung"
+
 msgid "Document type"
 msgstr "Belegart"
 
 msgid "Date"
 msgstr "Datum"
+
+msgid "Due Date"
+msgstr "Fälligkeitsdatum"
 
 msgid "Description"
 msgstr "Beschreibung"
@@ -83,33 +92,11 @@ msgstr "Einheit"
 msgid "Unit Price"
 msgstr "Einzelpreis"
 
-msgid "VAT Rate"
-msgstr "USt.-Satz"
-
-msgid "Subtotal"
-msgstr "Zwischensumme"
-
 msgid "VAT"
 msgstr "USt."
 
-msgid ""
-"Not subject to German VAT — the place of supply is the recipient's "
-"country (§ 3a (2) UStG / Art. 44 VAT Directive)."
-msgstr ""
-"Nicht steuerbare sonstige Leistung — Leistungsort im Ausland gemäß § 3a "
-"Abs. 2 UStG / Art. 44 MwStSystRL."
-
-msgid "Due Date"
-msgstr "Fälligkeitsdatum"
-
-msgid "Payment Details"
-msgstr "Zahlungsdetails"
-
-msgid "Billed to"
-msgstr "Rechnungsempfänger"
-
-msgid "Original Invoice"
-msgstr "Ursprungsrechnung"
+msgid "Subtotal"
+msgstr "Zwischensumme"
 
 msgid "Payment"
 msgstr "Zahlung"
@@ -126,14 +113,12 @@ msgstr "Gesamthonorar"
 msgid "Reminder Fee"
 msgstr "Mahngebühr"
 
-msgid "Invoice"
-msgstr "Rechnung"
-
-msgid "From"
-msgstr "Von"
-
-msgid "Bill To"
-msgstr "Rechnungsempfänger"
+msgid ""
+"Not subject to German VAT — the place of supply is the recipient's "
+"country (§ 3a (2) UStG / Art. 44 VAT Directive)."
+msgstr ""
+"Nicht steuerbare sonstige Leistung — Leistungsort im Ausland gemäß § 3a "
+"Abs. 2 UStG / Art. 44 MwStSystRL."
 
 msgid "Tel."
 msgstr "Tel."

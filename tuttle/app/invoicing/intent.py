@@ -26,6 +26,7 @@ from ..preferences.model import (
     INVOICE_NUMBER_SCHEMES,
     INVOICE_TEMPLATES,
     PreferencesStorageKeys,
+    invoice_template_or_default,
 )
 from ..projects.intent import ProjectsIntent
 from ..timetracking.data_source import TimeTrackingDataFrameSource
@@ -104,7 +105,7 @@ class InvoicingIntent(Intent):
         if not proj_result.was_intent_successful:
             return proj_result
         app_db = AppDatabase()
-        template_name = app_db.get_setting(PreferencesStorageKeys.invoice_template_key.value) or DEFAULT_INVOICE_TEMPLATE
+        template_name = invoice_template_or_default(app_db.get_setting(PreferencesStorageKeys.invoice_template_key.value))
         number_scheme = (
             app_db.get_setting(PreferencesStorageKeys.invoice_number_scheme_key.value) or DEFAULT_INVOICE_NUMBER_SCHEME
         )
@@ -155,7 +156,7 @@ class InvoicingIntent(Intent):
             return v if isinstance(v, date) else _dt.date.fromisoformat(v)
 
         app_db = AppDatabase()
-        template_name = app_db.get_setting(PreferencesStorageKeys.invoice_template_key.value) or DEFAULT_INVOICE_TEMPLATE
+        template_name = invoice_template_or_default(app_db.get_setting(PreferencesStorageKeys.invoice_template_key.value))
         fee = Decimal(str(reminder_fee)) if reminder_fee else None
         return self._create_reminder(
             invoice_id=int(invoice_id),

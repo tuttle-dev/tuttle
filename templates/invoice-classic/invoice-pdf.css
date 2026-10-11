@@ -1,7 +1,0 @@
-@page {
-  size: A4;
-  margin: 20mm 18mm 25mm 18mm;
-  @bottom-center {
-    content: element(runningFooter);
-  }
-}

@@ -266,6 +266,14 @@ class TestLifecycle:
         data = dispatch("preferences.get", {})["data"]
         assert data["include_due_date"] is True
 
+    def test_removed_invoice_template_counts_as_none_saved(self, rpc_env):
+        previous = dispatch("preferences.get", {})["data"]["invoice_template"]
+        try:
+            assert_ok(dispatch("preferences.save", {"invoice_template": "invoice-anvil"}))
+            assert dispatch("preferences.get", {})["data"]["invoice_template"] == "invoice-modern"
+        finally:
+            assert_ok(dispatch("preferences.save", {"invoice_template": previous}))
+
 
 # ---------------------------------------------------------------------------
 # 2. Read-only route resolution — every frontend RPC method that fetches data
