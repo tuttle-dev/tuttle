@@ -19,6 +19,16 @@ STUB_FX_RATE = Decimal("0.9")
 REAL_PDF_ENGINE = rendering.plutoprint
 
 
+@pytest.fixture(autouse=True, scope="session")
+def session_data_dir(tmp_path_factory):
+    """The data directory of session-scoped fixtures, which are set up before
+    ``isolated_data_dir`` and would otherwise write into ~/.tuttle-dev."""
+    data_dir = tmp_path_factory.mktemp("tuttle-data")
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setenv("TUTTLE_DATA_DIR", str(data_dir))
+        yield data_dir
+
+
 @pytest.fixture(autouse=True)
 def isolated_data_dir(tmp_path, monkeypatch):
     """Keep tests out of the real ~/.tuttle — they must not read the

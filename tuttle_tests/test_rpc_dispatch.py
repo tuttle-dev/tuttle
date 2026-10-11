@@ -86,6 +86,10 @@ def rpc_env(tmp_path_factory):
         _intents.clear()
 
 
+def test_demo_documents_are_rendered_into_the_test_data_dir(rpc_env, session_data_dir):
+    assert list((session_data_dir / "Invoices").glob("*.pdf"))
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
