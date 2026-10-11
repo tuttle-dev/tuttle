@@ -70,24 +70,8 @@ msgstr "Gracias por su confianza."
 msgid "Document type"
 msgstr "Tipo de documento"
 
-msgid ""
-"Not subject to German VAT — the place of supply is the recipient's "
-"country (§ 3a (2) UStG / Art. 44 VAT Directive)."
-msgstr ""
-"No sujeto al IVA alemán — el lugar de prestación es el país del "
-"destinatario (art. 44 de la Directiva del IVA)."
-
-msgid "Billed to"
-msgstr "Facturar a"
-
-msgid "Original Invoice"
-msgstr "Factura original"
-
 msgid "Date"
 msgstr "Fecha"
-
-msgid "Due Date"
-msgstr "Fecha de vencimiento"
 
 msgid "Description"
 msgstr "Descripción"
@@ -101,11 +85,33 @@ msgstr "Unidad"
 msgid "Unit Price"
 msgstr "Precio unit."
 
-msgid "VAT"
-msgstr "IVA"
+msgid "VAT Rate"
+msgstr "Tipo de IVA"
 
 msgid "Subtotal"
 msgstr "Subtotal"
+
+msgid "VAT"
+msgstr "IVA"
+
+msgid ""
+"Not subject to German VAT — the place of supply is the recipient's "
+"country (§ 3a (2) UStG / Art. 44 VAT Directive)."
+msgstr ""
+"No sujeto al IVA alemán — el lugar de prestación es el país del "
+"destinatario (art. 44 de la Directiva del IVA)."
+
+msgid "Due Date"
+msgstr "Fecha de vencimiento"
+
+msgid "Payment Details"
+msgstr "Datos de pago"
+
+msgid "Billed to"
+msgstr "Facturar a"
+
+msgid "Original Invoice"
+msgstr "Factura original"
 
 msgid "Payment"
 msgstr "Pago"
@@ -131,8 +137,8 @@ msgstr "De"
 msgid "Bill To"
 msgstr "Facturar a"
 
-msgid "Payment Details"
-msgstr "Datos de pago"
+msgid "Tel."
+msgstr "Tel."
 
 #, python-brace-format
 msgid "Timesheet {title}"

@@ -1,5 +1,5 @@
 {% import "document_type.html" as doc %}
-<html>
+<html lang="{{ lang }}">
 <head>
     <meta charset="utf-8">
     <meta name="description" content="Invoice">
@@ -63,7 +63,7 @@
   <p>
     <b>{{ _("Invoice No.") }}: {{ invoice.number }}</b>{% if is_deposit or is_final %}<br>
     <b>{{ _("Document type") }}: {% if is_deposit %}{{ _("Deposit Invoice") }}{% else %}{{ _("Final Invoice") }}{% endif %}</b>{% endif %}<br>
-    <b>Date: {{ invoice.date }}</b> <br>
+    <b>{{ _("Date") }}: {{ invoice.date | as_date_short }}</b> <br>
   </p>
 </div>
 
@@ -73,14 +73,14 @@
   <table>
     <thead>
       <tr>
-        <th>Date</th>
-        <th>Description</th>
-        <th>Quantity</th>
-        <th>Unit</th>
-        <th>Unit Price</th>
-        <th>VAT Rate</th>
-        <th>Subtotal</th>
-        <th>VAT</th>
+        <th>{{ _("Date") }}</th>
+        <th>{{ _("Description") }}</th>
+        <th>{{ _("Qty") }}</th>
+        <th>{{ _("Unit") }}</th>
+        <th>{{ _("Unit Price") }}</th>
+        <th>{{ _("VAT Rate") }}</th>
+        <th>{{ _("Subtotal") }}</th>
+        <th>{{ _("VAT") }}</th>
       </tr>
     </thead>
     <tbody>
@@ -108,14 +108,14 @@
   <table id="total">
     <thead>
       <tr>
-        <th>Due by</th>
-        <th>Account number</th>
+        <th>{{ _("Due Date") }}</th>
+        <th>IBAN</th>
         <th>{{ doc.amount_due_label(is_deposit, is_final) }}</th>
       </tr>
     </thead>
     <tbody>
       <tr>
-        <td>{{ invoice.effective_due_date }}</td>
+        <td>{{ invoice.effective_due_date | as_date_short }}</td>
         <td>{% if bank_account %}{{ bank_account.IBAN }}{% endif %}</td>
         <td>{{ remaining_balance | as_currency }}</td>
       </tr>

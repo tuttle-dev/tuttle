@@ -1,6 +1,6 @@
 <!doctype html>
 {% import "document_type.html" as doc %}
-<html class="no-js" lang="">
+<html class="no-js" lang="{{ lang }}">
 
 <head>
   <meta charset="utf-8">
@@ -79,7 +79,7 @@
        {% if is_reminder %}
        <big><strong>{{ doc.document_title(invoice, is_reminder, is_deposit, is_final, reminder_title) }}</strong></big><br>
        {% endif %}
-       <big>Invoice Date: <strong>{{ invoice.date }}</strong></big> <br>
+       <big>{{ _("Date") }}: <strong>{{ invoice.date | as_date_short }}</strong></big> <br>
        <big>{{ _("Invoice No.") }}: <strong>{{ invoice.number }}<big></big></strong>{% if is_deposit or is_final %}<br>
        <big>{{ _("Document type") }}: <strong>{% if is_deposit %}{{ _("Deposit Invoice") }}{% else %}{{ _("Final Invoice") }}{% endif %}</strong></big>{% endif %}
       </td>
@@ -93,13 +93,13 @@
   <table class="line-items-container">
     <thead>
       <tr>
-        <th class="heading-description">Date</th>
-        <th class="heading-description">Description</th>
-        <th class="heading-quantity">Qty</th>
-        <th class="heading-quantity">Unit</th>
-        <th class="heading-price">Unit Price</th>
-        <th class="heading-price">VAT%</th>
-        <th class="heading-subtotal">Subtotal</th>
+        <th class="heading-description">{{ _("Date") }}</th>
+        <th class="heading-description">{{ _("Description") }}</th>
+        <th class="heading-quantity">{{ _("Qty") }}</th>
+        <th class="heading-quantity">{{ _("Unit") }}</th>
+        <th class="heading-price">{{ _("Unit Price") }}</th>
+        <th class="heading-price">{{ _("VAT") }}</th>
+        <th class="heading-subtotal">{{ _("Subtotal") }}</th>
       </tr>
     </thead>
     <tbody>
@@ -121,9 +121,9 @@
   <table class="line-items-container has-bottom-border">
     <thead>
       <tr>
-        <th>Payment Info</th>
-        <th>Due By</th>
-        <th>Total VAT</th>
+        <th>{{ _("Payment Details") }}</th>
+        <th>{{ _("Due Date") }}</th>
+        <th>{{ _("VAT") }}</th>
         <th>{{ doc.amount_due_label(is_deposit, is_final) }}</th>
       </tr>
     </thead>
@@ -134,7 +134,7 @@
             {% if bank_account %}IBAN: <strong>{{ bank_account.IBAN }}</strong><br>{% endif %}
           </div>
         </td>
-        <td class="bold">{{ invoice.effective_due_date }}</td>
+        <td class="bold">{{ invoice.effective_due_date | as_date_short }}</td>
         <td>{% if invoice.is_outside_scope %}&mdash;{% else %}{{ invoice.VAT_total | as_currency }}{% endif %}</td>
         <td class="bold">{{ remaining_balance | as_currency }}</td>
       </tr>
@@ -150,7 +150,7 @@
   <div>
     <p>
       <br>
-    <span style="white-space:pre-line">{% if is_reminder %}Please settle the outstanding amount by the new due date.{% elif is_deposit %}{{ _("This is a partial payment (deposit invoice) towards the contract total.") }}{% elif notes %}{{ notes }}{% else %}Thank you for your business{% endif %}</span>
+    <span style="white-space:pre-line">{% if is_reminder %}{{ _("Please settle the outstanding amount by the new due date.") }}{% elif is_deposit %}{{ _("This is a partial payment (deposit invoice) towards the contract total.") }}{% elif notes %}{{ notes }}{% else %}{{ _("Thank you for your business.") }}{% endif %}</span>
    </p>
     <br>
     <br>

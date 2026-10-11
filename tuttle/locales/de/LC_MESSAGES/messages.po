@@ -68,24 +68,8 @@ msgstr "Vielen Dank für Ihren Auftrag."
 msgid "Document type"
 msgstr "Belegart"
 
-msgid ""
-"Not subject to German VAT — the place of supply is the recipient's "
-"country (§ 3a (2) UStG / Art. 44 VAT Directive)."
-msgstr ""
-"Nicht steuerbare sonstige Leistung — Leistungsort im Ausland gemäß § 3a "
-"Abs. 2 UStG / Art. 44 MwStSystRL."
-
-msgid "Billed to"
-msgstr "Rechnungsempfänger"
-
-msgid "Original Invoice"
-msgstr "Ursprungsrechnung"
-
 msgid "Date"
 msgstr "Datum"
-
-msgid "Due Date"
-msgstr "Fälligkeitsdatum"
 
 msgid "Description"
 msgstr "Beschreibung"
@@ -99,11 +83,33 @@ msgstr "Einheit"
 msgid "Unit Price"
 msgstr "Einzelpreis"
 
-msgid "VAT"
-msgstr "USt."
+msgid "VAT Rate"
+msgstr "USt.-Satz"
 
 msgid "Subtotal"
 msgstr "Zwischensumme"
+
+msgid "VAT"
+msgstr "USt."
+
+msgid ""
+"Not subject to German VAT — the place of supply is the recipient's "
+"country (§ 3a (2) UStG / Art. 44 VAT Directive)."
+msgstr ""
+"Nicht steuerbare sonstige Leistung — Leistungsort im Ausland gemäß § 3a "
+"Abs. 2 UStG / Art. 44 MwStSystRL."
+
+msgid "Due Date"
+msgstr "Fälligkeitsdatum"
+
+msgid "Payment Details"
+msgstr "Zahlungsdetails"
+
+msgid "Billed to"
+msgstr "Rechnungsempfänger"
+
+msgid "Original Invoice"
+msgstr "Ursprungsrechnung"
 
 msgid "Payment"
 msgstr "Zahlung"
@@ -129,8 +135,8 @@ msgstr "Von"
 msgid "Bill To"
 msgstr "Rechnungsempfänger"
 
-msgid "Payment Details"
-msgstr "Zahlungsdetails"
+msgid "Tel."
+msgstr "Tel."
 
 #, python-brace-format
 msgid "Timesheet {title}"
