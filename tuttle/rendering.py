@@ -1,6 +1,7 @@
 """Document rendering."""
 
 import base64
+import functools
 import glob
 import io
 import platform
@@ -260,43 +261,18 @@ def generate_payment_qr(bank_account: Optional[BankAccount], invoice: Invoice) -
     return qr.svg_data_uri(scale=4)
 
 
-def render_invoice(
-    user: User,
-    invoice: Invoice,
-    out_dir,
-    document_format: str = "pdf",
-    template_name: str = "invoice-modern",
-    only_final: bool = False,
-    language: str = "en",
-    e_invoice_profile: Optional[str] = None,
-    include_logo: bool = True,
-    include_due_date: bool = True,
-    include_signature: bool = True,
-    include_qr_code: bool = False,
-    accent_color: Optional[str] = None,
-):
-    """Render an Invoice using an HTML template.
+@functools.cache
+def invoice_template_env(template_name: str, language: str, currency: str) -> jinja2.Environment:
+    """Jinja environment for an invoice template in one language and currency.
 
-    Args:
-        user: The freelancer / app user.
-        invoice: The invoice to render.
-        out_dir: Output directory. If None, returns the raw HTML string.
-        document_format: "pdf" or "html".
-        template_name: Directory name under templates/ (e.g. "invoice-modern").
-        only_final: Keep only the final output file and remove intermediates.
-        language: Language code for labels and date/currency formatting ("en", "de", "es").
-        e_invoice_profile: If set, embed ZUGFeRD/Factur-X XML into the PDF.
-            One of "EN16931", "EXTENDED", "BASIC", "MINIMUM", "XRECHNUNG", or None.
-        include_qr_code: Whether to render a SEPA payment (EPC/Girocode) QR code in the
-            payment section, when the invoice is in EUR and a complete bank account is set.
-        accent_color: Hex color string (e.g. "#C8281E") to use as the invoice accent color.
-            Falls back to the template's hardcoded default when None or empty.
+    Cached because compiling the templates takes longer than rendering them.
+    Jinja still reloads a template whose file has changed.
     """
     babel_locale = LANGUAGE_TO_LOCALE.get(language, "en_US")
     labels = INVOICE_LABELS.get(language, INVOICE_LABELS["en"])
 
     def as_currency(number):
-        return format_currency(number, currency=invoice.contract.currency, locale=babel_locale)
+        return format_currency(number, currency=currency, locale=babel_locale)
 
     def as_date(d):
         if d is None:
@@ -331,15 +307,54 @@ def render_invoice(
             return singular
         return singular if abs(q - 1) < 1e-9 else plural
 
-    template_path = get_template_path(template_name)
-    shared_path = get_shared_template_path()
-    template_env = jinja2.Environment(loader=jinja2.FileSystemLoader([template_path, shared_path]))
+    template_env = jinja2.Environment(
+        loader=jinja2.FileSystemLoader([get_template_path(template_name), get_shared_template_path()])
+    )
 
     template_env.filters["as_currency"] = as_currency
     template_env.filters["as_date"] = as_date
     template_env.filters["as_date_short"] = as_date_short
     template_env.filters["as_percentage"] = as_percentage
     template_env.filters["unit_label"] = unit_label
+    return template_env
+
+
+def render_invoice(
+    user: User,
+    invoice: Invoice,
+    out_dir,
+    document_format: str = "pdf",
+    template_name: str = "invoice-modern",
+    only_final: bool = False,
+    language: str = "en",
+    e_invoice_profile: Optional[str] = None,
+    include_logo: bool = True,
+    include_due_date: bool = True,
+    include_signature: bool = True,
+    include_qr_code: bool = False,
+    accent_color: Optional[str] = None,
+):
+    """Render an Invoice using an HTML template.
+
+    Args:
+        user: The freelancer / app user.
+        invoice: The invoice to render.
+        out_dir: Output directory. If None, returns the raw HTML string.
+        document_format: "pdf" or "html".
+        template_name: Directory name under templates/ (e.g. "invoice-modern").
+        only_final: Keep only the final output file and remove intermediates.
+        language: Language code for labels and date/currency formatting ("en", "de", "es").
+        e_invoice_profile: If set, embed ZUGFeRD/Factur-X XML into the PDF.
+            One of "EN16931", "EXTENDED", "BASIC", "MINIMUM", "XRECHNUNG", or None.
+        include_qr_code: Whether to render a SEPA payment (EPC/Girocode) QR code in the
+            payment section, when the invoice is in EUR and a complete bank account is set.
+        accent_color: Hex color string (e.g. "#C8281E") to use as the invoice accent color.
+            Falls back to the template's hardcoded default when None or empty.
+    """
+    labels = INVOICE_LABELS.get(language, INVOICE_LABELS["en"])
+    template_path = get_template_path(template_name)
+    shared_path = get_shared_template_path()
+    template_env = invoice_template_env(template_name, language, invoice.contract.currency)
 
     is_reminder = getattr(invoice, "is_reminder", False)
     reminder_title = ""
@@ -461,27 +476,10 @@ def render_invoice(
     invoice.rendered = True
 
 
-def render_timesheet(
-    user: User,
-    timesheet: Timesheet,
-    out_dir,
-    document_format: str = "pdf",
-    style: str = "anvil",
-    only_final: bool = False,
-):
-    """Render a Timeseheet using an HTML template.
-
-    Args:
-        user (User): [description]
-        timesheet (Timesheet): [description]
-        out_dir (str, optional): [description]. Defaults to None.
-
-    Returns:
-        str: [description]
-    """
-    template_name = "timesheet-anvil"
-    template_path = get_template_path(template_name)
-    template_env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_path))
+@functools.cache
+def timesheet_template_env(template_name: str) -> jinja2.Environment:
+    """Jinja environment for a timesheet template, cached like ``invoice_template_env``."""
+    template_env = jinja2.Environment(loader=jinja2.FileSystemLoader(get_template_path(template_name)))
     # filters
     template_env.filters["as_hours"] = lambda td: td / pandas.Timedelta("1 hour")
     template_env.filters["date"] = lambda dt: dt.strftime("%Y-%m-%d") if dt else ""
@@ -528,6 +526,30 @@ def render_timesheet(
     template_env.filters["time_range"] = _time_range
     template_env.filters["clean_title"] = _clean_title
     template_env.filters["clean_notes"] = _clean_notes
+    return template_env
+
+
+def render_timesheet(
+    user: User,
+    timesheet: Timesheet,
+    out_dir,
+    document_format: str = "pdf",
+    style: str = "anvil",
+    only_final: bool = False,
+):
+    """Render a Timeseheet using an HTML template.
+
+    Args:
+        user (User): [description]
+        timesheet (Timesheet): [description]
+        out_dir (str, optional): [description]. Defaults to None.
+
+    Returns:
+        str: [description]
+    """
+    template_name = "timesheet-anvil"
+    template_path = get_template_path(template_name)
+    template_env = timesheet_template_env(template_name)
 
     timesheet_template = template_env.get_template("timesheet.html")
     html = timesheet_template.render(user=user, timesheet=timesheet, style=style)
