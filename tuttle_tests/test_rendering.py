@@ -8,6 +8,8 @@ import pytest
 from tuttle import demo, rendering
 from tuttle.model import TimeTrackingItem
 
+pytestmark = pytest.mark.real_pdf_engine
+
 
 @pytest.fixture
 def fake():
