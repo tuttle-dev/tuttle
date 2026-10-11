@@ -4,8 +4,7 @@ import datetime
 from decimal import Decimal
 
 from ...forecasting import (
-    cash_flow_projection,
-    monthly_revenue_from_calendar,
+    cash_flow_series,
     revenue_curve_with_calendar,
     revenue_series,
 )
@@ -16,7 +15,7 @@ from ...kpi import (
     monthly_spendable_breakdown,
     project_budget_status,
 )
-from ...model import Contract, FinancialGoal, Invoice, Project, User
+from ...model import Contract, FinancialGoal, Invoice, Project, RecurringExpense, User
 from ...tax_reserves import convert_invoice
 from ..core.abstractions import Intent, SQLModelDataSourceMixin
 from ..core.intent_result import IntentResult
@@ -154,20 +153,24 @@ class DashboardIntent(SQLModelDataSourceMixin, Intent):
             )
 
     def get_cash_flow(self, forecast_months: int = 6) -> IntentResult:
-        """Get cash flow projection based on calendar allocations."""
+        """Get cash flow projection based on invoices, expenses, and calendar allocations."""
         try:
             invoices = self.query(Invoice)
             contracts = self.query(Contract)
             projects = self.query(Project)
+            expenses = self.query(RecurringExpense)
             time_data = self._time_data_source.get_data_frame()
+            country = self._get_country()
 
-            today = datetime.date.today()
-            forecast_start = today.replace(day=1)
-            forecast_end = (forecast_start + datetime.timedelta(days=30 * forecast_months)).replace(day=1)
-
-            rev_forecast = monthly_revenue_from_calendar(time_data, projects, forecast_start, forecast_end, invoices=invoices)
-
-            data = cash_flow_projection(rev_forecast, contracts)
+            data = cash_flow_series(
+                invoices=invoices,
+                contracts=contracts,
+                projects=projects,
+                expenses=expenses,
+                time_data=time_data,
+                forecast_months=int(forecast_months),
+                country=country,
+            )
             return IntentResult(was_intent_successful=True, data=data)
         except Exception as e:
             return IntentResult(

@@ -141,7 +141,7 @@
     </div>
     <div class="footer-center">
       {% if bank_account %}<span>IBAN: {{ bank_account.IBAN }}</span>{% endif %}
-      {% if user.phone_number %}<span>Tel. {{ user.phone_number }}</span>{% endif %}
+      {% if user.phone_number %}<span>{{ _("Tel.") }} {{ user.phone_number }}</span>{% endif %}
       {% if bank_account and bank_account.BIC %}<br><span>BIC: {{ bank_account.BIC }}</span>{% endif %}
       {% if user.website %}<span>{{ user.website }}</span>{% endif %}
     </div>

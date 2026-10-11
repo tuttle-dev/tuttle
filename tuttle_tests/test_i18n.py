@@ -1,10 +1,18 @@
 """Tests for the translation of client-facing documents."""
 
 import datetime
+import re
 from decimal import Decimal
+from functools import cache
+from html.parser import HTMLParser
+from pathlib import Path
 
 import faker
+import jinja2
 import pytest
+from babel.messages.extract import extract_from_dir
+from babel.messages.frontend import parse_mapping_cfg
+from babel.messages.pofile import read_po
 
 from tuttle import demo, i18n, invoicing, rendering
 from tuttle.i18n import _, ngettext, use_language
@@ -118,6 +126,106 @@ class TestTimesheet:
         assert "Stundennachweis" in html
         assert "Auftraggeber" in html
         assert ">Client<" not in html
+
+
+REPO = Path(__file__).parent.parent
+TEMPLATES = REPO / "templates"
+
+#: Every template a client document is rendered from, and the macros they share.
+DOCUMENT_TEMPLATES = sorted(
+    [
+        *TEMPLATES.glob("invoice*/invoice.html"),
+        *TEMPLATES.glob("_shared/*.html"),
+        TEMPLATES / "timesheet-anvil" / "timesheet.html",
+    ]
+)
+INVOICE_STYLES = sorted(path.parent.name for path in TEMPLATES.glob("invoice*/invoice.html"))
+TRANSLATED_LANGUAGES = [code for code in i18n.SUPPORTED if code != i18n.SOURCE_LANGUAGE]
+
+#: Words that read the same in every language.
+LANGUAGE_NEUTRAL = {"IBAN", "BIC"}
+
+
+class _VisibleText(HTMLParser):
+    """The text a reader sees on an HTML page: no tags, comments, styles or scripts."""
+
+    def __init__(self):
+        super().__init__()
+        self.hidden = 0
+        self.text = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag in ("style", "script"):
+            self.hidden += 1
+
+    def handle_endtag(self, tag):
+        if tag in ("style", "script"):
+            self.hidden -= 1
+
+    def handle_data(self, data):
+        if not self.hidden:
+            self.text.append(data)
+
+
+def _literal_words(template: Path) -> list[str]:
+    """Words ``template`` writes out as they are instead of through ``_()``."""
+    # Keep the template's own text; every {{ … }} and {% … %} becomes a space.
+    tokens = jinja2.Environment().lex(template.read_text(encoding="utf-8"))
+    page = _VisibleText()
+    page.feed("".join(value if kind == "data" else " " for _lineno, kind, value in tokens))
+    return [word for word in re.findall(r"[A-Za-z]{2,}", " ".join(page.text)) if word not in LANGUAGE_NEUTRAL]
+
+
+@cache
+def _messages_in_code() -> frozenset[str]:
+    """The messages ``just i18n`` extracts, plurals by their singular as in the catalogs."""
+    with (REPO / "babel.cfg").open() as config:
+        method_map, options_map = parse_mapping_cfg(config)
+    found = extract_from_dir(
+        REPO,
+        method_map,
+        options_map,
+        directory_filter=lambda path: not Path(path).name.startswith(".") and Path(path).name != "node_modules",
+    )
+    return frozenset(
+        message[0] if isinstance(message, tuple) else message for _file, _lineno, message, _notes, _context in found
+    )
+
+
+def _is_translated(message) -> bool:
+    forms = message.string if isinstance(message.string, tuple) else (message.string,)
+    return not message.fuzzy and all(forms)
+
+
+class TestEveryDocument:
+    """Every client document can be produced in every supported language."""
+
+    @pytest.mark.parametrize("template", DOCUMENT_TEMPLATES, ids=lambda path: str(path.relative_to(TEMPLATES)))
+    def test_template_writes_its_text_through_gettext(self, template):
+        assert _literal_words(template) == []
+
+    @pytest.mark.parametrize("language", TRANSLATED_LANGUAGES)
+    def test_catalog_translates_every_message(self, language):
+        with (i18n.LOCALES_DIR / language / "LC_MESSAGES" / "messages.po").open("rb") as po_file:
+            catalog = read_po(po_file, locale=language)
+        untranslated = sorted(
+            msgid for msgid in _messages_in_code() if msgid not in catalog or not _is_translated(catalog[msgid])
+        )
+        assert untranslated == [], "run `just i18n` and translate these"
+
+    @pytest.mark.parametrize("language", TRANSLATED_LANGUAGES)
+    @pytest.mark.parametrize("style", INVOICE_STYLES)
+    def test_invoice_is_marked_with_its_language(self, style, language):
+        fake = faker.Faker()
+        html = rendering.render_invoice(
+            user=demo.create_fake_user(fake),
+            invoice=demo.create_fake_invoice(fake, render=False),
+            out_dir=None,
+            document_format="html",
+            template_name=style,
+            language=language,
+        )
+        assert f'lang="{language}"' in html
 
 
 class TestCzech:
