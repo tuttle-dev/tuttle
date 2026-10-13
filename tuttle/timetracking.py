@@ -8,7 +8,7 @@ from pandera.typing import DataFrame
 
 from . import schema
 from .calendar import Calendar, ICSCalendar
-from .model import Project, Timesheet, TimeTrackingItem
+from .model import Invoice, Project, Timesheet, TimeTrackingItem
 from .time import TimeUnit
 
 DEFAULT_WORKDAY_HOURS = 8
@@ -41,6 +41,38 @@ def sum_hours_by_tag(
 def total_event_hours(df: DataFrame, tag_to_workday: dict | None = None) -> float:
     """Sum effective hours across all rows."""
     return round(sum(sum_hours_by_tag(df, tag_to_workday).values()), 2)
+
+
+def invoiced_ranges_by_tag(invoices: List[Invoice]) -> dict:
+    """Map project tag -> list of (period_start, period_end) already invoiced.
+
+    A timesheet's period is the exact slice of calendar hours that were
+    pulled into an invoice, regardless of the invoice's own date (an
+    invoice raised in August can cover a timesheet for July). Cancelled
+    invoices don't count: their hours are still un-invoiced.
+    """
+    ranges: dict = {}
+    for inv in invoices:
+        if inv.cancelled:
+            continue
+        for ts in inv.timesheets:
+            tag = ts.project.tag if ts.project else None
+            if not tag:
+                continue
+            ranges.setdefault(tag, []).append((ts.period_start, ts.period_end))
+    return ranges
+
+
+def drop_invoiced(time_data: DataFrame, invoices: List[Invoice]) -> DataFrame:
+    """Calendar rows that no timesheet of a non-cancelled invoice covers yet."""
+    invoiced_ranges = invoiced_ranges_by_tag(invoices)
+    if not invoiced_ranges:
+        return time_data
+    already_invoiced = [
+        any(start <= d <= end for start, end in invoiced_ranges.get(tag, ()))
+        for d, tag in zip(time_data.index.date, time_data["tag"])
+    ]
+    return time_data[[not v for v in already_invoiced]]
 
 
 def generate_timesheet(

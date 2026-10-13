@@ -3,6 +3,7 @@
 import datetime
 from decimal import Decimal
 
+import pandas
 import pytest
 
 from tuttle import tax
@@ -15,6 +16,7 @@ from tuttle.model import (
     InvoiceItem,
     Project,
     RecurringExpense,
+    Timesheet,
 )
 from tuttle.tax import TaxSystem, available_years, get_tax_system, supported_countries
 from tuttle.tax_reserves import (
@@ -535,6 +537,39 @@ class TestSpendableIncome:
         assert r_none.business_expenses == r_empty.business_expenses == Decimal(0)
         assert r_none.taxable_profit == r_empty.taxable_profit
         assert r_none.spendable == r_empty.spendable
+
+    def test_planned_counts_tracked_work_not_yet_invoiced(self):
+        """Past work this year is planned until an invoice's timesheet covers it."""
+        today = datetime.date.today()
+        worked = datetime.date(today.year, 1, 1)  # in the past, except on Jan 1
+        inv = _make_invoice(worked, [(8, 100, 0)])
+        invoiced = inv.project
+        uninvoiced = Project(title="Other Project", tag="other", contract=inv.contract)
+        Timesheet(
+            title="January",
+            date=worked,
+            period_start=worked,
+            period_end=worked,
+            project=invoiced,
+            invoice=inv,
+        )
+        begin = datetime.datetime(worked.year, worked.month, worked.day, 9, 0)
+        time_data = pandas.DataFrame(
+            {
+                "begin": [begin, begin],
+                "end": [begin + datetime.timedelta(hours=8)] * 2,
+                "title": ["Work", "Work"],
+                "tag": [invoiced.tag, uninvoiced.tag],
+                "description": ["", ""],
+                "all_day": [False, False],
+            }
+        )
+        time_data["duration"] = time_data["end"] - time_data["begin"]
+        time_data = time_data.set_index("begin")
+
+        result = compute_spendable_income([inv], _sample_country(), projects=[invoiced, uninvoiced], time_data=time_data)
+        # 8 h at €100 for the uninvoiced project only.
+        assert result.planned_revenue == Decimal("800.00")
 
 
 # ── Monthly VAT breakdown ─────────────────────────────────────

@@ -16,7 +16,7 @@ from .fx import convert, fx_haircut
 from .model import Invoice, Project, RecurringExpense
 from .tax import get_tax_system
 from .time import Cycle, TimeUnit
-from .timetracking import sum_hours_by_tag
+from .timetracking import drop_invoiced, sum_hours_by_tag
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +64,7 @@ class SpendableIncome(NamedTuple):
     received_net: Decimal  # paid invoices, net of VAT
     outstanding_gross: Decimal  # sent but unpaid, gross
     outstanding_net: Decimal  # sent but unpaid, net of VAT
-    planned_revenue: Decimal  # calendar-derived future revenue (net)
+    planned_revenue: Decimal  # calendar work this year not yet invoiced (net)
     conversion_fee: Decimal = Decimal(0)  # FX spread on foreign-currency revenue
     # income-dependent (dynamic) expenses, split by where they land in the waterfall
     dynamic_expenses_deductible: Decimal = Decimal(0)  # charged on the taxable profit
@@ -114,17 +114,20 @@ def compute_planned_revenue(
     projects: List[Project],
     time_data: Optional[DataFrame] = None,
     currency: Optional[str] = None,
+    invoices: Optional[List[Invoice]] = None,
 ) -> Decimal:
-    """Net revenue expected from future calendar events in the current year.
+    """Net revenue from this year's calendar work, past and future, not yet invoiced.
 
-    Converts planned hours to revenue via each project's contract rate, and
-    contracts in a foreign currency into *currency* at the current month's rate
-    (future revenue has no invoice date to pin a rate to).
+    Hours in a timesheet of a non-cancelled invoice are left out. Converts
+    hours to revenue via each project's contract rate, and contracts in a
+    foreign currency into *currency* at the current month's rate (uninvoiced
+    work has no invoice date to pin a rate to).
     """
     if time_data is None or time_data.empty:
         return Decimal(0)
 
     today = datetime.date.today()
+    year_start = datetime.date(today.year, 1, 1)
     year_end = datetime.date(today.year, 12, 31)
 
     tag_to_project = {p.tag: p for p in projects if p.tag and p.contract}
@@ -135,12 +138,12 @@ def compute_planned_revenue(
     tag_to_workday = {tag: p.contract.units_per_workday for tag, p in tag_to_project.items()}
 
     idx_dates = time_data.index.date
-    mask = (idx_dates >= today) & (idx_dates <= year_end)
-    future = time_data[mask]
-    if future.empty:
+    mask = (idx_dates >= year_start) & (idx_dates <= year_end)
+    planned = drop_invoiced(time_data[mask], invoices or [])
+    if planned.empty:
         return Decimal(0)
 
-    planned_by_tag = sum_hours_by_tag(future, tag_to_workday)
+    planned_by_tag = sum_hours_by_tag(planned, tag_to_workday)
 
     total = Decimal(0)
     for tag, hours in planned_by_tag.items():
@@ -268,8 +271,8 @@ def compute_spendable_income(
         − Est. Income Tax
         = Safe to Spend
 
-    If *projects* and *time_data* are given, planned revenue from future
-    calendar events is included in the income basis.
+    If *projects* and *time_data* are given, planned revenue from this year's
+    calendar work that no invoice covers yet is included in the income basis.
     """
     today = datetime.date.today()
     is_past_year = year is not None and year < today.year
@@ -318,7 +321,7 @@ def compute_spendable_income(
 
     planned = Decimal(0)
     if not is_past_year and projects and time_data is not None:
-        planned = compute_planned_revenue(projects, time_data, currency=currency)
+        planned = compute_planned_revenue(projects, time_data, currency=currency, invoices=invoices)
 
     gross_ytd = received_gross + outstanding_gross
     vat_ytd = received_vat + outstanding_vat
