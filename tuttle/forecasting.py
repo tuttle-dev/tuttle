@@ -839,7 +839,7 @@ def cash_flow_series(
     num_months = len(periods)
     if num_months > 0 and total_tax_base > 0:
         annual_tax_base = (total_tax_base / Decimal(num_months)) * Decimal(12)
-        tax_res = compute_income_tax_reserve(annual_tax_base, country, year=forecast_start.year)
+        tax_res = compute_income_tax_reserve(annual_tax_base, country, year=forecast_start.year, currency=currency)
         effective_tax_rate = tax_res.effective_rate
     else:
         effective_tax_rate = Decimal(0)

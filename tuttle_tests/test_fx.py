@@ -6,11 +6,11 @@ from decimal import Decimal
 import pandas
 import pytest
 
-from tuttle import fx
+from tuttle import fx, tax_reserves
 from tuttle.forecasting import revenue_series
 from tuttle.kpi import compute_kpis
 from tuttle.model import Client, Contract, Invoice, InvoiceItem, Project, RecurringExpense, TaxCategory
-from tuttle.tax_reserves import compute_effective_salary, compute_spendable_income
+from tuttle.tax_reserves import compute_effective_salary, compute_income_tax_reserve, compute_spendable_income
 from tuttle.time import Cycle, TimeUnit
 
 
@@ -183,3 +183,55 @@ def test_unresolvable_rate_leaves_the_invoice_out_rather_than_zeroing_it(monkeyp
 
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-q"]))
+
+
+@pytest.mark.parametrize(
+    "country, currency",
+    [
+        ("Germany", "EUR"),
+        ("Sweden", "SEK"),
+        ("United States", "USD"),
+        ("Czech Republic", "CZK"),
+        ("United Kingdom", "GBP"),
+        ("Turkey", "TRY"),
+        ("Argentina", "EUR"),  # no ECB rate for ARS, so nothing could convert into it
+        ("", "EUR"),
+    ],
+)
+def test_default_currency_is_the_countrys_own(country, currency):
+    assert fx.default_currency(country) == currency
+
+
+class TestMonthStart:
+    """Before the ECB's first fixing of a month, foreign amounts must not drop out."""
+
+    @pytest.fixture(autouse=True)
+    def fresh_cache(self, monkeypatch, isolated_data_dir):
+        today = datetime.date.today()
+
+        def fetch(base, quote, month):
+            if (month.year, month.month) >= (today.year, today.month):
+                raise fx._NoRatesYet("not fixed yet")
+            return Decimal("0.9")
+
+        monkeypatch.setattr(fx, "_fetch_monthly_average", fetch)
+        fx._rate.cache_clear()
+        yield
+        fx._rate.cache_clear()
+
+    def test_the_open_month_uses_last_months_rate(self):
+        today = datetime.date.today()
+        assert fx._rate("USD", "EUR", f"{today:%Y-%m}") == Decimal("0.9")
+        next_month = (today.replace(day=1) + datetime.timedelta(days=32)).replace(day=1)
+        assert fx._rate("USD", "EUR", f"{next_month:%Y-%m}") == Decimal("0.9")
+
+
+def test_income_tax_is_computed_in_the_tax_systems_currency(monkeypatch):
+    monkeypatch.setattr(
+        tax_reserves, "fx_rate", lambda base, quote, on: Decimal(11) if (base, quote) == ("EUR", "SEK") else None
+    )
+    in_eur = compute_income_tax_reserve(Decimal(50000), "Sweden", currency="EUR")
+    in_sek = compute_income_tax_reserve(Decimal(550000), "Sweden", currency="SEK")
+
+    assert in_sek.total_annual_reserve > 0
+    assert abs(in_eur.total_annual_reserve * 11 - in_sek.total_annual_reserve) < Decimal("0.01")

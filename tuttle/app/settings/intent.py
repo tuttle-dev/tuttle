@@ -1,7 +1,7 @@
 """App-level key/value settings backed by AppDatabase."""
 
 from ...app_db import AppDatabase
-from ...fx import fx_haircut, primary_currency, supported_currencies
+from ...fx import default_currency, fx_haircut, primary_currency, supported_currencies
 from ..core.intent_result import IntentResult
 
 
@@ -16,12 +16,15 @@ class SettingsIntent:
 
         The primary currency defaults to the active user's operating country
         (only used until they save an explicit ``currency.primary``); callers
-        may still pass ``country`` to override.
+        may still pass ``country`` to override. ``default`` is that country's
+        currency, whatever is saved.
         """
+        country = country or self._active_operating_country()
         return IntentResult(
             was_intent_successful=True,
             data={
-                "primary": primary_currency(country or self._active_operating_country()),
+                "primary": primary_currency(country),
+                "default": default_currency(country),
                 "fx_haircut": str(fx_haircut()),
                 "supported": list(supported_currencies()),
             },

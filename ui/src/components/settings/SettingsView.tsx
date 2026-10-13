@@ -113,12 +113,14 @@ const SCHEME_EXAMPLES: Record<string, string> = {
 
 interface CurrencySettings {
   primary: string;
+  default: string;
   fx_haircut: string;
   supported: string[];
 }
 
 const DEFAULT_CURRENCY: CurrencySettings = {
   primary: "EUR",
+  default: "EUR",
   fx_haircut: "1.0",
   supported: ["EUR", "GBP", "USD"],
 };
@@ -1212,6 +1214,16 @@ function RegionTab({ operatingCountry, supportedCountries, onCountryChange, vatN
 
   const [saving, setSaving] = useState(false);
 
+  // The currency follows the country, unless another one was picked on purpose.
+  function changeCountry(country: string) {
+    onCountryChange(country);
+    rpc<CurrencySettings>("settings.get_currency", { country }).then((res) => {
+      const next = res.ok ? res.data?.default : undefined;
+      if (!next) return;
+      setCurrency((c) => ({ ...c, primary: c.primary === c.default ? next : c.primary, default: next }));
+    });
+  }
+
   async function handleSaveAll() {
     setSaving(true);
     const [curRes] = await Promise.all([
@@ -1236,7 +1248,7 @@ function RegionTab({ operatingCountry, supportedCountries, onCountryChange, vatN
             <select
               className={inputCls}
               value={operatingCountry}
-              onChange={(e) => onCountryChange(e.target.value)}
+              onChange={(e) => changeCountry(e.target.value)}
             >
               {supportedCountries.length > 0 ? (
                 supportedCountries.map((c) => <option key={c} value={c}>{c}</option>)

@@ -1,8 +1,8 @@
 from decimal import Decimal, InvalidOperation
 from typing import Optional
 
+from ...fx import default_currency
 from ...model import Client, Contract, ContractCharge, PaymentMilestone, User
-from ...tax import get_tax_system
 from ...time import ChargeBasis
 from ..clients.intent import ClientsIntent
 from ..contacts.intent import ContactsIntent
@@ -88,8 +88,7 @@ class ContractsIntent(CrudIntent):
         try:
             users = self.query(User)
             country = users[0].operating_country if users else "Germany"
-            ts = get_tax_system(country)
-            return IntentResult(was_intent_successful=True, data=ts.currency)
+            return IntentResult(was_intent_successful=True, data=default_currency(country))
         except Exception:
             return IntentResult(was_intent_successful=True, data="EUR")
 
