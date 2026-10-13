@@ -3,11 +3,13 @@
 import datetime
 from decimal import Decimal
 
+import pandas
 import pytest
 
 from tuttle import fx
+from tuttle.forecasting import revenue_series
 from tuttle.kpi import compute_kpis
-from tuttle.model import Client, Contract, Invoice, InvoiceItem, TaxCategory
+from tuttle.model import Client, Contract, Invoice, InvoiceItem, Project, TaxCategory
 from tuttle.tax_reserves import compute_spendable_income
 from tuttle.time import Cycle, TimeUnit
 
@@ -29,10 +31,13 @@ def stub_rates(monkeypatch):
             Decimal(amount) if base == quote else (Decimal(amount) * Decimal("0.9")).quantize(Decimal("0.01"))
         ),
     )
-    # kpi/tax_reserves bound these at import time.
+    # kpi/tax_reserves/forecasting bound these at import time.
+    import tuttle.forecasting
     import tuttle.kpi
     import tuttle.tax_reserves
 
+    monkeypatch.setattr(tuttle.forecasting, "primary_currency", fx.primary_currency)
+    monkeypatch.setattr(tuttle.forecasting, "convert", fx.convert)
     monkeypatch.setattr(tuttle.kpi, "primary_currency", fx.primary_currency)
     monkeypatch.setattr(tuttle.tax_reserves, "convert", fx.convert)
     monkeypatch.setattr(tuttle.tax_reserves, "fx_haircut", fx.fx_haircut)
@@ -85,6 +90,37 @@ def test_conversion_fee_hits_salary_but_not_the_tax_base():
     assert spending.taxable_profit == Decimal("9000.00")
     assert spending.conversion_fee == Decimal("90.00")  # 1% of the converted net
     assert spending.spendable == spending.taxable_profit - spending.income_tax_reserve - Decimal("90.00")
+
+
+def test_dashboard_and_tax_view_agree_on_planned_dollar_work():
+    contract = _invoice("USD", "100").contract
+    project = Project(
+        title="Security Review",
+        tag="#security",
+        description="",
+        start_date=datetime.date.today(),
+        contract=contract,
+    )
+    begin = datetime.datetime.combine(datetime.date.today(), datetime.time(9))
+    time_data = pandas.DataFrame(
+        {
+            "end": [begin + datetime.timedelta(hours=8)],
+            "title": ["Work"],
+            "tag": [project.tag],
+            "description": [""],
+            "all_day": [False],
+        },
+        index=pandas.Index([begin], name="begin"),
+    )
+    time_data["duration"] = time_data["end"] - time_data.index
+
+    chart = revenue_series([], [project], time_data, granularity="year", country="Germany")
+    this_year = next(b for b in chart["buckets"] if b["is_current"])
+    spending = compute_spendable_income([], "Germany", currency="EUR", projects=[project], time_data=time_data)
+
+    # 8 h × $100 × 0.9 — the same euros in both views.
+    assert this_year["planned"] == pytest.approx(720.0)
+    assert spending.planned_revenue == Decimal("720.00")
 
 
 class TestCurrencyValidation:

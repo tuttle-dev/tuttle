@@ -8,7 +8,7 @@ from typing import List, Optional
 import pandas
 from pandas import DataFrame
 
-from .fx import primary_currency
+from .fx import convert, primary_currency
 from .model import Contract, Invoice, Project, RecurringExpense
 from .tax_reserves import (
     _dynamic_lines,
@@ -157,6 +157,7 @@ def revenue_from_calendar(
     end_date: datetime.date,
     invoices: Optional[List[Invoice]] = None,
     freq: str = "M",
+    currency: Optional[str] = None,
 ) -> DataFrame:
     """Derive revenue per time bucket from calendar time-tracking events.
 
@@ -172,6 +173,11 @@ def revenue_from_calendar(
     later month than it was performed would show up twice: once as
     "planned" for the month it was done, and again as "invoiced" for the
     month the invoice was actually raised.
+
+    If *currency* is given, revenue from a contract in another currency is
+    converted at the current month's rate (uninvoiced work has no invoice
+    date to pin a rate to), the same as the tax view's planned revenue.
+    Work whose rate cannot be resolved is left out rather than mixed in.
 
     Returns a DataFrame with columns: period, project, revenue, contract_id, hours.
     """
@@ -214,12 +220,16 @@ def revenue_from_calendar(
             continue
         unit_hours = contract.units_per_workday if contract.unit == TimeUnit.day else 1
         billable_units = row["hours"] / unit_hours
-        revenue = float(Decimal(str(billable_units)) * contract.rate)
+        revenue = Decimal(str(billable_units)) * contract.rate
+        if currency and contract.currency not in (currency, None):
+            revenue = convert(revenue, contract.currency, currency, datetime.date.today())
+            if revenue is None:
+                continue
         records.append(
             {
                 "period": row["_period"],
                 "project": project.title,
-                "revenue": revenue,
+                "revenue": float(revenue),
                 "contract_id": contract.id,
                 "hours": round(row["hours"], 1),
             }
@@ -236,12 +246,13 @@ def monthly_revenue_from_calendar(
     start_date: datetime.date,
     end_date: datetime.date,
     invoices: Optional[List[Invoice]] = None,
+    currency: Optional[str] = None,
 ) -> DataFrame:
     """Monthly view of :func:`revenue_from_calendar`, keyed by ``month``.
 
     Returns a DataFrame with columns: month, project, revenue, contract_id, hours.
     """
-    df = revenue_from_calendar(time_data, projects, start_date, end_date, invoices=invoices, freq="M")
+    df = revenue_from_calendar(time_data, projects, start_date, end_date, invoices=invoices, freq="M", currency=currency)
     return df.rename(columns={"period": "month"})
 
 
@@ -457,7 +468,7 @@ def revenue_series(
             bucket["invoiced"] += float(converted[0])
             bucket["invoice_count"] += 1
 
-    cal = revenue_from_calendar(time_data, projects, window_start, window_end, invoices=invoices, freq=freq)
+    cal = revenue_from_calendar(time_data, projects, window_start, window_end, invoices=invoices, freq=freq, currency=currency)
     if not cal.empty:
         grouped = cal.groupby("period").agg(revenue=("revenue", "sum"), hours=("hours", "sum")).reset_index()
         for _, row in grouped.iterrows():
@@ -578,7 +589,7 @@ def cash_flow_series(
         contract_map = {c.id: c for c in contracts if c.id is not None}
         min_date = time_data.index.date.min()
         cal_start = min(forecast_start, min_date.replace(day=1))
-        cal = monthly_revenue_from_calendar(time_data, projects, cal_start, window_end, invoices=invoices)
+        cal = monthly_revenue_from_calendar(time_data, projects, cal_start, window_end, invoices=invoices, currency=currency)
         if not cal.empty:
             for _, row in cal.iterrows():
                 cid = row.get("contract_id")
