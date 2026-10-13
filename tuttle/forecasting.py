@@ -18,7 +18,7 @@ from .tax_reserves import (
     convert_invoice,
 )
 from .time import TimeUnit
-from .timetracking import event_hours
+from .timetracking import drop_invoiced, event_hours
 
 
 def monthly_revenue_from_contracts(
@@ -150,26 +150,6 @@ def revenue_curve(
     return combined
 
 
-def _invoiced_ranges_by_tag(invoices: List[Invoice]) -> dict:
-    """Map project tag -> list of (period_start, period_end) already invoiced.
-
-    A timesheet's period is the exact slice of calendar hours that were
-    pulled into an invoice, regardless of the invoice's own date (an
-    invoice raised in August can cover a timesheet for July). Cancelled
-    invoices don't count: their hours are still un-invoiced.
-    """
-    ranges: dict = {}
-    for inv in invoices:
-        if inv.cancelled:
-            continue
-        for ts in inv.timesheets:
-            tag = ts.project.tag if ts.project else None
-            if not tag:
-                continue
-            ranges.setdefault(tag, []).append((ts.period_start, ts.period_end))
-    return ranges
-
-
 def revenue_from_calendar(
     time_data: Optional[DataFrame],
     projects: List[Project],
@@ -208,16 +188,9 @@ def revenue_from_calendar(
         return empty
 
     if invoices:
-        invoiced_ranges = _invoiced_ranges_by_tag(invoices)
-        if invoiced_ranges:
-            dates = filtered.index.date
-            tags = filtered["tag"]
-            already_invoiced = [
-                any(start <= d <= end for start, end in invoiced_ranges.get(tag, ())) for d, tag in zip(dates, tags)
-            ]
-            filtered = filtered[[not v for v in already_invoiced]]
-            if filtered.empty:
-                return empty
+        filtered = drop_invoiced(filtered, invoices)
+        if filtered.empty:
+            return empty
 
     records = []
     df = filtered.copy()
