@@ -725,6 +725,9 @@ def create_heating_data(
         else:
             rate = random.choice([65, 72, 80, 85, 95])
             title = _HEATING_CONTRACTS[i % len(_HEATING_CONTRACTS)]
+            # A retainer has no agreed total, only the hours Harry expects to
+            # put in each week: its future revenue follows that pace.
+            retainer = title == "Emergency repair retainer"
             contract = Contract(
                 title=f"{title} – {client.name}",
                 client=client,
@@ -735,7 +738,8 @@ def create_heating_data(
                 VAT_rate=Decimal("0.19"),
                 unit=TimeUnit.hour,
                 units_per_workday=8,
-                volume=random.randint(100, 400),
+                volume=None if retainer else random.randint(120, 240),
+                expected_units_per_week=6 if retainer else None,
                 term_of_payment=14,
                 billing_cycle=Cycle.monthly,
             )
@@ -787,6 +791,8 @@ def create_heating_data(
         unit=TimeUnit.day,
         units_per_workday=8,
         volume=60,
+        # Two days a week on site, until the 60 agreed days are used up.
+        expected_units_per_week=2,
         term_of_payment=14,
         billing_cycle=Cycle.monthly,
         charges=[
@@ -869,6 +875,60 @@ def create_heating_data(
                 today=today,
             )
         )
+
+    # -- the pipeline: work agreed but not started, and work still on offer -----
+    # The heat pump conversion is signed and starts in three weeks. None of it
+    # is in the calendar yet, so all of it is contracted revenue. The underfloor
+    # heating is still an offer and counts for nothing until it is accepted.
+    heat_pump_start = today + timedelta(days=21)
+    heat_pump_contract = Contract(
+        title="Heat Pump Conversion – Central Services",
+        client=central_services,
+        signature_date=today - timedelta(days=5),
+        start_date=heat_pump_start,
+        end_date=heat_pump_start + timedelta(days=120),
+        rate=Decimal("85"),
+        currency="EUR",
+        VAT_rate=Decimal("0.19"),
+        unit=TimeUnit.hour,
+        units_per_workday=8,
+        volume=160,
+        term_of_payment=14,
+        billing_cycle=Cycle.monthly,
+    )
+    offer_client = clients[-1]
+    offer_start = today + timedelta(days=45)
+    offer_contract = Contract(
+        title=f"Underfloor Heating – {offer_client.name}",
+        client=offer_client,
+        start_date=offer_start,
+        end_date=offer_start + timedelta(days=60),
+        type=ContractType.fixed_price,
+        fixed_price=Decimal("9800"),
+        currency="EUR",
+        VAT_rate=Decimal("0.19"),
+        term_of_payment=14,
+        billing_cycle=Cycle.monthly,
+    )
+    projects += [
+        Project(
+            title="Heat Pump Conversion",
+            tag="#heatpump",
+            description="Replace the gas boiler with an air-source heat pump",
+            start_date=heat_pump_contract.start_date,
+            end_date=heat_pump_contract.end_date,
+            contract=heat_pump_contract,
+        ),
+        Project(
+            title="Underfloor Heating",
+            tag="#underfloor",
+            description="Underfloor heating for the ground floor, quoted at a fixed price",
+            start_date=offer_contract.start_date,
+            end_date=offer_contract.end_date,
+            stage="Offer",
+            contract=offer_contract,
+        ),
+    ]
 
     return projects, invoices, client_contacts
 
@@ -988,8 +1048,9 @@ def create_historical_invoices(
     for months_ago in range(n_months, 0, -1):
         # First day of that month
         inv_date = (today - timedelta(days=30 * months_ago)).replace(day=15)
-        # Pick 1-2 random projects to invoice each month
-        month_projects = random.sample(billable, k=min(random.randint(1, 2), len(billable)))
+        # Pick 1-2 random projects to invoice each month, among those already started
+        started = [p for p in billable if p.start_date <= inv_date]
+        month_projects = random.sample(started, k=min(random.randint(1, 2), len(started)))
         for project in month_projects:
             inv = create_fake_invoice(
                 fake,
@@ -1059,14 +1120,16 @@ def create_demo_user() -> User:
 
 
 def create_fake_calendar(project_list: List[Project]) -> ics.Calendar:
-    """Generate a realistic work calendar spanning the last ~3 months.
+    """Generate a realistic work calendar: the last ~3 months, and two weeks already scheduled.
 
     Events land on weekdays during business hours (8–18), with varied
-    durations (1–6 h) and descriptive titles including the project tag.
+    durations (1–6 h) and descriptive titles including the project tag. A
+    project only gets events between its own start and end date.
     """
     calendar = ics.Calendar()
     today = datetime.date.today()
     start_date = today - timedelta(days=90)
+    end_date = today + timedelta(days=14)
 
     task_verbs = [
         "Work on",
@@ -1081,10 +1144,12 @@ def create_fake_calendar(project_list: List[Project]) -> ics.Calendar:
     ]
 
     for project in project_list:
-        current = start_date
-        while current <= today:
+        current = max(start_date, project.start_date)
+        last = min(end_date, project.end_date) if project.end_date else end_date
+        while current <= last:
             if current.weekday() < 5:  # weekdays only
-                if random.random() < 0.45:  # ~45 % chance per weekday
+                # Less is scheduled ahead than ends up being worked.
+                if random.random() < (0.45 if current <= today else 0.25):
                     start_hour = random.choice([8, 9, 10, 13, 14, 15])
                     duration_h = random.choice([1, 2, 2, 3, 3, 4, 6])
                     begin = datetime.datetime(
