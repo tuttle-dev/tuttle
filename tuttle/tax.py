@@ -99,9 +99,9 @@ def _get_params(country: str, year: int) -> TaxParams:
     years = _REGISTRY[canonical]
     if year in years:
         return years[year]
-    # Fall back: nearest year (prefer most recent past year)
+    # Fall back: the most recent past year, else the earliest one we have
     available = sorted(years.keys())
-    best = available[-1]  # latest available as default
+    best = available[0]
     for y in available:
         if y <= year:
             best = y

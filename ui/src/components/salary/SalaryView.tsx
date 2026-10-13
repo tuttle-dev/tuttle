@@ -182,7 +182,7 @@ function MonthlyBreakdown({ salary, countrySupported, taxCountry }: { salary: Sa
       <div className="bg-surface-overlay rounded-lg p-4 space-y-1">
         {items.map((item, i) => {
           const pct = Math.max(Math.abs(item.amount) / gross, 0.02);
-          const sign = item.amount < 0 && !item.bold ? "−" : "";
+          const sign = item.amount < 0 ? "−" : "";
           return (
             <div key={i} className="py-1">
               <div className="flex justify-between mb-0.5">

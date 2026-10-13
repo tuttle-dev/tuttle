@@ -15,9 +15,12 @@ whether the expense is tax deductible:
 
 import datetime
 from decimal import Decimal
+from unittest.mock import patch
 
+import pandas
 import pytest
 
+from tuttle.kpi import compute_kpis
 from tuttle.model import RecurringExpense
 from tuttle.tax_reserves import compute_effective_salary, compute_spendable_income, dynamic_monthly
 from tuttle.time import Cycle
@@ -154,6 +157,31 @@ class TestSpendableIncome:
         capped = compute_spendable_income(invoices, "Germany", expenses=[_health(max_base=Decimal("50"))])
         assert capped.dynamic_expenses_deductible < uncapped.dynamic_expenses_deductible
         assert capped.spendable > uncapped.spendable
+
+    def test_planned_revenue_does_not_raise_post_tax_expenses(self, invoices):
+        """Like deductible ones, post-tax contributions are charged on earned income."""
+        expenses = [_health(deductible=False)]
+        with patch("tuttle.tax_reserves.compute_planned_revenue", return_value=Decimal("50000")):
+            with_planned = compute_spendable_income(
+                invoices,
+                "Germany",
+                expenses=expenses,
+                projects=["stand-in for a project, compute_planned_revenue is patched"],
+                time_data=pandas.DataFrame({"x": [1]}),
+            )
+        without_planned = compute_spendable_income(invoices, "Germany", expenses=expenses)
+
+        # The planned revenue raises the tax rate, so the earned post-tax base can only shrink.
+        assert 0 < with_planned.dynamic_expenses_post_tax <= without_planned.dynamic_expenses_post_tax
+
+    def test_dashboard_matches_safe_to_spend(self, invoices):
+        expenses = [_health(), RecurringExpense(title="Office", amount=Decimal("300"), currency="EUR", period=Cycle.monthly)]
+        kpis = compute_kpis(invoices, [], [], country="Germany", expenses=expenses)
+        spending = compute_spendable_income(invoices, "Germany", expenses=expenses, currency="EUR")
+
+        assert kpis.country_supported
+        assert kpis.spendable_income == spending.spendable
+        assert not compute_kpis(invoices, [], [], country="").country_supported
 
 
 class TestBreakdown:

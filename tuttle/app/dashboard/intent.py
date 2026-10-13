@@ -45,9 +45,10 @@ class DashboardIntent(SQLModelDataSourceMixin, Intent):
             invoices = self.query(Invoice)
             contracts = self.query(Contract)
             projects = self.query(Project)
+            expenses = self.query(RecurringExpense)
             country = self._get_country()
             time_data = self._time_data_source.get_data_frame()
-            kpis = compute_kpis(invoices, contracts, projects, country=country, time_data=time_data)
+            kpis = compute_kpis(invoices, contracts, projects, country=country, time_data=time_data, expenses=expenses)
             return IntentResult(was_intent_successful=True, data=kpis)
         except Exception as e:
             return IntentResult(

@@ -8,8 +8,8 @@ from pandas import DataFrame, Timestamp
 
 from .app.core.formatting import fmt_currency
 from .fx import primary_currency
-from .model import Contract, Invoice, Project
-from .tax import get_tax_system
+from .model import Contract, Invoice, Project, RecurringExpense
+from .tax import get_tax_system, has_tax_model
 from .tax_reserves import compute_spendable_income, convert_invoice
 from .time import TimeUnit
 from .timetracking import sum_hours_by_tag
@@ -58,6 +58,7 @@ def compute_kpis(
     projects: List[Project],
     country: str = "",
     time_data: Optional[DataFrame] = None,
+    expenses: Optional[List[RecurringExpense]] = None,
 ) -> KPISummary:
     """Compute business KPIs from invoices, contracts, and calendar data.
 
@@ -127,17 +128,14 @@ def compute_kpis(
         if available_hours > 0:
             utilization_rate = float(total_hours / available_hours)
 
-    country_supported = True
-    try:
-        spending = compute_spendable_income(invoices, country, currency=currency)
-        vat_reserve = spending.vat_reserve
-        income_tax_reserve = spending.income_tax_reserve
-        spendable_income = spending.spendable
-    except NotImplementedError:
-        country_supported = False
-        vat_reserve = Decimal(0)
-        income_tax_reserve = Decimal(0)
-        spendable_income = Decimal(0)
+    # The same inputs as the Tax page, so Spendable Income equals its Safe to Spend.
+    country_supported = has_tax_model(country)
+    spending = compute_spendable_income(
+        invoices, country, expenses=expenses, currency=currency, projects=projects, time_data=time_data
+    )
+    vat_reserve = spending.vat_reserve
+    income_tax_reserve = spending.income_tax_reserve
+    spendable_income = spending.spendable
 
     return KPISummary(
         total_revenue=total_revenue,

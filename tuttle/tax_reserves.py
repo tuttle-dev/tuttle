@@ -280,13 +280,14 @@ def compute_spendable_income(
     If *projects* and *time_data* are given, planned revenue from this year's
     calendar work that no invoice covers yet is included in the income basis.
     *contracted* is net revenue still expected from committed contracts this
-    year, as computed by ``forecasting.contracted_revenue``; past years
+    year, as computed by ``forecasting.contracted_revenue``; other years
     ignore it.
     """
     today = datetime.date.today()
-    is_past_year = year is not None and year < today.year
+    # Any year but the current one is a whole year, without planned revenue.
+    other_year = year is not None and year != today.year
 
-    if year is not None and is_past_year:
+    if other_year:
         year_start = datetime.date(year, 1, 1)
         year_end = datetime.date(year, 12, 31)
     else:
@@ -329,16 +330,16 @@ def compute_spendable_income(
     outstanding_net = outstanding_gross - outstanding_vat
 
     planned = Decimal(0)
-    if not is_past_year and projects and time_data is not None:
+    if not other_year and projects and time_data is not None:
         planned = compute_planned_revenue(projects, time_data, currency=currency, invoices=invoices)
-    if is_past_year:
+    if other_year:
         contracted = Decimal(0)
 
     gross_ytd = received_gross + outstanding_gross
     vat_ytd = received_vat + outstanding_vat
     net_ytd = received_net + outstanding_net
 
-    if is_past_year:
+    if other_year:
         months_elapsed = 12
     else:
         months_elapsed = max(
@@ -369,7 +370,13 @@ def compute_spendable_income(
     tax_reserve = compute_income_tax_reserve(tax_base, country, deductions, year=year)
 
     post_tax = tax_base - tax_reserve.ytd_reserve - fixed_post_tax_ytd
-    post_tax_lines = _dynamic_lines(dynamic_expenses, post_tax / months_elapsed, deductible=False)
+
+    # Post-tax dynamic expenses are charged on earned income too: planned
+    # revenue, and its share of the tax, stay out of their base.
+    earned_base = net_ytd - biz_expenses_ytd - dyn_deductible
+    earned_tax = tax_reserve.ytd_reserve * max(earned_base, Decimal(0)) / tax_base if tax_base > 0 else Decimal(0)
+    earned_post_tax = earned_base - earned_tax - fixed_post_tax_ytd
+    post_tax_lines = _dynamic_lines(dynamic_expenses, earned_post_tax / months_elapsed, deductible=False)
     dyn_post_tax = (_lines_total(post_tax_lines) * months_elapsed).quantize(Decimal("0.01"))
 
     # The per-expense lines are monthly; the aggregates above cover the period.

@@ -231,6 +231,7 @@ function IncomeTaxSection({ data, currency }: { data: Entity; currency: string }
   const outstanding = num(data, "outstanding_net");
   const planned = num(data, "planned_revenue");
   const contracted = num(data, "contracted_revenue");
+  const deducted = num(data, "deducted_expenses");
   const incomeBasis = num(data, "income_basis");
 
   const parts: string[] = [];
@@ -238,6 +239,7 @@ function IncomeTaxSection({ data, currency }: { data: Entity; currency: string }
   if (outstanding > 0) parts.push(`${fmt(outstanding, currency)} invoiced`);
   if (planned > 0) parts.push(`${fmt(planned, currency)} planned`);
   if (contracted > 0) parts.push(`${fmt(contracted, currency)} contracted`);
+  const breakdown = parts.join(" + ") + (deducted > 0 ? ` − ${fmt(deducted, currency)} deductible expenses` : "");
 
   return (
     <Section title={country ? `Income Tax Estimate (${country})` : "Income Tax Estimate"} icon={<Calculator size={16} />}>
@@ -245,7 +247,7 @@ function IncomeTaxSection({ data, currency }: { data: Entity; currency: string }
         <SummaryRow label="Income Basis" value={fmt(incomeBasis, currency)} />
         {parts.length > 0 && (
           <div className="text-xs text-muted -mt-1 text-right">
-            {parts.join(" + ")}
+            {breakdown}
           </div>
         )}
         {tr && (
@@ -300,7 +302,7 @@ function WaterfallBar({ label, amount, total, color, currency, bold }: {
   label: string; amount: number; total: number; color: string; currency: string; bold?: boolean;
 }) {
   const pct = total > 0 ? Math.max(Math.abs(amount) / total, 0.02) : 0;
-  const sign = amount < 0 && !bold ? "−" : "";
+  const sign = amount < 0 ? "−" : "";
   const display = Math.abs(amount);
 
   return (

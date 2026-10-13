@@ -13,7 +13,7 @@ from .model import Contract, Invoice, Project, RecurringExpense
 from .tax_reserves import (
     _dynamic_lines,
     _lines_total,
-    _normalize_to_monthly,
+    _monthly_expenses_total,
     compute_income_tax_reserve,
     convert_invoice,
 )
@@ -811,7 +811,8 @@ def cash_flow_series(
     # 4. Outflows from normalized fixed recurring expenses, dynamic expenses, and tax reserves
     fixed_expenses = [e for e in expenses if e.rate is None and e.amount is not None]
     dynamic_expenses = [e for e in expenses if e.rate is not None]
-    monthly_fixed = sum((_normalize_to_monthly(e) for e in fixed_expenses), Decimal(0))
+    monthly_fixed = _monthly_expenses_total(fixed_expenses)
+    monthly_fixed_deductible = _monthly_expenses_total([e for e in fixed_expenses if e.tax_deductible])
 
     # Precompute inflows and taxable profit base per bucket, and derive a single effective
     # tax rate from the window's annualized taxable income so uneven income is not taxed
@@ -826,7 +827,7 @@ def cash_flow_series(
         row["inflow_total"] = round(row["inflow_invoiced"] + row["inflow_planned"] + row["inflow_contracted"], 2)
 
         month_inflow = Decimal(str(row["inflow_total"]))
-        base_profit = max(Decimal(0), month_inflow - monthly_fixed)
+        base_profit = max(Decimal(0), month_inflow - monthly_fixed_deductible)
 
         deductible_lines = _dynamic_lines(dynamic_expenses, base_profit, deductible=True)
         dyn_deductible = _lines_total(deductible_lines)
@@ -853,7 +854,7 @@ def cash_flow_series(
         month_tax_base, dyn_deductible = month_data[period]
 
         monthly_tax = (month_tax_base * effective_tax_rate).quantize(Decimal("0.01"))
-        post_tax = max(Decimal(0), month_tax_base - monthly_tax)
+        post_tax = max(Decimal(0), month_tax_base - monthly_tax - (monthly_fixed - monthly_fixed_deductible))
         nondeductible_lines = _dynamic_lines(dynamic_expenses, post_tax, deductible=False)
         dyn_nondeductible = _lines_total(nondeductible_lines)
 
