@@ -15,7 +15,8 @@ from __future__ import annotations
 
 import datetime
 import json
-from decimal import Decimal
+import math
+from decimal import ROUND_DOWN, Decimal
 from pathlib import Path
 from typing import Optional
 
@@ -45,6 +46,8 @@ class TaxParams:
 
         soli = data.get("solidarity_surcharge", {})
         self.soli_rate: float = soli.get("rate", 0.0)
+        self.soli_exemption_limit: float = soli.get("exemption_limit", 0.0)
+        self.soli_phase_in_rate: Optional[float] = soli.get("phase_in_rate")
 
         vat = data.get("vat", {})
         self.vat_standard: float = vat.get("standard_rate", 0.0)
@@ -242,7 +245,11 @@ class TaxSystem:
         raise NotImplementedError(f"Unknown formula type: {self.params.formula_type}")
 
     def _german_progressive(self, ti: float) -> Decimal:
-        """§32a EStG formula with zone parameters from data."""
+        """§32a EStG formula with zone parameters from data.
+
+        The income and the tax are both rounded down to full euros.
+        """
+        ti = math.floor(ti)
         for zone in self.params.zones:
             up_to = zone["up_to"]
             if up_to is not None and ti > up_to:
@@ -258,12 +265,12 @@ class TaxSystem:
                 c = zone.get("c", 0)
                 y = (ti - ref) / div
                 tax = (a * y + b) * y + c
-                return Decimal(str(round(tax)))
+                return Decimal(math.floor(tax))
             elif ztype == "linear":
                 rate = zone["rate"]
                 offset = zone["offset"]
                 tax = rate * ti + offset
-                return Decimal(str(round(tax)))
+                return Decimal(math.floor(tax))
         return Decimal(0)
 
     def _marginal_brackets(self, ti: float) -> Decimal:
@@ -303,11 +310,19 @@ class TaxSystem:
     # ── Solidarity surcharge ──────────────────────────────────
 
     def solidarity_surcharge(self, income_tax_amount: Decimal) -> Decimal:
-        """Surcharge on income tax (e.g. 5.5% Solidaritätszuschlag)."""
-        if income_tax_amount <= 0 or self.params.soli_rate == 0:
+        """Surcharge on income tax (e.g. 5.5% Solidaritätszuschlag).
+
+        None while the tax stays within the exemption limit; above it, at most
+        the phase-in rate of the tax beyond the limit, so it does not jump.
+        """
+        params = self.params
+        if params.soli_rate == 0 or income_tax_amount <= Decimal(str(params.soli_exemption_limit)):
             return Decimal(0)
-        surcharge = income_tax_amount * Decimal(str(self.params.soli_rate))
-        return surcharge.quantize(Decimal("0.01"))
+        surcharge = income_tax_amount * Decimal(str(params.soli_rate))
+        if params.soli_phase_in_rate is not None:
+            excess = income_tax_amount - Decimal(str(params.soli_exemption_limit))
+            surcharge = min(surcharge, excess * Decimal(str(params.soli_phase_in_rate)))
+        return surcharge.quantize(Decimal("0.01"), rounding=ROUND_DOWN)
 
     def total_tax(self, taxable_income: Decimal) -> Decimal:
         """Income tax + all surcharges."""

@@ -7,6 +7,7 @@ import pandas
 import pytest
 
 from tuttle import tax
+from tuttle.app.tax.intent import TaxIntent
 from tuttle.kpi import monthly_spendable_breakdown
 from tuttle.model import (
     Address,
@@ -197,6 +198,44 @@ class TestTaxSystemFramework:
 
 
 class TestGermanIncomeTax:
+    @pytest.mark.parametrize(
+        "year, income, tax",
+        [
+            (2024, 11784, 0),
+            (2024, 50000, 10872),
+            (2025, 12096, 0),
+            (2025, 20000, 1639),
+            (2025, 50000, 10691),
+            (2025, 100000, 31088),
+            (2026, 12348, 0),
+            (2026, 50000, 10548),
+            (2026, 300000, 115529),
+        ],
+    )
+    def test_official_tariff(self, year, income, tax):
+        """§32a EStG, single filer, rounded down to full euros."""
+        german = get_tax_system("Germany", date=datetime.date(year, 6, 1))
+        assert german.income_tax(Decimal(income)) == tax
+
+    @pytest.mark.parametrize("year", available_years("Germany"))
+    def test_no_jump_between_zones(self, year):
+        german = get_tax_system("Germany", date=datetime.date(year, 6, 1))
+        for zone in german.bracket_info[:-1]:
+            edge = Decimal(zone["up_to"])
+            assert german.income_tax(edge + 1) - german.income_tax(edge) <= 1
+
+    def test_brackets_follow_the_zone_bounds(self):
+        german = get_tax_system("Germany", date=datetime.date(2026, 6, 1))
+        brackets = TaxIntent._compute_bracket_data(german, Decimal(280000))
+
+        assert [(b["start"], b["end"]) for b in brackets[:4]] == [
+            (0, 12348),
+            (12348, 17799),
+            (17799, 69878),
+            (69878, 277825),
+        ]
+        assert [b["label"] for b in brackets if b["is_current"]] == ["Zone 5 (45%)"]
+
     def test_zero_income(self, german_tax):
         assert german_tax.income_tax(Decimal(0)) == 0
 
@@ -262,10 +301,21 @@ class TestSolidaritySurcharge:
     def test_zero_tax(self, german_tax):
         assert german_tax.solidarity_surcharge(Decimal(0)) == 0
 
-    def test_standard_case(self, german_tax):
-        tax_amount = Decimal("10000")
-        soli = german_tax.solidarity_surcharge(tax_amount)
-        assert soli == Decimal("550.00")
+    @pytest.mark.parametrize(
+        "year, income_tax, soli",
+        [
+            (2025, "19950", "0"),  # up to the exemption limit: none
+            (2025, "31088", "1325.42"),  # phase-in: 11.9% of 11,138 beats 5.5% of 31,088
+            (2025, "115753", "6366.41"),  # beyond the phase-in: 5.5%
+            (2026, "20350", "0"),
+            (2026, "20351", "0.11"),
+            (2024, "18763", "75.32"),
+        ],
+    )
+    def test_exemption_limit_and_phase_in(self, year, income_tax, soli):
+        """§§ 3, 4 SolZG for a single filer."""
+        german = get_tax_system("Germany", date=datetime.date(year, 6, 1))
+        assert german.solidarity_surcharge(Decimal(income_tax)) == Decimal(soli)
 
     def test_total_tax(self, german_tax):
         """total_tax = income_tax + soli."""
