@@ -1,4 +1,7 @@
-"""The effective salary: a steady monthly run rate, broken down row by row."""
+"""The effective salary: a steady monthly run rate, broken down row by row.
+
+It averages the last 12 complete months, or the months since the first invoice.
+"""
 
 import datetime
 from decimal import Decimal
@@ -66,12 +69,13 @@ def test_steady_income_gives_the_same_salary_all_year(today, country):
 
 
 def test_a_full_year_matches_safe_to_spend(today):
-    today(datetime.date(2026, 12, 31))
+    """On New Year's Day the salary averages exactly the year just closed."""
+    today(datetime.date(2027, 1, 1))
     invoices = _monthly_invoices(2026, range(1, 13))
     expenses = [_fixed("800"), _fixed("200", deductible=False)]
 
     salary = compute_effective_salary(invoices, expenses, "Germany")
-    spending = compute_spendable_income(invoices, "Germany", expenses=expenses)
+    spending = compute_spendable_income(invoices, "Germany", expenses=expenses, year=2026)
 
     assert abs(salary.optimistic_monthly * 12 - spending.spendable) < 1
 
@@ -108,6 +112,36 @@ def test_only_deductible_fixed_expenses_lower_the_tax(today):
     assert from_taxed_income.income_tax_reserve_monthly == plain.income_tax_reserve_monthly
     assert from_taxed_income.optimistic_monthly == plain.optimistic_monthly - 1000
     assert from_taxed_income.optimistic_monthly < deductible.optimistic_monthly
+
+
+@pytest.mark.parametrize("day", [datetime.date(2026, 10, 1), datetime.date(2026, 10, 30), datetime.date(2026, 11, 1)])
+def test_the_month_in_progress_does_not_lower_the_salary(today, day):
+    """Invoiced at month end: until then the new month has no invoice yet."""
+    today(datetime.date(2026, 9, 30))
+    steady = compute_effective_salary(_monthly_invoices(2026, range(1, 9)), [], "Germany")
+
+    today(day)
+    salary = compute_effective_salary(_monthly_invoices(2026, range(1, day.month)), [], "Germany")
+    assert salary.optimistic_monthly == steady.optimistic_monthly
+
+
+def test_a_business_started_mid_year_averages_its_own_months(today):
+    today(datetime.date(2026, 10, 15))
+    salary = compute_effective_salary(_monthly_invoices(2026, range(7, 10)), [], "Germany")
+
+    assert salary.gross_monthly == Decimal("11900.00")
+    assert (salary.period_start, salary.period_end) == (datetime.date(2026, 7, 1), datetime.date(2026, 9, 30))
+
+
+def test_january_carries_on_from_last_year(today):
+    today(datetime.date(2025, 12, 31))
+    december = compute_effective_salary(_monthly_invoices(2025, range(1, 13)), [], "Germany")
+    today(datetime.date(2026, 1, 20))
+    january = compute_effective_salary(_monthly_invoices(2025, range(1, 13)), [], "Germany")
+
+    # The same monthly revenue; only the year's tax tables differ.
+    assert january.gross_monthly == december.gross_monthly == Decimal("11900.00")
+    assert january.period_start == datetime.date(2025, 1, 1)
 
 
 def test_future_invoices_do_not_count(today):

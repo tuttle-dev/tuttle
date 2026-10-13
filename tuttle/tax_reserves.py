@@ -509,6 +509,7 @@ class EffectiveSalary(NamedTuple):
     dynamic_expenses     — income-dependent expenses (health, pension), one line each
     conversion_fee_monthly — bank spread on foreign-currency revenue per month
     currency             — ISO 4217 currency code
+    period_start, period_end — the months the averages are taken over
     """
 
     conservative_monthly: Decimal
@@ -520,6 +521,8 @@ class EffectiveSalary(NamedTuple):
     dynamic_expenses: list = []  # per-expense DynamicExpenseLine, never mutated
     gross_monthly: Decimal = Decimal(0)
     conversion_fee_monthly: Decimal = Decimal(0)
+    period_start: Optional[datetime.date] = None
+    period_end: Optional[datetime.date] = None
 
 
 class _Revenue(NamedTuple):
@@ -552,12 +555,16 @@ def compute_effective_salary(
 
     The *conservative* figure uses only paid invoices (certain, received revenue).
     The *optimistic* figure adds outstanding (sent but unpaid) invoices.
-    Both take this year's invoices up to today as a monthly run rate and reduce
-    it by VAT, the income-tax reserve, the fixed and dynamic recurring expenses,
-    and the bank spread on foreign-currency revenue.
+    Both average the invoices of the last 12 complete months, or of the months
+    since the first invoice, and reduce that by VAT, the income-tax reserve,
+    the fixed and dynamic recurring expenses, and the bank spread on
+    foreign-currency revenue.
+
+    The month in progress is left out: most of its invoices are not written
+    yet, so counting it would lower the average every time a month begins.
     """
     today = datetime.date.today()
-    year_start = today.replace(month=1, day=1)
+    this_month = today.replace(day=1)
     cent = Decimal("0.01")
 
     if currency is None:
@@ -567,12 +574,19 @@ def compute_effective_salary(
         except NotImplementedError:
             currency = "EUR"
 
-    months_elapsed = max((today.year - year_start.year) * 12 + today.month - year_start.month + 1, 1)
+    first = min((inv.date for inv in invoices if not inv.cancelled and inv.date <= today), default=None)
+    if first is None or first >= this_month:
+        # Nothing invoiced before this month: the month so far is all there is.
+        period_start, period_end, months = this_month, today, 1
+    else:
+        period_start = max(this_month.replace(year=this_month.year - 1), first.replace(day=1))
+        period_end = this_month - datetime.timedelta(days=1)
+        months = (period_end.year - period_start.year) * 12 + period_end.month - period_start.month + 1
 
     paid = _Revenue()
     outstanding = _Revenue()
     for inv in invoices:
-        if inv.cancelled or not year_start <= inv.date <= today:
+        if inv.cancelled or not period_start <= inv.date <= period_end:
             continue
         converted = convert_invoice(inv, currency)
         if converted is None:
@@ -593,8 +607,8 @@ def compute_effective_salary(
 
     def scenario(revenue: _Revenue) -> _SalaryScenario:
         """The monthly salary waterfall for a year-to-date revenue basis."""
-        gross = (revenue.gross / months_elapsed).quantize(cent)
-        vat = (revenue.vat / months_elapsed).quantize(cent)
+        gross = (revenue.gross / months).quantize(cent)
+        vat = (revenue.vat / months).quantize(cent)
         profit = gross - vat - monthly_exp_deductible
         deductible_lines = _dynamic_lines(dynamic_expenses, profit, deductible=True)
         tax_base = profit - _lines_total(deductible_lines)
@@ -604,7 +618,7 @@ def compute_effective_salary(
         post_tax = tax_base - income_tax - (monthly_exp - monthly_exp_deductible)
         post_tax_lines = _dynamic_lines(dynamic_expenses, post_tax, deductible=False)
         # The bank spread never reduces taxable revenue, only what lands in the account.
-        conversion_fee = (revenue.foreign_net / months_elapsed * fx_spread / 100).quantize(cent)
+        conversion_fee = (revenue.foreign_net / months * fx_spread / 100).quantize(cent)
         salary = post_tax - _lines_total(post_tax_lines) - conversion_fee
         return _SalaryScenario(salary, gross, vat, income_tax, conversion_fee, deductible_lines + post_tax_lines)
 
@@ -621,6 +635,8 @@ def compute_effective_salary(
         dynamic_expenses=optimistic.dynamic_lines,
         gross_monthly=optimistic.gross,
         conversion_fee_monthly=optimistic.conversion_fee,
+        period_start=period_start,
+        period_end=period_end,
     )
 
 
