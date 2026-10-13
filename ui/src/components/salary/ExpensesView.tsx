@@ -325,16 +325,14 @@ function ExpenseDetail({ expense, onEdit, onDelete, deleteError }: {
 
       <DetailFields>
         {dynamic ? (
-          <>
-            <DetailField label="Rate">{fmtRate(rate)}</DetailField>
-            <DetailField label="Tax Treatment">{deductible ? "Deductible" : "Paid from taxed income"}</DetailField>
-          </>
+          <DetailField label="Rate">{fmtRate(rate)}</DetailField>
         ) : (
           <>
             <DetailField label="Amount">{fmt(amount, currency)}</DetailField>
             <DetailField label="Period">{period.charAt(0).toUpperCase() + period.slice(1)}</DetailField>
           </>
         )}
+        <DetailField label="Tax Treatment">{deductible ? "Deductible" : "Paid from taxed income"}</DetailField>
         <DetailField label={dynamic ? "Monthly Amount" : "Monthly Equivalent"}>
           {dynamic
             ? `${rate}% of ${deductible ? "your taxable profit" : "what is left after tax"}`

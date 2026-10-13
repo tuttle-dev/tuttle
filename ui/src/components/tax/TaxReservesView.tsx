@@ -105,6 +105,8 @@ export function TaxReservesView() {
           const totalBase = received + outstanding + planned + contracted;
           const vat = num(sp!, "vat_reserve");
           const bizExpenses = num(sp!, "business_expenses");
+          const fixedPostTax = num(sp!, "fixed_expenses_post_tax");
+          const conversionFee = num(sp!, "conversion_fee");
           const taxableProfit = num(sp!, "taxable_profit");
           const taxBase = num(sp!, "tax_base");
           const dynLines = (sp!.dynamic_expenses as DynamicLine[]) || [];
@@ -139,9 +141,15 @@ export function TaxReservesView() {
               <div className={countrySupported ? "" : "opacity-40"}>
                 <WaterfallBar label="Est. Income Tax" amount={tax} total={totalBase} color="var(--color-status-warning)" currency={currency} />
               </div>
+              {fixedPostTax > 0 && (
+                <WaterfallBar label="Fixed Recurring Expenses (from taxed income)" amount={fixedPostTax} total={totalBase} color="var(--color-status-warning)" currency={currency} />
+              )}
               {dynLines.filter((l) => !l.tax_deductible).map((line) => (
                 <WaterfallBar key={line.title} label={`${line.title} (${line.rate}%, from taxed income)`} amount={line.amount} total={totalBase} color="var(--color-status-warning)" currency={currency} />
               ))}
+              {conversionFee > 0 && (
+                <WaterfallBar label="Currency Conversion" amount={conversionFee} total={totalBase} color="var(--color-status-warning)" currency={currency} />
+              )}
               {!countrySupported && (
                 <p className="text-xs text-muted italic">{noTaxModel(taxCountry)}</p>
               )}

@@ -53,12 +53,12 @@ class SpendableIncome(NamedTuple):
     """What the freelancer can actually spend."""
 
     gross_revenue_ytd: Decimal  # total invoiced amount (incl. VAT)
-    business_expenses: Decimal  # fixed recurring expenses prorated to period
+    business_expenses: Decimal  # tax-deductible fixed recurring expenses prorated to period
     net_revenue_ytd: Decimal  # gross minus VAT
     taxable_profit: Decimal  # net_revenue - business_expenses
     vat_reserve: Decimal  # VAT to set aside
     income_tax_reserve: Decimal  # estimated income tax + soli
-    spendable: Decimal  # post-tax minus non-deductible dynamic expenses and FX fee
+    spendable: Decimal  # post-tax minus non-deductible expenses and FX fee
     # breakdown by income source
     received_gross: Decimal  # paid invoices, gross
     received_net: Decimal  # paid invoices, net of VAT
@@ -72,6 +72,7 @@ class SpendableIncome(NamedTuple):
     dynamic_expenses_post_tax: Decimal = Decimal(0)  # charged on post-tax money
     tax_base: Decimal = Decimal(0)  # taxable_profit - dynamic_expenses_deductible
     dynamic_expenses: list = []  # per-expense DynamicExpenseLine, never mutated
+    fixed_expenses_post_tax: Decimal = Decimal(0)  # non-deductible fixed expenses prorated to period
 
 
 def _invoice_currency(inv: Invoice) -> Optional[str]:
@@ -262,16 +263,18 @@ def compute_spendable_income(
 
     Income basis = received (paid) + outstanding (invoiced) + planned (calendar)
     + contracted (committed contract work for the rest of the year).
-    Business *expenses* (health insurance, operating costs, etc.) are deducted
-    before estimating income tax, yielding the correct taxable profit.
+    Fixed expenses marked tax deductible (operating costs, insurance, etc.) are
+    deducted before estimating income tax, yielding the taxable profit; the
+    others are paid out of taxed income.
     Tax is computed on the taxable profit — no annualization.
 
         Gross Revenue
         − VAT
         = Net Revenue (received + outstanding) + Planned + Contracted
-        − Business Expenses
+        − Deductible Fixed Expenses
         = Taxable Profit
         − Est. Income Tax
+        − Other Fixed Expenses
         = Safe to Spend
 
     If *projects* and *time_data* are given, planned revenue from this year's
@@ -343,10 +346,13 @@ def compute_spendable_income(
             1,
         )
 
-    # Compute YTD business expenses from the fixed-amount recurring expenses
+    # Prorate the fixed-amount recurring expenses to the period
     fixed_expenses = [e for e in (expenses or []) if e.rate is None]
     dynamic_expenses = [e for e in (expenses or []) if e.rate is not None]
-    biz_expenses_ytd = (_monthly_expenses_total(fixed_expenses) * months_elapsed).quantize(Decimal("0.01"))
+    deductible_monthly = _monthly_expenses_total([e for e in fixed_expenses if e.tax_deductible])
+    post_tax_monthly = _monthly_expenses_total([e for e in fixed_expenses if not e.tax_deductible])
+    biz_expenses_ytd = (deductible_monthly * months_elapsed).quantize(Decimal("0.01"))
+    fixed_post_tax_ytd = (post_tax_monthly * months_elapsed).quantize(Decimal("0.01"))
 
     taxable_profit = net_ytd + planned + contracted - biz_expenses_ytd
 
@@ -362,7 +368,7 @@ def compute_spendable_income(
     tax_base = taxable_profit - dyn_deductible
     tax_reserve = compute_income_tax_reserve(tax_base, country, deductions, year=year)
 
-    post_tax = tax_base - tax_reserve.ytd_reserve
+    post_tax = tax_base - tax_reserve.ytd_reserve - fixed_post_tax_ytd
     post_tax_lines = _dynamic_lines(dynamic_expenses, post_tax / months_elapsed, deductible=False)
     dyn_post_tax = (_lines_total(post_tax_lines) * months_elapsed).quantize(Decimal("0.01"))
 
@@ -397,6 +403,7 @@ def compute_spendable_income(
         dynamic_expenses_post_tax=dyn_post_tax,
         tax_base=tax_base,
         dynamic_expenses=dynamic_lines,
+        fixed_expenses_post_tax=fixed_post_tax_ytd,
     )
 
 
@@ -470,10 +477,16 @@ class EffectiveSalary(NamedTuple):
 
     conservative_monthly — floor: based only on revenue already received (paid invoices)
     optimistic_monthly   — ceiling: includes outstanding (unpaid, non-cancelled) invoices
+
+    The remaining fields break down the optimistic figure, so that
+    gross − VAT − tax − fixed − dynamic − conversion fee = optimistic_monthly:
+
+    gross_monthly        — monthly gross revenue (incl. VAT)
+    vat_reserve_monthly        — VAT to remit per month
+    income_tax_reserve_monthly — income-tax reserve per month
     monthly_expenses     — normalized total of the fixed recurring expenses
-    income_tax_reserve_monthly — prorated income-tax reserve per month
-    vat_reserve_monthly        — prorated VAT reserve per month
     dynamic_expenses     — income-dependent expenses (health, pension), one line each
+    conversion_fee_monthly — bank spread on foreign-currency revenue per month
     currency             — ISO 4217 currency code
     """
 
@@ -484,6 +497,28 @@ class EffectiveSalary(NamedTuple):
     vat_reserve_monthly: Decimal
     currency: str
     dynamic_expenses: list = []  # per-expense DynamicExpenseLine, never mutated
+    gross_monthly: Decimal = Decimal(0)
+    conversion_fee_monthly: Decimal = Decimal(0)
+
+
+class _Revenue(NamedTuple):
+    """Year-to-date revenue of one scenario, in the aggregate currency."""
+
+    gross: Decimal = Decimal(0)
+    vat: Decimal = Decimal(0)
+    foreign_net: Decimal = Decimal(0)  # net revenue that must be exchanged
+
+    def __add__(self, other: "_Revenue") -> "_Revenue":
+        return _Revenue(self.gross + other.gross, self.vat + other.vat, self.foreign_net + other.foreign_net)
+
+
+class _SalaryScenario(NamedTuple):
+    salary: Decimal
+    gross: Decimal
+    vat: Decimal
+    income_tax: Decimal
+    conversion_fee: Decimal
+    dynamic_lines: List[DynamicExpenseLine]
 
 
 def compute_effective_salary(
@@ -496,11 +531,13 @@ def compute_effective_salary(
 
     The *conservative* figure uses only paid invoices (certain, received revenue).
     The *optimistic* figure adds outstanding (sent but unpaid) invoices.
-    Both are reduced by the prorated VAT reserve, income-tax reserve, and the
-    total monthly recurring expenses.
+    Both take this year's invoices up to today as a monthly run rate and reduce
+    it by VAT, the income-tax reserve, the fixed and dynamic recurring expenses,
+    and the bank spread on foreign-currency revenue.
     """
     today = datetime.date.today()
     year_start = today.replace(month=1, day=1)
+    cent = Decimal("0.01")
 
     if currency is None:
         try:
@@ -511,69 +548,58 @@ def compute_effective_salary(
 
     months_elapsed = max((today.year - year_start.year) * 12 + today.month - year_start.month + 1, 1)
 
-    gross_paid = Decimal(0)
-    vat_paid = Decimal(0)
-    gross_outstanding = Decimal(0)
-    vat_outstanding = Decimal(0)
-
+    paid = _Revenue()
+    outstanding = _Revenue()
     for inv in invoices:
-        if inv.cancelled:
-            continue
-        if inv.date < year_start:
+        if inv.cancelled or not year_start <= inv.date <= today:
             continue
         converted = convert_invoice(inv, currency)
         if converted is None:
             continue
         gross, vat = converted
+        foreign = gross - vat if _invoice_currency(inv) not in (currency, None) else Decimal(0)
+        revenue = _Revenue(gross, vat, foreign)
         if inv.paid:
-            gross_paid += gross
-            vat_paid += vat
+            paid += revenue
         else:
-            gross_outstanding += gross
-            vat_outstanding += vat
+            outstanding += revenue
 
-    net_paid = gross_paid - vat_paid
-    net_all = net_paid + (gross_outstanding - vat_outstanding)
-
-    monthly_vat_conservative = (vat_paid / months_elapsed).quantize(Decimal("0.01"))
-    monthly_vat_optimistic = ((vat_paid + vat_outstanding) / months_elapsed).quantize(Decimal("0.01"))
-
+    fixed_expenses = [e for e in expenses if e.rate is None]
     dynamic_expenses = [e for e in expenses if e.rate is not None]
-    monthly_exp = _monthly_expenses_total([e for e in expenses if e.rate is None])
+    monthly_exp = _monthly_expenses_total(fixed_expenses)
+    monthly_exp_deductible = _monthly_expenses_total([e for e in fixed_expenses if e.tax_deductible])
+    fx_spread = fx_haircut()
 
-    def scenario(net: Decimal) -> tuple[Decimal, Decimal, List[DynamicExpenseLine]]:
-        """Monthly salary, income-tax reserve and dynamic expense lines for a revenue basis."""
-        base_monthly = net / months_elapsed - monthly_exp
-        deductible_lines = _dynamic_lines(dynamic_expenses, base_monthly, deductible=True)
-        dyn_deductible = _lines_total(deductible_lines)
-        tax = compute_income_tax_reserve(net - dyn_deductible * months_elapsed, country)
-        monthly_tax = (tax.ytd_reserve / months_elapsed).quantize(Decimal("0.01"))
-        post_tax = base_monthly - dyn_deductible - monthly_tax
+    def scenario(revenue: _Revenue) -> _SalaryScenario:
+        """The monthly salary waterfall for a year-to-date revenue basis."""
+        gross = (revenue.gross / months_elapsed).quantize(cent)
+        vat = (revenue.vat / months_elapsed).quantize(cent)
+        profit = gross - vat - monthly_exp_deductible
+        deductible_lines = _dynamic_lines(dynamic_expenses, profit, deductible=True)
+        tax_base = profit - _lines_total(deductible_lines)
+        # Tax a year of this monthly profit: progressive tax on the year-to-date
+        # sum would treat a few months of income as a whole year's.
+        income_tax = (compute_income_tax_reserve(tax_base * 12, country).ytd_reserve / 12).quantize(cent)
+        post_tax = tax_base - income_tax - (monthly_exp - monthly_exp_deductible)
         post_tax_lines = _dynamic_lines(dynamic_expenses, post_tax, deductible=False)
-        salary = (post_tax - _lines_total(post_tax_lines)).quantize(Decimal("0.01"))
-        return salary, monthly_tax, deductible_lines + post_tax_lines
+        # The bank spread never reduces taxable revenue, only what lands in the account.
+        conversion_fee = (revenue.foreign_net / months_elapsed * fx_spread / 100).quantize(cent)
+        salary = post_tax - _lines_total(post_tax_lines) - conversion_fee
+        return _SalaryScenario(salary, gross, vat, income_tax, conversion_fee, deductible_lines + post_tax_lines)
 
-    conservative, monthly_tax_conservative, lines_conservative = scenario(net_paid)
-    optimistic, monthly_tax_optimistic, lines_optimistic = scenario(net_all)
-
-    # Both scenarios list the same expenses; the breakdown averages them, as the
-    # tax and VAT rows already do.
-    dynamic_lines = [
-        con._replace(amount=((con.amount + opt.amount) / 2).quantize(Decimal("0.01")))
-        for con, opt in zip(lines_conservative, lines_optimistic)
-    ]
-    # Use the average monthly figures for display breakdown
-    avg_monthly_vat = ((monthly_vat_conservative + monthly_vat_optimistic) / 2).quantize(Decimal("0.01"))
-    avg_monthly_tax = ((monthly_tax_conservative + monthly_tax_optimistic) / 2).quantize(Decimal("0.01"))
+    conservative = scenario(paid)
+    optimistic = scenario(paid + outstanding)
 
     return EffectiveSalary(
-        conservative_monthly=conservative,
-        optimistic_monthly=optimistic,
+        conservative_monthly=conservative.salary,
+        optimistic_monthly=optimistic.salary,
         monthly_expenses=monthly_exp,
-        income_tax_reserve_monthly=avg_monthly_tax,
-        vat_reserve_monthly=avg_monthly_vat,
+        income_tax_reserve_monthly=optimistic.income_tax,
+        vat_reserve_monthly=optimistic.vat,
         currency=currency,
-        dynamic_expenses=dynamic_lines,
+        dynamic_expenses=optimistic.dynamic_lines,
+        gross_monthly=optimistic.gross,
+        conversion_fee_monthly=optimistic.conversion_fee,
     )
 
 

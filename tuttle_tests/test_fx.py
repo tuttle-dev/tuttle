@@ -10,7 +10,7 @@ from tuttle import fx
 from tuttle.forecasting import revenue_series
 from tuttle.kpi import compute_kpis
 from tuttle.model import Client, Contract, Invoice, InvoiceItem, Project, TaxCategory
-from tuttle.tax_reserves import compute_spendable_income
+from tuttle.tax_reserves import compute_effective_salary, compute_spendable_income
 from tuttle.time import Cycle, TimeUnit
 
 
@@ -121,6 +121,16 @@ def test_dashboard_and_tax_view_agree_on_planned_dollar_work():
     # 8 h × $100 × 0.9 — the same euros in both views.
     assert this_year["planned"] == pytest.approx(720.0)
     assert spending.planned_revenue == Decimal("720.00")
+
+
+def test_conversion_fee_lowers_the_salary_but_not_its_tax():
+    plain = compute_effective_salary([_invoice("EUR", "9000")], [], "Germany", currency="EUR")
+    salary = compute_effective_salary([_invoice("USD", "10000")], [], "Germany", currency="EUR")
+
+    months = datetime.date.today().month
+    assert salary.conversion_fee_monthly == (Decimal("90.00") / months).quantize(Decimal("0.01"))
+    assert salary.income_tax_reserve_monthly == plain.income_tax_reserve_monthly
+    assert salary.optimistic_monthly == plain.optimistic_monthly - salary.conversion_fee_monthly
 
 
 class TestCurrencyValidation:

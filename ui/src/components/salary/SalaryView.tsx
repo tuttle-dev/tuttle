@@ -16,10 +16,12 @@ function fmt(value: number, currency = "EUR"): string {
 type SalaryData = {
   conservative: number;
   optimistic: number;
+  grossMonthly: number;
   monthlyExpenses: number;
   dynamicLines: DynamicLine[];
   incomeTaxReserve: number;
   vatReserve: number;
+  conversionFee: number;
   currency: string;
 };
 
@@ -50,10 +52,12 @@ export function SalaryView() {
         setSalary({
           conservative: con,
           optimistic: opt,
+          grossMonthly: num(sal, "gross_monthly"),
           monthlyExpenses: num(sal, "monthly_expenses"),
           dynamicLines: (sal.dynamic_expenses as DynamicLine[]) || [],
           incomeTaxReserve: num(sal, "income_tax_reserve_monthly"),
           vatReserve: num(sal, "vat_reserve_monthly"),
+          conversionFee: num(sal, "conversion_fee_monthly"),
           currency: cur,
         });
         if (target === null) setTarget(con);
@@ -148,9 +152,7 @@ function SalaryDial({ salary, target, onTargetChange }: {
 }
 
 function MonthlyBreakdown({ salary, countrySupported, taxCountry }: { salary: SalaryData; countrySupported: boolean; taxCountry: string }) {
-  const { optimistic, vatReserve, incomeTaxReserve, monthlyExpenses, dynamicLines, currency } = salary;
-  const dynamicTotal = dynamicLines.reduce((sum, line) => sum + line.amount, 0);
-  const gross = optimistic + incomeTaxReserve + vatReserve + monthlyExpenses + dynamicTotal;
+  const { optimistic, grossMonthly: gross, vatReserve, incomeTaxReserve, monthlyExpenses, dynamicLines, conversionFee, currency } = salary;
   if (gross <= 0) return null;
 
   const items: { label: string; amount: number; color: string; bold?: boolean; muted?: boolean }[] = [
@@ -165,6 +167,9 @@ function MonthlyBreakdown({ salary, countrySupported, taxCountry }: { salary: Sa
       amount: line.amount,
       color: "var(--color-status-warning)",
     })),
+    ...(conversionFee > 0
+      ? [{ label: "Currency Conversion", amount: conversionFee, color: "var(--color-status-warning)" }]
+      : []),
     { label: "= Available Salary", amount: optimistic, color: optimistic >= 0 ? "var(--color-status-success)" : "var(--color-status-danger)", bold: true },
   ];
 

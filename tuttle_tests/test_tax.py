@@ -492,6 +492,7 @@ class TestSpendableIncome:
                 currency="EUR",
                 period=Cycle.monthly,
                 category="insurance",
+                tax_deductible=True,
             ),
         ]
         result_no_exp = compute_spendable_income(invoices, "Germany")
@@ -507,6 +508,21 @@ class TestSpendableIncome:
         assert result_with_exp.spendable == result_with_exp.taxable_profit - result_with_exp.income_tax_reserve
         # Net revenue unchanged (expenses don't affect gross/vat)
         assert result_with_exp.net_revenue_ytd == result_no_exp.net_revenue_ytd
+
+    def test_non_deductible_expense_is_paid_from_taxed_income(self):
+        """A fixed expense not marked deductible leaves the tax alone and comes out after it."""
+        today = datetime.date.today()
+        invoices = [_make_invoice(today.replace(day=1), [(100, 100, 0.19)])]
+        expense = RecurringExpense(title="Gym", amount=Decimal("500"), currency="EUR", period=Cycle.monthly)
+
+        plain = compute_spendable_income(invoices, "Germany")
+        result = compute_spendable_income(invoices, "Germany", expenses=[expense])
+
+        assert result.business_expenses == 0
+        assert result.taxable_profit == plain.taxable_profit
+        assert result.income_tax_reserve == plain.income_tax_reserve
+        assert result.fixed_expenses_post_tax == Decimal(500) * today.month
+        assert result.spendable == plain.spendable - result.fixed_expenses_post_tax
 
     def test_spendable_with_yearly_expense(self):
         """Yearly expenses are normalized to monthly before YTD proration."""
