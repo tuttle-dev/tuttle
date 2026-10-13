@@ -6,7 +6,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { rpc } from "../../api/rpc";
 
 type Granularity = "week" | "month" | "year";
-type SeriesKey = "received" | "invoiced" | "planned";
+type SeriesKey = "received" | "invoiced" | "planned" | "contracted";
 
 interface Bucket {
   bucket: string;
@@ -16,6 +16,7 @@ interface Bucket {
   received: number;
   invoiced: number;
   planned: number;
+  contracted: number;
   invoice_count: number;
   hours: number;
   total: number;
@@ -36,12 +37,25 @@ interface RevenueSeries {
   has_later: boolean;
 }
 
+interface Series { key: SeriesKey; name: string; color: string; opacity: number; dashed?: boolean; hint: string }
+
 // Planned revenue is drawn translucent: it is an estimate, not money in hand.
-const SERIES: { key: SeriesKey; name: string; color: string; opacity: number; hint: string }[] = [
+// Contracted revenue is fainter still and outlined, the least certain layer.
+const SERIES: Series[] = [
   { key: "received", name: "Received", color: "var(--color-status-success)", opacity: 1, hint: "Paid invoices" },
   { key: "invoiced", name: "Invoiced", color: "var(--color-status-warning)", opacity: 1, hint: "Invoiced, not yet paid" },
   { key: "planned", name: "Planned", color: "var(--color-status-info)", opacity: 0.45, hint: "Tracked or scheduled work, not yet invoiced" },
+  { key: "contracted", name: "Contracted", color: "var(--color-status-info)", opacity: 0.15, dashed: true, hint: "Agreed in a contract, not yet scheduled or tracked" },
 ];
+
+/** A series' colour key: a translucent fill, outlined when the series is dashed. */
+function swatchStyle(s: Series, dimmed = false): React.CSSProperties {
+  if (dimmed) return { background: s.color, opacity: 0.2 };
+  return {
+    background: `color-mix(in srgb, ${s.color} ${Math.round(s.opacity * 100)}%, transparent)`,
+    border: s.dashed ? `1px dashed ${s.color}` : undefined,
+  };
+}
 
 const GRANULARITIES: { key: Granularity; name: string }[] = [
   { key: "week", name: "Week" },
@@ -59,7 +73,7 @@ const X_AXIS_HEIGHT = 28;
 export function RevenueChart() {
   const [granularity, setGranularity] = useState<Granularity>("month");
   const [offset, setOffset] = useState(0);
-  const [visible, setVisible] = useState<SeriesKey[]>(["received", "invoiced", "planned"]);
+  const [visible, setVisible] = useState<SeriesKey[]>(SERIES.map((s) => s.key));
   const [data, setData] = useState<RevenueSeries | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -260,6 +274,8 @@ export function RevenueChart() {
                     stackId="revenue"
                     fill={s.color}
                     fillOpacity={s.opacity}
+                    stroke={s.dashed ? s.color : undefined}
+                    strokeDasharray={s.dashed ? "3 2" : undefined}
                     radius={isTop ? [3, 3, 0, 0] : [0, 0, 0, 0]}
                     maxBarSize={72}
                     isAnimationActive={false}
@@ -304,10 +320,7 @@ export function RevenueChart() {
               className={`flex items-center gap-1.5 px-2 h-6 rounded-md border text-[11px] transition-colors
                 ${on ? "border-border bg-bg-hover text-secondary" : "border-transparent text-muted hover:text-tertiary"}`}
             >
-              <span
-                className="w-2.5 h-2.5 rounded-sm shrink-0"
-                style={{ background: s.color, opacity: on ? s.opacity : 0.2 }}
-              />
+              <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={swatchStyle(s, !on)} />
               {s.name}
               <span className="tabular-nums text-tertiary">{fmtCompact(subtotal)}</span>
             </button>
@@ -380,7 +393,7 @@ function dayRange(startISO: string, endISO: string): string {
 interface TooltipProps {
   active?: boolean;
   payload?: { payload?: unknown }[];
-  series: typeof SERIES;
+  series: Series[];
   fmt: (v: number) => string;
   granularity: Granularity;
 }
@@ -401,7 +414,7 @@ function RevenueTooltip({ active, payload, series, fmt, granularity }: TooltipPr
       {series.map((s) => (
         <div key={s.key} className="flex items-center justify-between gap-4">
           <span className="flex items-center gap-1.5" style={{ color: s.color }}>
-            <span className="w-2 h-2 rounded-sm" style={{ background: s.color, opacity: s.opacity }} />
+            <span className="w-2 h-2 rounded-sm" style={swatchStyle(s)} />
             {s.name}
           </span>
           <span className="tabular-nums">{fmt(row[s.key] || 0)}</span>

@@ -34,6 +34,7 @@ def _contract_payload(**overrides) -> dict:
         "currency": "EUR",
         "unit": "day",
         "units_per_workday": 8,
+        "volume": 60,
         "VAT_rate": 0.19,
         "start_date": "2026-01-01",
         "term_of_payment": 14,

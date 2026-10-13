@@ -1198,6 +1198,14 @@ function ContractCard({ item, onUpdate, existing, clients, requiredFields, enumF
         {!isFixed && <AiField label="Unit" value={d.unit} onChange={(v) => set("unit", v)} required={req("unit")} options={enumFields.unit} />}
         {!isFixed && <AiField label="Billing Cycle" value={d.billing_cycle} onChange={(v) => set("billing_cycle", v)} required={req("billing_cycle")} options={enumFields.billing_cycle} />}
         {!isFixed && <AiField label="Volume" value={String(d.volume ?? "")} onChange={(v) => set("volume", v ? parseInt(v) : null)} required={req("volume")} />}
+        {!isFixed && (
+          <AiField
+            label={`${d.unit === "day" ? "Days" : "Hours"} per Week`}
+            value={String(d.expected_units_per_week ?? "")}
+            onChange={(v) => set("expected_units_per_week", v.trim() === "" || Number.isNaN(parseFloat(v)) ? null : parseFloat(v))}
+            required={!d.volume}
+          />
+        )}
       </div>
       <div className="grid grid-cols-3 gap-2">
         <AiField label="Signature Date" value={d.signature_date} onChange={(v) => set("signature_date", v)} type="date" required={req("signature_date")} />

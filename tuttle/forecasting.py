@@ -3,12 +3,12 @@
 import calendar
 import datetime
 from decimal import Decimal
-from typing import List, Optional
+from typing import List, NamedTuple, Optional
 
 import pandas
 from pandas import DataFrame
 
-from .fx import convert, primary_currency
+from .fx import convert, primary_currency, rate
 from .model import Contract, Invoice, Project, RecurringExpense
 from .tax_reserves import (
     _dynamic_lines,
@@ -256,6 +256,179 @@ def monthly_revenue_from_calendar(
     return df.rename(columns={"period": "month"})
 
 
+class ContractedSlice(NamedTuple):
+    """Contracted revenue of one contract, spread evenly over the days from *start* to *end*."""
+
+    contract: Contract
+    start: datetime.date
+    end: datetime.date
+    amount: float  # net, in the primary currency
+
+
+def _committed_contracts(projects: List[Project], today: datetime.date) -> list:
+    """(contract, its projects) for each open contract with a project past Lead and Offer."""
+    groups: dict = {}
+    for project in projects:
+        contract = project.contract
+        if contract is None:
+            continue
+        key = contract.id if contract.id is not None else id(contract)
+        groups.setdefault(key, (contract, []))[1].append(project)
+    return [
+        (contract, members)
+        for contract, members in groups.values()
+        if not contract.is_completed and any(p.is_committed(today) for p in members)
+    ]
+
+
+def _term_end(contract: Contract, members: List[Project]) -> Optional[datetime.date]:
+    """Last day of the contract's term: its end date, else the latest end date of its projects."""
+    if contract.end_date:
+        return contract.end_date
+    ends = [p.end_date for p in members if p.end_date]
+    return max(ends) if ends else None
+
+
+def _invoiced_net(contract: Contract, invoices: List[Invoice]) -> Decimal:
+    """Net amount invoiced on *contract*. A reminder repeats an invoice and adds nothing."""
+    total = Decimal(0)
+    for inv in invoices:
+        if inv.cancelled or inv.is_reminder:
+            continue
+        if inv.contract is contract or (contract.id is not None and inv.contract_id == contract.id):
+            total += inv.sum
+    return total
+
+
+def _hours_by_day(time_data: Optional[DataFrame], tags: set, units_per_workday: int) -> dict:
+    """Calendar hours per date for events tagged with one of *tags*."""
+    if time_data is None or time_data.empty:
+        return {}
+    rows = time_data[time_data["tag"].isin(tags)]
+    if rows.empty:
+        return {}
+    hours = rows.apply(lambda row: event_hours(row, units_per_workday), axis=1)
+    return hours.groupby(rows.index.date).sum().to_dict()
+
+
+def _paced(
+    contract: Contract,
+    hours_by_day: dict,
+    first: datetime.date,
+    last: datetime.date,
+    budget: Optional[float],
+) -> list:
+    """(start, end, amount) per week: the expected work the calendar does not already hold.
+
+    Stops once *budget*, the agreed value not yet invoiced or planned, is used up.
+    """
+    unit_hours = contract.units_per_workday if contract.unit == TimeUnit.day else 1
+    pace = contract.expected_units_per_week
+    slices = []
+    for week in pandas.period_range(first, last, freq="W"):
+        start = max(first, week.start_time.date())
+        end = min(last, week.end_time.date())
+        days = (end - start).days + 1
+        scheduled = sum(hours_by_day.get(start + datetime.timedelta(days=d), 0.0) for d in range(days)) / unit_hours
+        amount = max(0.0, pace * days / 7 - scheduled) * float(contract.rate)
+        if budget is not None:
+            amount = min(amount, budget)
+            budget -= amount
+        if amount > 0:
+            slices.append((start, end, amount))
+        if budget is not None and budget <= 0:
+            break
+    return slices
+
+
+def contracted_revenue(
+    projects: List[Project],
+    invoices: List[Invoice],
+    time_data: Optional[DataFrame],
+    until: datetime.date,
+    currency: Optional[str] = None,
+    today: Optional[datetime.date] = None,
+) -> List[ContractedSlice]:
+    """Revenue that committed contracts will still bring in beyond what is invoiced or planned.
+
+    A contract counts once one of its projects is Upcoming or Active on the
+    project board. What is left of its agreed value — the fixed price, or
+    volume × rate — after invoices and after the tracked or scheduled work that
+    shows as planned revenue is spread evenly over the rest of its term: until
+    the contract's end date, else its projects'. With no term left it falls on
+    today.
+
+    A contract with an expected workload follows that pace instead: each week,
+    the expected hours the calendar does not already hold, until the end date,
+    until the agreed volume runs out, or until *until*. Open-ended contracts
+    without a pace have nothing to add to the calendar.
+
+    Amounts are net and converted into *currency* at the current month's rate.
+    """
+    today = today or datetime.date.today()
+    committed = _committed_contracts(projects, today)
+    if not committed:
+        return []
+
+    # Planned revenue per project, so a contract's planned work is not counted twice.
+    planned_by_project: dict = {}
+    if time_data is not None and not time_data.empty:
+        cal = revenue_from_calendar(
+            time_data,
+            projects,
+            time_data.index.min().date(),
+            time_data.index.max().date(),
+            invoices=invoices,
+            freq="Y",
+        )
+        if not cal.empty:
+            planned_by_project = cal.groupby("project")["revenue"].sum().to_dict()
+
+    slices = []
+    for contract, members in committed:
+        agreed = contract.agreed_value
+        paced = not contract.is_fixed_price and bool(contract.rate) and bool(contract.expected_units_per_week)
+        if agreed is None and not paced:
+            continue
+
+        budget = None
+        if agreed is not None:
+            planned = sum(planned_by_project.get(p.title, 0.0) for p in members)
+            budget = float(agreed - _invoiced_net(contract, invoices)) - planned
+            if budget <= 0:
+                continue
+
+        fx = rate(contract.currency, currency, today) if currency and contract.currency else Decimal(1)
+        if fx is None:
+            continue
+
+        first = max(today, contract.start_date)
+        last = _term_end(contract, members)
+        if paced:
+            hours = _hours_by_day(time_data, {p.tag for p in members}, contract.units_per_workday)
+            parts = _paced(contract, hours, first, min(last, until) if last else until, budget)
+        else:
+            parts = [(first, last if last and last >= first else first, budget)]
+
+        slices.extend(ContractedSlice(contract, start, end, amount * float(fx)) for start, end, amount in parts)
+    return slices
+
+
+def spread(slices: List[ContractedSlice], freq: str, start: datetime.date, end: datetime.date) -> dict:
+    """Total of *slices* per *freq* period between *start* and *end*, pro rata by day."""
+    totals: dict = {}
+    for s in slices:
+        lo, hi = max(s.start, start), min(s.end, end)
+        if lo > hi:
+            continue
+        days = (s.end - s.start).days + 1
+        for period in pandas.period_range(lo, hi, freq=freq):
+            a = max(lo, period.start_time.date())
+            b = min(hi, period.end_time.date())
+            totals[period] = totals.get(period, 0.0) + s.amount * ((b - a).days + 1) / days
+    return totals
+
+
 def cash_flow_projection(
     revenue_forecast: DataFrame,
     contracts: List[Contract],
@@ -407,13 +580,15 @@ def revenue_series(
     country: str = "",
     today: Optional[datetime.date] = None,
 ) -> dict:
-    """Received, invoiced and planned revenue per bucket for one chart window.
+    """Received, invoiced, planned and contracted revenue per bucket for one chart window.
 
-    Reconciles the two revenue sources the dashboard chart needs into a
-    single series so the frontend does not have to join them: invoices give
+    Reconciles the revenue sources the dashboard chart needs into a single
+    series so the frontend does not have to join them: invoices give
     ``received`` (paid) and ``invoiced`` (sent but unpaid) keyed by invoice
-    date, while the calendar gives ``planned`` — tracked or scheduled work
-    that no timesheet has billed yet, in the past as well as the future.
+    date, the calendar gives ``planned`` — tracked or scheduled work that no
+    timesheet has billed yet, in the past as well as the future — and
+    committed contracts give ``contracted``, the agreed work not yet in the
+    calendar (see :func:`contracted_revenue`).
 
     *granularity* is "week", "month" or "year".  Week and month windows are
     paged with *offset*; the year window always spans the full data extent.
@@ -430,6 +605,10 @@ def revenue_series(
     if granularity == "year":
         first_year = min(extent_start.year if extent_start else today.year, today.year)
         last_year = max(extent_end.year if extent_end else today.year, today.year)
+        for contract, members in _committed_contracts(projects, today):
+            end = _term_end(contract, members)
+            if end:
+                last_year = max(last_year, end.year)
         window_start = datetime.date(first_year, 1, 1)
         window_end = datetime.date(last_year, 12, 31)
     else:
@@ -445,6 +624,7 @@ def revenue_series(
             "received": 0.0,
             "invoiced": 0.0,
             "planned": 0.0,
+            "contracted": 0.0,
             "invoice_count": 0,
             "hours": 0.0,
         }
@@ -478,6 +658,10 @@ def revenue_series(
             bucket["planned"] += max(0.0, float(row["revenue"]))
             bucket["hours"] += float(row["hours"])
 
+    contracted = contracted_revenue(projects, invoices, time_data, window_end, currency=currency, today=today)
+    for period, amount in spread(contracted, freq, window_start, window_end).items():
+        buckets[period]["contracted"] += amount
+
     current_period = pandas.Period(today, freq=freq)
     rows = []
     previous_year = None
@@ -486,8 +670,8 @@ def revenue_series(
         row["is_current"] = period == current_period
         row["is_future"] = period > current_period
         row["is_year_start"] = previous_year is not None and row["year"] != previous_year
-        row["total"] = round(row["received"] + row["invoiced"] + row["planned"], 2)
-        for key in ("received", "invoiced", "planned", "hours"):
+        row["total"] = round(row["received"] + row["invoiced"] + row["planned"] + row["contracted"], 2)
+        for key in ("received", "invoiced", "planned", "contracted", "hours"):
             row[key] = round(row[key], 2)
         previous_year = row["year"]
         rows.append(row)
@@ -523,6 +707,7 @@ def cash_flow_series(
       (overdue invoices map to the current month).
     - Inflows from planned calendar work shifted forward by contract payment terms
       (past un-invoiced work maps to the current month).
+    - Inflows from contracted work (:func:`contracted_revenue`), shifted the same way.
     - Outflows from normalized fixed recurring expenses, rate-based contributions,
       and estimated income tax reserves.
     - Net flow and running cumulative balance across the forecast window.
@@ -547,6 +732,7 @@ def cash_flow_series(
             "year": p.start_time.year,
             "inflow_invoiced": 0.0,
             "inflow_planned": 0.0,
+            "inflow_contracted": 0.0,
             "inflow_total": 0.0,
             "outflow": 0.0,
             "net": 0.0,
@@ -613,7 +799,16 @@ def cash_flow_series(
                 if target_bucket is not None:
                     target_bucket["inflow_planned"] += max(0.0, float(row["revenue"]))
 
-    # 3. Outflows from normalized fixed recurring expenses, dynamic expenses, and tax reserves
+    # 3. Inflows from contracted work, paid like planned work: payment terms after its month ends
+    for s in contracted_revenue(projects, invoices, time_data, window_end, currency=currency, today=today):
+        payment_delay = s.contract.term_of_payment if s.contract.term_of_payment is not None else 30
+        for work_period, amount in spread([s], "M", forecast_start, window_end).items():
+            inflow_date = work_period.end_time.date() + datetime.timedelta(days=payment_delay)
+            target_bucket = buckets.get(max(pandas.Period(inflow_date, freq="M"), current_period))
+            if target_bucket is not None:
+                target_bucket["inflow_contracted"] += amount
+
+    # 4. Outflows from normalized fixed recurring expenses, dynamic expenses, and tax reserves
     fixed_expenses = [e for e in expenses if e.rate is None and e.amount is not None]
     dynamic_expenses = [e for e in expenses if e.rate is not None]
     monthly_fixed = sum((_normalize_to_monthly(e) for e in fixed_expenses), Decimal(0))
@@ -627,7 +822,8 @@ def cash_flow_series(
         row = buckets[period]
         row["inflow_invoiced"] = round(row["inflow_invoiced"], 2)
         row["inflow_planned"] = round(row["inflow_planned"], 2)
-        row["inflow_total"] = round(row["inflow_invoiced"] + row["inflow_planned"], 2)
+        row["inflow_contracted"] = round(row["inflow_contracted"], 2)
+        row["inflow_total"] = round(row["inflow_invoiced"] + row["inflow_planned"] + row["inflow_contracted"], 2)
 
         month_inflow = Decimal(str(row["inflow_total"]))
         base_profit = max(Decimal(0), month_inflow - monthly_fixed)
@@ -647,7 +843,7 @@ def cash_flow_series(
     else:
         effective_tax_rate = Decimal(0)
 
-    # 4. Net flow, cumulative balance, and summary totals
+    # 5. Net flow, cumulative balance, and summary totals
     running_balance = 0.0
     rows = []
     previous_year = None

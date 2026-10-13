@@ -620,6 +620,11 @@ class Contract(RpcMixin, VatCategoryMixin, SQLModel, table=True):
         default=None,
         description="Number of units agreed on",
     )
+    expected_units_per_week: Optional[float] = Field(
+        default=None,
+        description="Units of work (hours or days) expected per week: the pace at which a "
+        "time-based contract is forecast to be billed. None when there is no expected pace.",
+    )
     term_of_payment: Optional[int] = Field(
         description="How many days after receipt of invoice this invoice is due.",
         default=31,
@@ -680,6 +685,18 @@ class Contract(RpcMixin, VatCategoryMixin, SQLModel, table=True):
         if self.volume is None:
             return None
         return self.volume * self.unit.to_timedelta()
+
+    @property
+    def agreed_value(self) -> Optional[Decimal]:
+        """Net amount the client has agreed to pay in full: the fixed price, or volume × rate.
+
+        None for an open-ended contract, which has no total.
+        """
+        if self.is_fixed_price:
+            return self.fixed_price
+        if self.volume and self.rate:
+            return Decimal(self.volume) * Decimal(self.rate)
+        return None
 
     @property
     def unit_duration(self) -> datetime.timedelta:
@@ -751,10 +768,30 @@ class Contract(RpcMixin, VatCategoryMixin, SQLModel, table=True):
             if not (self.fixed_price is not None and self.fixed_price > 0):
                 raise ValueError("A fixed-price contract needs a fixed price.")
             self.rate = None
+            # Without a rate, an expected pace cannot be priced.
+            self.expected_units_per_week = None
         else:
             if not (self.rate is not None and self.rate > 0):
                 raise ValueError("A time-based contract needs a rate.")
             self.fixed_price = None
+
+    def validate_workload(self) -> None:
+        """Require what a running time-based contract's revenue is forecast from.
+
+        That is its volume or, without one, the expected workload per week:
+        an open-ended contract has nothing else to estimate from. 0 says that
+        no regular work is expected, as for on-call work. Explicit, like
+        ``validate_pricing``, and called on the same write paths after it.
+        """
+        pace = self.expected_units_per_week
+        if pace is not None and pace < 0:
+            raise ValueError("The expected workload per week can't be negative.")
+        if self.is_fixed_price or self.is_completed or self.volume or pace is not None:
+            return
+        raise ValueError(
+            "A contract without a volume needs an expected workload: enter the hours or days "
+            "you expect to bill per week, or 0 for on-call work."
+        )
 
     def validate_charges(self) -> None:
         """Check the additional charges attached to this contract.
@@ -953,6 +990,29 @@ class Project(RpcMixin, SQLModel, table=True):
         else:
             # default
             return default
+
+    def board_stage(self, today: Optional[datetime.date] = None) -> str:
+        """The project's column on the project board: the stage set by hand, else one read off its dates.
+
+        Mirrors ``projectStatus`` in the UI.
+        """
+        if self.stage:
+            return self.stage
+        today = today or datetime.date.today()
+        if self.is_completed:
+            return "Completed"
+        if self.start_date > today:
+            return "Upcoming"
+        if self.end_date is None or self.end_date >= today:
+            return "Active"
+        return "Completed"
+
+    def is_committed(self, today: Optional[datetime.date] = None) -> bool:
+        """Whether the client has agreed to the work and it is still to be done.
+
+        True once the project has moved past Lead and Offer, until it is completed.
+        """
+        return self.board_stage(today) in ("Upcoming", "Active")
 
 
 class TimeTrackingItem(SQLModel, table=True):

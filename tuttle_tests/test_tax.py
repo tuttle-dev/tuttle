@@ -421,6 +421,16 @@ class TestSpendableIncome:
         assert result.income_tax_reserve == 0
         assert result.spendable == result.net_revenue_ytd + result.planned_revenue
 
+    def test_contracted_revenue_is_taxed_in_the_current_year_only(self):
+        country = _sample_country()
+        contracted = Decimal("10000")
+        current = compute_spendable_income([], country, contracted=contracted)
+        assert current.contracted_revenue == contracted
+        assert current.taxable_profit == contracted
+        past = compute_spendable_income([], country, contracted=contracted, year=datetime.date.today().year - 1)
+        assert past.contracted_revenue == 0
+        assert past.taxable_profit == 0
+
     def test_received_vs_outstanding_breakdown(self):
         """Paid invoices go into received, unpaid into outstanding."""
         country = _sample_country()

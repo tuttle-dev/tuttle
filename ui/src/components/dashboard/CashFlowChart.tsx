@@ -18,6 +18,7 @@ export interface CashFlowBucket {
   year: number;
   inflow_invoiced: number;
   inflow_planned: number;
+  inflow_contracted: number;
   inflow_total: number;
   outflow: number;
   net: number;
@@ -35,7 +36,7 @@ export interface CashFlowSeries {
   net_cash_flow: number;
 }
 
-type SeriesKey = "inflow_invoiced" | "inflow_planned" | "outflow" | "balance";
+type SeriesKey = "inflow_invoiced" | "inflow_planned" | "inflow_contracted" | "outflow" | "balance";
 
 interface SeriesDef {
   key: SeriesKey;
@@ -61,6 +62,13 @@ const SERIES: SeriesDef[] = [
     hint: "Scheduled calendar work shifted by payment terms",
   },
   {
+    key: "inflow_contracted",
+    name: "Contracted",
+    color: "var(--color-status-info)",
+    opacity: 0.15,
+    hint: "Agreed contract work not yet in the calendar, shifted by payment terms",
+  },
+  {
     key: "outflow",
     name: "Outflows",
     color: "var(--color-status-danger)",
@@ -75,6 +83,12 @@ const SERIES: SeriesDef[] = [
     hint: "Cumulative cash balance projection",
   },
 ];
+
+// Contracted inflow is the least certain: a faint fill with a dashed outline.
+const CONTRACTED_SWATCH = {
+  background: "color-mix(in srgb, var(--color-status-info) 15%, transparent)",
+  border: "1px dashed var(--color-status-info)",
+};
 
 const HORIZONS: { months: number; name: string }[] = [
   { months: 3, name: "3 Months" },
@@ -91,6 +105,7 @@ export function CashFlowChart() {
   const [visible, setVisible] = useState<SeriesKey[]>([
     "inflow_invoiced",
     "inflow_planned",
+    "inflow_contracted",
     "outflow",
     "balance",
   ]);
@@ -143,6 +158,10 @@ export function CashFlowChart() {
   );
 
   const buckets = data?.buckets ?? [];
+  // The highest visible inflow series carries the rounded top of the stack.
+  const inflowTop = (["inflow_contracted", "inflow_planned", "inflow_invoiced"] as SeriesKey[]).find((k) =>
+    visible.includes(k),
+  );
   const netCashFlow = data?.net_cash_flow ?? 0;
   const isPositive = netCashFlow >= 0;
 
@@ -284,7 +303,7 @@ export function CashFlowChart() {
                   name="Invoiced"
                   stackId="inflow"
                   fill="var(--color-status-warning)"
-                  radius={!visible.includes("inflow_planned") ? [3, 3, 0, 0] : [0, 0, 0, 0]}
+                  radius={inflowTop === "inflow_invoiced" ? [3, 3, 0, 0] : [0, 0, 0, 0]}
                   maxBarSize={36}
                   isAnimationActive={false}
                 />
@@ -296,6 +315,20 @@ export function CashFlowChart() {
                   stackId="inflow"
                   fill="var(--color-status-info)"
                   fillOpacity={0.5}
+                  radius={inflowTop === "inflow_planned" ? [3, 3, 0, 0] : [0, 0, 0, 0]}
+                  maxBarSize={36}
+                  isAnimationActive={false}
+                />
+              )}
+              {visible.includes("inflow_contracted") && (
+                <Bar
+                  dataKey="inflow_contracted"
+                  name="Contracted"
+                  stackId="inflow"
+                  fill="var(--color-status-info)"
+                  fillOpacity={0.15}
+                  stroke="var(--color-status-info)"
+                  strokeDasharray="3 2"
                   radius={[3, 3, 0, 0]}
                   maxBarSize={36}
                   isAnimationActive={false}
@@ -373,7 +406,11 @@ export function CashFlowChart() {
             >
               <span
                 className="w-2.5 h-2.5 rounded-sm shrink-0"
-                style={{ background: s.color, opacity: on ? s.opacity : 0.2 }}
+                style={
+                  on && s.key === "inflow_contracted"
+                    ? CONTRACTED_SWATCH
+                    : { background: s.color, opacity: on ? s.opacity : 0.2 }
+                }
               />
               {s.name}
               <span className="tabular-nums text-tertiary">
@@ -456,6 +493,14 @@ function CashFlowTooltip({ active, payload, fmt }: TooltipProps) {
             Planned Inflow
           </span>
           <span className="tabular-nums font-mono text-secondary">+{fmt(row.inflow_planned)}</span>
+        </div>
+
+        <div className="flex items-center justify-between gap-4">
+          <span className="flex items-center gap-1.5 text-secondary">
+            <span className="w-2 h-2 rounded-sm shrink-0" style={CONTRACTED_SWATCH} />
+            Contracted Inflow
+          </span>
+          <span className="tabular-nums font-mono text-secondary">+{fmt(row.inflow_contracted)}</span>
         </div>
 
         <div className="flex items-center justify-between gap-4">
