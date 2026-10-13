@@ -811,8 +811,8 @@ def cash_flow_series(
     # 4. Outflows from normalized fixed recurring expenses, dynamic expenses, and tax reserves
     fixed_expenses = [e for e in expenses if e.rate is None and e.amount is not None]
     dynamic_expenses = [e for e in expenses if e.rate is not None]
-    monthly_fixed = _monthly_expenses_total(fixed_expenses)
-    monthly_fixed_deductible = _monthly_expenses_total([e for e in fixed_expenses if e.tax_deductible])
+    monthly_fixed = _monthly_expenses_total(fixed_expenses, currency)
+    monthly_fixed_deductible = _monthly_expenses_total([e for e in fixed_expenses if e.tax_deductible], currency)
 
     # Precompute inflows and taxable profit base per bucket, and derive a single effective
     # tax rate from the window's annualized taxable income so uneven income is not taxed
