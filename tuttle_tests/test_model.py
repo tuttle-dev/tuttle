@@ -327,7 +327,7 @@ class TestContract:
         with pytest.raises(ValidationError):
             Contract.validate(dict())
 
-    def _paced(self, **pricing):
+    def _contract(self, **pricing):
         return Contract(
             title="Retainer",
             client=Client(name="Central Services"),
@@ -337,12 +337,12 @@ class TestContract:
         )
 
     def test_a_fixed_price_contract_drops_its_expected_pace(self):
-        contract = self._paced(type=ContractType.fixed_price, fixed_price=Decimal("5000"), expected_units_per_week=10)
+        contract = self._contract(type=ContractType.fixed_price, fixed_price=Decimal("5000"), expected_units_per_week=10)
         contract.validate_pricing()
         assert contract.expected_units_per_week is None
 
     def test_an_open_ended_contract_needs_an_expected_workload(self):
-        contract = self._paced(rate=Decimal("100"))
+        contract = self._contract(rate=Decimal("100"))
         with pytest.raises(ValueError, match="expected workload"):
             contract.validate_workload()
 
@@ -356,10 +356,29 @@ class TestContract:
         ],
     )
     def test_a_workload_is_only_required_to_forecast_a_running_open_ended_contract(self, fields):
-        self._paced(**fields).validate_workload()
+        self._contract(**fields).validate_workload()
+
+    @pytest.mark.parametrize(
+        "stages, status",
+        [
+            (["Offer"], "Offer"),
+            (["Lead"], "Lead"),
+            (["Lead", "Offer"], "Offer"),
+            (["Offer", "Active"], "Active"),
+            ([], "Active"),
+        ],
+    )
+    def test_status_follows_the_project_board_until_the_client_agrees(self, stages, status):
+        contract = self._contract(rate=Decimal("100"), volume=40)
+        for i, stage in enumerate(stages):
+            Project(
+                title=f"P{i}", tag=f"#p{i}", description="", start_date=contract.start_date, stage=stage, contract=contract
+            )
+        assert contract.status == status
+        assert contract.is_active() is (status == "Active")
 
     def test_an_expected_workload_cannot_be_negative(self):
-        contract = self._paced(rate=Decimal("100"), volume=40, expected_units_per_week=-1)
+        contract = self._contract(rate=Decimal("100"), volume=40, expected_units_per_week=-1)
         with pytest.raises(ValueError, match="negative"):
             contract.validate_workload()
 
@@ -441,6 +460,11 @@ class TestProject:
     def test_missing_fields_instantiation(self):
         with pytest.raises(ValidationError):
             Project.validate(dict())
+
+    @pytest.mark.parametrize("stage, active", [(None, True), ("Active", True), ("Offer", False), ("Completed", False)])
+    def test_is_active_follows_the_project_board(self, stage, active):
+        project = Project(title="Website", tag="#website", description="", start_date=datetime.date(2026, 1, 1), stage=stage)
+        assert project.is_active() is active
 
     def test_invalid_tag_instantiation(self):
         with pytest.raises(ValidationError):

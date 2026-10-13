@@ -532,7 +532,7 @@ class Contract(RpcMixin, VatCategoryMixin, SQLModel, table=True):
         "bank_account": None,
         "payment_milestones": None,
     }
-    __rpc_computed__ = ("unit_abbrev", "is_fixed_price", "has_milestones", "fixed_price_formatted")
+    __rpc_computed__ = ("unit_abbrev", "is_fixed_price", "has_milestones", "fixed_price_formatted", "status")
 
     id: Optional[int] = Field(default=None, primary_key=True)
     title: str = Field(
@@ -715,21 +715,42 @@ class Contract(RpcMixin, VatCategoryMixin, SQLModel, table=True):
             return datetime.timedelta(hours=self.units_per_workday)
         raise ValueError(f"Unsupported contract unit: {self.unit}")
 
-    def is_active(self) -> bool:
-        """Check if contract is active.A contract is active if it is not completed and the end date is in the future."""
+    def pipeline_stage(self) -> Optional[str]:
+        """ "Lead" or "Offer" while none of the contract's projects is past that stage on the project board.
+
+        Until then the client has not agreed to the contract, whatever its dates say.
+        """
+        stages = {p.board_stage() for p in self.projects}
+        if stages and stages <= {"Lead", "Offer"}:
+            return "Offer" if "Offer" in stages else "Lead"
+        return None
+
+    @property
+    def status(self) -> str:
+        """The contract's status as the contract list shows it.
+
+        Lead or Offer until the client agrees, then Upcoming, Active or
+        Completed by its dates, and Completed once marked so.
+        """
         if self.is_completed:
-            return False
-        if self.is_upcoming():
-            return False
-        if self.end_date:
-            today = datetime.date.today()
-            return self.end_date > today
-        else:
-            return True
+            return "Completed"
+        stage = self.pipeline_stage()
+        if stage:
+            return stage
+        today = datetime.date.today()
+        if self.start_date > today:
+            return "Upcoming"
+        if self.end_date and self.end_date < today:
+            return "Completed"
+        return "Active"
+
+    def is_active(self) -> bool:
+        """Whether the contract is agreed and running."""
+        return self.status == "Active"
 
     def is_upcoming(self) -> bool:
-        today = datetime.date.today()
-        return self.start_date > today
+        """Whether the contract is agreed and starts later."""
+        return self.status == "Upcoming"
 
     def get_status(self, default: str = "All") -> str:
         if self.is_active():
@@ -964,20 +985,12 @@ class Project(RpcMixin, SQLModel, table=True):
             return f"{self.description[0:108]}..."
 
     def is_active(self) -> bool:
-        """Is the project active? A project is active if it is not completed and if the end date is in the future."""
-        if self.is_completed:
-            return False
-        if self.is_upcoming():
-            return False
-        if self.end_date:
-            today = datetime.date.today()
-            return self.end_date >= today
-        else:
-            return True
+        """Whether the project is in the Active column of the project board."""
+        return self.board_stage() == "Active"
 
     def is_upcoming(self) -> bool:
-        today = datetime.date.today()
-        return self.start_date > today
+        """Whether the project is in the Upcoming column of the project board."""
+        return self.board_stage() == "Upcoming"
 
     # FIXME: replace string literals with enum
     def get_status(self, default: str = "") -> str:

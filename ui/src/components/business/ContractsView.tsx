@@ -22,14 +22,9 @@ import type { Entity } from "../../api/types";
 type Mode = "view" | "edit" | "create" | "import";
 type StatusFilter = "All" | "Active" | "Upcoming" | "Completed";
 
+/** Lead or Offer until the client agrees (read off the project board), then by dates. */
 function contractStatus(c: Entity): string {
-  if (bool(c, "is_completed")) return "Completed";
-  const start = str(c, "start_date");
-  const end = str(c, "end_date");
-  const today = new Date().toISOString().slice(0, 10);
-  if (start > today) return "Upcoming";
-  if (end && end < today) return "Completed";
-  return "Active";
+  return str(c, "status");
 }
 
 export function ContractsView() {
