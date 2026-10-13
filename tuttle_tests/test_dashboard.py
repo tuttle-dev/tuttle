@@ -947,6 +947,13 @@ class TestComputeKPIs:
         if kpis.effective_hourly_rate is not None:
             assert kpis.effective_hourly_rate > 0
 
+    def test_an_offer_is_not_active_work(self, active_contract, project):
+        project.stage = "Offer"
+        kpis = compute_kpis([], [active_contract], [project])
+        assert kpis.active_contracts == 0
+        assert kpis.active_projects == 0
+        assert kpis.utilization_rate is None
+
     def test_empty_data(self):
         kpis = compute_kpis([], [], [])
         assert kpis.total_revenue == 0
