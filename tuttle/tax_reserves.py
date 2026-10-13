@@ -80,18 +80,34 @@ def _invoice_currency(inv: Invoice) -> Optional[str]:
     return None
 
 
+def _revenue_amounts(inv: Invoice) -> tuple[Decimal, Decimal]:
+    """The (total, VAT) an invoice adds to revenue, in its own currency.
+
+    A reminder repeats the items of the invoice it chases, so it adds nothing.
+    A final invoice states the whole contract price and deducts the deposits,
+    which count on their own, so it adds only the remainder.
+    """
+    if inv.is_reminder:
+        return Decimal(0), Decimal(0)
+    deducted = inv.deposit_deductions
+    total = inv.total - sum((d["gross"] for d in deducted), Decimal(0))
+    vat = inv.VAT_total - sum((d["vat"] for d in deducted), Decimal(0))
+    return total, vat
+
+
 def convert_invoice(inv: Invoice, currency: Optional[str]) -> Optional[tuple[Decimal, Decimal]]:
-    """Invoice (total, VAT) expressed in *currency*.
+    """The (total, VAT) an invoice adds to revenue, expressed in *currency*.
 
     Returns ``None`` when the invoice is in another currency and the ECB rate
     for its month cannot be resolved — the caller must leave it out and say so,
     never count it as zero.
     """
+    total, vat = _revenue_amounts(inv)
     inv_currency = _invoice_currency(inv)
     if not currency or inv_currency in (currency, None):
-        return inv.total, inv.VAT_total
+        return total, vat
 
-    if inv.VAT_total:
+    if vat:
         # The design's third row: place of supply is domestic, so the invoice
         # carries VAT in a foreign currency. Converting it needs rounding rules
         # we deliberately do not have — warn instead of guessing.
@@ -100,14 +116,14 @@ def convert_invoice(inv: Invoice, currency: Optional[str]) -> Optional[tuple[Dec
             "invoices is not supported; the converted VAT figure is an estimate.",
             inv.number or inv.id,
             inv_currency,
-            inv.VAT_total,
+            vat,
         )
 
-    total = convert(inv.total, inv_currency, currency, inv.date)
-    vat = convert(inv.VAT_total, inv_currency, currency, inv.date)
-    if total is None or vat is None:
+    converted_total = convert(total, inv_currency, currency, inv.date)
+    converted_vat = convert(vat, inv_currency, currency, inv.date)
+    if converted_total is None or converted_vat is None:
         return None
-    return total, vat
+    return converted_total, converted_vat
 
 
 def compute_planned_revenue(
@@ -173,12 +189,12 @@ def compute_vat_reserves(
 
     Invoices in another currency are converted to *currency* at the ECB monthly
     average. For the supported cases (reverse charge, outside scope) their VAT
-    is zero before and after conversion.
+    is zero before and after conversion. Reminders collect no VAT of their own.
     """
     vat_total = Decimal(0)
     count = 0
     for inv in invoices:
-        if inv.cancelled:
+        if inv.cancelled or inv.is_reminder:
             continue
         if period_start <= inv.date <= period_end:
             converted = convert_invoice(inv, currency)

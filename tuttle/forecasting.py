@@ -468,7 +468,8 @@ def revenue_series(
     }
 
     for inv in invoices:
-        if inv.cancelled or not inv.date:
+        # A reminder chases an invoice that is already counted.
+        if inv.cancelled or inv.is_reminder or not inv.date:
             continue
         period = pandas.Period(inv.date, freq=freq)
         bucket = buckets.get(period)
