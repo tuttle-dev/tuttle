@@ -79,7 +79,7 @@ export function TaxReservesView() {
   if (loading) return <PageLayout title="Tax & Reserves" right={yearSelector} fallback={<LoadingState />} />;
 
   const sp = spending?.spending as Entity | undefined;
-  const hasAnyIncome = sp && (num(sp, "gross_revenue_ytd") > 0 || num(sp, "planned_revenue") > 0);
+  const hasAnyIncome = sp && (num(sp, "gross_revenue_ytd") > 0 || num(sp, "planned_revenue") > 0 || num(sp, "contracted_revenue") > 0);
   const isCurrentYear = selectedYear === new Date().getFullYear();
   const periodLabel = isCurrentYear ? "YTD" : `${selectedYear}`;
   const countrySupported = taxEstimate ? taxEstimate.country_supported !== false : true;
@@ -101,7 +101,8 @@ export function TaxReservesView() {
           const received = num(sp!, "received_gross");
           const outstanding = num(sp!, "outstanding_gross");
           const planned = num(sp!, "planned_revenue");
-          const totalBase = received + outstanding + planned;
+          const contracted = num(sp!, "contracted_revenue");
+          const totalBase = received + outstanding + planned + contracted;
           const vat = num(sp!, "vat_reserve");
           const bizExpenses = num(sp!, "business_expenses");
           const taxableProfit = num(sp!, "taxable_profit");
@@ -118,6 +119,9 @@ export function TaxReservesView() {
               )}
               {planned > 0 && (
                 <WaterfallBar label="Planned" amount={planned} total={totalBase} color="var(--color-accent, #6366f1)" currency={currency} />
+              )}
+              {contracted > 0 && (
+                <WaterfallBar label="Contracted" amount={contracted} total={totalBase} color="var(--color-accent, #6366f1)" currency={currency} />
               )}
               <WaterfallBar label="VAT (to remit)" amount={vat} total={totalBase} color="var(--color-status-warning)" currency={currency} />
               {bizExpenses > 0 && (
@@ -218,12 +222,14 @@ function IncomeTaxSection({ data, currency }: { data: Entity; currency: string }
   const received = num(data, "received_net");
   const outstanding = num(data, "outstanding_net");
   const planned = num(data, "planned_revenue");
+  const contracted = num(data, "contracted_revenue");
   const incomeBasis = num(data, "income_basis");
 
   const parts: string[] = [];
   if (received > 0) parts.push(`${fmt(received, currency)} received`);
   if (outstanding > 0) parts.push(`${fmt(outstanding, currency)} invoiced`);
   if (planned > 0) parts.push(`${fmt(planned, currency)} planned`);
+  if (contracted > 0) parts.push(`${fmt(contracted, currency)} contracted`);
 
   return (
     <Section title={country ? `Income Tax Estimate (${country})` : "Income Tax Estimate"} icon={<Calculator size={16} />}>

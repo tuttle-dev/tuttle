@@ -18,6 +18,7 @@ from tuttle.model import (
     Contact,
     Contract,
     ContractCharge,
+    ContractType,
     Cycle,
     InvoiceItem,
     Project,
@@ -325,6 +326,42 @@ class TestContract:
     def test_missing_fields_instantiation(self):
         with pytest.raises(ValidationError):
             Contract.validate(dict())
+
+    def _paced(self, **pricing):
+        return Contract(
+            title="Retainer",
+            client=Client(name="Central Services"),
+            start_date=datetime.date(2026, 1, 1),
+            currency="EUR",
+            **pricing,
+        )
+
+    def test_a_fixed_price_contract_drops_its_expected_pace(self):
+        contract = self._paced(type=ContractType.fixed_price, fixed_price=Decimal("5000"), expected_units_per_week=10)
+        contract.validate_pricing()
+        assert contract.expected_units_per_week is None
+
+    def test_an_open_ended_contract_needs_an_expected_workload(self):
+        contract = self._paced(rate=Decimal("100"))
+        with pytest.raises(ValueError, match="expected workload"):
+            contract.validate_workload()
+
+    @pytest.mark.parametrize(
+        "fields",
+        [
+            dict(rate=Decimal("100"), volume=40),
+            dict(rate=Decimal("100"), expected_units_per_week=0),  # on call
+            dict(rate=Decimal("100"), is_completed=True),
+            dict(type=ContractType.fixed_price, fixed_price=Decimal("5000")),
+        ],
+    )
+    def test_a_workload_is_only_required_to_forecast_a_running_open_ended_contract(self, fields):
+        self._paced(**fields).validate_workload()
+
+    def test_an_expected_workload_cannot_be_negative(self):
+        contract = self._paced(rate=Decimal("100"), volume=40, expected_units_per_week=-1)
+        with pytest.raises(ValueError, match="negative"):
+            contract.validate_workload()
 
 
 class TestContractCharge:

@@ -353,7 +353,8 @@ def _finalize_contract(entity: Contract, provided: dict) -> None:
     from whichever value column is populated. Then ``validate_pricing``
     becomes the single guard: it requires the value column for the chosen
     type and clears the other, so an ambiguous contract can never be
-    committed regardless of what the LLM extracted.
+    committed regardless of what the LLM extracted. ``validate_workload``
+    then requires a volume or an expected workload for a time-based one.
 
     A document that names no currency falls back to the primary one rather
     than failing the import; a currency it does name must be one we can convert.
@@ -364,6 +365,7 @@ def _finalize_contract(entity: Contract, provided: dict) -> None:
         entity.currency = primary_currency()
     entity.validate_currency()
     entity.validate_pricing()
+    entity.validate_workload()
 
 
 def _coerce_value(value: Any, annotation: Any) -> Any:

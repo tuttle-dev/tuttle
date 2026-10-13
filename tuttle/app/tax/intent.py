@@ -3,6 +3,7 @@
 import datetime
 from decimal import Decimal
 
+from ...forecasting import contracted_revenue, spread
 from ...fx import primary_currency
 from ...model import Invoice, Project, RecurringExpense, User
 from ...tax import (
@@ -42,6 +43,15 @@ class TaxIntent(SQLModelDataSourceMixin, Intent):
         """The currency aggregates are shown in (settings, default: tax system)."""
         return primary_currency(country)
 
+    def _contracted_this_year(self, year, invoices, projects, time_data, currency: str) -> Decimal:
+        """Revenue committed contracts will still bring in from today to the end of the year."""
+        today = datetime.date.today()
+        if year is not None and year != today.year:
+            return Decimal(0)
+        year_end = datetime.date(today.year, 12, 31)
+        slices = contracted_revenue(projects, invoices, time_data, year_end, currency=currency, today=today)
+        return Decimal(str(round(sum(spread(slices, "Y", today, year_end).values()), 2)))
+
     def get_spendable_income(self, year: int | None = None) -> IntentResult:
         """Compute spendable income breakdown."""
         try:
@@ -59,6 +69,7 @@ class TaxIntent(SQLModelDataSourceMixin, Intent):
                 year=year,
                 projects=projects,
                 time_data=time_data,
+                contracted=self._contracted_this_year(year, invoices, projects, time_data, currency),
             )
             data = {"spending": spending, "currency": currency}
             return IntentResult(was_intent_successful=True, data=data)
@@ -89,6 +100,7 @@ class TaxIntent(SQLModelDataSourceMixin, Intent):
                 year=year,
                 projects=projects,
                 time_data=time_data,
+                contracted=self._contracted_this_year(year, invoices, projects, time_data, currency),
             )
 
             # tax_base, not taxable_profit: deductible dynamic expenses have already
@@ -111,6 +123,7 @@ class TaxIntent(SQLModelDataSourceMixin, Intent):
                 "received_net": spending.received_net,
                 "outstanding_net": spending.outstanding_net,
                 "planned_revenue": spending.planned_revenue,
+                "contracted_revenue": spending.contracted_revenue,
                 "brackets": bracket_data,
                 "country": country,
                 "country_supported": country_supported,

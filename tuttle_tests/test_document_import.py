@@ -479,6 +479,20 @@ class TestContractPricingInvariant:
         data.update(overrides)
         return data
 
+    def test_an_open_ended_contract_needs_an_expected_workload(self, in_memory_db):
+        data = {
+            "contacts": [],
+            "clients": [],
+            "contracts": [self._base_contract(type="time_based", rate=95.0, volume=None)],
+            "projects": [],
+            "invoices": [],
+        }
+
+        result = ImportsIntent().commit_import(data)
+
+        assert not result.was_intent_successful
+        assert "expected workload" in result.error_msg
+
     def test_both_rate_and_fixed_price_is_normalised(self, in_memory_db):
         """The exact reported bug: an extracted contract with both a fixed
         price and a day rate must persist as a single, unambiguous type."""

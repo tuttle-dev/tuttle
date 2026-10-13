@@ -104,6 +104,7 @@ export function ContractsView() {
       unit: data.unit,
       billing_cycle: data.billingCycle,
       volume: data.volume || null,
+      expected_units_per_week: data.type === "time_based" ? data.expectedPerWeek : null,
       VAT_rate: data.vatRate,
       VAT_category: data.vatCategory,
       signature_date: data.signatureDate,
@@ -178,22 +179,34 @@ export function ContractsView() {
     setParsing(false);
   }
 
-  async function acceptContract(parsed: ParsedContract) {
+  function saveParsed(parsed: ParsedContract) {
     const contract: Record<string, unknown> = { ...parsed };
     delete contract.client_name_hint;
     if (parsed.selectedClientId) contract.client_id = parsed.selectedClientId;
-    const res = await rpc("contracts.save", { contract });
-    if (res.ok) { setParsedContracts((p) => p.filter((c) => c !== parsed)); await load(); }
+    return rpc("contracts.save", { contract });
   }
 
+  async function acceptContract(parsed: ParsedContract) {
+    setParseError(null);
+    const res = await saveParsed(parsed);
+    if (!res.ok) { setParseError(res.error || "Failed to save contract."); return; }
+    setParsedContracts((p) => p.filter((c) => c !== parsed));
+    await load();
+  }
+
+  // Contracts that fail to save stay in the list with the first error shown.
   async function acceptAll() {
+    setParseError(null);
+    const failed: ParsedContract[] = [];
+    let error: string | null = null;
     for (const p of parsedContracts) {
-      const contract: Record<string, unknown> = { ...p };
-      delete contract.client_name_hint;
-      if (p.selectedClientId) contract.client_id = p.selectedClientId;
-      await rpc("contracts.save", { contract });
+      const res = await saveParsed(p);
+      if (!res.ok) { failed.push(p); error ??= res.error || "Failed to save contract."; }
     }
-    setParsedContracts([]); await load(); setMode("view");
+    setParsedContracts(failed);
+    await load();
+    if (error) setParseError(error);
+    else setMode("view");
   }
 
   function discardContract(parsed: ParsedContract) {
@@ -368,6 +381,9 @@ function ContractDetail({ contract, onEdit, onDuplicate, onDelete, onToggle, del
           {isFixed && <DetailField label="Fixed Price">{`${fixedPrice} ${currency}`}</DetailField>}
           {rate > 0 && <DetailField label="Rate" sub={`per ${unit}`}>{`${rate} ${currency}`}</DetailField>}
           {!isFixed && <DetailField label="Volume" sub={str(contract, "volume") ? `${unit}s` : ""}>{str(contract, "volume") || "—"}</DetailField>}
+          {!isFixed && contract.expected_units_per_week != null && (
+            <DetailField label="Expected" sub={`${unit}s / week`}>{str(contract, "expected_units_per_week")}</DetailField>
+          )}
           {!isFixed && <DetailField label="Billing">{str(contract, "billing_cycle") || "—"}</DetailField>}
           <DetailField label="VAT">
             {taxTreatment(taxCategory(str(contract, "VAT_category")), num(contract, "VAT_rate"))}
@@ -500,6 +516,7 @@ interface ContractFormData {
   unit: string;
   billingCycle: string;
   volume: number | null;
+  expectedPerWeek: number | null;
   vatRate: number;
   vatCategory: TaxCategory;
   signatureDate: string;
@@ -575,6 +592,7 @@ function ContractForm({ contract, isDuplicate = false, clients, defaultCurrency,
       unit: str(contract, "unit") || "hour",
       billingCycle: str(contract, "billing_cycle") || "monthly",
       volume: num(contract, "volume") || null,
+      expectedPerWeek: contract.expected_units_per_week == null ? null : num(contract, "expected_units_per_week"),
       vatRate: (() => {
         const v = num(contract, "VAT_rate");
         if (!v) return 0;
@@ -592,7 +610,7 @@ function ContractForm({ contract, isDuplicate = false, clients, defaultCurrency,
     };
     return {
       title: "", clientId: null, type: "time_based", fixedPrice: null, rate: null, currency: defaultCurrency,
-      unit: "hour", billingCycle: "monthly", volume: null, vatRate: 0.19, vatCategory: "S",
+      unit: "hour", billingCycle: "monthly", volume: null, expectedPerWeek: null, vatRate: 0.19, vatCategory: "S",
       signatureDate: "", startDate: "", endDate: "", termOfPayment: 31, unitsPerWorkday: 8,
       bankAccountId: "",
       charges: [],
@@ -684,6 +702,11 @@ function ContractForm({ contract, isDuplicate = false, clients, defaultCurrency,
       if (!form.fixedPrice || form.fixedPrice <= 0) { setValidationError("Fixed price is required"); return; }
     } else {
       if (!form.rate || form.rate <= 0) { setValidationError("Rate is required"); return; }
+      // Without a volume, the expected workload is all the revenue forecast has to go on.
+      if (!form.volume && form.expectedPerWeek == null) {
+        setValidationError(`Expected ${form.unit === "day" ? "days" : "hours"} per week are required without a volume (0 for on-call work)`);
+        return;
+      }
     }
     if (!form.startDate) { setValidationError("Start date is required"); return; }
     if (form.endDate && form.startDate && form.endDate < form.startDate) {
@@ -835,6 +858,12 @@ function ContractForm({ contract, isDuplicate = false, clients, defaultCurrency,
             <div>
               <label className="block text-xs text-tertiary mb-1">Volume</label>
               <input type="number" value={form.volume ?? ""} onChange={(e) => update("volume", e.target.value ? parseInt(e.target.value) : null)} className={inputCls} />
+            </div>
+            <div>
+              <label className="block text-xs text-tertiary mb-1">
+                Expected {form.unit === "day" ? "Days" : "Hours"} per Week{!form.volume && <span className="text-accent ml-0.5">*</span>}
+              </label>
+              <input type="number" step="0.5" min="0" value={form.expectedPerWeek ?? ""} onChange={(e) => update("expectedPerWeek", e.target.value ? parseFloat(e.target.value) : null)} className={inputCls} />
             </div>
           </div>
         )}
@@ -1078,6 +1107,7 @@ interface ParsedContract {
   unit: string;
   billing_cycle: string;
   volume: number | null;
+  expected_units_per_week: number | null;
   signature_date: string;
   start_date: string;
   end_date: string;
@@ -1118,6 +1148,16 @@ function ParsedContractCard({ contract, clients, onAccept, onDiscard, onUpdate }
         <AiField label="Unit" value={contract.unit} onChange={(v) => onUpdate({ ...contract, unit: v })} />
         <AiField label="Start Date" value={contract.start_date} onChange={(v) => onUpdate({ ...contract, start_date: v })} />
         <AiField label="End Date" value={contract.end_date} onChange={(v) => onUpdate({ ...contract, end_date: v })} />
+        {!contract.fixed_price && (
+          <>
+            <AiField label="Volume" value={String(contract.volume ?? "")} onChange={(v) => onUpdate({ ...contract, volume: parseInt(v) || null })} />
+            <AiField
+              label={`${contract.unit === "day" ? "Days" : "Hours"} per Week`}
+              value={String(contract.expected_units_per_week ?? "")}
+              onChange={(v) => onUpdate({ ...contract, expected_units_per_week: v.trim() === "" || Number.isNaN(parseFloat(v)) ? null : parseFloat(v) })}
+            />
+          </>
+        )}
       </div>
       <div>
         <label className="block text-xs text-status-purple/70 mb-0.5">

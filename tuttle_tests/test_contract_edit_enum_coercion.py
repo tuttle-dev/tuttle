@@ -63,7 +63,7 @@ def test_editing_a_fixed_price_contract_is_accepted(in_memory_db):
 
 def test_switching_a_time_based_contract_to_fixed_price_is_accepted(in_memory_db):
     intent = ContractsIntent()
-    created = intent.save_from_dict(_fixed_price_payload(type="time_based", rate=95, fixed_price=None))
+    created = intent.save_from_dict(_fixed_price_payload(type="time_based", rate=95, fixed_price=None, volume=120))
     assert created.was_intent_successful, created.error_msg
     contract_id = _saved_contract(in_memory_db).id
 

@@ -8,6 +8,7 @@ import pytest
 
 from tuttle.forecasting import (
     cash_flow_series,
+    contracted_revenue,
     monthly_revenue_from_calendar,
     monthly_revenue_from_contracts,
     revenue_curve,
@@ -33,7 +34,7 @@ from tuttle.model import (
     Timesheet,
     TimeTrackingItem,
 )
-from tuttle.time import Cycle, TimeUnit
+from tuttle.time import ContractType, Cycle, TimeUnit
 
 # ── Fixtures ──────────────────────────────────────────────────
 
@@ -389,7 +390,9 @@ class TestRevenueSeries:
         time_data = TestMonthlyRevenueFromCalendar._time_data(project.tag, datetime.date(2026, 8, 12))
         weekly = revenue_series([], [project], time_data, granularity="week", today=self.TODAY)
         monthly = revenue_series([], [project], time_data, granularity="month", today=self.TODAY)
-        assert weekly["total"] == pytest.approx(monthly["total"], abs=0.01)
+        weekly_planned = sum(b["planned"] for b in weekly["buckets"])
+        monthly_planned = sum(b["planned"] for b in monthly["buckets"])
+        assert weekly_planned == pytest.approx(monthly_planned, abs=0.01)
 
     def test_year_view_covers_the_full_data_extent(self, paid_invoice):
         old = Invoice(
@@ -414,10 +417,128 @@ class TestRevenueSeries:
         assert past["has_later"] is True
 
 
+class TestContractedRevenue:
+    """Agreed contract work that is not yet invoiced, tracked or scheduled."""
+
+    TODAY = datetime.date(2026, 10, 15)
+    END = datetime.date(2026, 12, 31)
+
+    @pytest.fixture
+    def make_project(self, client):
+        def make(stage=None, end_date=self.END, **pricing):
+            contract = Contract(
+                title="Retainer",
+                client=client,
+                start_date=datetime.date(2026, 10, 1),
+                end_date=end_date,
+                currency="EUR",
+                unit=TimeUnit.hour,
+                units_per_workday=8,
+                term_of_payment=14,
+                billing_cycle=Cycle.monthly,
+                **pricing,
+            )
+            return Project(
+                title="Retainer",
+                tag="#retainer",
+                description="",
+                start_date=contract.start_date,
+                end_date=end_date,
+                stage=stage,
+                contract=contract,
+            )
+
+        return make
+
+    def _invoice(self, project, net: int, **fields) -> Invoice:
+        inv = Invoice(number="2026-300", date=self.TODAY, contract=project.contract, project=project, sent=True, **fields)
+        InvoiceItem(invoice=inv, quantity=1, unit="flat", unit_price=Decimal(net), VAT_rate=Decimal("0"))
+        return inv
+
+    def _contracted(self, project, invoices=(), time_data=None) -> float:
+        slices = contracted_revenue([project], list(invoices), time_data, self.END, today=self.TODAY)
+        return sum(s.amount for s in slices)
+
+    def test_remaining_volume_is_spread_over_the_rest_of_the_term(self, make_project):
+        project = make_project(rate=Decimal("100"), volume=100)
+        result = revenue_series([], [project], None, granularity="month", today=self.TODAY)
+        by_month = {b["bucket"][:7]: b["contracted"] for b in result["buckets"]}
+        assert by_month["2026-10"] == pytest.approx(10_000 * 17 / 78, abs=0.01)
+        assert by_month["2026-12"] == pytest.approx(10_000 * 31 / 78, abs=0.01)
+        assert sum(by_month.values()) == pytest.approx(10_000, abs=0.05)
+        assert by_month["2026-09"] == 0
+
+    @pytest.mark.parametrize("stage", ["Lead", "Offer", "Completed"])
+    def test_only_accepted_work_counts(self, make_project, stage):
+        assert self._contracted(make_project(stage=stage, rate=Decimal("100"), volume=100)) == 0
+
+    def test_the_four_layers_add_up_to_the_agreed_value(self, make_project):
+        project = make_project(rate=Decimal("100"), volume=100)
+        paid = self._invoice(project, 2000, paid=True)
+        sent = self._invoice(project, 1000)
+        time_data = TestMonthlyRevenueFromCalendar._time_data(project.tag, datetime.date(2026, 10, 20))
+        result = revenue_series([paid, sent], [project], time_data, granularity="month", today=self.TODAY)
+        layers = {k: sum(b[k] for b in result["buckets"]) for k in ("received", "invoiced", "planned", "contracted")}
+        assert layers["planned"] == pytest.approx(800)
+        assert layers["contracted"] == pytest.approx(10_000 - 2000 - 1000 - 800, abs=0.05)
+        assert sum(layers.values()) == pytest.approx(10_000, abs=0.05)
+
+    def test_reminders_and_cancelled_invoices_do_not_use_up_the_contract(self, make_project):
+        project = make_project(rate=Decimal("100"), volume=100)
+        invoice = self._invoice(project, 2000)
+        reminder = self._invoice(project, 2000, document_type="reminder")
+        cancelled = self._invoice(project, 5000, cancelled=True)
+        assert self._contracted(project, [invoice, reminder, cancelled]) == pytest.approx(8000)
+
+    def test_fixed_price_less_what_is_invoiced(self, make_project):
+        project = make_project(type=ContractType.fixed_price, fixed_price=Decimal("5000"))
+        deposit = self._invoice(project, 2000, document_type="deposit")
+        assert self._contracted(project, [deposit]) == pytest.approx(3000)
+
+    def test_open_ended_contract_without_pace_adds_nothing(self, make_project):
+        assert self._contracted(make_project(rate=Decimal("100"))) == 0
+
+    def test_without_an_end_date_it_falls_on_today(self, make_project):
+        project = make_project(rate=Decimal("100"), volume=10, end_date=None)
+        slices = contracted_revenue([project], [], None, self.END, today=self.TODAY)
+        assert [(s.start, s.end, s.amount) for s in slices] == [(self.TODAY, self.TODAY, 1000.0)]
+
+    def test_pace_fills_what_the_calendar_leaves_open(self, make_project):
+        project = make_project(rate=Decimal("100"), expected_units_per_week=10)
+        # 8 hours already scheduled in the week of Oct 19, out of an expected 10.
+        time_data = TestMonthlyRevenueFromCalendar._time_data(project.tag, datetime.date(2026, 10, 20))
+        slices = contracted_revenue([project], [], time_data, self.END, today=self.TODAY)
+        by_week = {s.start: s.amount for s in slices}
+        assert by_week[self.TODAY] == pytest.approx(1000 * 4 / 7)  # Thu–Sun of this week
+        assert by_week[datetime.date(2026, 10, 19)] == pytest.approx(200)
+        assert by_week[datetime.date(2026, 10, 26)] == pytest.approx(1000)
+        assert max(s.end for s in slices) == self.END
+
+    def test_pace_stops_when_the_volume_runs_out(self, make_project):
+        project = make_project(rate=Decimal("100"), volume=25, expected_units_per_week=10)
+        slices = contracted_revenue([project], [], None, self.END, today=self.TODAY)
+        assert sum(s.amount for s in slices) == pytest.approx(2500)
+        assert slices[-1].end == datetime.date(2026, 11, 1)
+
+    def test_cash_flow_receives_it_after_the_payment_terms(self, make_project):
+        project = make_project(rate=Decimal("100"), volume=100)
+        result = cash_flow_series([], [project.contract], [project], [], None, forecast_months=6, today=self.TODAY)
+        inflows = [b["inflow_contracted"] for b in result["buckets"]]
+        # October's share is invoiced at month end and paid 14 days later, in November.
+        assert inflows[0] == 0
+        assert inflows[1] == pytest.approx(10_000 * 17 / 78, abs=0.01)
+        assert sum(inflows) == pytest.approx(10_000, abs=0.05)
+
+
 class TestCashFlowSeries:
     """Cash flow forecast projecting invoice inflows, calendar planned revenue, and expenses."""
 
     TODAY = datetime.date(2026, 10, 15)
+
+    @pytest.fixture(autouse=True)
+    def _open_ended(self, active_contract):
+        """Without an agreed volume the contract adds no contracted inflow, so only invoices and the calendar count."""
+        active_contract.volume = None
 
     def test_empty_data_handling(self):
         result = cash_flow_series([], [], [], [], None, forecast_months=6, today=self.TODAY)

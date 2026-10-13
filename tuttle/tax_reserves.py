@@ -65,6 +65,7 @@ class SpendableIncome(NamedTuple):
     outstanding_gross: Decimal  # sent but unpaid, gross
     outstanding_net: Decimal  # sent but unpaid, net of VAT
     planned_revenue: Decimal  # calendar work this year not yet invoiced (net)
+    contracted_revenue: Decimal = Decimal(0)  # committed contract work not yet in the calendar (net)
     conversion_fee: Decimal = Decimal(0)  # FX spread on foreign-currency revenue
     # income-dependent (dynamic) expenses, split by where they land in the waterfall
     dynamic_expenses_deductible: Decimal = Decimal(0)  # charged on the taxable profit
@@ -253,19 +254,21 @@ def compute_spendable_income(
     year: Optional[int] = None,
     projects: Optional[List[Project]] = None,
     time_data: Optional[DataFrame] = None,
+    contracted: Decimal = Decimal(0),
 ) -> SpendableIncome:
     """Compute spendable income: what's left after VAT, expenses, and income tax.
 
     This answers the freelancer's core question: "How much of this money is mine?"
 
-    Income basis = received (paid) + outstanding (invoiced) + planned (calendar).
+    Income basis = received (paid) + outstanding (invoiced) + planned (calendar)
+    + contracted (committed contract work for the rest of the year).
     Business *expenses* (health insurance, operating costs, etc.) are deducted
     before estimating income tax, yielding the correct taxable profit.
     Tax is computed on the taxable profit — no annualization.
 
         Gross Revenue
         − VAT
-        = Net Revenue (received + outstanding) + Planned
+        = Net Revenue (received + outstanding) + Planned + Contracted
         − Business Expenses
         = Taxable Profit
         − Est. Income Tax
@@ -273,6 +276,9 @@ def compute_spendable_income(
 
     If *projects* and *time_data* are given, planned revenue from this year's
     calendar work that no invoice covers yet is included in the income basis.
+    *contracted* is net revenue still expected from committed contracts this
+    year, as computed by ``forecasting.contracted_revenue``; past years
+    ignore it.
     """
     today = datetime.date.today()
     is_past_year = year is not None and year < today.year
@@ -322,6 +328,8 @@ def compute_spendable_income(
     planned = Decimal(0)
     if not is_past_year and projects and time_data is not None:
         planned = compute_planned_revenue(projects, time_data, currency=currency, invoices=invoices)
+    if is_past_year:
+        contracted = Decimal(0)
 
     gross_ytd = received_gross + outstanding_gross
     vat_ytd = received_vat + outstanding_vat
@@ -340,10 +348,10 @@ def compute_spendable_income(
     dynamic_expenses = [e for e in (expenses or []) if e.rate is not None]
     biz_expenses_ytd = (_monthly_expenses_total(fixed_expenses) * months_elapsed).quantize(Decimal("0.01"))
 
-    taxable_profit = net_ytd + planned - biz_expenses_ytd
+    taxable_profit = net_ytd + planned + contracted - biz_expenses_ytd
 
     # Dynamic expenses are charged on income actually earned so far, so planned
-    # calendar revenue stays out of their base even though it is taxed.
+    # and contracted revenue stay out of their base even though they are taxed.
     dynamic_base_monthly = (net_ytd - biz_expenses_ytd) / months_elapsed
 
     deductible_lines = _dynamic_lines(dynamic_expenses, dynamic_base_monthly, deductible=True)
@@ -383,6 +391,7 @@ def compute_spendable_income(
         outstanding_gross=outstanding_gross,
         outstanding_net=outstanding_net,
         planned_revenue=planned,
+        contracted_revenue=contracted,
         conversion_fee=conversion_fee,
         dynamic_expenses_deductible=dyn_deductible,
         dynamic_expenses_post_tax=dyn_post_tax,

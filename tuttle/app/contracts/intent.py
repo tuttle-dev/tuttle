@@ -150,6 +150,7 @@ class ContractsIntent(CrudIntent):
                 )
         try:
             contract.validate_pricing()
+            contract.validate_workload()
         except ValueError as e:
             return IntentResult(
                 was_intent_successful=False,
