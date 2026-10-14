@@ -5,7 +5,12 @@ import { EmptyStateIntro } from "../shared/EmptyStateIntro";
 import { LoadError, LoadingState } from "../shared/LoadStates";
 import { PageLayout } from "../shared/ToolbarButtons";
 import type { Entity } from "../../api/types";
-import { num, type DynamicLine } from "../../api/entity";
+import { num, str, type DynamicLine } from "../../api/entity";
+
+function fmtMonth(iso: string): string {
+  const [year, month] = iso.split("-").map(Number);
+  return new Date(year, month - 1, 1).toLocaleDateString("en-US", { month: "short", year: "numeric" });
+}
 
 function fmt(value: number, currency = "EUR"): string {
   try {
@@ -22,6 +27,8 @@ type SalaryData = {
   incomeTaxReserve: number;
   vatReserve: number;
   conversionFee: number;
+  periodStart: string;
+  periodEnd: string;
   currency: string;
 };
 
@@ -58,6 +65,8 @@ export function SalaryView() {
           incomeTaxReserve: num(sal, "income_tax_reserve_monthly"),
           vatReserve: num(sal, "vat_reserve_monthly"),
           conversionFee: num(sal, "conversion_fee_monthly"),
+          periodStart: str(sal, "period_start"),
+          periodEnd: str(sal, "period_end"),
           currency: cur,
         });
         if (target === null) setTarget(con);
@@ -152,8 +161,11 @@ function SalaryDial({ salary, target, onTargetChange }: {
 }
 
 function MonthlyBreakdown({ salary, countrySupported, taxCountry }: { salary: SalaryData; countrySupported: boolean; taxCountry: string }) {
-  const { optimistic, grossMonthly: gross, vatReserve, incomeTaxReserve, monthlyExpenses, dynamicLines, conversionFee, currency } = salary;
+  const { optimistic, grossMonthly: gross, vatReserve, incomeTaxReserve, monthlyExpenses, dynamicLines, conversionFee, periodStart, periodEnd, currency } = salary;
   if (gross <= 0) return null;
+  const from = periodStart ? fmtMonth(periodStart) : "";
+  const to = periodEnd ? fmtMonth(periodEnd) : "";
+  const period = from === to ? from : `${from} – ${to}`;
 
   const items: { label: string; amount: number; color: string; bold?: boolean; muted?: boolean }[] = [
     { label: "Gross Revenue / month", amount: gross, color: "var(--color-status-info)" },
@@ -178,6 +190,7 @@ function MonthlyBreakdown({ salary, countrySupported, taxCountry }: { salary: Sa
       <div className="flex items-center gap-2 mb-2">
         <BarChart3 size={16} className="text-secondary" />
         <h2 className="text-sm font-semibold">Monthly Breakdown</h2>
+        {period && <span className="text-xs text-muted ml-auto">Average, {period}</span>}
       </div>
       <div className="bg-surface-overlay rounded-lg p-4 space-y-1">
         {items.map((item, i) => {
