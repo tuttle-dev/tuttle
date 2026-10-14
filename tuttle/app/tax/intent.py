@@ -124,6 +124,7 @@ class TaxIntent(SQLModelDataSourceMixin, Intent):
                 "outstanding_net": spending.outstanding_net,
                 "planned_revenue": spending.planned_revenue,
                 "contracted_revenue": spending.contracted_revenue,
+                "deducted_expenses": spending.business_expenses + spending.dynamic_expenses_deductible,
                 "brackets": bracket_data,
                 "country": country,
                 "country_supported": country_supported,
@@ -171,11 +172,11 @@ class TaxIntent(SQLModelDataSourceMixin, Intent):
         return brackets
 
     def get_available_years(self) -> IntentResult:
-        """Return distinct years (descending) that have invoice data."""
+        """Return the current year and every year with invoice data, descending."""
         try:
             invoices = self.query(Invoice)
             years = sorted(
-                {inv.date.year for inv in invoices if not inv.cancelled},
+                {inv.date.year for inv in invoices if not inv.cancelled} | {datetime.date.today().year},
                 reverse=True,
             )
             return IntentResult(was_intent_successful=True, data=years)

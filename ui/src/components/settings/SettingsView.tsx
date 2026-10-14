@@ -1293,7 +1293,7 @@ function RegionTab({ operatingCountry, supportedCountries, onCountryChange, vatN
               value={currency.fx_haircut}
               onChange={(e) => setCurrency((c) => ({ ...c, fx_haircut: e.target.value }))}
             />
-            <p className="text-xs text-secondary mt-1">Bank/exchange spread, deducted from the salary estimate only.</p>
+            <p className="text-xs text-secondary mt-1">Bank/exchange spread on foreign-currency revenue. Lowers what you can spend, not your taxable revenue.</p>
           </div>
         </div>
       </fieldset>
