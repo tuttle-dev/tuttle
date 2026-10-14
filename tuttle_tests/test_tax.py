@@ -20,6 +20,7 @@ from tuttle.model import (
 )
 from tuttle.tax import TaxSystem, available_years, get_tax_system, supported_countries
 from tuttle.tax_reserves import (
+    _normalize_to_monthly,
     compute_income_tax_reserve,
     compute_spendable_income,
     compute_vat_reserves,
@@ -566,6 +567,20 @@ class TestSpendableIncome:
         result = compute_spendable_income([this_year, next_year], "Germany", year=today.year + 1)
 
         assert result.gross_revenue_ytd == next_year.total
+
+    @pytest.mark.parametrize(
+        "period, amount, monthly",
+        [
+            (Cycle.weekly, "100", "433.33"),  # 52 weeks a year
+            (Cycle.daily, "10", "304.17"),  # 365 days a year
+            (Cycle.hourly, "1", "160.00"),  # ~160 work hours a month
+            (Cycle.quarterly, "300", "100.00"),
+            (Cycle.yearly, "1200", "100.00"),
+        ],
+    )
+    def test_expense_periods_normalize_to_a_month(self, period, amount, monthly):
+        expense = RecurringExpense(title="Expense", amount=Decimal(amount), currency="EUR", period=period)
+        assert _normalize_to_monthly(expense) == Decimal(monthly)
 
     def test_spendable_empty_expenses_same_as_none(self):
         """Empty list behaves like no expenses."""

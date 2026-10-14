@@ -9,7 +9,7 @@ import pytest
 from tuttle import fx
 from tuttle.forecasting import revenue_series
 from tuttle.kpi import compute_kpis
-from tuttle.model import Client, Contract, Invoice, InvoiceItem, Project, TaxCategory
+from tuttle.model import Client, Contract, Invoice, InvoiceItem, Project, RecurringExpense, TaxCategory
 from tuttle.tax_reserves import compute_effective_salary, compute_spendable_income
 from tuttle.time import Cycle, TimeUnit
 
@@ -131,6 +131,19 @@ def test_conversion_fee_lowers_the_salary_but_not_its_tax():
     assert salary.conversion_fee_monthly == (Decimal("90.00") / months).quantize(Decimal("0.01"))
     assert salary.income_tax_reserve_monthly == plain.income_tax_reserve_monthly
     assert salary.optimistic_monthly == plain.optimistic_monthly - salary.conversion_fee_monthly
+
+
+def test_foreign_currency_expense_is_converted():
+    expense = RecurringExpense(
+        title="Software", amount=Decimal("100"), currency="USD", period=Cycle.monthly, tax_deductible=True
+    )
+    invoices = [_invoice("EUR", "9000")]
+
+    salary = compute_effective_salary(invoices, [expense], "Germany", currency="EUR")
+    spending = compute_spendable_income(invoices, "Germany", expenses=[expense], currency="EUR")
+
+    assert salary.monthly_expenses == Decimal("90.00")
+    assert spending.business_expenses == Decimal("90.00") * datetime.date.today().month
 
 
 class TestCurrencyValidation:

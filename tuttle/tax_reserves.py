@@ -366,8 +366,8 @@ def compute_spendable_income(
     # Prorate the fixed-amount recurring expenses to the period
     fixed_expenses = [e for e in (expenses or []) if e.rate is None]
     dynamic_expenses = [e for e in (expenses or []) if e.rate is not None]
-    deductible_monthly = _monthly_expenses_total([e for e in fixed_expenses if e.tax_deductible])
-    post_tax_monthly = _monthly_expenses_total([e for e in fixed_expenses if not e.tax_deductible])
+    deductible_monthly = _monthly_expenses_total([e for e in fixed_expenses if e.tax_deductible], currency)
+    post_tax_monthly = _monthly_expenses_total([e for e in fixed_expenses if not e.tax_deductible], currency)
     biz_expenses_ytd = (deductible_monthly * months_elapsed).quantize(Decimal("0.01"))
     fixed_post_tax_ytd = (post_tax_monthly * months_elapsed).quantize(Decimal("0.01"))
 
@@ -430,13 +430,14 @@ def compute_spendable_income(
     )
 
 
+# How many months one period spans.
 PERIOD_TO_MONTHS = {
     Cycle.monthly: Decimal(1),
     Cycle.quarterly: Decimal(3),
     Cycle.yearly: Decimal(12),
-    Cycle.weekly: Decimal("0.25"),  # ~4.33 weeks/month → approx
-    Cycle.daily: Decimal("30"),
-    Cycle.hourly: Decimal("160"),  # rough ~160 work-hours/month
+    Cycle.weekly: Decimal(12) / 52,
+    Cycle.daily: Decimal(12) / 365,
+    Cycle.hourly: Decimal(1) / 160,  # rough ~160 work-hours/month
 }
 
 
@@ -484,15 +485,28 @@ def _lines_total(lines: List[DynamicExpenseLine]) -> Decimal:
     return sum((line.amount for line in lines), Decimal(0))
 
 
-def _normalize_to_monthly(expense: RecurringExpense) -> Decimal:
-    """Convert a recurring expense amount to its monthly equivalent."""
-    divisor = PERIOD_TO_MONTHS.get(expense.period, Decimal(1))
-    return (expense.amount / divisor).quantize(Decimal("0.01"))
+def _normalize_to_monthly(expense: RecurringExpense, currency: Optional[str] = None) -> Optional[Decimal]:
+    """A recurring expense's monthly equivalent, in *currency* at this month's rate.
+
+    Returns ``None`` when the expense is in another currency and the rate
+    cannot be resolved.
+    """
+    monthly = expense.amount / PERIOD_TO_MONTHS.get(expense.period, Decimal(1))
+    if currency and expense.currency not in (currency, None):
+        monthly = convert(monthly, expense.currency, currency, datetime.date.today())
+        if monthly is None:
+            return None
+    return monthly.quantize(Decimal("0.01"))
 
 
-def _monthly_expenses_total(expenses: List[RecurringExpense]) -> Decimal:
-    """Sum all recurring expenses, normalized to a monthly amount."""
-    return sum((_normalize_to_monthly(e) for e in expenses), Decimal(0))
+def _monthly_expenses_total(expenses: List[RecurringExpense], currency: Optional[str] = None) -> Decimal:
+    """Sum recurring expenses as monthly amounts in *currency*.
+
+    An expense whose exchange rate cannot be resolved is left out, as an
+    invoice is; fx logs which.
+    """
+    amounts = (_normalize_to_monthly(e, currency) for e in expenses)
+    return sum((a for a in amounts if a is not None), Decimal(0))
 
 
 class EffectiveSalary(NamedTuple):
@@ -589,8 +603,8 @@ def compute_effective_salary(
 
     fixed_expenses = [e for e in expenses if e.rate is None]
     dynamic_expenses = [e for e in expenses if e.rate is not None]
-    monthly_exp = _monthly_expenses_total(fixed_expenses)
-    monthly_exp_deductible = _monthly_expenses_total([e for e in fixed_expenses if e.tax_deductible])
+    monthly_exp = _monthly_expenses_total(fixed_expenses, currency)
+    monthly_exp_deductible = _monthly_expenses_total([e for e in fixed_expenses if e.tax_deductible], currency)
     fx_spread = fx_haircut()
 
     def scenario(revenue: _Revenue) -> _SalaryScenario:

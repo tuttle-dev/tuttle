@@ -50,14 +50,14 @@ function basisSuffix(period: string): string {
   return period === "yearly" ? "/yr" : "/mo";
 }
 
-/** Normalize a recurring amount to its monthly equivalent (mirrors backend `_normalize_to_monthly`). */
+/** How many months one period spans (mirrors backend `PERIOD_TO_MONTHS`). */
 const PERIOD_TO_MONTHLY_DIVISOR: Record<string, number> = {
   monthly: 1,
   quarterly: 3,
   yearly: 12,
-  weekly: 0.25,
-  daily: 30,
-  hourly: 160,
+  weekly: 12 / 52,
+  daily: 12 / 365,
+  hourly: 1 / 160,
 };
 
 function toMonthly(amount: number, period: string): number {
@@ -177,13 +177,15 @@ export function ExpensesView() {
 
   useAutoSelect(expenses, Array.from(grouped.values()).flat(), selected, setSelected, { enabled: mode === "view" });
 
-  // Monthly total of the fixed expenses. Dynamic ones depend on income the
-  // backend knows about, so they are only counted, not summed, here.
-  const monthlyTotal = expenses.reduce((sum, e) => {
-    return isDynamic(e) ? sum : sum + toMonthly(num(e, "amount"), str(e, "period"));
-  }, 0);
+  // Monthly total of the fixed expenses, one per currency. Dynamic ones depend
+  // on income the backend knows about, so they are only counted, not summed, here.
+  const monthlyTotals = new Map<string, number>();
+  for (const e of expenses) {
+    if (isDynamic(e)) continue;
+    const cur = str(e, "currency") || "EUR";
+    monthlyTotals.set(cur, (monthlyTotals.get(cur) ?? 0) + toMonthly(num(e, "amount"), str(e, "period")));
+  }
   const dynamicCount = expenses.filter(isDynamic).length;
-  const totalCurrency = expenses.length > 0 ? str(expenses[0], "currency") : "EUR";
 
   return (
     <div className="flex flex-col h-full">
@@ -209,8 +211,10 @@ export function ExpensesView() {
               {filtered.length} recurring expense{filtered.length !== 1 ? "s" : ""}
               {expenses.length > 0 && (
                 <span className="ml-2 text-tertiary">
-                  · {fmt(monthlyTotal, totalCurrency)}/mo
-                  {dynamicCount > 0 && ` + ${dynamicCount} income-dependent`}
+                  · {[
+                    ...Array.from(monthlyTotals, ([cur, total]) => `${fmt(total, cur)}/mo`),
+                    ...(dynamicCount > 0 ? [`${dynamicCount} income-dependent`] : []),
+                  ].join(" + ")}
                 </span>
               )}
             </>
@@ -391,7 +395,15 @@ function ExpenseForm({ expense, onSave, onCancel, error }: {
   const { isRequired } = useFieldRequirements("salary");
   const [title, setTitle] = useState(expense ? str(expense, "title") : "");
   const [amountStr, setAmountStr] = useState(expense ? str(expense, "amount") : "");
-  const [currency, setCurrency] = useState(expense ? str(expense, "currency") : "EUR");
+  const [currency, setCurrency] = useState(expense ? str(expense, "currency") : "");
+  // A new expense starts in the primary currency; amounts are converted from it.
+  useEffect(() => {
+    if (expense) return;
+    rpc<{ primary: string }>("settings.get_currency").then((res) => {
+      const primary = res.ok ? res.data?.primary : undefined;
+      setCurrency((current) => current || primary || "EUR");
+    });
+  }, [expense]);
   const [period, setPeriod] = useState(expense ? str(expense, "period") : "monthly");
   const [category, setCategory] = useState(expense ? str(expense, "category") : "operating");
   const [dynamic, setDynamic] = useState(expense ? isDynamic(expense) : false);
