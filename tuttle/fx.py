@@ -19,6 +19,9 @@ from decimal import Decimal
 from functools import lru_cache
 from typing import Optional
 
+import pycountry
+from babel.numbers import get_territory_currencies
+
 from .app_db import AppDatabase
 from .tax import get_tax_system
 
@@ -78,19 +81,40 @@ def supported_currencies() -> tuple[str, ...]:
         return SUPPORTED_CURRENCIES
 
 
-def primary_currency(country: str = "Germany") -> str:
-    """The currency all aggregates are expressed in.
+# Dropdown names pycountry does not know by that name.
+_COUNTRY_ALIASES = {"Turkey": "TR"}
 
-    Defaults to the currency of the operating country's tax system, which is
-    why preselection by country needs no country→currency table.
+
+@lru_cache(maxsize=None)
+def default_currency(country: str) -> str:
+    """The currency someone working in *country* earns in.
+
+    That of its tax system; else the country's own currency, if the rate
+    source publishes it (foreign revenue could not be converted into it
+    otherwise); else EUR.
     """
-    setting = AppDatabase().get_setting("currency.primary")
-    if setting:
-        return setting
     try:
         return get_tax_system(country).currency
     except NotImplementedError:
-        return "EUR"
+        pass
+    code = _COUNTRY_ALIASES.get(country)
+    if code is None:
+        try:
+            code = pycountry.countries.lookup(country).alpha_2
+        except LookupError:
+            return "EUR"
+    currencies = get_territory_currencies(code)
+    if currencies and currencies[0] in SUPPORTED_CURRENCIES:
+        return currencies[0]
+    return "EUR"
+
+
+def primary_currency(country: str = "Germany") -> str:
+    """The currency all aggregates are expressed in: the setting, else the country's."""
+    setting = AppDatabase().get_setting("currency.primary")
+    if setting:
+        return setting
+    return default_currency(country)
 
 
 def validate_currency_code(code: str) -> str:
@@ -108,7 +132,7 @@ def validate_currency_code(code: str) -> str:
 
 
 def fx_haircut() -> Decimal:
-    """Bank/exchange spread in percent, deducted from the salary estimate only.
+    """Bank/exchange spread in percent, deducted from what can be spent.
 
     Never reduces taxable revenue — the taxable amount is the ECB-converted one.
     """
@@ -142,8 +166,12 @@ def _fetch_monthly_average(base: str, quote: str, month: datetime.date) -> Decim
         Decimal(str(day[quote])) for iso, day in payload["rates"].items() if quote in day and iso.startswith(f"{start:%Y-%m}")
     ]
     if not daily:
-        raise ValueError(f"no {base}/{quote} rates published for {start:%Y-%m}")
+        raise _NoRatesYet(f"no {base}/{quote} rates published for {start:%Y-%m}")
     return sum(daily) / len(daily)
+
+
+class _NoRatesYet(ValueError):
+    """The ECB has not fixed a rate in this month yet."""
 
 
 # ponytail: a failed lookup stays cached for the session; restart (or call
@@ -160,6 +188,15 @@ def _rate(base: str, quote: str, month_key: str) -> Optional[Decimal]:
 
     try:
         avg = _fetch_monthly_average(base, quote, month)
+    except _NoRatesYet:
+        if _month_range(month)[1] < datetime.date.today():
+            logger.warning("No %s/%s rates published for %s.", base, quote, month_key)
+            return None
+        # Until the ECB's first fixing of the month (its first business day,
+        # ~16:00 CET) the previous month's average is the best estimate.
+        # Like any rate of an open month it lasts for the session.
+        previous = month - datetime.timedelta(days=1)
+        return _rate(base, quote, f"{previous:%Y-%m}")
     except (urllib.error.URLError, OSError, ValueError, KeyError, TimeoutError) as e:
         logger.warning(
             "No exchange rate for %s/%s in %s (%s); amounts in %s are left unconverted rather than counted as zero.",

@@ -106,7 +106,7 @@ class TaxIntent(SQLModelDataSourceMixin, Intent):
             # tax_base, not taxable_profit: deductible dynamic expenses have already
             # been taken off, and charging them again here would double-count.
             total_income = spending.tax_base
-            tax_reserve = compute_income_tax_reserve(total_income, country, year=year)
+            tax_reserve = compute_income_tax_reserve(total_income, country, year=year, currency=currency)
 
             ref_date = datetime.date(year, 7, 1) if year else today
             try:

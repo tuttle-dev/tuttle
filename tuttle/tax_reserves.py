@@ -13,6 +13,7 @@ from typing import List, NamedTuple, Optional
 from pandas import DataFrame
 
 from .fx import convert, fx_haircut
+from .fx import rate as fx_rate
 from .model import Invoice, Project, RecurringExpense
 from .tax import get_tax_system
 from .time import Cycle, TimeUnit
@@ -220,11 +221,16 @@ def compute_income_tax_reserve(
     country: str,
     deductions: Decimal = Decimal(0),
     year: Optional[int] = None,
+    currency: Optional[str] = None,
 ) -> IncomeTaxReserve:
     """Estimate income tax reserve based on total known income.
 
     *income* is the total expected net income (received + invoiced + planned).
     Tax is computed directly on this amount — no annualization.
+
+    *income* and the returned amounts are in *currency* (default: the tax
+    system's). The tariff is written in the tax system's currency, so income
+    in another one is converted for it, and the tax back.
     """
     today = datetime.date.today()
     _zero = IncomeTaxReserve(
@@ -246,8 +252,21 @@ def compute_income_tax_reserve(
     if taxable_income <= 0:
         return _zero
 
-    annual_tax = tax_system.income_tax(taxable_income)
-    annual_soli = tax_system.solidarity_surcharge(annual_tax)
+    to_tax_currency = Decimal(1)
+    if currency and currency != tax_system.currency:
+        to_tax_currency = fx_rate(currency, tax_system.currency, ref_date)
+        if to_tax_currency is None:
+            logger.warning(
+                "No %s/%s rate; estimating %s tax on the %s amount as is.",
+                currency,
+                tax_system.currency,
+                tax_system.country,
+                currency,
+            )
+            to_tax_currency = Decimal(1)
+
+    annual_tax = tax_system.income_tax(taxable_income * to_tax_currency) / to_tax_currency
+    annual_soli = tax_system.solidarity_surcharge(annual_tax * to_tax_currency) / to_tax_currency
     total_annual = annual_tax + annual_soli
     reserve = total_annual.quantize(Decimal("0.01"))
 
@@ -383,7 +402,7 @@ def compute_spendable_income(
     # Deductible provisions (health insurance, Rürup) shrink the income the tax
     # is assessed on; the rest is paid out of money that was already taxed.
     tax_base = taxable_profit - dyn_deductible
-    tax_reserve = compute_income_tax_reserve(tax_base, country, deductions, year=year)
+    tax_reserve = compute_income_tax_reserve(tax_base, country, deductions, year=year, currency=currency)
 
     post_tax = tax_base - tax_reserve.ytd_reserve - fixed_post_tax_ytd
 
@@ -630,7 +649,7 @@ def compute_effective_salary(
         tax_base = profit - _lines_total(deductible_lines)
         # Tax a year of this monthly profit: progressive tax on the year-to-date
         # sum would treat a few months of income as a whole year's.
-        income_tax = (compute_income_tax_reserve(tax_base * 12, country).ytd_reserve / 12).quantize(cent)
+        income_tax = (compute_income_tax_reserve(tax_base * 12, country, currency=currency).ytd_reserve / 12).quantize(cent)
         post_tax = tax_base - income_tax - (monthly_exp - monthly_exp_deductible)
         post_tax_lines = _dynamic_lines(dynamic_expenses, post_tax, deductible=False)
         # The bank spread never reduces taxable revenue, only what lands in the account.
