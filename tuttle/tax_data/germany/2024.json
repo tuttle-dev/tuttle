@@ -3,24 +3,24 @@
     "country_aliases": ["Deutschland"],
     "year": 2024,
     "formula_type": "german_progressive",
-    "source": "§32a EStG 2024",
+    "source": "§32a EStG 2024, with the basic allowance raised retroactively to 11,784",
     "currency": "EUR",
 
     "income_tax": {
-        "basic_allowance": 11604,
+        "basic_allowance": 11784,
         "zones": [
             {
                 "label": "Tax-free zone",
-                "up_to": 11604,
+                "up_to": 11784,
                 "type": "zero"
             },
             {
                 "label": "Zone 2 (14%–24%)",
                 "up_to": 17005,
                 "type": "quadratic",
-                "reference_offset": 11604,
+                "reference_offset": 11784,
                 "divisor": 10000,
-                "a": 922.98,
+                "a": 954.80,
                 "b": 1400
             },
             {
@@ -45,14 +45,16 @@
                 "up_to": null,
                 "type": "linear",
                 "rate": 0.45,
-                "offset": -18971.56
+                "offset": -18971.06
             }
         ]
     },
 
     "solidarity_surcharge": {
         "rate": 0.055,
-        "comment": "5.5% of income tax"
+        "exemption_limit": 18130,
+        "phase_in_rate": 0.119,
+        "comment": "5.5% of income tax, none up to the exemption limit (§3 SolZG, single filer), at most 11.9% of the tax above it (§4 SolZG)"
     },
 
     "vat": {

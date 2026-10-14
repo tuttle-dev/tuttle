@@ -3,56 +3,58 @@
     "country_aliases": ["Deutschland"],
     "year": 2025,
     "formula_type": "german_progressive",
-    "source": "§32a EStG 2025",
+    "source": "§32a EStG 2025 (Steuerfortentwicklungsgesetz)",
     "currency": "EUR",
 
     "income_tax": {
-        "basic_allowance": 12084,
+        "basic_allowance": 12096,
         "zones": [
             {
                 "label": "Tax-free zone",
-                "up_to": 12084,
+                "up_to": 12096,
                 "type": "zero"
             },
             {
                 "label": "Zone 2 (14%–24%)",
-                "up_to": 17430,
+                "up_to": 17443,
                 "type": "quadratic",
-                "reference_offset": 12084,
+                "reference_offset": 12096,
                 "divisor": 10000,
                 "a": 932.30,
                 "b": 1400
             },
             {
                 "label": "Zone 3 (24%–42%)",
-                "up_to": 68430,
+                "up_to": 68480,
                 "type": "quadratic",
-                "reference_offset": 17430,
+                "reference_offset": 17443,
                 "divisor": 10000,
-                "a": 176.63,
+                "a": 176.64,
                 "b": 2397,
-                "c": 1015.42
+                "c": 1015.13
             },
             {
                 "label": "Zone 4 (42%)",
                 "up_to": 277825,
                 "type": "linear",
                 "rate": 0.42,
-                "offset": -10733.49
+                "offset": -10911.92
             },
             {
                 "label": "Zone 5 (45%)",
                 "up_to": null,
                 "type": "linear",
                 "rate": 0.45,
-                "offset": -19082.74
+                "offset": -19246.67
             }
         ]
     },
 
     "solidarity_surcharge": {
         "rate": 0.055,
-        "comment": "5.5% of income tax"
+        "exemption_limit": 19950,
+        "phase_in_rate": 0.119,
+        "comment": "5.5% of income tax, none up to the exemption limit (§3 SolZG, single filer), at most 11.9% of the tax above it (§4 SolZG)"
     },
 
     "vat": {

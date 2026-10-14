@@ -139,7 +139,8 @@ class TaxIntent(SQLModelDataSourceMixin, Intent):
                 exception=e,
             )
 
-    def _compute_bracket_data(self, tax_system, income: Decimal) -> list:
+    @staticmethod
+    def _compute_bracket_data(tax_system, income: Decimal) -> list:
         """Build bracket visualization data from the tax system's zone data."""
         zones = tax_system.bracket_info
         income_f = float(income)
@@ -152,9 +153,9 @@ class TaxIntent(SQLModelDataSourceMixin, Intent):
             if ztype == "zero":
                 start = 0
                 end = up_to
-            elif ztype in ("quadratic", "linear") and "reference_offset" in zone:
-                # German-style zones with explicit reference offsets
-                start = zone["reference_offset"]
+            elif tax_system.params.formula_type == "german_progressive":
+                # §32a zones are bounded by absolute incomes
+                start = prev_end
                 end = up_to if up_to is not None else start + 100000
             else:
                 # Marginal bracket zones: display bracket range offset by allowance

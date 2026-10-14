@@ -7,52 +7,54 @@
     "currency": "EUR",
 
     "income_tax": {
-        "basic_allowance": 12096,
+        "basic_allowance": 12348,
         "zones": [
             {
                 "label": "Tax-free zone",
-                "up_to": 12096,
+                "up_to": 12348,
                 "type": "zero"
             },
             {
                 "label": "Zone 2 (14%–24%)",
-                "up_to": 17443,
+                "up_to": 17799,
                 "type": "quadratic",
-                "reference_offset": 12096,
+                "reference_offset": 12348,
                 "divisor": 10000,
-                "a": 932.30,
+                "a": 914.51,
                 "b": 1400
             },
             {
                 "label": "Zone 3 (24%–42%)",
-                "up_to": 68480,
+                "up_to": 69878,
                 "type": "quadratic",
-                "reference_offset": 17443,
+                "reference_offset": 17799,
                 "divisor": 10000,
-                "a": 176.63,
+                "a": 173.10,
                 "b": 2397,
-                "c": 1015.84
+                "c": 1034.87
             },
             {
                 "label": "Zone 4 (42%)",
                 "up_to": 277825,
                 "type": "linear",
                 "rate": 0.42,
-                "offset": -10739.80
+                "offset": -11135.63
             },
             {
                 "label": "Zone 5 (45%)",
                 "up_to": null,
                 "type": "linear",
                 "rate": 0.45,
-                "offset": -19089.05
+                "offset": -19470.38
             }
         ]
     },
 
     "solidarity_surcharge": {
         "rate": 0.055,
-        "comment": "5.5% of income tax"
+        "exemption_limit": 20350,
+        "phase_in_rate": 0.119,
+        "comment": "5.5% of income tax, none up to the exemption limit (§3 SolZG, single filer), at most 11.9% of the tax above it (§4 SolZG)"
     },
 
     "vat": {
