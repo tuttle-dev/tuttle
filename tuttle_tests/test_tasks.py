@@ -7,7 +7,7 @@ from unittest.mock import patch
 import pytest
 import sqlmodel
 
-from tuttle.app.tasks.generator import generate_tasks, _parse_lead_days
+from tuttle.app.tasks.generator import _parse_lead_days, generate_tasks
 from tuttle.model import (
     Address,
     Client,
