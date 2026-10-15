@@ -2,11 +2,12 @@
 
 import datetime
 from decimal import Decimal
+from unittest.mock import patch
 
 import pytest
 import sqlmodel
 
-from tuttle.app.tasks.generator import generate_tasks
+from tuttle.app.tasks.generator import generate_tasks, _parse_lead_days
 from tuttle.model import (
     Address,
     Client,
@@ -26,6 +27,25 @@ def session():
     sqlmodel.SQLModel.metadata.create_all(engine)
     with sqlmodel.Session(engine) as s:
         yield s
+
+
+# ---------------------------------------------------------------------------
+# _parse_lead_days
+# ---------------------------------------------------------------------------
+
+
+class TestParseLeadDays:
+    def test_simple(self):
+        assert _parse_lead_days("30, 7, 0") == [30, 7, 0]
+
+    def test_deduplicates(self):
+        assert _parse_lead_days("7, 7, 0") == [7, 0]
+
+    def test_ignores_garbage(self):
+        assert _parse_lead_days("30, abc, , -1, 0") == [30, 0]
+
+    def test_empty_string(self):
+        assert _parse_lead_days("") == []
 
 
 # ---------------------------------------------------------------------------
@@ -200,3 +220,148 @@ class TestOverdueTasks:
         generate_tasks(session)
         task = session.exec(sqlmodel.select(Task).where(Task.key == f"overdue:{overdue_invoice.id}")).first()
         assert task is None
+
+
+# ---------------------------------------------------------------------------
+# Contract-end tasks
+# ---------------------------------------------------------------------------
+
+
+class TestContractEndTasks:
+    @pytest.fixture
+    def ending_contract(self, session):
+        client = Client(name="EndCorp")
+        contract = Contract(
+            title="Ending Contract",
+            client=client,
+            rate=Decimal("100"),
+            currency="EUR",
+            unit=TimeUnit.hour,
+            units_per_workday=8,
+            term_of_payment=14,
+            billing_cycle=Cycle.monthly,
+            start_date=datetime.date(2025, 1, 1),
+            end_date=datetime.date.today() + datetime.timedelta(days=10),
+        )
+        session.add(contract)
+        session.commit()
+        return contract
+
+    def test_creates_task_within_lead_window(self, session, ending_contract):
+        """Contract ending in 10 days triggers a 30-day lead task."""
+        generate_tasks(session)
+        task = session.exec(
+            sqlmodel.select(Task).where(Task.key == f"contract_ending:{ending_contract.id}:30")
+        ).first()
+        assert task is not None
+        assert "Ending Contract" in task.title
+
+    def test_no_task_outside_lead_window(self, session):
+        """Contract ending in 60 days should not trigger 30-day lead task."""
+        client = Client(name="FarCorp")
+        contract = Contract(
+            title="Far Contract",
+            client=client,
+            rate=Decimal("100"),
+            currency="EUR",
+            unit=TimeUnit.hour,
+            units_per_workday=8,
+            term_of_payment=14,
+            billing_cycle=Cycle.monthly,
+            start_date=datetime.date(2025, 1, 1),
+            end_date=datetime.date.today() + datetime.timedelta(days=60),
+        )
+        session.add(contract)
+        session.commit()
+        generate_tasks(session)
+        tasks = session.exec(
+            sqlmodel.select(Task).where(Task.key.startswith("contract_ending:"))  # type: ignore[union-attr]
+        ).all()
+        assert len(tasks) == 0
+
+    def test_no_task_for_completed_contract(self, session, ending_contract):
+        ending_contract.is_completed = True
+        session.add(ending_contract)
+        session.commit()
+        generate_tasks(session)
+        tasks = session.exec(
+            sqlmodel.select(Task).where(Task.key.startswith("contract_ending:"))  # type: ignore[union-attr]
+        ).all()
+        assert len(tasks) == 0
+
+    def test_no_task_for_open_ended_contract(self, session):
+        client = Client(name="OpenCorp")
+        contract = Contract(
+            title="Open Contract",
+            client=client,
+            rate=Decimal("100"),
+            currency="EUR",
+            unit=TimeUnit.hour,
+            units_per_workday=8,
+            term_of_payment=14,
+            billing_cycle=Cycle.monthly,
+            start_date=datetime.date(2025, 1, 1),
+        )
+        session.add(contract)
+        session.commit()
+        generate_tasks(session)
+        tasks = session.exec(
+            sqlmodel.select(Task).where(Task.key.startswith("contract_ending:"))  # type: ignore[union-attr]
+        ).all()
+        assert len(tasks) == 0
+
+    def test_idempotent(self, session, ending_contract):
+        generate_tasks(session)
+        generate_tasks(session)
+        tasks = session.exec(
+            sqlmodel.select(Task).where(Task.key == f"contract_ending:{ending_contract.id}:30")
+        ).all()
+        assert len(tasks) == 1
+
+    @patch("tuttle.app.tasks.generator._load_lead_days")
+    def test_custom_lead_days(self, mock_load, session):
+        mock_load.return_value = ([7], [0])
+        client = Client(name="CustomCorp")
+        contract = Contract(
+            title="Custom Lead",
+            client=client,
+            rate=Decimal("100"),
+            currency="EUR",
+            unit=TimeUnit.hour,
+            units_per_workday=8,
+            term_of_payment=14,
+            billing_cycle=Cycle.monthly,
+            start_date=datetime.date(2025, 1, 1),
+            end_date=datetime.date.today() + datetime.timedelta(days=5),
+        )
+        session.add(contract)
+        session.commit()
+        generate_tasks(session)
+        task = session.exec(
+            sqlmodel.select(Task).where(Task.key == f"contract_ending:{contract.id}:7")
+        ).first()
+        assert task is not None
+
+    def test_today_end_date_task(self, session):
+        """Contract ending today triggers the 0-day lead task."""
+        client = Client(name="TodayCorp")
+        contract = Contract(
+            title="Today Contract",
+            client=client,
+            rate=Decimal("100"),
+            currency="EUR",
+            unit=TimeUnit.hour,
+            units_per_workday=8,
+            term_of_payment=14,
+            billing_cycle=Cycle.monthly,
+            start_date=datetime.date(2025, 1, 1),
+            end_date=datetime.date.today(),
+        )
+        session.add(contract)
+        session.commit()
+        generate_tasks(session)
+        task = session.exec(
+            sqlmodel.select(Task).where(Task.key == f"contract_ending:{contract.id}:0")
+        ).first()
+        assert task is not None
+        assert "ends today" in task.title

@@ -11,7 +11,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { Plus, RefreshCw, Save, CheckCircle2, AlertCircle, User, Bot, FileText, RotateCcw, Trash2, AlertTriangle, Monitor, Globe, Info, Image as ImageIcon, X, Sun, Moon, Laptop, Palette, Terminal, Clipboard, Check } from "lucide-react";
+import { Plus, RefreshCw, Save, CheckCircle2, AlertCircle, User, Bot, FileText, RotateCcw, Trash2, AlertTriangle, Monitor, Globe, Info, Image as ImageIcon, X, Sun, Moon, Laptop, Palette, Terminal, Clipboard, Check, Bell } from "lucide-react";
 import { useTheme, type ThemeChoice } from "../../hooks/useTheme";
 import { useDismiss } from "../../hooks/useDismiss";
 import { rpc } from "../../api/rpc";
@@ -125,13 +125,14 @@ const DEFAULT_CURRENCY: CurrencySettings = {
   supported: ["EUR", "GBP", "USD"],
 };
 
-type Tab = "profile" | "branding" | "invoicing" | "llm" | "region" | "system" | "debug";
+type Tab = "profile" | "branding" | "invoicing" | "tasks" | "llm" | "region" | "system" | "debug";
 
 const TABS: { id: Tab; label: string; icon: typeof User }[] = [
   { id: "profile", label: "Profile", icon: User },
   { id: "branding", label: "Branding", icon: Palette },
   { id: "region", label: "Region", icon: Globe },
   { id: "invoicing", label: "Invoicing", icon: FileText },
+  { id: "tasks", label: "Tasks", icon: Bell },
   { id: "llm", label: "AI / LLM", icon: Bot },
   { id: "system", label: "System", icon: Monitor },
   { id: "debug", label: "Debug", icon: Terminal },
@@ -1034,6 +1035,10 @@ export function SettingsView() {
         />
       )}
 
+      {tab === "tasks" && (
+        <TaskRemindersTab />
+      )}
+
       {tab === "system" && (
         <SystemTab />
       )}
@@ -1163,6 +1168,103 @@ export function SettingsView() {
         </div>
       </div>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Task reminders tab
+// ---------------------------------------------------------------------------
+
+function TaskRemindersTab() {
+  const { showMessage } = useStatusBar();
+  const [contractDays, setContractDays] = useState("30, 0");
+  const [overdueDays, setOverdueDays] = useState("0");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    rpc<{ contract_end_lead_days: string; invoice_overdue_lead_days: string }>(
+      "settings.get_task_reminders",
+    ).then((res) => {
+      if (res.ok && res.data) {
+        setContractDays(res.data.contract_end_lead_days);
+        setOverdueDays(res.data.invoice_overdue_lead_days);
+      }
+    });
+  }, []);
+
+  async function handleSave() {
+    setSaving(true);
+    const res = await rpc("settings.save_task_reminders", {
+      contract_end_lead_days: contractDays,
+      invoice_overdue_lead_days: overdueDays,
+    });
+    showMessage(
+      res.ok ? "Task reminder settings saved." : res.error || "Failed to save.",
+      { type: res.ok ? "success" : "error" },
+    );
+    setSaving(false);
+  }
+
+  const inputCls =
+    "w-full px-3 py-2 rounded-md text-sm bg-bg-card text-primary border border-border-subtle outline-none focus:border-accent transition-colors placeholder:text-muted";
+  const labelCls = "block text-xs text-tertiary mb-1";
+
+  return (
+    <section className="space-y-4">
+      <p className="text-sm text-muted">
+        Control when Tuttle creates reminder tasks for upcoming deadlines.
+        Enter days as a comma-separated list.
+      </p>
+
+      <fieldset className="border border-border-subtle rounded-lg px-4 pb-3 pt-2">
+        <legend className="text-xs font-medium text-secondary px-1">
+          Contract end reminders
+        </legend>
+        <div className="mt-2">
+          <label className={labelCls}>Days before end date</label>
+          <input
+            className={inputCls}
+            value={contractDays}
+            onChange={(e) => setContractDays(e.target.value)}
+            placeholder="30, 0"
+          />
+          <p className="text-xs text-muted mt-1">
+            Example: <span className="font-mono text-primary">30, 7, 0</span>{" "}
+            creates tasks 30 days, 7 days, and on the day the contract ends.
+            Completed contracts are ignored.
+          </p>
+        </div>
+      </fieldset>
+
+      <fieldset className="border border-border-subtle rounded-lg px-4 pb-3 pt-2">
+        <legend className="text-xs font-medium text-secondary px-1">
+          Invoice overdue reminders
+        </legend>
+        <div className="mt-2">
+          <label className={labelCls}>Days after due date</label>
+          <input
+            className={inputCls}
+            value={overdueDays}
+            onChange={(e) => setOverdueDays(e.target.value)}
+            placeholder="0"
+          />
+          <p className="text-xs text-muted mt-1">
+            Example: <span className="font-mono text-primary">0, 14, 30</span>{" "}
+            creates tasks on the due date, then 14 and 30 days after.
+            Invoices with a reminder document sent are skipped.
+          </p>
+        </div>
+      </fieldset>
+
+      <button
+        onClick={handleSave}
+        disabled={saving}
+        className="flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium bg-accent/10 text-primary hover:bg-accent/20 border border-accent/30 transition-colors disabled:opacity-40"
+      >
+        <Save size={14} />
+        {saving ? "Saving…" : "Save Task Settings"}
+      </button>
+    </section>
   );
 }
 

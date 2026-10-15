@@ -58,3 +58,27 @@ class SettingsIntent:
             was_intent_successful=True,
             data=self._app_db.get_all_settings(prefix=prefix),
         )
+
+    # -- Task reminder settings ------------------------------------------------
+
+    TASK_CONTRACT_END_KEY = "tasks.contract_end_lead_days"
+    TASK_INVOICE_OVERDUE_KEY = "tasks.invoice_overdue_lead_days"
+
+    DEFAULT_CONTRACT_END_LEAD = "30, 0"
+    DEFAULT_INVOICE_OVERDUE_LEAD = "0"
+
+    def get_task_reminders(self) -> IntentResult:
+        return IntentResult(
+            was_intent_successful=True,
+            data={
+                "contract_end_lead_days": self._app_db.get_setting(self.TASK_CONTRACT_END_KEY)
+                or self.DEFAULT_CONTRACT_END_LEAD,
+                "invoice_overdue_lead_days": self._app_db.get_setting(self.TASK_INVOICE_OVERDUE_KEY)
+                or self.DEFAULT_INVOICE_OVERDUE_LEAD,
+            },
+        )
+
+    def save_task_reminders(self, contract_end_lead_days: str, invoice_overdue_lead_days: str) -> IntentResult:
+        self._app_db.set_setting(self.TASK_CONTRACT_END_KEY, contract_end_lead_days)
+        self._app_db.set_setting(self.TASK_INVOICE_OVERDUE_KEY, invoice_overdue_lead_days)
+        return IntentResult(was_intent_successful=True, data=None)

@@ -8,8 +8,11 @@ Tutorial tasks auto-resolve (mark done) when their condition no longer
 holds.  Business tasks require explicit user action.
 """
 
+import datetime
+
 from sqlmodel import Session, select
 
+from ...app_db import AppDatabase
 from ...model import Client, Contact, Contract, Invoice, Project, Task
 
 # ---------------------------------------------------------------------------
@@ -66,6 +69,24 @@ TUTORIAL_MANUAL_RULES: list[tuple[str, str, str]] = [
 ]
 
 
+def _parse_lead_days(raw: str) -> list[int]:
+    """Parse a comma-separated string of non-negative integers."""
+    result = []
+    for part in raw.split(","):
+        part = part.strip()
+        if part.isdigit():
+            result.append(int(part))
+    return sorted(set(result), reverse=True)
+
+
+def _load_lead_days() -> tuple[list[int], list[int]]:
+    """Read task reminder lead-day settings from the app database."""
+    app_db = AppDatabase()
+    contract_raw = app_db.get_setting("tasks.contract_end_lead_days") or "30, 0"
+    overdue_raw = app_db.get_setting("tasks.invoice_overdue_lead_days") or "0"
+    return _parse_lead_days(contract_raw), _parse_lead_days(overdue_raw)
+
+
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
@@ -75,7 +96,9 @@ def generate_tasks(session: Session) -> None:
     """Refresh task rows based on current business state."""
     _generate_tutorial_tasks(session)
     _generate_manual_tutorial_tasks(session)
-    _generate_overdue_tasks(session)
+    contract_leads, overdue_leads = _load_lead_days()
+    _generate_overdue_tasks(session, overdue_leads)
+    _generate_contract_end_tasks(session, contract_leads)
     session.commit()
 
 
@@ -124,22 +147,67 @@ def _generate_manual_tutorial_tasks(session: Session) -> None:
 # ---------------------------------------------------------------------------
 
 
-def _generate_overdue_tasks(session: Session) -> None:
+def _generate_overdue_tasks(session: Session, lead_days: list[int]) -> None:
+    if not lead_days:
+        return
     invoices = session.exec(select(Invoice)).all()
+    today = datetime.date.today()
     for inv in invoices:
         if inv.status != "overdue":
             continue
-        # Skip if a reminder already exists for this invoice
         if inv.reminders:
             continue
-
-        key = f"overdue:{inv.id}"
-        existing = session.exec(select(Task).where(Task.key == key)).first()
-        if not existing:
-            session.add(
-                Task(
-                    key=key,
-                    title=f"Invoice {inv.number} is overdue — send a reminder",
-                    description=f"This invoice was due on {inv.effective_due_date}.",
+        due = inv.effective_due_date
+        if not due:
+            continue
+        days_overdue = (today - due).days
+        for d in lead_days:
+            if days_overdue < d:
+                continue
+            key = f"overdue:{inv.id}" if d == 0 else f"overdue:{inv.id}:{d}"
+            existing = session.exec(select(Task).where(Task.key == key)).first()
+            if not existing:
+                suffix = f" — {d} days overdue" if d > 0 else ""
+                session.add(
+                    Task(
+                        key=key,
+                        title=f"Invoice {inv.number} is overdue{suffix} — send a reminder",
+                        description=f"This invoice was due on {due}.",
+                    )
                 )
-            )
+
+
+# ---------------------------------------------------------------------------
+# Contract-end tasks
+# ---------------------------------------------------------------------------
+
+
+def _generate_contract_end_tasks(session: Session, lead_days: list[int]) -> None:
+    if not lead_days:
+        return
+    contracts = session.exec(select(Contract)).all()
+    today = datetime.date.today()
+    for c in contracts:
+        if not c.end_date or c.is_completed:
+            continue
+        days_until_end = (c.end_date - today).days
+        for d in lead_days:
+            if days_until_end > d:
+                continue
+            key = f"contract_ending:{c.id}:{d}"
+            existing = session.exec(select(Task).where(Task.key == key)).first()
+            if not existing:
+                if d == 0:
+                    title = f"Contract \"{c.title}\" ends today"
+                else:
+                    title = f"Contract \"{c.title}\" ends in {d} days"
+                session.add(
+                    Task(
+                        key=key,
+                        title=title,
+                        description=f"End date: {c.end_date}.",
+                    )
+                )
+            elif existing.status == "pending" and c.is_completed:
+                existing.status = "done"
+                session.add(existing)
