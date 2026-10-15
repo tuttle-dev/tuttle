@@ -198,9 +198,9 @@ def _generate_contract_end_tasks(session: Session, lead_days: list[int]) -> None
             existing = session.exec(select(Task).where(Task.key == key)).first()
             if not existing:
                 if d == 0:
-                    title = f"Contract \"{c.title}\" ends today"
+                    title = f'Contract "{c.title}" ends today'
                 else:
-                    title = f"Contract \"{c.title}\" ends in {d} days"
+                    title = f'Contract "{c.title}" ends in {d} days'
                 session.add(
                     Task(
                         key=key,

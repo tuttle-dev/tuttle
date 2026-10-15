@@ -250,9 +250,7 @@ class TestContractEndTasks:
     def test_creates_task_within_lead_window(self, session, ending_contract):
         """Contract ending in 10 days triggers a 30-day lead task."""
         generate_tasks(session)
-        task = session.exec(
-            sqlmodel.select(Task).where(Task.key == f"contract_ending:{ending_contract.id}:30")
-        ).first()
+        task = session.exec(sqlmodel.select(Task).where(Task.key == f"contract_ending:{ending_contract.id}:30")).first()
         assert task is not None
         assert "Ending Contract" in task.title
 
@@ -313,9 +311,7 @@ class TestContractEndTasks:
     def test_idempotent(self, session, ending_contract):
         generate_tasks(session)
         generate_tasks(session)
-        tasks = session.exec(
-            sqlmodel.select(Task).where(Task.key == f"contract_ending:{ending_contract.id}:30")
-        ).all()
+        tasks = session.exec(sqlmodel.select(Task).where(Task.key == f"contract_ending:{ending_contract.id}:30")).all()
         assert len(tasks) == 1
 
     @patch("tuttle.app.tasks.generator._load_lead_days")
@@ -337,9 +333,7 @@ class TestContractEndTasks:
         session.add(contract)
         session.commit()
         generate_tasks(session)
-        task = session.exec(
-            sqlmodel.select(Task).where(Task.key == f"contract_ending:{contract.id}:7")
-        ).first()
+        task = session.exec(sqlmodel.select(Task).where(Task.key == f"contract_ending:{contract.id}:7")).first()
         assert task is not None
 
     def test_today_end_date_task(self, session):
@@ -360,8 +354,6 @@ class TestContractEndTasks:
         session.add(contract)
         session.commit()
         generate_tasks(session)
-        task = session.exec(
-            sqlmodel.select(Task).where(Task.key == f"contract_ending:{contract.id}:0")
-        ).first()
+        task = session.exec(sqlmodel.select(Task).where(Task.key == f"contract_ending:{contract.id}:0")).first()
         assert task is not None
         assert "ends today" in task.title
