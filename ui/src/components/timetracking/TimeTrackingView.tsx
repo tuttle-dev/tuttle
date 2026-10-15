@@ -256,12 +256,20 @@ export function TimeTrackingView() {
 
   // ── Derived data ────────────────────────────────────────────────────────
 
+  const knownTagSet = useMemo(() => new Set(projectTags.map((p) => p.tag)), [projectTags]);
+
+  const unmatchedEvents = useMemo(() => {
+    if (!calData) return [];
+    return calData.events.filter((ev) => !ev.tag || !knownTagSet.has(ev.tag));
+  }, [calData, knownTagSet]);
+
   // Keep the filtered project listed even in a month without its entries, so it can be cleared.
   const panelProjects = useMemo(() => {
-    if (!filterTag || monthProjects.some((p) => p.tag === filterTag)) return monthProjects;
+    const matched = monthProjects.filter((p) => p.tag && knownTagSet.has(p.tag));
+    if (!filterTag || matched.some((p) => p.tag === filterTag)) return matched;
     const title = projectTags.find((p) => p.tag === filterTag)?.title ?? filterTag;
-    return [...monthProjects, { tag: filterTag, title, hours: 0, event_count: 0 }];
-  }, [monthProjects, filterTag, projectTags]);
+    return [...matched, { tag: filterTag, title, hours: 0, event_count: 0 }];
+  }, [monthProjects, filterTag, projectTags, knownTagSet]);
 
   const allTags = useMemo(() => panelProjects.map((p) => p.tag), [panelProjects]);
 
@@ -389,6 +397,31 @@ export function TimeTrackingView() {
                 })}
               </div>
             </div>
+
+            {unmatchedEvents.length > 0 && (
+              <div className="border-t border-border-subtle pt-3">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <AlertTriangle size={11} className="text-status-warning" />
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-status-warning">Needs attention</div>
+                </div>
+                <div className="-mx-2 space-y-0.5 max-h-60 overflow-y-auto">
+                  {unmatchedEvents.map((ev, i) => (
+                    <button key={`${ev.begin}-${i}`} onClick={() => setSelectedDay(ev.date)}
+                      className={`block w-full text-left rounded-lg px-2 py-1.5 transition-colors ${ev.date === selectedDay ? "bg-bg-selected" : "hover:bg-bg-hover"}`}>
+                      <div className="text-[12px] font-medium truncate text-primary">{ev.title || "No title"}</div>
+                      <div className="flex items-center gap-1.5 mt-0.5 text-[11px] flex-wrap">
+                        <span className="text-secondary tabular-nums">{formatShortDateTime(ev.begin, ev.all_day)}</span>
+                        <span className="text-muted">·</span>
+                        <span className="text-secondary tabular-nums">{formatHours(ev.duration_hours)}</span>
+                        <span className={`px-1 rounded-sm ${ev.tag ? "bg-status-warning/15 text-status-warning font-medium" : "text-muted italic"}`}>
+                          {ev.tag || "no tag"}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="border-t border-border-subtle pt-3">
               <div className="text-[11px] font-bold uppercase tracking-wider text-primary mb-1">Total</div>
@@ -1103,6 +1136,15 @@ function DayDetail({
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+function formatShortDateTime(iso: string, allDay: boolean): string {
+  try {
+    const d = new Date(iso);
+    const date = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    if (allDay) return date;
+    return `${date} ${formatTime(iso)}`;
+  } catch { return ""; }
+}
 
 function formatTime(iso: string): string {
   try {
