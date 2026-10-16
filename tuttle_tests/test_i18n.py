@@ -16,7 +16,7 @@ from babel.messages.pofile import read_po
 
 from tuttle import demo, i18n, invoicing, rendering
 from tuttle.i18n import _, ngettext, use_language
-from tuttle.model import Client, ClientContact, Contact, Contract, Invoice, Project, User
+from tuttle.model import Client, Contact, Contract, Invoice, Project, User
 from tuttle.time import Cycle, TimeUnit
 
 
@@ -78,8 +78,7 @@ class TestLookup:
 
 def _invoice_to_jill(reminder_level: int = 0) -> Invoice:
     contact = Contact(first_name="Jill", last_name="Layton", email="jill@example.com")
-    client = Client(name="Central Services")
-    client.client_contacts.append(ClientContact(client=client, contact=contact, role="invoicing"))
+    client = Client(name="Central Services", invoicing_contact=contact)
     contract = Contract(
         title="Retainer",
         client=client,

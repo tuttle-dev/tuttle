@@ -876,7 +876,9 @@ class InvoicingIntent(Intent):
             if email is None:
                 return IntentResult(
                     was_intent_successful=False,
-                    error_msg="No contact email available for this client.",
+                    error_msg=invoice.client.missing_invoice_email()
+                    if invoice.client
+                    else "This invoice has no contract, so Tuttle doesn't know whom to send it to.",
                 )
             mail.compose_email(
                 to=email["recipient"],
@@ -922,7 +924,9 @@ class InvoicingIntent(Intent):
             if email is None:
                 return IntentResult(
                     was_intent_successful=False,
-                    error_msg="No contact email available for this client.",
+                    error_msg=invoice.client.missing_invoice_email()
+                    if invoice.client
+                    else "This invoice has no contract, so Tuttle doesn't know whom to send it to.",
                 )
             mail.compose_email(
                 to=email["recipient"],
