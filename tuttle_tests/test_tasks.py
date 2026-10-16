@@ -16,6 +16,7 @@ from tuttle.model import (
     InvoiceItem,
     Project,
     Task,
+    TaskRule,
 )
 from tuttle.time import Cycle, TimeUnit
 
@@ -115,8 +116,22 @@ class TestTutorialTasks:
 
 
 class TestOverdueTasks:
+    """The overdue-invoice task, which every user starts with as a rule (see the task rules migration)."""
+
     @pytest.fixture
-    def overdue_invoice(self, session):
+    def overdue_rule(self, session):
+        rule = TaskRule(
+            title="Invoice {invoice} is overdue — send a reminder",
+            kind="event",
+            event="invoice.due",
+            offset=1,
+        )
+        session.add(rule)
+        session.commit()
+        return rule
+
+    @pytest.fixture
+    def overdue_invoice(self, session, overdue_rule):
         contact = Contact(
             first_name="C",
             last_name="D",
@@ -165,15 +180,18 @@ class TestOverdueTasks:
         session.commit()
         return invoice
 
-    def test_creates_overdue_task(self, session, overdue_invoice):
+    def test_creates_overdue_task(self, session, overdue_rule, overdue_invoice):
         assert overdue_invoice.status == "overdue"
         generate_tasks(session)
-        task = session.exec(sqlmodel.select(Task).where(Task.key == f"overdue:{overdue_invoice.id}")).first()
+        task = session.exec(
+            sqlmodel.select(Task).where(Task.key == f"rule:{overdue_rule.id}:invoice:{overdue_invoice.id}")
+        ).first()
         assert task is not None
         assert task.status == "pending"
-        assert "2025-001" in task.title
+        assert task.title == "Invoice 2025-001 is overdue — send a reminder"
+        assert task.due_date == datetime.date(2025, 1, 15)
 
-    def test_does_not_create_if_reminder_exists(self, session, overdue_invoice):
+    def test_does_not_create_if_reminder_exists(self, session, overdue_rule, overdue_invoice):
         # Add a reminder for the invoice
         reminder = Invoice(
             number="2025-001-M1",
@@ -189,14 +207,25 @@ class TestOverdueTasks:
         session.add(reminder)
         session.commit()
         generate_tasks(session)
-        task = session.exec(sqlmodel.select(Task).where(Task.key == f"overdue:{overdue_invoice.id}")).first()
+        task = session.exec(
+            sqlmodel.select(Task).where(Task.key == f"rule:{overdue_rule.id}:invoice:{overdue_invoice.id}")
+        ).first()
         assert task is None
 
-    def test_does_not_create_for_paid_invoice(self, session, overdue_invoice):
+    def test_does_not_create_for_paid_invoice(self, session, overdue_rule, overdue_invoice):
         overdue_invoice.paid = True
         session.add(overdue_invoice)
         session.commit()
         assert overdue_invoice.status == "paid"
         generate_tasks(session)
-        task = session.exec(sqlmodel.select(Task).where(Task.key == f"overdue:{overdue_invoice.id}")).first()
+        task = session.exec(
+            sqlmodel.select(Task).where(Task.key == f"rule:{overdue_rule.id}:invoice:{overdue_invoice.id}")
+        ).first()
         assert task is None
+
+    def test_no_task_once_the_rule_is_deleted(self, session, overdue_rule, overdue_invoice):
+        """The overdue task is an ordinary rule: without it, Tuttle makes none."""
+        session.delete(overdue_rule)
+        session.commit()
+        generate_tasks(session)
+        assert session.exec(sqlmodel.select(Task).where(Task.rule_id.is_not(None))).all() == []

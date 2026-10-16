@@ -1,16 +1,21 @@
 """Task generator — inspects business state and upserts Task rows.
 
-Called by TasksIntent.get_all() before returning results.  Each rule
-produces a (key, title, description) tuple; the generator upserts by key
-so duplicates are never created.
+Called by TasksIntent.get_all() before returning results. Tasks are keyed,
+so the generator never creates one twice.
 
-Tutorial tasks auto-resolve (mark done) when their condition no longer
-holds.  Business tasks require explicit user action.
+Tutorial tasks are built in and auto-resolve (mark done) when their condition
+no longer holds. Every other task comes from a rule the user can edit (see
+rules.py): it appears when the rule's day comes, and closes by itself when
+it's no longer worth doing, such as a reminder for an invoice that got paid.
 """
+
+import datetime
+from typing import Optional
 
 from sqlmodel import Session, select
 
-from ...model import Client, Contact, Contract, Invoice, Project, Task
+from ...model import Client, Contact, Contract, Invoice, Project, Task, TaskRule, TaskRuleNotice
+from .rules import Evaluation, Records, evaluate, is_known
 
 # ---------------------------------------------------------------------------
 # Tutorial rule definitions
@@ -71,11 +76,12 @@ TUTORIAL_MANUAL_RULES: list[tuple[str, str, str]] = [
 # ---------------------------------------------------------------------------
 
 
-def generate_tasks(session: Session) -> None:
+def generate_tasks(session: Session, today: Optional[datetime.date] = None) -> None:
     """Refresh task rows based on current business state."""
+    today = today or datetime.date.today()
     _generate_tutorial_tasks(session)
     _generate_manual_tutorial_tasks(session)
-    _generate_overdue_tasks(session)
+    _generate_rule_tasks(session, today)
     session.commit()
 
 
@@ -101,7 +107,8 @@ def _upsert_tutorial_task(session: Session, key: str, title: str, description: s
 def _generate_tutorial_tasks(session: Session) -> None:
     """Auto-resolving tutorial tasks (condition-based)."""
     for key, title, description, model_cls in TUTORIAL_RULES:
-        has_entity = session.exec(select(model_cls)).first() is not None
+        # Only the id: a whole record loads its relationships too, and this runs on every view change.
+        has_entity = session.exec(select(model_cls.id).limit(1)).first() is not None
         existing = _upsert_tutorial_task(session, key, title, description)
 
         # Resolve or reopen based on current state
@@ -120,26 +127,75 @@ def _generate_manual_tutorial_tasks(session: Session) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Overdue invoice tasks
+# Tasks from rules
 # ---------------------------------------------------------------------------
 
 
-def _generate_overdue_tasks(session: Session) -> None:
-    invoices = session.exec(select(Invoice)).all()
-    for inv in invoices:
-        if inv.status != "overdue":
+def _generate_rule_tasks(session: Session, today: datetime.date) -> None:
+    records = Records(session)
+    for rule in session.exec(select(TaskRule).where(TaskRule.paused == False)).all():  # noqa: E712
+        if not is_known(rule):
+            # Its tasks are left as they are rather than taken for orphans.
             continue
-        # Skip if a reminder already exists for this invoice
-        if inv.reminders:
-            continue
+        notices = None
+        if rule.follows_state:
+            notices = {
+                n.subject_id: n for n in session.exec(select(TaskRuleNotice).where(TaskRuleNotice.rule_id == rule.id)).all()
+            }
+        ev = evaluate(rule, session, today, notices, records)
+        _apply(session, rule, ev, today)
+        if notices is not None:
+            _note_changes(session, rule, ev, notices, today)
 
-        key = f"overdue:{inv.id}"
-        existing = session.exec(select(Task).where(Task.key == key)).first()
-        if not existing:
-            session.add(
-                Task(
-                    key=key,
-                    title=f"Invoice {inv.number} is overdue — send a reminder",
-                    description=f"This invoice was due on {inv.effective_due_date}.",
+
+def _apply(session: Session, rule: TaskRule, ev: Evaluation, today: datetime.date) -> None:
+    """Make the rule's tasks match what it asks for today."""
+    tasks = session.exec(select(Task).where(Task.rule_id == rule.id)).all()
+    by_key = {t.key: t for t in tasks}
+    gone = set()
+    for item in ev.items:
+        task = by_key.get(item.key)
+        if task is not None and task.due_date is not None and task.due_date != item.due_date:
+            # The date moved, so the task was about another day.
+            if not item.is_due(today):
+                session.delete(task)
+                gone.add(task.id)
+                continue
+            task.status = "pending"
+            task.created_at = datetime.datetime.now()
+        if task is None:
+            if item.is_due(today):
+                session.add(
+                    Task(
+                        key=item.key,
+                        title=item.title,
+                        description=item.note,
+                        rule_id=rule.id,
+                        due_date=item.due_date,
+                        subject_type=item.subject_type,
+                        subject_id=item.subject_id,
+                    )
                 )
-            )
+            continue
+        task.due_date = item.due_date
+        if task.status == "pending":
+            task.title, task.description = item.title, item.note
+        session.add(task)
+    for task in tasks:
+        if task.id in gone or task.subject_id is None or task.status != "pending":
+            continue
+        if task.subject_id in ev.settled:
+            task.status = "done"
+            session.add(task)
+        elif ev.subjects is not None and task.subject_id not in ev.subjects:
+            # Its contract, project or invoice is gone, or no longer the rule's client's.
+            session.delete(task)
+
+
+def _note_changes(session: Session, rule: TaskRule, ev: Evaluation, notices: dict, today: datetime.date) -> None:
+    """Remember the day a status change was first seen, and forget ones that were undone."""
+    for subject_id in ev.noticed:
+        session.add(TaskRuleNotice(rule_id=rule.id, subject_id=subject_id, noticed_on=today))
+    for subject_id, notice in notices.items():
+        if subject_id in ev.settled or (ev.subjects is not None and subject_id not in ev.subjects):
+            session.delete(notice)

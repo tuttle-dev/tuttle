@@ -198,7 +198,8 @@ export function ProjectsView() {
 
   useAutoSelect(projects, filtered, selected, setSelected, {
     enabled: mode === "view",
-    preferred: navFilter.contractId != null ? (p) => num(p, "contract_id") === navFilter.contractId : undefined,
+    preferred: navFilter.projectId != null ? (p) => p.id === navFilter.projectId
+      : navFilter.contractId != null ? (p) => num(p, "contract_id") === navFilter.contractId : undefined,
   });
 
   function moveToColumn(id: number, colId: string) {
