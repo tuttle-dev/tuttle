@@ -670,6 +670,8 @@ def create_heating_data(
         ),
     )
 
+    # Invoices go to the accountant, the invoicing contact chosen for Central Services.
+    central_services.invoicing_contact = central_services_accountant
     contacts = [sam_lowry_contact, central_services_accountant, archibald_buttle]
     clients = [central_services, sam_lowry]
 

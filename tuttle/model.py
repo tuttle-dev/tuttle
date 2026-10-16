@@ -406,17 +406,15 @@ class Client(RpcMixin, SQLModel, table=True):
 
     @property
     def invoice_recipient_contact(self) -> Optional[Contact]:
-        """Contact to use for invoice delivery.
+        """Contact invoices go to: the invoicing contact the user chose. Any contact can be it, whatever its role."""
+        return self.invoicing_contact
 
-        Prefer the legacy direct invoicing contact, but also support the
-        many-to-many contact association used by the current contact UI.
-        """
+    def missing_invoice_email(self) -> str:
+        """What to do so invoices to this client can be emailed."""
         if self.invoicing_contact:
-            return self.invoicing_contact
-        for association in self.client_contacts:
-            if (association.role or "").strip().casefold() == "invoicing":
-                return association.contact
-        return None
+            name = self.invoicing_contact.name or "the invoicing contact"
+            return f"Add an email address to {name}, the invoicing contact of {self.name}."
+        return f"Choose an invoicing contact for {self.name}."
 
     @property
     def invoice_recipient_name(self) -> str:
