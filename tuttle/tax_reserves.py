@@ -17,7 +17,7 @@ from .fx import rate as fx_rate
 from .model import Invoice, Project, RecurringExpense
 from .tax import get_tax_system
 from .time import Cycle, TimeUnit
-from .timetracking import drop_invoiced, sum_hours_by_tag
+from .timetracking import drop_completed, drop_invoiced, sum_hours_by_tag
 
 logger = logging.getLogger(__name__)
 
@@ -137,7 +137,8 @@ def compute_planned_revenue(
 ) -> Decimal:
     """Net revenue from this year's calendar work, past and future, not yet invoiced.
 
-    Hours in a timesheet of a non-cancelled invoice are left out. Converts
+    Hours in a timesheet of a non-cancelled invoice are left out, and so are
+    completed projects, which are invoiced and paid in full. Converts
     hours to revenue via each project's contract rate, and contracts in a
     foreign currency into *currency* at the current month's rate (uninvoiced
     work has no invoice date to pin a rate to).
@@ -158,7 +159,7 @@ def compute_planned_revenue(
 
     idx_dates = time_data.index.date
     mask = (idx_dates >= year_start) & (idx_dates <= year_end)
-    planned = drop_invoiced(time_data[mask], invoices or [])
+    planned = drop_invoiced(drop_completed(time_data[mask], projects), invoices or [])
     if planned.empty:
         return Decimal(0)
 

@@ -530,6 +530,62 @@ def create_usd_security_data(user: User) -> tuple[Project, Invoice, ClientContac
     )
 
 
+def create_completed_project_data(client: Client, today: date) -> tuple[Project, Invoice]:
+    """A finished project, billed outside Tuttle and paid.
+
+    Its invoice has no timesheet, like an invoice imported from elsewhere, so
+    only the completed mark keeps its calendar time out of planned revenue.
+    """
+    contract = Contract(
+        title="Duct Inspection – Central Services",
+        client=client,
+        signature_date=today - timedelta(days=95),
+        start_date=today - timedelta(days=85),
+        end_date=today - timedelta(days=30),
+        rate=Decimal("80"),
+        currency="EUR",
+        VAT_rate=Decimal("0.19"),
+        unit=TimeUnit.hour,
+        units_per_workday=8,
+        volume=60,
+        term_of_payment=14,
+        billing_cycle=Cycle.monthly,
+        is_completed=True,
+    )
+    project = Project(
+        title="Duct Inspection",
+        tag="#ductinspection",
+        description="Inspection of the ductwork in the Ministry annex, billed in a single invoice",
+        is_completed=True,
+        stage="Completed",
+        start_date=contract.start_date,
+        end_date=contract.end_date,
+        contract=contract,
+    )
+    inv_date = contract.end_date + timedelta(days=3)
+    invoice = Invoice(
+        number=f"{inv_date.strftime('%Y-%m-%d')}-{next(invoice_number_counter)}",
+        date=inv_date,
+        sent=True,
+        paid=True,
+        cancelled=False,
+        contract=contract,
+        project=project,
+        rendered=True,
+    )
+    InvoiceItem(
+        start_date=contract.start_date,
+        end_date=contract.end_date,
+        quantity=60,
+        unit="hour",
+        unit_price=contract.rate,
+        description="Duct inspection",
+        VAT_rate=contract.VAT_rate,
+        invoice=invoice,
+    )
+    return project, invoice
+
+
 def create_modernisation_milestone_data(
     client: Client,
     user: User,
@@ -868,7 +924,15 @@ def create_heating_data(
             inv = create_fake_invoice(fake, project=project, user=user)
         invoices.append(inv)
 
+    # -- a finished project, invoiced and paid ----------------------------------
+    completed_project, completed_invoice = create_completed_project_data(client=central_services, today=today)
+    projects.append(completed_project)
+    invoices.append(completed_invoice)
+
     if sam_lowry_contract and sam_lowry_project:
+        # The repair is done and its final invoice sent, but not yet paid: the
+        # project stays Active until Harry marks it completed.
+        sam_lowry_project.end_date = today - timedelta(days=10)
         invoices.extend(
             create_milestone_invoices(
                 contract=sam_lowry_contract,
@@ -1045,8 +1109,9 @@ def create_historical_invoices(
     today = datetime.date.today()
     invoices = []
     # A contract with a payment schedule is billed through its instalments; a
-    # lump-sum invoice alongside them would bill the same work twice.
-    billable = [p for p in projects if not (p.contract and p.contract.payment_milestones)]
+    # lump-sum invoice alongside them would bill the same work twice. A
+    # completed project is already billed in full by its own invoice.
+    billable = [p for p in projects if not p.is_completed and not (p.contract and p.contract.payment_milestones)]
     for months_ago in range(n_months, 0, -1):
         # First day of that month
         inv_date = (today - timedelta(days=30 * months_ago)).replace(day=15)

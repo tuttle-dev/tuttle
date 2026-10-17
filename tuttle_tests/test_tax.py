@@ -127,7 +127,7 @@ def _make_invoice(date, items_data, cancelled=False, vat_rate=None):
         term_of_payment=30,
         VAT_rate=Decimal(str(vat_rate)),
     )
-    project = Project(title="Test Project", tag="test", contract=contract)
+    project = Project(title="Test Project", tag="test", start_date=date, contract=contract)
     invoice = Invoice(
         number=f"INV-{date.isoformat()}",
         date=date,
@@ -650,7 +650,7 @@ class TestSpendableIncome:
         worked = datetime.date(today.year, 1, 1)  # in the past, except on Jan 1
         inv = _make_invoice(worked, [(8, 100, 0)])
         invoiced = inv.project
-        uninvoiced = Project(title="Other Project", tag="other", contract=inv.contract)
+        uninvoiced = Project(title="Other Project", tag="other", start_date=worked, contract=inv.contract)
         Timesheet(
             title="January",
             date=worked,
@@ -676,6 +676,11 @@ class TestSpendableIncome:
         result = compute_spendable_income([inv], _sample_country(), projects=[invoiced, uninvoiced], time_data=time_data)
         # 8 h at €100 for the uninvoiced project only.
         assert result.planned_revenue == Decimal("800.00")
+
+        # Once completed, the project is paid in full: nothing of it is planned.
+        uninvoiced.is_completed = True
+        result = compute_spendable_income([inv], _sample_country(), projects=[invoiced, uninvoiced], time_data=time_data)
+        assert result.planned_revenue == Decimal(0)
 
 
 # ── Monthly VAT breakdown ─────────────────────────────────────

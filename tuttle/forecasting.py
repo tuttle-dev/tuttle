@@ -18,7 +18,7 @@ from .tax_reserves import (
     convert_invoice,
 )
 from .time import TimeUnit
-from .timetracking import drop_invoiced, event_hours
+from .timetracking import drop_completed, drop_invoiced, event_hours
 
 
 def monthly_revenue_from_contracts(
@@ -174,6 +174,8 @@ def revenue_from_calendar(
     "planned" for the month it was done, and again as "invoiced" for the
     month the invoice was actually raised.
 
+    Completed projects are left out: they are invoiced and paid in full.
+
     If *currency* is given, revenue from a contract in another currency is
     converted at the current month's rate (uninvoiced work has no invoice
     date to pin a rate to), the same as the tax view's planned revenue.
@@ -189,7 +191,7 @@ def revenue_from_calendar(
 
     index_dates = time_data.index.date
     mask = (index_dates >= start_date) & (index_dates <= end_date)
-    filtered = time_data[mask]
+    filtered = drop_completed(time_data[mask], projects)
     if filtered.empty:
         return empty
 
@@ -355,8 +357,9 @@ def contracted_revenue(
     project board. What is left of its agreed value — the fixed price, or
     volume × rate — after invoices and after the tracked or scheduled work that
     shows as planned revenue is spread evenly over the rest of its term: until
-    the contract's end date, else its projects'. With no term left it falls on
-    today.
+    the contract's end date, else its projects'. Without an end date it falls
+    on today. Once the term has ended, the contract adds nothing: whatever was
+    not worked by then will not be.
 
     A contract with an expected workload follows that pace instead: each week,
     the expected hours the calendar does not already hold, until the end date,
@@ -386,6 +389,9 @@ def contracted_revenue(
 
     slices = []
     for contract, members in committed:
+        last = _term_end(contract, members)
+        if last and last < today:
+            continue
         agreed = contract.agreed_value
         paced = not contract.is_fixed_price and bool(contract.rate) and bool(contract.expected_units_per_week)
         if agreed is None and not paced:
@@ -403,7 +409,6 @@ def contracted_revenue(
             continue
 
         first = max(today, contract.start_date)
-        last = _term_end(contract, members)
         if paced:
             hours = _hours_by_day(time_data, {p.tag for p in members}, contract.units_per_workday)
             parts = _paced(contract, hours, first, min(last, until) if last else until, budget)

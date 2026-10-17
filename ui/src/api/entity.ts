@@ -125,13 +125,11 @@ export function projectStatus(e: Entity): string {
   if (stage) return stage;
   const completed = bool(e, "is_completed");
   if (completed) return "Completed";
-  const end = str(e, "end_date");
+  // A project past its end date stays Active until the user completes it.
   const start = str(e, "start_date");
   const today = new Date().toISOString().slice(0, 10);
   if (start > today) return "Upcoming";
-  if (end && end >= today) return "Active";
-  if (!end) return "Active";
-  return "Completed";
+  return "Active";
 }
 
 export function invoiceStatus(e: Entity): string {
