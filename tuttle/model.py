@@ -1005,6 +1005,10 @@ class Project(RpcMixin, SQLModel, table=True):
     def board_stage(self, today: Optional[datetime.date] = None) -> str:
         """The project's column on the project board: the stage set by hand, else one read off its dates.
 
+        Only the user completes a project, once nothing is left to do: the work
+        is invoiced and paid in full. A project past its end date stays Active
+        until then.
+
         Mirrors ``projectStatus`` in the UI.
         """
         if self.stage:
@@ -1014,9 +1018,7 @@ class Project(RpcMixin, SQLModel, table=True):
             return "Completed"
         if self.start_date > today:
             return "Upcoming"
-        if self.end_date is None or self.end_date >= today:
-            return "Active"
-        return "Completed"
+        return "Active"
 
     def is_committed(self, today: Optional[datetime.date] = None) -> bool:
         """Whether the client has agreed to the work and it is still to be done.

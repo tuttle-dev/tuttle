@@ -75,6 +75,18 @@ def drop_invoiced(time_data: DataFrame, invoices: List[Invoice]) -> DataFrame:
     return time_data[[not v for v in already_invoiced]]
 
 
+def drop_completed(time_data: DataFrame, projects: List[Project]) -> DataFrame:
+    """Calendar rows of projects not completed yet.
+
+    A completed project is invoiced and paid in full, even where its
+    invoices carry no timesheet, such as invoices imported from elsewhere.
+    """
+    completed = {p.tag for p in projects if p.board_stage() == "Completed"}
+    if not completed:
+        return time_data
+    return time_data[~time_data["tag"].isin(completed)]
+
+
 def generate_timesheet(
     timetracking_data: DataFrame,
     project: Project,

@@ -466,6 +466,19 @@ class TestProject:
         project = Project(title="Website", tag="#website", description="", start_date=datetime.date(2026, 1, 1), stage=stage)
         assert project.is_active() is active
 
+    @pytest.mark.parametrize("is_completed, stage", [(False, "Active"), (True, "Completed")])
+    def test_only_the_user_completes_a_project(self, is_completed, stage):
+        """A passed end date does not complete a project: its invoices may still be unpaid."""
+        project = Project(
+            title="Website",
+            tag="#website",
+            description="",
+            start_date=datetime.date(2026, 1, 1),
+            end_date=datetime.date(2026, 3, 31),
+            is_completed=is_completed,
+        )
+        assert project.board_stage(today=datetime.date(2026, 10, 1)) == stage
+
     def test_invalid_tag_instantiation(self):
         with pytest.raises(ValidationError):
             Project.validate(
