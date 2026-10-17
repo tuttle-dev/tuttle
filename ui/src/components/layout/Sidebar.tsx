@@ -96,8 +96,12 @@ export function Sidebar({
     : "?";
 
   return (
-    <aside className={`flex flex-col bg-bg-sidebar border-r border-border-subtle transition-all duration-200 ${collapsed ? "w-24" : "w-52"}`}>
-      <div className="drag-region h-13 shrink-0" />
+    <aside className={`flex flex-col bg-bg-sidebar border-r border-border-subtle transition-all duration-200 min-w-[var(--title-bar-inset-start)] ${collapsed ? "w-24" : "w-52"}`}>
+      {/* The window buttons sit here on macOS and on Linux desktops that put
+          them at the start. Elsewhere it shows the app name, like a title bar. */}
+      <div className="drag-region h-13 shrink-0 flex items-center pl-[var(--title-bar-inset-start)]">
+        {!isMac && !collapsed && <span className="px-4 text-xs text-secondary truncate">Tuttle</span>}
+      </div>
 
       <nav className="flex-1 overflow-y-auto py-2 px-2 space-y-4">
         {SECTIONS.map((section) => (
