@@ -59,11 +59,13 @@ type Props = {
   onSwitchUser: (dbFile: string) => void;
   onAddUser: () => void;
   onDeleteUser: (dbFile: string) => void;
+  /** A count to show next to a view, such as pending tasks. */
+  badges?: Partial<Record<string, number>>;
 };
 
 export function Sidebar({
   selected, onSelect, collapsed, onToggleCollapse,
-  activeUser, allUsers, onSwitchUser, onAddUser, onDeleteUser,
+  activeUser, allUsers, onSwitchUser, onAddUser, onDeleteUser, badges = {},
 }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -110,17 +112,21 @@ export function Sidebar({
             <div className="space-y-0.5">
               {section.items.map((item) => {
                 const active = selected === item.id;
+                const badge = badges[item.id] ?? 0;
                 return (
                   <button
                     key={item.id}
                     onClick={() => onSelect(item.id)}
-                    className={`no-drag flex items-center gap-2.5 w-full rounded-md px-2.5 py-1.5 text-sm transition-colors cursor-default
+                    className={`no-drag relative flex items-center gap-2.5 w-full rounded-md px-2.5 py-1.5 text-sm transition-colors cursor-default
                       ${active ? "bg-bg-selected text-primary" : "text-secondary hover:bg-bg-hover hover:text-primary"}
                       ${collapsed ? "justify-center" : ""}`}
-                    title={collapsed ? item.label : undefined}
+                    title={collapsed ? (badge > 0 ? `${item.label} (${badge})` : item.label) : undefined}
                   >
                     <item.icon size={16} strokeWidth={1.8} className="shrink-0" />
                     {!collapsed && <span className="truncate">{item.label}</span>}
+                    {badge > 0 && (collapsed
+                      ? <span className="absolute top-1 right-[calc(50%-14px)] w-1.5 h-1.5 rounded-full bg-accent" />
+                      : <span className="ml-auto min-w-[18px] px-1.5 rounded-full bg-accent text-on-fill text-[11px] font-semibold leading-[18px] text-center tabular-nums">{badge}</span>)}
                   </button>
                 );
               })}

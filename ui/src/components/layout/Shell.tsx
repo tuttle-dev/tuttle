@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
 import { Sidebar, type RegisteredUser } from "./Sidebar";
 import { OnboardingWizard, type OnboardingData } from "./OnboardingWizard";
-import { TasksView } from "../tasks/TasksView";
+import { TasksView, TASKS_CHANGED_EVENT } from "../tasks/TasksView";
 import { DashboardView } from "../dashboard/DashboardView";
 import { ProjectsView } from "../business/ProjectsView";
 import { ClientsView } from "../business/ClientsView";
@@ -64,6 +64,7 @@ export function Shell() {
   const [regLoading, setRegLoading] = useState(false);
   const [bootError, setBootError] = useState<string | null>(null);
   const [bootNotice, setBootNotice] = useState<string | null>(null);
+  const [pendingTasks, setPendingTasks] = useState(0);
 
   const navigate = useCallback((view: string, filter?: NavigationFilter) => {
     setNavFilter(filter || {});
@@ -71,6 +72,25 @@ export function Shell() {
   }, []);
 
   const toggleSidebar = useCallback(() => setCollapsed((c) => !c), []);
+
+  // Pending tasks, for the sidebar: refreshed after every view change, and by the Tasks view itself.
+  // The core answers one call at a time, so the count waits until the view has asked for its data.
+  useEffect(() => {
+    if (bootState !== "ready") return;
+    let stale = false;
+    const handle = setTimeout(() => {
+      rpc<number>("tasks.pending_count").then((res) => {
+        if (!stale && res.ok && typeof res.data === "number") setPendingTasks(res.data);
+      });
+    }, 1000);
+    return () => { stale = true; clearTimeout(handle); };
+  }, [bootState, selected, activeUser?.db_file]);
+
+  useEffect(() => {
+    const onChange = (e: Event) => setPendingTasks((e as CustomEvent<number>).detail);
+    window.addEventListener(TASKS_CHANGED_EVENT, onChange);
+    return () => window.removeEventListener(TASKS_CHANGED_EVENT, onChange);
+  }, []);
 
   useEffect(() => {
     try { localStorage.setItem(SIDEBAR_COLLAPSED_KEY, collapsed ? "1" : "0"); } catch { /* remembering it is a convenience */ }
@@ -283,6 +303,7 @@ export function Shell() {
               onSwitchUser={handleSwitchUser}
               onAddUser={() => setRegDialogOpen(true)}
               onDeleteUser={handleDeleteUser}
+              badges={{ tasks: pendingTasks }}
             />
             <main className="flex-1 flex flex-col overflow-hidden">
               {/* Banners sit in the title-bar row above the view, so they drag the window too. */}

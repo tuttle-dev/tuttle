@@ -1733,6 +1733,91 @@ class RecurringExpense(SQLModel, table=True):
     )
 
 
+TASK_RULE_REPEAT_UNITS = ("week", "month")
+TASK_RULE_OFFSET_UNITS = ("day", "week", "month")
+
+
+class TaskRule(RpcMixin, SQLModel, table=True):
+    """A rule the user composed that creates tasks.
+
+    Either on a date, once or repeating ("every month from Nov 1"), or around
+    something that happens to a contract, project, invoice or financial goal
+    ("30 days before a contract ends", "when a project becomes an offer").
+    """
+
+    __rpc_computed__ = ("follows_state",)
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    title: str = Field(
+        description="Title of the tasks it creates. May name placeholders such as {contract}, {date} or {period}.",
+    )
+    note: Optional[str] = Field(default=None, description="Shown under each task it creates.")
+    kind: str = Field(default="date", description="date | event")
+    # On a date
+    start_date: Optional[datetime.date] = Field(
+        default=None,
+        description="The day of the first task; repeats count from it.",
+    )
+    every: int = Field(default=1, description="Repeat every this many units: every 3 months is quarterly.")
+    unit: Optional[str] = Field(default=None, description="week | month, or None for a one-off task.")
+    # When something happens
+    event: Optional[str] = Field(
+        default=None,
+        description="A date on a record, such as 'contract.end', or a status it enters, such as 'project=Offer'. "
+        "The events are listed in tuttle/app/tasks/rules.py.",
+    )
+    offset: int = Field(default=0, description="How long before or after the event, in offset units.")
+    offset_unit: str = Field(default="day", description="day | week | month")
+    before: bool = Field(default=False, description="Whether the task comes before the event rather than after it.")
+    client_id: Optional[int] = Field(
+        default=None,
+        foreign_key="client.id",
+        ondelete="CASCADE",
+        description="Only for this client's contracts, projects and invoices. None means every client.",
+    )
+    paused: bool = Field(default=False)
+    created_at: datetime.datetime = Field(
+        default_factory=datetime.datetime.now,
+        description="Contract and project dates before this day are left alone, and so are dates the rule has passed.",
+    )
+
+    @property
+    def follows_state(self) -> bool:
+        """Whether the rule follows a status change (a project becoming an offer) rather than a date."""
+        return self.kind == "event" and "=" in (self.event or "")
+
+    def validate_rule(self) -> None:
+        """Reject a rule that cannot create tasks. Raises ``ValueError`` with a message for the user."""
+        self.title = (self.title or "").strip()
+        self.note = (self.note or "").strip() or None
+        if not self.title:
+            raise ValueError("Give the task a title.")
+        if self.kind == "date":
+            if self.start_date is None:
+                raise ValueError("Choose the date of the task.")
+            if self.unit is not None and self.unit not in TASK_RULE_REPEAT_UNITS:
+                raise ValueError("Choose how often the task repeats.")
+            if self.every < 1:
+                raise ValueError("Repeat the task at least once per period.")
+            self.event = None
+            self.client_id = None
+        elif self.kind == "event":
+            if not self.event:
+                raise ValueError("Choose what the task follows, such as a contract ending.")
+            if self.offset_unit not in TASK_RULE_OFFSET_UNITS:
+                raise ValueError("Choose days, weeks or months.")
+            if self.offset < 0:
+                raise ValueError(f"Enter how many {self.offset_unit}s before or after, as 0 or more.")
+            if self.offset == 0:
+                self.before = False
+            if self.before and self.follows_state:
+                raise ValueError("Tuttle learns of this only once it has happened. Choose a time after it.")
+            self.start_date = None
+            self.unit = None
+        else:
+            raise ValueError("Choose whether the task comes on a date or when something happens.")
+
+
 class Task(RpcMixin, SQLModel, table=True):
     """A user-facing action item (tutorial step or business task)."""
 
@@ -1748,3 +1833,33 @@ class Task(RpcMixin, SQLModel, table=True):
         description="pending | done | dismissed",
     )
     created_at: datetime.datetime = Field(default_factory=datetime.datetime.now)
+    rule_id: Optional[int] = Field(
+        default=None,
+        foreign_key="taskrule.id",
+        ondelete="CASCADE",
+        description="The rule that created this task, if any.",
+    )
+    due_date: Optional[datetime.date] = Field(
+        default=None,
+        description="The date the task is about: the event's date, or the day a scheduled task falls on.",
+    )
+    subject_type: Optional[str] = Field(default=None, description="contract | project | invoice | goal")
+    subject_id: Optional[int] = Field(default=None, description="Id of the contract, project, invoice or goal.")
+
+
+class TaskRuleNotice(SQLModel, table=True):
+    """The day a task rule first saw a state hold, such as a project becoming an offer.
+
+    State changes carry no date of their own, so the rule counts from this day.
+    """
+
+    __table_args__ = (sqlalchemy.UniqueConstraint("rule_id", "subject_id"),)
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    rule_id: int = Field(foreign_key="taskrule.id", ondelete="CASCADE")
+    subject_id: int = Field(description="Id of the contract, project or invoice.")
+    noticed_on: datetime.date
+    already: bool = Field(
+        default=False,
+        description="The state already held when the rule was made or resumed, so it gets no task.",
+    )

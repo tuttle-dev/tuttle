@@ -28,6 +28,7 @@ function contractStatus(c: Entity): string {
 }
 
 export function ContractsView() {
+  const { filter: navFilter } = useNavigation();
   const [contracts, setContracts] = useState<Entity[]>([]);
   const [clients, setClients] = useState<Record<string, Entity>>({});
   const [selected, setSelected] = useState<Entity | null>(null);
@@ -229,7 +230,10 @@ export function ContractsView() {
     return title.includes(q) || clientName.includes(q);
   });
 
-  useAutoSelect(contracts, filtered, selected, setSelected, { enabled: mode === "view" });
+  useAutoSelect(contracts, filtered, selected, setSelected, {
+    enabled: mode === "view",
+    preferred: navFilter.contractId != null ? (c) => c.id === navFilter.contractId : undefined,
+  });
 
   return (
     <div className="flex flex-col h-full">
