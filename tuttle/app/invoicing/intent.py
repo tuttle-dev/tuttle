@@ -109,7 +109,6 @@ class InvoicingIntent(Intent):
         number_scheme = (
             app_db.get_setting(PreferencesStorageKeys.invoice_number_scheme_key.value) or DEFAULT_INVOICE_NUMBER_SCHEME
         )
-        e_invoice_profile = app_db.get_setting(PreferencesStorageKeys.e_invoice_profile_key.value) or DEFAULT_E_INVOICE_PROFILE
 
         return self.create_invoice(
             invoice_date=invoice_date,
@@ -122,7 +121,7 @@ class InvoicingIntent(Intent):
             template_name=template_name,
             number_scheme=number_scheme,
             with_timesheet=with_timesheet,
-            e_invoice_profile=e_invoice_profile or None,
+            e_invoice_profile=self._e_invoice_profile(),
             notes=notes,
         )
 
@@ -209,6 +208,12 @@ class InvoicingIntent(Intent):
             # ``create_final`` closes out every remaining milestone itself.
             return self.create_final(project_id, invoice_date)
 
+        missing = invoicing.missing_mandatory_details(
+            self._user_data_source.get_user(), contract, self._e_invoice_profile(), document="deposit invoice"
+        )
+        if missing:
+            return IntentResult(was_intent_successful=False, error_msg=missing)
+
         try:
             invoice = invoicing.generate_deposit_invoice(
                 contract=contract,
@@ -264,6 +269,11 @@ class InvoicingIntent(Intent):
                 was_intent_successful=False,
                 error_msg=f"Final invoice {final.number} already settles this project. Cancel it to issue a new final invoice.",
             )
+        missing = invoicing.missing_mandatory_details(
+            self._user_data_source.get_user(), contract, self._e_invoice_profile(), document="final invoice"
+        )
+        if missing:
+            return IntentResult(was_intent_successful=False, error_msg=missing)
 
         # The deposits of a cancelled final invoice are open to be settled again.
         deposits_result = self._invoicing_data_source.get_deposit_invoices(contract.id, project.id)
@@ -323,6 +333,11 @@ class InvoicingIntent(Intent):
         for milestone in milestones:
             milestone.invoiced = True
 
+    def _e_invoice_profile(self) -> Optional[str]:
+        """The e-invoice profile from the preferences, which rendering embeds in invoices."""
+        app_db = AppDatabase()
+        return app_db.get_setting(PreferencesStorageKeys.e_invoice_profile_key.value) or DEFAULT_E_INVOICE_PROFILE or None
+
     def _next_invoice_number(self, invoice_date: date) -> str:
         app_db = AppDatabase()
         scheme = app_db.get_setting(PreferencesStorageKeys.invoice_number_scheme_key.value) or DEFAULT_INVOICE_NUMBER_SCHEME
@@ -361,7 +376,6 @@ class InvoicingIntent(Intent):
 
     def _resolved_render_options(self, invoice: Invoice) -> dict:
         """Template, language and layout preferences for rendering ``invoice``."""
-        app_db = AppDatabase()
 
         def _pref(getter, default):
             result = getter()
@@ -369,13 +383,10 @@ class InvoicingIntent(Intent):
                 return result.data
             return default
 
-        # The e-invoice profile is resolved like any other preference; rendering
-        # decides per document type whether XML can be embedded at all.
-        e_invoice_profile = app_db.get_setting(PreferencesStorageKeys.e_invoice_profile_key.value) or DEFAULT_E_INVOICE_PROFILE
-
+        # Rendering decides per document type whether XML can be embedded at all.
         return {
             "language": _document_language(invoice.client),
-            "e_invoice_profile": e_invoice_profile or None,
+            "e_invoice_profile": self._e_invoice_profile(),
             "template_name": _pref(
                 self._preferences_intent.get_preferred_invoice_template,
                 DEFAULT_INVOICE_TEMPLATE,
@@ -509,6 +520,9 @@ class InvoicingIntent(Intent):
             )
         language = language or _document_language(contract.client)
         user = self._user_data_source.get_user()
+        missing = invoicing.missing_mandatory_details(user, contract, e_invoice_profile)
+        if missing:
+            return IntentResult(was_intent_successful=False, error_msg=missing)
         try:
             invoice_number = self._invoicing_data_source.generate_invoice_number(invoice_date, scheme=number_scheme)
 
@@ -738,6 +752,12 @@ class InvoicingIntent(Intent):
                 was_intent_successful=False,
                 error_msg="Cannot create a reminder for a cancelled invoice.",
             )
+        # A reminder carries no e-invoice, but restates the invoice and its parties.
+        missing = invoicing.missing_mandatory_details(
+            self._user_data_source.get_user(), root.contract, outside_scope=root.is_outside_scope, document="reminder"
+        )
+        if missing:
+            return IntentResult(was_intent_successful=False, error_msg=missing)
         language = language or _document_language(predecessor.client)
 
         try:

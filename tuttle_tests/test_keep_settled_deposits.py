@@ -42,13 +42,17 @@ def settlement(in_memory_db) -> tuple[InvoicingIntent, list[Invoice], Invoice]:
                 name="Harry Tuttle",
                 subtitle="Heating Engineer",
                 email="mail@tuttle.example",
+                VAT_number="27B-6",
                 address=Address(street="Main Street", number="450", postal_code="55555", city="Sao Paolo", country="Brazil"),
             )
         )
         contract = Contract(
             term_of_payment=14,
             title="Central Heating Overhaul",
-            client=Client(name="Sam Lowry"),
+            client=Client(
+                name="Sam Lowry",
+                address=Address(street="Main Street", number="9999", postal_code="55555", city="Sao Paolo", country="Brazil"),
+            ),
             start_date=datetime.date(2026, 1, 10),
             type=ContractType.fixed_price,
             fixed_price=Decimal("10000"),

@@ -666,6 +666,11 @@ class Contract(RpcMixin, VatCategoryMixin, SQLModel, table=True):
         return bool(self.payment_milestones)
 
     @property
+    def is_outside_scope(self) -> bool:
+        """Whether the contract's work is outside the scope of VAT, as its invoices will be."""
+        return normalize_tax_category(self.VAT_category) is TaxCategory.outside_scope
+
+    @property
     def fixed_price_formatted(self) -> str:
         if self.fixed_price is None:
             return ""

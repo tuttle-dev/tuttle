@@ -210,7 +210,8 @@ def build_zugferd_document(
 
     # -- Buyer (Client) -------------------------------------------------------
     doc.trade.agreement.buyer.name = client.invoice_recipient_name
-    buyer_address = client.address
+    # The address the PDF shows, which issuing checks for: the invoicing contact's, else the client's.
+    buyer_address = client.invoice_recipient_address
     if buyer_address:
         if not is_minimum:
             doc.trade.agreement.buyer.address.line_one = f"{buyer_address.street} {buyer_address.number}".strip()

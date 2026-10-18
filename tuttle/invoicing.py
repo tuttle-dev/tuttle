@@ -6,6 +6,7 @@ from typing import Dict, List, Optional, Sequence
 
 from .i18n import _
 from .model import (
+    Address,
     Contract,
     ContractCharge,
     Invoice,
@@ -293,6 +294,86 @@ def generate_final_invoice(
 
     invoice.deposits = deposit_invoices
     return invoice
+
+
+def _join(parts: Sequence[str]) -> str:
+    """Join words as a sentence does: a; a and b; a, b and c."""
+    if len(parts) < 2:
+        return "".join(parts)
+    return f"{', '.join(parts[:-1])} and {parts[-1]}"
+
+
+def _possessive(name: str) -> str:
+    """Central Services → Central Services', Sam Lowry → Sam Lowry's."""
+    return f"{name}'" if name.endswith("s") else f"{name}'s"
+
+
+def _address_gap(address: Optional[Address], owner: str) -> Optional[str]:
+    """What *address* lacks to be printed on an invoice, in words, or None.
+
+    Street, city and country are part of every postal address. House number
+    and postcode are not: some addresses have none.
+    """
+    if address is None or address.is_empty:
+        return f"{owner} address"
+    gaps = [part for part in ("street", "city", "country") if not (getattr(address, part) or "").strip()]
+    return f"the {_join(gaps)} of {owner} address" if gaps else None
+
+
+def missing_mandatory_details(
+    user: Optional[User],
+    contract: Contract,
+    e_invoice_profile: Optional[str] = None,
+    outside_scope: Optional[bool] = None,
+    document: str = "invoice",
+) -> Optional[str]:
+    """Why a document for *contract* may not be issued yet, or None if it may.
+
+    §14 Abs. 4 UStG and EN16931 require the seller's name, address and VAT
+    number or tax number, and the buyer's name and address (BR-6 to BR-10,
+    BR-S-02). The documents leave out what is not set, and the XML still
+    passes schema validation, so the gap would go unnoticed. An e-invoice
+    also needs payment terms whenever an amount is due (BR-CO-25).
+
+    An invoice outside the scope of VAT may not show the VAT number
+    (BR-O-02), so it needs the tax number. *outside_scope* defaults to the
+    contract's tax category; a reminder passes that of the invoice it chases.
+    """
+    if outside_scope is None:
+        outside_scope = contract.is_outside_scope
+    missing: List[str] = []
+    if user is None or not (user.name or "").strip():
+        missing.append("your name")
+    gap = _address_gap(user.address if user else None, "your")
+    if gap:
+        missing.append(gap)
+    if outside_scope:
+        if not (user and user.tax_number):
+            missing.append("your tax number")
+    elif not (user and (user.VAT_number or user.tax_number)):
+        missing.append("your VAT number or tax number")
+
+    client = contract.client
+    if client is None:
+        missing.append("a client on the contract")
+    else:
+        # The documents print the invoicing contact's address, else the client's
+        # own, so a gap is named after whoever's address it is.
+        contact = client.invoice_recipient_contact
+        address = client.invoice_recipient_address
+        holder = client.name
+        if contact is not None and address is not None and address is contact.address:
+            holder = contact.name or client.name
+        gap = _address_gap(address, _possessive(holder))
+        if gap:
+            missing.append(gap)
+
+    if e_invoice_profile and contract.term_of_payment is None:
+        missing.append("the contract's term of payment")
+
+    if not missing:
+        return None
+    return f"Add {_join(missing)} before issuing this {document}."
 
 
 def generate_invoice_email(
