@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, screen, shell } from "electron";
+import { app, BrowserWindow, ipcMain, nativeTheme, screen, shell, type BrowserWindowConstructorOptions } from "electron";
 import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -14,6 +14,8 @@ let pythonBridge: PythonBridge | null = null;
 const MIN_WIDTH = 1024;
 const MIN_HEIGHT = 700;
 const COMFORTABLE_WIDTH = 1280;
+// Height of the view toolbar (h-13), which doubles as the title bar.
+const TITLE_BAR_HEIGHT = 52;
 
 // Open centered on the display under the cursor: half its width on wide
 // displays, a comfortable width on smaller ones, never past the screen.
@@ -29,6 +31,20 @@ function initialBounds() {
   };
 }
 
+// The view toolbar doubles as the title bar on every platform. macOS keeps
+// its traffic lights over the sidebar; Windows and Linux draw their window
+// buttons over the toolbar (window controls overlay), in the colours the
+// renderer sends for its theme. Until then they match the dark default.
+function titleBarOptions(): BrowserWindowConstructorOptions {
+  if (process.platform === "darwin") {
+    return { titleBarStyle: "hiddenInset", trafficLightPosition: { x: 16, y: 18 } };
+  }
+  return {
+    titleBarStyle: "hidden",
+    titleBarOverlay: { color: "#292929", symbolColor: "#f5f5f7", height: TITLE_BAR_HEIGHT },
+  };
+}
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     title: "Tuttle",
@@ -36,8 +52,7 @@ function createWindow() {
     minWidth: MIN_WIDTH,
     minHeight: MIN_HEIGHT,
     show: false,
-    titleBarStyle: "hiddenInset",
-    trafficLightPosition: { x: 16, y: 18 },
+    ...titleBarOptions(),
     backgroundColor: "#292929",
     webPreferences: {
       preload: path.join(__dirname, "../electron/preload.cjs"),
@@ -134,6 +149,24 @@ app.whenReady().then(async () => {
 
   ipcMain.on("quit-and-install", () => {
     autoUpdater.quitAndInstall();
+  });
+
+  // Native UI (menus, dialogs, the window buttons' hover shade on Windows)
+  // follows Tuttle's theme choice rather than the system's.
+  ipcMain.on("set-theme-source", (_event, source: unknown) => {
+    if (source === "system" || source === "light" || source === "dark") {
+      nativeTheme.themeSource = source;
+    }
+  });
+
+  ipcMain.on("set-title-bar-colors", (_event, colors: { color?: unknown; symbolColor?: unknown }) => {
+    if (process.platform === "darwin" || !mainWindow) return;
+    if (typeof colors?.color !== "string" || typeof colors.symbolColor !== "string") return;
+    try {
+      mainWindow.setTitleBarOverlay({ color: colors.color, symbolColor: colors.symbolColor, height: TITLE_BAR_HEIGHT });
+    } catch (err) {
+      console.error("[main] set-title-bar-colors failed:", err);
+    }
   });
 });
 
