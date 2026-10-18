@@ -4,6 +4,7 @@ import datetime
 from decimal import Decimal
 from typing import Dict, List, Optional, Sequence
 
+from .einvoice import country_to_iso
 from .i18n import _
 from .model import (
     Address,
@@ -320,6 +321,13 @@ def _address_gap(address: Optional[Address], owner: str) -> Optional[str]:
     return f"the {_join(gaps)} of {owner} address" if gaps else None
 
 
+def _unrecognised_country(address: Address, owner: str) -> Optional[str]:
+    """How to correct an address whose country has no ISO code, or None if it has one."""
+    if country_to_iso(address.country) is not None:
+        return None
+    return f"Correct the country of {owner} address: '{address.country.strip()}' is not recognised."
+
+
 def missing_mandatory_details(
     user: Optional[User],
     contract: Contract,
@@ -333,7 +341,9 @@ def missing_mandatory_details(
     number or tax number, and the buyer's name and address (BR-6 to BR-10,
     BR-S-02). The documents leave out what is not set, and the XML still
     passes schema validation, so the gap would go unnoticed. An e-invoice
-    also needs payment terms whenever an amount is due (BR-CO-25).
+    also needs payment terms whenever an amount is due (BR-CO-25), each
+    party's country as an ISO code (BT-40, BT-55), and the operating country
+    for the currency VAT is accounted in (BT-6).
 
     An invoice outside the scope of VAT may not show the VAT number
     (BR-O-02), so it needs the tax number. *outside_scope* defaults to the
@@ -342,16 +352,22 @@ def missing_mandatory_details(
     if outside_scope is None:
         outside_scope = contract.is_outside_scope
     missing: List[str] = []
+    corrections: List[Optional[str]] = []
     if user is None or not (user.name or "").strip():
         missing.append("your name")
-    gap = _address_gap(user.address if user else None, "your")
+    user_address = user.address if user else None
+    gap = _address_gap(user_address, "your")
     if gap:
         missing.append(gap)
+    elif e_invoice_profile:
+        corrections.append(_unrecognised_country(user_address, "your"))
     if outside_scope:
         if not (user and user.tax_number):
             missing.append("your tax number")
     elif not (user and (user.VAT_number or user.tax_number)):
         missing.append("your VAT number or tax number")
+    if e_invoice_profile and not (user and user.operating_country):
+        missing.append("your operating country")
 
     client = contract.client
     if client is None:
@@ -367,13 +383,15 @@ def missing_mandatory_details(
         gap = _address_gap(address, _possessive(holder))
         if gap:
             missing.append(gap)
+        elif e_invoice_profile:
+            corrections.append(_unrecognised_country(address, _possessive(holder)))
 
     if e_invoice_profile and contract.term_of_payment is None:
         missing.append("the contract's term of payment")
 
-    if not missing:
-        return None
-    return f"Add {_join(missing)} before issuing this {document}."
+    sentences = [f"Add {_join(missing)} before issuing this {document}."] if missing else []
+    sentences += [c for c in corrections if c]
+    return " ".join(sentences) or None
 
 
 def generate_invoice_email(

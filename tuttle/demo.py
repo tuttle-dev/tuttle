@@ -1160,6 +1160,7 @@ def create_demo_user() -> User:
         email="mail@tuttle.com",
         phone_number="+55555555555",
         VAT_number="27B-6",
+        operating_country="Germany",
         # Shown instead of the VAT number on invoices outside the scope of VAT.
         tax_number="27/815/06150",
         signature=_load_demo_signature(),

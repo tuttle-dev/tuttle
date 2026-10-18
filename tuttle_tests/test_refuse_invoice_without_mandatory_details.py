@@ -46,6 +46,7 @@ def _user(**overrides) -> User:
         subtitle="Heating Engineer",
         email="mail@tuttle.example",
         VAT_number="DE123456789",
+        operating_country="Germany",
         address=_address(number="450"),
     )
     return User(**{**fields, **overrides})
@@ -154,7 +155,7 @@ def test_the_e_invoice_states_the_address_the_pdf_shows():
         ],
     )
 
-    xml = serialize_zugferd_xml(invoice, _user(operating_country="Germany")).decode()
+    xml = serialize_zugferd_xml(invoice, _user()).decode()
     buyer = xml.split("<ram:BuyerTradeParty>")[1].split("</ram:BuyerTradeParty>")[0]
 
     assert "<ram:LineOne>Ministry Road 42</ram:LineOne>" in buyer

@@ -36,6 +36,7 @@ def _make_user() -> User:
         subtitle="Heating Engineer",
         email="mail@tuttle.example",
         VAT_number="DE123456789",
+        operating_country="Germany",
         address=Address(
             street="Hauptstraße",
             number="42",
@@ -124,11 +125,11 @@ class TestCountryToISO:
         assert country_to_iso("DE") == "DE"
         assert country_to_iso("fr") == "FR"
 
-    def test_fuzzy(self):
+    def test_english_name(self):
         assert country_to_iso("United States") == "US"
 
-    def test_empty_default(self):
-        assert country_to_iso("") == "DE"
+    def test_empty_is_no_country(self):
+        assert country_to_iso("") is None
 
 
 class TestUnitToUNECE:

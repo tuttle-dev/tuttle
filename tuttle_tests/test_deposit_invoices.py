@@ -335,6 +335,7 @@ def _make_user() -> User:
         subtitle="Heating Engineer",
         email="mail@tuttle.example",
         VAT_number="DE123456789",
+        operating_country="Germany",
         address=Address(
             street="Hauptstraße",
             number="42",

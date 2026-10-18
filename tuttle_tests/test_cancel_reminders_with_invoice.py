@@ -37,6 +37,7 @@ def chain(monkeypatch) -> tuple[InvoicingIntent, Invoice, Invoice, Invoice]:
                 subtitle="Heating Engineer",
                 email="mail@tuttle.example",
                 VAT_number="27B-6",
+                operating_country="Germany",
                 address=Address(street="Main Street", number="450", postal_code="55555", city="Sao Paolo", country="Brazil"),
             )
         )

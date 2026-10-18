@@ -37,6 +37,7 @@ def _schedule(engine, *percentages: str) -> tuple[int, list[int]]:
                 subtitle="Heating Engineer",
                 email="mail@tuttle.example",
                 VAT_number="27B-6",
+                operating_country="Germany",
                 address=Address(street="Main Street", number="450", postal_code="55555", city="Sao Paolo", country="Brazil"),
             )
         )

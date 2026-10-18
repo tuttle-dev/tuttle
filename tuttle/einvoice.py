@@ -1,5 +1,8 @@
 """Electronic invoice generation via ZUGFeRD / Factur-X (python-drafthorse)."""
 
+import functools
+import gettext
+import os
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Optional
@@ -13,7 +16,7 @@ from drafthorse.models.tradelines import LineItem
 from drafthorse.pdf import attach_xml
 from loguru import logger
 
-from .fx import convert
+from .fx import convert, default_currency
 from .i18n import _, ngettext
 from .model import Invoice, TaxCategory, User, normalize_tax_category
 from .tax import get_tax_system
@@ -44,29 +47,64 @@ def unit_to_unece(unit: str) -> str:
     return code
 
 
-def country_to_iso(name: str) -> str:
-    """Convert a country name to its ISO 3166-1 alpha-2 code.
+def country_to_iso(name: str) -> Optional[str]:
+    """The ISO 3166-1 alpha-2 code of a country, or None if *name* names none.
 
-    Handles common names like "Germany" -> "DE" via pycountry fuzzy search.
-    If already a 2-letter code, returns it directly.
+    Takes an ISO code or a name pycountry knows ("DE", "DEU", "Germany",
+    "Czechia"), or the country's name in a language pycountry translates it
+    into ("Deutschland", "Schweiz", "Česko"). Nothing is guessed: a misspelt
+    or ambiguous name gives None.
     """
+    name = (name or "").strip()
     if not name:
-        return "DE"
-    name = name.strip()
-    if len(name) == 2 and name.isalpha():
-        return name.upper()
+        return None
     try:
-        result = pycountry.countries.lookup(name)
-        return result.alpha_2
+        return pycountry.countries.lookup(name).alpha_2
     except LookupError:
+        pass
+    key = name.casefold()
+    return _ENGLISH_ALIASES.get(key) or _local_country_names().get(key)
+
+
+# Everyday English names pycountry does not know, including the operating-country list's "Turkey".
+_ENGLISH_ALIASES = {
+    "turkey": "TR",
+    "uk": "GB",
+    "great britain": "GB",
+    "britain": "GB",
+    "england": "GB",
+    "scotland": "GB",
+    "wales": "GB",
+    "northern ireland": "GB",
+}
+
+
+@functools.cache
+def _local_country_names() -> dict[str, str]:
+    """ISO codes by country name in every language pycountry has, casefolded.
+
+    A name that two languages give to different countries is left out.
+    """
+    codes: dict[str, set[str]] = {}
+    for language in os.listdir(pycountry.LOCALES_DIR):
         try:
-            results = pycountry.countries.search_fuzzy(name)
-            if results:
-                return results[0].alpha_2
-        except LookupError:
-            pass
-    logger.warning(f"Could not resolve country '{name}' to ISO code, defaulting to 'DE'")
-    return "DE"
+            translation = gettext.translation("iso3166-1", pycountry.LOCALES_DIR, languages=[language])
+        except OSError:
+            continue
+        for country in pycountry.countries:
+            for field in ("name", "official_name", "common_name"):
+                english = getattr(country, field, None)
+                if english:
+                    codes.setdefault(translation.gettext(english).strip().casefold(), set()).add(country.alpha_2)
+    return {name: found.pop() for name, found in codes.items() if len(found) == 1}
+
+
+def _country_code(country: str) -> str:
+    """BT-40 / BT-55: the ISO code of an address's country. Issuing checks that there is one."""
+    code = country_to_iso(country)
+    if code is None:
+        raise ValueError(f"The country '{country}' is not recognised.")
+    return code
 
 
 def _rate_to_percent(vat_rate: Decimal) -> Decimal:
@@ -84,11 +122,17 @@ VATEX_OUTSIDE_SCOPE = "VATEX-EU-O"
 
 
 def _tax_currency(user: User) -> str:
-    """The currency VAT is accounted in — the operating country's tax currency."""
+    """The currency VAT is accounted in — the operating country's tax currency.
+
+    Issuing checks that the operating country is set.
+    """
+    if not user.operating_country:
+        raise ValueError("The operating country is not set, so the currency VAT is accounted in is unknown.")
     try:
-        return get_tax_system(user.operating_country or "Germany").currency
+        return get_tax_system(user.operating_country).currency
     except NotImplementedError:
-        return "EUR"
+        # No tax model: VAT is accounted in the country's own currency.
+        return default_currency(user.operating_country)
 
 
 def _vat_in_tax_currency(invoice: Invoice, total_tax: Decimal, currency: str, tax_currency: str) -> Decimal:
@@ -187,7 +231,7 @@ def build_zugferd_document(
             doc.trade.agreement.seller.address.line_one = f"{user.address.street} {user.address.number}".strip()
             doc.trade.agreement.seller.address.city_name = user.address.city
             doc.trade.agreement.seller.address.postcode = user.address.postal_code
-        doc.trade.agreement.seller.address.country_id = country_to_iso(user.address.country)
+        doc.trade.agreement.seller.address.country_id = _country_code(user.address.country)
     # BR-O-02 forbids the seller VAT identifier on invoices outside the scope of
     # tax. §14 UStG still wants an identifier, so fall back to the tax number,
     # which CII carries under a different scheme ("FC", Steuernummer).
@@ -217,7 +261,7 @@ def build_zugferd_document(
             doc.trade.agreement.buyer.address.line_one = f"{buyer_address.street} {buyer_address.number}".strip()
             doc.trade.agreement.buyer.address.city_name = buyer_address.city
             doc.trade.agreement.buyer.address.postcode = buyer_address.postal_code
-        doc.trade.agreement.buyer.address.country_id = country_to_iso(buyer_address.country)
+        doc.trade.agreement.buyer.address.country_id = _country_code(buyer_address.country)
     buyer_vat = getattr(client, "vat_number", None)
     if buyer_vat and not outside_scope:  # BR-O-02
         doc.trade.agreement.buyer.tax_registrations.add(TaxRegistration(id=("VA", buyer_vat)))
