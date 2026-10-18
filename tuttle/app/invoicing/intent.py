@@ -974,8 +974,9 @@ class InvoicingIntent(Intent):
         try:
             new_paid = not invoice.paid
             chain_result = self._invoicing_data_source.get_reminder_chain(invoice.id)
-            if chain_result.was_intent_successful and chain_result.data:
-                for inv in chain_result.data:
+            chain = chain_result.data if chain_result.was_intent_successful and chain_result.data else []
+            if chain:
+                for inv in chain:
                     fresh = self._invoicing_data_source.get_invoice_by_id(inv.id)
                     if fresh.was_intent_successful and fresh.data:
                         fresh.data.paid = new_paid
@@ -986,11 +987,13 @@ class InvoicingIntent(Intent):
 
             # Settling the Schlussrechnung settles the whole contract: its
             # remaining balance is what is left after the deposits, so a paid
-            # final invoice means every deposit in the chain was paid too.
+            # final invoice means every deposit in the chain was paid too, also
+            # when the payment came in on a reminder for it.
             # A cancelled deposit was never charged, so it stays unpaid.
-            if invoice.is_final_invoice and new_paid:
-                reload = self._invoicing_data_source.get_invoice_by_id(invoice.id)
-                final = reload.data if reload.was_intent_successful and reload.data else invoice
+            head = chain[0] if chain else invoice
+            if head.is_final_invoice and new_paid:
+                reload = self._invoicing_data_source.get_invoice_by_id(head.id)
+                final = reload.data if reload.was_intent_successful and reload.data else head
                 for dep in final.deposits:
                     if dep.cancelled:
                         continue

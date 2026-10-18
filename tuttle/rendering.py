@@ -117,19 +117,25 @@ def convert_html_to_pdf(
 def generate_payment_qr(bank_account: Optional[BankAccount], invoice: Invoice) -> Optional[str]:
     """Generate a SEPA payment (EPC/Girocode) QR code for an invoice, if eligible.
 
+    The code asks for the amount due, which on a final invoice, or a reminder for
+    one, is what the deposits left.
+
     Returns an SVG data URI, or None if ``bank_account`` is missing or incomplete,
-    or the invoice isn't in EUR (the EPC QR format is SEPA-only).
+    the invoice isn't in EUR (the EPC QR format is SEPA-only), or nothing is due.
     """
     if bank_account is None or not (bank_account.BIC and bank_account.IBAN and bank_account.name):
         return None
     if invoice.currency != "EUR":
+        return None
+    amount_due = invoice.remaining_balance
+    if amount_due <= 0:
         return None
 
     try:
         qr = make_epc_qr(
             name=bank_account.name,
             iban=bank_account.IBAN,
-            amount=float(invoice.total),
+            amount=float(amount_due),
             text=invoice.number,
             bic=bank_account.BIC,
         )
@@ -234,8 +240,9 @@ def render_invoice(
 
         # Deposit and final invoices are the two halves of one settlement: the
         # deposit states what share of the contract it bills, the final states the
-        # whole contract and deducts every deposit already issued. Both need the
-        # invoice fully hydrated — callers render from a session-loaded instance.
+        # whole contract and deducts every deposit already issued. A reminder for a
+        # final invoice restates those deductions. All need the invoice fully
+        # hydrated — callers render from a session-loaded instance.
         is_deposit = invoice.is_deposit
         is_final = invoice.is_final_invoice
         deposit_deductions = invoice.deposit_deductions

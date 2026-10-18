@@ -47,15 +47,16 @@
 {% endmacro %}
 
 {#
-  Settlement lines for a final invoice, as <div> rows.
+  Settlement lines for a final invoice, or a reminder for one, as <div> rows.
 
-  `line` and `amount` name the template's own classes for a totals row and its
-  amount cell, so each skin keeps its own typography.
+  The gross amount leaves out a reminder fee, which templates list after the
+  deductions. `line` and `amount` name the template's own classes for a totals
+  row and its amount cell, so each skin keeps its own typography.
 #}
 {% macro settlement_lines_div(invoice, deposit_deductions, line="totals-line", amount="totals-amount", label="totals-label") %}
 <div class="{{ line }}">
   <span class="{{ label }}">{{ _("Gross") }}</span>
-  <span class="{{ amount }}">{{ invoice.total | as_currency }}</span>
+  <span class="{{ amount }}">{{ (invoice.sum + invoice.VAT_total) | as_currency }}</span>
 </div>
 {%- for dep in deposit_deductions %}
 <div class="{{ line }} deposit-deduction">
@@ -73,7 +74,7 @@
 {% macro settlement_lines_table(invoice, deposit_deductions, label="totals-label", value="totals-value") %}
 <tr>
   <td class="{{ label }}">{{ _("Gross") }}</td>
-  <td class="{{ value }}">{{ invoice.total | as_currency }}</td>
+  <td class="{{ value }}">{{ (invoice.sum + invoice.VAT_total) | as_currency }}</td>
 </tr>
 {%- for dep in deposit_deductions %}
 <tr class="deposit-deduction">
