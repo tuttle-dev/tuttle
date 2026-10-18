@@ -38,7 +38,7 @@ def test_reminders_add_no_revenue():
 
     assert compute_spendable_income(chain, "Germany") == compute_spendable_income([invoice], "Germany")
     assert compute_effective_salary(chain, [], "Germany") == compute_effective_salary([invoice], [], "Germany")
-    assert compute_kpis(chain, [], [], country="Germany").total_revenue == Decimal("1190")
+    assert compute_kpis(chain, [], [], country="Germany").total_revenue == Decimal("1000")
     vat = compute_vat_reserves(chain, today, today)
     assert (vat.vat_collected, vat.invoice_count) == (Decimal("190"), 1)
 

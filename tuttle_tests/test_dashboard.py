@@ -982,7 +982,8 @@ class TestComputeKPIs:
     def test_spendable_less_than_gross(self, paid_invoice, active_contract, project):
         kpis = compute_kpis([paid_invoice], [active_contract], [project])
         if kpis.total_revenue_ytd > 0:
-            assert kpis.spendable_income < kpis.total_revenue_ytd
+            # Revenue is net of VAT; what clients paid also includes the VAT.
+            assert kpis.spendable_income < kpis.total_revenue_ytd + kpis.vat_reserve
 
     def test_empty_data_tax_reserves(self):
         kpis = compute_kpis([], [], [])

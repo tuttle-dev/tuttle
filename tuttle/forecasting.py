@@ -604,7 +604,8 @@ def revenue_series(
     date, the calendar gives ``planned`` — tracked or scheduled work that no
     timesheet has billed yet, in the past as well as the future — and
     committed contracts give ``contracted``, the agreed work not yet in the
-    calendar (see :func:`contracted_revenue`).
+    calendar (see :func:`contracted_revenue`). All four are net of VAT, so
+    invoicing planned work moves it between layers without changing the total.
 
     *granularity* is "week", "month" or "year".  Week and month windows are
     paged with *offset*; the year window always spans the full data extent.
@@ -658,11 +659,12 @@ def revenue_series(
         converted = convert_invoice(inv, currency)
         if converted is None:
             continue
+        net = float(converted[0] - converted[1])
         if inv.paid:
-            bucket["received"] += float(converted[0])
+            bucket["received"] += net
             bucket["invoice_count"] += 1
         elif inv.sent:
-            bucket["invoiced"] += float(converted[0])
+            bucket["invoiced"] += net
             bucket["invoice_count"] += 1
 
     cal = revenue_from_calendar(time_data, projects, window_start, window_end, invoices=invoices, freq=freq, currency=currency)

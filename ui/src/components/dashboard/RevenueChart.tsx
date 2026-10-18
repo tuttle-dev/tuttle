@@ -42,8 +42,8 @@ interface Series { key: SeriesKey; name: string; color: string; opacity: number;
 // Planned revenue is drawn translucent: it is an estimate, not money in hand.
 // Contracted revenue is fainter still and outlined, the least certain layer.
 const SERIES: Series[] = [
-  { key: "received", name: "Received", color: "var(--color-status-success)", opacity: 1, hint: "Paid invoices" },
-  { key: "invoiced", name: "Invoiced", color: "var(--color-status-warning)", opacity: 1, hint: "Invoiced, not yet paid" },
+  { key: "received", name: "Received", color: "var(--color-status-success)", opacity: 1, hint: "Paid invoices, net of VAT" },
+  { key: "invoiced", name: "Invoiced", color: "var(--color-status-warning)", opacity: 1, hint: "Invoiced, not yet paid, net of VAT" },
   { key: "planned", name: "Planned", color: "var(--color-status-info)", opacity: 0.45, hint: "Tracked or scheduled work, not yet invoiced" },
   { key: "contracted", name: "Contracted", color: "var(--color-status-info)", opacity: 0.15, dashed: true, hint: "Agreed in a contract, not yet scheduled or tracked" },
 ];
