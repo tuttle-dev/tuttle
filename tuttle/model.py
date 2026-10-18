@@ -621,9 +621,11 @@ class Contract(RpcMixin, VatCategoryMixin, SQLModel, table=True):
         description="Units of work (hours or days) expected per week: the pace at which a "
         "time-based contract is forecast to be billed. None when there is no expected pace.",
     )
+    # No default of 31 days: a column default would also replace an explicit
+    # None on insert, so a contract without a payment term could not be saved.
     term_of_payment: Optional[int] = Field(
-        description="How many days after receipt of invoice this invoice is due.",
-        default=31,
+        description="How many days after receipt of invoice this invoice is due. None when no term is agreed.",
+        default=None,
     )
     billing_cycle: Cycle = Field(
         default=Cycle.monthly,
