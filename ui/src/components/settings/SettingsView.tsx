@@ -177,6 +177,7 @@ export function SettingsView() {
   const [availableEInvoiceProfiles, setAvailableEInvoiceProfiles] = useState<Record<string, string>>({});
   const [invoicingSaving, setInvoicingSaving] = useState(false);
   const [invoicingStatus, setInvoicingStatus] = useState<{ type: "success" | "error"; msg: string } | null>(null);
+  const [invoicingLoad, setInvoicingLoad] = useState<"loading" | "ok" | "failed">("loading");
 
   const [savedNotes, setSavedNotes] = useState<Entity[]>([]);
   const [newNoteText, setNewNoteText] = useState("");
@@ -419,6 +420,9 @@ export function SettingsView() {
       rpc<Record<string, string>>("invoicing.available_e_invoice_profiles"),
     ]);
     if (loadId !== invoicingLoadRef.current) return;
+    // Defaults shown after a failed load would be saved over the real preferences.
+    const loaded = prefsRes.ok && !!prefsRes.data && tmplRes.ok && langRes.ok && schemeRes.ok && eInvRes.ok;
+    setInvoicingLoad(loaded ? "ok" : "failed");
     if (prefsRes.ok && prefsRes.data) {
       setInvoicing({ ...DEFAULT_INVOICING, ...prefsRes.data });
     }
@@ -857,6 +861,8 @@ export function SettingsView() {
 
       {tab === "invoicing" && (
         <section className="space-y-4">
+          {invoicingLoad === "failed" ? <LoadError what="invoicing preferences" onRetry={loadInvoicingPrefs} />
+            : invoicingLoad === "loading" ? <LoadingState /> : (<>
           <div>
             <label className={labelCls}>Invoice template</label>
             <select
@@ -977,6 +983,7 @@ export function SettingsView() {
             <Save size={14} />
             {invoicingSaving ? "Saving…" : "Save Invoicing Preferences"}
           </button>
+          </>)}
 
           <div className="pt-4 border-t border-border-subtle">
             <label className={labelCls}>Saved Invoice Notes</label>
@@ -1205,12 +1212,20 @@ function RegionTab({ operatingCountry, supportedCountries, onCountryChange, vatN
 }) {
   const { showMessage } = useStatusBar();
   const [currency, setCurrency] = useState<CurrencySettings>({ ...DEFAULT_CURRENCY });
+  const [currencyLoad, setCurrencyLoad] = useState<"loading" | "ok" | "failed">("loading");
 
-  useEffect(() => {
+  // Defaults shown after a failed load would be saved over the real settings.
+  function loadCurrency() {
     rpc<CurrencySettings>("settings.get_currency").then((res) => {
-      if (res.ok && res.data) setCurrency({ ...DEFAULT_CURRENCY, ...res.data });
+      if (res.ok && res.data) {
+        setCurrency({ ...DEFAULT_CURRENCY, ...res.data });
+        setCurrencyLoad("ok");
+      } else {
+        setCurrencyLoad("failed");
+      }
     });
-  }, []);
+  }
+  useEffect(loadCurrency, []);
 
   const [saving, setSaving] = useState(false);
 
@@ -1283,6 +1298,8 @@ function RegionTab({ operatingCountry, supportedCountries, onCountryChange, vatN
           Only matters if you invoice in a currency other than the one you're taxed in.
           Amounts are converted at the ECB monthly average for dashboards, tax, and salary estimates.
         </p>
+        {currencyLoad === "failed" ? <LoadError what="currency settings" onRetry={loadCurrency} />
+          : currencyLoad === "loading" ? <LoadingState /> : (
         <div className="grid grid-cols-2 gap-3 mt-3">
           <div>
             <label className={labelCls}>Primary currency</label>
@@ -1308,11 +1325,12 @@ function RegionTab({ operatingCountry, supportedCountries, onCountryChange, vatN
             <p className="text-xs text-secondary mt-1">Bank/exchange spread on foreign-currency revenue. Lowers what you can spend, not your taxable revenue.</p>
           </div>
         </div>
+        )}
       </fieldset>
 
       <button
         onClick={handleSaveAll}
-        disabled={saving}
+        disabled={saving || currencyLoad !== "ok"}
         className="flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium bg-accent/10 text-primary hover:bg-accent/20 border border-accent/30 transition-colors disabled:opacity-40"
       >
         <Save size={14} />
