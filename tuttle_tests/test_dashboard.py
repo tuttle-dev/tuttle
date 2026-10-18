@@ -719,7 +719,8 @@ class TestCashFlowSeries:
         # Last month balance must match total net_cash_flow
         assert result["buckets"][-1]["balance"] == result["net_cash_flow"]
 
-    def test_draft_invoices_included_in_cash_flow(self, active_contract, project):
+    def test_draft_invoices_left_out_of_cash_flow(self, active_contract, project):
+        """A draft is not invoiced yet, so no money is due on it."""
         active_contract.term_of_payment = 14
         draft_inv = Invoice(
             number="2026-DRAFT",
@@ -738,9 +739,7 @@ class TestCashFlowSeries:
             VAT_rate=Decimal("0"),
         )
         result = cash_flow_series([draft_inv], [active_contract], [project], [], None, forecast_months=6, today=self.TODAY)
-        # Due date is Nov 8, 2026 (Month 1)
-        assert result["buckets"][1]["inflow_invoiced"] == 800.0
-        assert result["total_inflow"] == 800.0
+        assert result["total_inflow"] == 0.0
 
     def test_past_uninvoiced_work_placed_into_current_month(self, project, active_contract):
         active_contract.id = 1

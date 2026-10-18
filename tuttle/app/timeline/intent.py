@@ -204,7 +204,8 @@ class TimelineIntent(SQLModelDataSourceMixin, Intent):
                     )
                 )
 
-            due = inv.effective_due_date
+            # A draft is not invoiced yet, so nothing is due on it.
+            due = inv.effective_due_date if inv.is_issued or inv.is_reminder else None
             if due:
                 is_overdue = due < today
                 events.append(

@@ -50,6 +50,7 @@ def test_final_invoice_adds_only_what_the_deposits_left():
     deposit = invoicing.generate_deposit_invoice(project.contract, project, milestone, number="1", date=today)
     deposit.paid = True
     final = invoicing.generate_final_invoice(project.contract, project, [deposit], number="2", date=today)
+    final.sent = True
 
     spending = compute_spendable_income([deposit, final], "Germany")
 

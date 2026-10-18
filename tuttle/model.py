@@ -1393,6 +1393,15 @@ class Invoice(RpcMixin, SQLModel, table=True):
         return "draft"
 
     @property
+    def is_issued(self) -> bool:
+        """Whether the client has the invoice: it was sent, or it is paid.
+
+        A draft is not invoiced yet. No revenue, tax or cash figure counts it,
+        and the tracked time in its timesheet stays planned.
+        """
+        return bool(self.sent or self.paid)
+
+    @property
     def reminder_chain_head_id(self) -> Optional[int]:
         """Walk reminder_for up to the root invoice and return its id.
 
