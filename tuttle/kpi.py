@@ -11,7 +11,7 @@ from .forecasting import contracted_this_year
 from .fx import primary_currency
 from .model import Contract, Invoice, Project, RecurringExpense
 from .tax import NoTaxRules, get_tax_system
-from .tax_reserves import compute_spendable_income, convert_invoice
+from .tax_reserves import compute_spendable_income, convert_invoice, distinct
 from .time import TimeUnit
 from .timetracking import sum_hours_by_tag
 
@@ -37,6 +37,7 @@ class KPISummary(NamedTuple):
     country_supported: bool = True  # whether there are tax rules to estimate income tax with
     country: str = ""
     tax_unavailable_reason: Optional[str] = None
+    unconverted: list = []  # amounts left out for lack of an exchange rate, one line each; never mutated
 
     def to_rpc_dict(self) -> dict:
         d = self._asdict()
@@ -70,7 +71,8 @@ def compute_kpis(
     worked.  It drives ``effective_hourly_rate`` and ``utilization_rate``.
     Revenue metrics come from invoices, converted into the primary currency:
     revenue is net of VAT, while the outstanding and overdue amounts are what
-    clients still owe, VAT included.
+    clients still owe, VAT included. Amounts without an exchange rate are left
+    out of every figure, and ``unconverted`` names them.
     """
     today = datetime.date.today()
     year_start = today.replace(month=1, day=1)
@@ -85,12 +87,13 @@ def compute_kpis(
     unpaid_invoices = 0
     overdue_invoices = 0
     paid_revenue = Decimal(0)
+    left_out: list = []
 
     for inv in invoices:
         # A reminder chases an invoice that is already counted; a draft is not invoiced yet.
         if inv.cancelled or inv.is_reminder or not inv.is_issued:
             continue
-        converted = convert_invoice(inv, currency)
+        converted = convert_invoice(inv, currency, left_out)
         if converted is None:
             continue
         inv_total, inv_vat = converted
@@ -144,7 +147,8 @@ def compute_kpis(
         currency=currency,
         projects=projects,
         time_data=time_data,
-        contracted=contracted_this_year(projects, invoices, time_data, currency=currency),
+        contracted=contracted_this_year(projects, invoices, time_data, currency=currency, left_out=left_out),
+        left_out=left_out,
     )
     return KPISummary(
         total_revenue=total_revenue,
@@ -164,6 +168,7 @@ def compute_kpis(
         country_supported=spending.tax_unavailable_reason is None,
         country=country,
         tax_unavailable_reason=spending.tax_unavailable_reason,
+        unconverted=distinct(left_out),
     )
 
 

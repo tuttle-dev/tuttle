@@ -26,13 +26,17 @@ from typing import Optional
 _DATA_DIR = Path(__file__).parent / "tax_data"
 
 
-class NoTaxRules(NotImplementedError):
-    """There are no tax rules to estimate income tax with.
+class TaxUnavailable(Exception):
+    """Income tax cannot be estimated.
 
     Its message says what is missing, in one sentence fit to show the user.
     Every figure after income tax depends on it, so callers show none rather
     than one computed with a tax of zero.
     """
+
+
+class NoTaxRules(TaxUnavailable, NotImplementedError):
+    """There are no tax rules for the country, or none for the year."""
 
 
 # ── TaxParams: one loaded year for one country ───────────────

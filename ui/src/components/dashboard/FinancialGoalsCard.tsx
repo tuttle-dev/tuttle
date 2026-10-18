@@ -3,6 +3,7 @@ import { Target, Plus, Pencil, Trash2, Save, X, Trophy } from "lucide-react";
 import { rpc } from "../../api/rpc";
 import { str, num, bool, formatDate } from "../../api/entity";
 import { ProgressBar } from "../shared/ProgressBar";
+import { UnconvertedNote } from "../shared/UnconvertedNote";
 import type { Entity } from "../../api/types";
 
 interface GoalEntry {
@@ -10,6 +11,8 @@ interface GoalEntry {
   progress: number;
   ytd_revenue: number;
   currency: string;
+  /** Paid invoices of the goal's year left out for lack of an exchange rate. */
+  unconverted: string[];
 }
 
 interface GoalFormData {
@@ -136,7 +139,7 @@ function GoalRow({ entry, onEdit, onDelete }: {
   entry: GoalEntry; onEdit: () => void; onDelete: () => void;
 }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const { goal, progress, ytd_revenue, currency } = entry;
+  const { goal, progress, ytd_revenue, currency, unconverted } = entry;
 
   useEffect(() => { setConfirmDelete(false); }, [goal.id]);
 
@@ -187,6 +190,7 @@ function GoalRow({ entry, onEdit, onDelete }: {
       </div>
 
       <ProgressBar progress={progress} tone={reached ? "success" : "neutral"} />
+      <UnconvertedNote items={unconverted} />
     </div>
   );
 }

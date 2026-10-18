@@ -215,9 +215,9 @@ class TestMonthStart:
             return Decimal("0.9")
 
         monkeypatch.setattr(fx, "_fetch_monthly_average", fetch)
-        fx._rate.cache_clear()
+        fx._session_rates.clear()
         yield
-        fx._rate.cache_clear()
+        fx._session_rates.clear()
 
     def test_the_open_month_uses_last_months_rate(self):
         today = datetime.date.today()

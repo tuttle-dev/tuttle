@@ -11,6 +11,7 @@ import {
   YAxis,
 } from "recharts";
 import { rpc } from "../../api/rpc";
+import { UnconvertedNote } from "../shared/UnconvertedNote";
 
 export interface CashFlowBucket {
   month: string;
@@ -38,6 +39,8 @@ export interface CashFlowSeries {
   tax_included: boolean;
   tax_unavailable_reason: string | null;
   left_out_with_tax: string[];
+  /** Amounts left out for lack of an exchange rate, one line each. */
+  unconverted: string[];
 }
 
 /** "Income tax and Pension not included: no tax model for Norway." — or "" when tax is included. */
@@ -437,6 +440,7 @@ export function CashFlowChart() {
       </div>
 
       {note && <p className="text-[11px] text-muted text-center mt-2">{note}</p>}
+      <UnconvertedNote items={data?.unconverted} className="justify-center mt-2" />
     </div>
   );
 }

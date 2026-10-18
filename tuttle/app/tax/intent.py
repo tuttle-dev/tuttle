@@ -15,6 +15,7 @@ from ...tax import (
 from ...tax_reserves import (
     compute_income_tax_reserve,
     compute_spendable_income,
+    distinct,
     monthly_vat_breakdown,
 )
 from ..core.abstractions import Intent, SQLModelDataSourceMixin
@@ -43,11 +44,11 @@ class TaxIntent(SQLModelDataSourceMixin, Intent):
         """The currency aggregates are shown in (settings, default: tax system)."""
         return primary_currency(country)
 
-    def _contracted_this_year(self, year, invoices, projects, time_data, currency: str) -> Decimal:
+    def _contracted_this_year(self, year, invoices, projects, time_data, currency: str, left_out=None) -> Decimal:
         """Revenue committed contracts will still bring in from today to the end of the year."""
         if year is not None and year != datetime.date.today().year:
             return Decimal(0)
-        return contracted_this_year(projects, invoices, time_data, currency=currency)
+        return contracted_this_year(projects, invoices, time_data, currency=currency, left_out=left_out)
 
     def get_spendable_income(self, year: int | None = None) -> IntentResult:
         """Compute spendable income breakdown."""
@@ -58,6 +59,7 @@ class TaxIntent(SQLModelDataSourceMixin, Intent):
             country = self._get_country()
             currency = self._get_tax_currency(country)
             time_data = self._time_data_source.get_data_frame()
+            left_out: list = []
             spending = compute_spendable_income(
                 invoices,
                 country,
@@ -66,7 +68,8 @@ class TaxIntent(SQLModelDataSourceMixin, Intent):
                 year=year,
                 projects=projects,
                 time_data=time_data,
-                contracted=self._contracted_this_year(year, invoices, projects, time_data, currency),
+                contracted=self._contracted_this_year(year, invoices, projects, time_data, currency, left_out),
+                left_out=left_out,
             )
             data = {"spending": spending, "currency": currency}
             return IntentResult(was_intent_successful=True, data=data)
@@ -206,8 +209,9 @@ class TaxIntent(SQLModelDataSourceMixin, Intent):
             invoices = self.query(Invoice)
             country = self._get_country()
             currency = self._get_tax_currency(country)
-            months = monthly_vat_breakdown(invoices, year=year, currency=currency)
-            data = {"months": months, "currency": currency}
+            left_out: list = []
+            months = monthly_vat_breakdown(invoices, year=year, currency=currency, left_out=left_out)
+            data = {"months": months, "currency": currency, "unconverted": distinct(left_out)}
             return IntentResult(was_intent_successful=True, data=data)
         except Exception as e:
             return IntentResult(

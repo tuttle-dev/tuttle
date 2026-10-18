@@ -13,6 +13,7 @@ neither from cache nor from the network yields ``None`` — never zero.
 import datetime
 import json
 import logging
+import time
 import urllib.error
 import urllib.request
 from decimal import Decimal
@@ -174,10 +175,32 @@ class _NoRatesYet(ValueError):
     """The ECB has not fixed a rate in this month yet."""
 
 
-# ponytail: a failed lookup stays cached for the session; restart (or call
-# clear_cache) after coming back online. Retry-on-reconnect if that annoys anyone.
-@lru_cache(maxsize=256)
+# Rates found this session, by (base, quote, month). A lookup that failed, say
+# offline, is not kept: it is tried again once _RETRY_AFTER seconds have passed,
+# so one page does not wait on the network for every amount, and the next page
+# after the network is back finds the rate.
+_session_rates: dict[tuple[str, str, str], Decimal] = {}
+_failed_at: dict[tuple[str, str, str], float] = {}
+_RETRY_AFTER = 60.0
+
+
 def _rate(base: str, quote: str, month_key: str) -> Optional[Decimal]:
+    key = (base, quote, month_key)
+    if key in _session_rates:
+        return _session_rates[key]
+    failed = _failed_at.get(key)
+    if failed is not None and time.monotonic() - failed < _RETRY_AFTER:
+        return None
+    found = _lookup_rate(base, quote, month_key)
+    if found is None:
+        _failed_at[key] = time.monotonic()
+        return None
+    _failed_at.pop(key, None)
+    _session_rates[key] = found
+    return found
+
+
+def _lookup_rate(base: str, quote: str, month_key: str) -> Optional[Decimal]:
     month = datetime.date.fromisoformat(f"{month_key}-01")
     db = AppDatabase()
     cache_key = f"fx.rate.{base}.{quote}.{month_key}"
@@ -237,5 +260,6 @@ def convert(amount: Decimal, base: str, quote: str, on: datetime.date) -> Option
 
 def clear_cache() -> None:
     """Drop the in-process caches (tests, and after a settings change)."""
-    _rate.cache_clear()
+    _session_rates.clear()
+    _failed_at.clear()
     supported_currencies.cache_clear()
