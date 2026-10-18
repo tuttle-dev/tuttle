@@ -3,7 +3,7 @@
 import datetime
 from decimal import Decimal
 
-from ...forecasting import contracted_revenue, spread
+from ...forecasting import contracted_this_year
 from ...fx import primary_currency
 from ...model import Invoice, Project, RecurringExpense, User
 from ...tax import (
@@ -45,12 +45,9 @@ class TaxIntent(SQLModelDataSourceMixin, Intent):
 
     def _contracted_this_year(self, year, invoices, projects, time_data, currency: str) -> Decimal:
         """Revenue committed contracts will still bring in from today to the end of the year."""
-        today = datetime.date.today()
-        if year is not None and year != today.year:
+        if year is not None and year != datetime.date.today().year:
             return Decimal(0)
-        year_end = datetime.date(today.year, 12, 31)
-        slices = contracted_revenue(projects, invoices, time_data, year_end, currency=currency, today=today)
-        return Decimal(str(round(sum(spread(slices, "Y", today, year_end).values()), 2)))
+        return contracted_this_year(projects, invoices, time_data, currency=currency)
 
     def get_spendable_income(self, year: int | None = None) -> IntentResult:
         """Compute spendable income breakdown."""

@@ -7,6 +7,7 @@ from typing import List, NamedTuple, Optional
 from pandas import DataFrame, Timestamp
 
 from .app.core.formatting import fmt_currency
+from .forecasting import contracted_this_year
 from .fx import primary_currency
 from .model import Contract, Invoice, Project, RecurringExpense
 from .tax import get_tax_system, has_tax_model
@@ -135,7 +136,13 @@ def compute_kpis(
     # The same inputs as the Tax page, so Spendable Income equals its Safe to Spend.
     country_supported = has_tax_model(country)
     spending = compute_spendable_income(
-        invoices, country, expenses=expenses, currency=currency, projects=projects, time_data=time_data
+        invoices,
+        country,
+        expenses=expenses,
+        currency=currency,
+        projects=projects,
+        time_data=time_data,
+        contracted=contracted_this_year(projects, invoices, time_data, currency=currency),
     )
     vat_reserve = spending.vat_reserve
     income_tax_reserve = spending.income_tax_reserve

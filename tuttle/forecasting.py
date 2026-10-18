@@ -435,6 +435,23 @@ def spread(slices: List[ContractedSlice], freq: str, start: datetime.date, end: 
     return totals
 
 
+def contracted_this_year(
+    projects: List[Project],
+    invoices: List[Invoice],
+    time_data: Optional[DataFrame],
+    currency: Optional[str] = None,
+    today: Optional[datetime.date] = None,
+) -> Decimal:
+    """Net revenue committed contracts will still bring in from today to the end of the year.
+
+    The Contracted part of the income every spendable-income figure is estimated on.
+    """
+    today = today or datetime.date.today()
+    year_end = datetime.date(today.year, 12, 31)
+    slices = contracted_revenue(projects, invoices, time_data, year_end, currency=currency, today=today)
+    return Decimal(str(round(sum(spread(slices, "Y", today, year_end).values()), 2)))
+
+
 def cash_flow_projection(
     revenue_forecast: DataFrame,
     contracts: List[Contract],
