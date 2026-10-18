@@ -58,6 +58,8 @@ type SystemCalendarResult = {
   auth_status: string;
 };
 
+type ImportResult = { imported_count: number };
+
 type ProjectTag = { tag: string; title: string; id: number };
 
 type EntryValues = { tag: string; title: string; start: string; end: string; duration: string };
@@ -122,11 +124,13 @@ export function TimeTrackingView() {
   const [systemCals, setSystemCals] = useState<SystemCalendar[] | null>(null);
   const [sysCalAuthStatus, setSysCalAuthStatus] = useState<string | null>(null);
   const [sysCalLoading, setSysCalLoading] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
 
   const timer = useTimer();
   const { navigate } = useNavigation();
+  const { showMessage } = useStatusBar();
   const isMac = typeof window !== "undefined" && window.tuttle?.platform === "darwin";
-  const closeSourceDialog = () => setShowSourceDialog(false);
+  const closeSourceDialog = () => { setShowSourceDialog(false); setImportError(null); };
   const sourceBackdrop = useDismiss(closeSourceDialog, showSourceDialog);
 
   const loadData = useCallback(async () => {
@@ -188,37 +192,63 @@ export function TimeTrackingView() {
 
   // ── Calendar import ─────────────────────────────────────────────────────
 
+  // A problem with an import shows in the import dialog while it is open.
+  function reportImportProblem(text: string) {
+    if (showSourceDialog) setImportError(text);
+    else showMessage(text, { type: "error" });
+  }
+
   async function handleDrop(e: React.DragEvent) {
     e.preventDefault();
     setDragOver(false);
     const files = e.dataTransfer.files;
     if (!files.length) return;
     setImporting(true);
+    setImportError(null);
+    let imported = 0;
+    const problems: string[] = [];
     for (const file of Array.from(files)) {
-      if (!file.name.endsWith(".ics")) continue;
+      if (!file.name.endsWith(".ics")) {
+        problems.push(`${file.name} is not an .ics calendar file.`);
+        continue;
+      }
       const buffer = await file.arrayBuffer();
       const bytes = new Uint8Array(buffer);
       let binary = "";
       for (let i = 0; i < bytes.length; i += 8192) {
         binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
       }
-      await rpc("timetracking.import_ics", { content: btoa(binary), name: file.name });
+      const res = await rpc<ImportResult>("timetracking.import_ics", { content: btoa(binary), name: file.name });
+      if (!res.ok) problems.push(res.error || `${file.name} could not be imported.`);
+      else if (!res.data?.imported_count) problems.push(`${file.name} has no events to import.`);
+      else {
+        imported += res.data.imported_count;
+        if (res.warning) problems.push(res.warning);
+      }
     }
     setImporting(false);
+    const problem = problems.join(" ");
+    if (!imported) {
+      if (problem) reportImportProblem(problem);
+      return;
+    }
     setCalendarSource("ics");
     setConnectionLost(false);
     setShowSourceDialog(false);
+    if (problem) showMessage(problem, { type: "error" });
     loadData();
   }
 
   async function loadSystemCalendars() {
     setSysCalLoading(true);
+    setImportError(null);
     const res = await rpc<SystemCalendarResult>("timetracking.list_system_calendars");
     if (res.ok && res.data) {
       setSystemCals(res.data.calendars);
       setSysCalAuthStatus(res.data.auth_status);
     } else {
-      setSystemCals([]);
+      setSystemCals(null);
+      setImportError(res.error || "Your calendars could not be listed.");
     }
     setSysCalLoading(false);
   }
@@ -229,18 +259,26 @@ export function TimeTrackingView() {
 
   async function importSystemCalendar(calId: string) {
     setImporting(true);
-    await rpc("timetracking.import_system_calendar", { calendar_id: calId });
+    setImportError(null);
+    const res = await rpc<ImportResult>("timetracking.import_system_calendar", { calendar_id: calId });
     setImporting(false);
+    if (!res.ok || !res.data?.imported_count) {
+      setImportError(res.ok ? "This calendar has no events to import." : res.error || "The calendar could not be imported.");
+      return;
+    }
     setSystemCals(null);
     setCalendarSource("system");
     setConnectionLost(false);
     setShowSourceDialog(false);
+    if (res.warning) showMessage(res.warning, { type: "error" });
     loadData();
   }
 
   async function syncCalendar() {
     setSyncing(true);
-    await rpc("timetracking.sync");
+    const res = await rpc("timetracking.sync");
+    const problem = res.ok ? res.warning : res.error || "The calendar could not be synced.";
+    if (problem) showMessage(problem, { type: "error" });
     await loadData();
     setSyncing(false);
   }
@@ -456,6 +494,7 @@ export function TimeTrackingView() {
                 sysCalAuthStatus={sysCalAuthStatus}
                 sysCalLoading={sysCalLoading}
                 connectionLost={connectionLost}
+                importError={importError}
                 onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
                 onDragLeave={() => setDragOver(false)}
                 onDrop={handleDrop}
@@ -677,13 +716,14 @@ function TimerBar({ projectTags, onCreateProject, onLogged }: {
 
 function SourceChooser({
   dragOver, importing, isMac, systemCals, sysCalAuthStatus, sysCalLoading,
-  connectionLost,
+  connectionLost, importError,
   onDragOver, onDragLeave, onDrop, onLoadSystemCals, onImportSystemCal, onOpenSettings,
 }: {
   dragOver: boolean; importing: boolean; isMac: boolean;
   systemCals: SystemCalendar[] | null; sysCalAuthStatus: string | null;
   sysCalLoading: boolean;
   connectionLost: boolean;
+  importError: string | null;
   onDragOver: (e: React.DragEvent) => void;
   onDragLeave: () => void;
   onDrop: (e: React.DragEvent) => void;
@@ -697,9 +737,9 @@ function SourceChooser({
 
   return (
     <div className="flex flex-col items-center gap-5">
-      {connectionLost && (
+      {(importError || connectionLost) && (
         <div className="px-4 py-2.5 rounded-lg bg-status-warning/10 border border-status-warning/30 text-xs text-status-warning max-w-sm text-center leading-relaxed">
-          Your calendar connection could not be restored. Please reconnect below.
+          {importError ?? "Your calendar connection could not be restored. Please reconnect below."}
         </div>
       )}
       <p className="max-w-md text-center text-xs text-tertiary leading-relaxed">
