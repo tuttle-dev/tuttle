@@ -11,7 +11,7 @@ from ... import invoicing, mail, rendering, timetracking
 from ...app_db import AppDatabase
 from ...data_dir import get_data_dir
 from ...i18n import SUPPORTED, use_language
-from ...model import Client, Invoice, InvoiceItem, Project, Timesheet, User
+from ...model import Client, Invoice, InvoiceItem, Project, Timesheet, User, round_quantity
 from ...time import ChargeBasis
 from ..auth.data_source import UserDataSource
 from ..auth.intent import AuthIntent
@@ -527,13 +527,15 @@ class InvoicingIntent(Intent):
         try:
             invoice_number = self._invoicing_data_source.generate_invoice_number(invoice_date, scheme=number_scheme)
 
+            # A typed quantity is billed to two decimals, as the documents show it,
+            # so each line multiplies out to the cent it charges.
             if manual_items is not None:
                 unit_fallback = contract.unit.value if contract.unit else "hour"
                 items = [
                     InvoiceItem(
                         start_date=from_date,
                         end_date=to_date,
-                        quantity=float(it["quantity"]),
+                        quantity=float(round_quantity(it["quantity"])),
                         unit=it.get("unit") or unit_fallback,
                         unit_price=Decimal(str(it["unit_price"])),
                         description=it.get("description", project.title),
@@ -555,7 +557,7 @@ class InvoicingIntent(Intent):
                 item = InvoiceItem(
                     start_date=from_date,
                     end_date=to_date,
-                    quantity=manual_quantity,
+                    quantity=float(round_quantity(manual_quantity)),
                     unit=contract.unit.value if contract.unit else "hour",
                     unit_price=contract.rate,
                     description=project.title,

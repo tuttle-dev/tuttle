@@ -17,8 +17,9 @@ from babel.numbers import format_currency, format_decimal
 from loguru import logger
 from segno.helpers import make_epc_qr
 
+from .app.core.formatting import fmt_quantity
 from .i18n import _, babel_locale, ngettext, use_language
-from .model import BankAccount, Invoice, Timesheet, User
+from .model import BankAccount, Invoice, Timesheet, User, round_quantity
 
 try:
     import plutoprint
@@ -33,13 +34,14 @@ except ImportError as ex:
 def unit_label(raw_unit, quantity=None) -> str:
     """Name of an invoice item's unit (e.g. "hour") in the current language.
 
-    When ``quantity`` is given, the form matches it ("1 hour", "2 hours").
-    Plural spellings ("hours") are accepted, as in ``einvoice.unit_to_unece``.
-    Unknown units pass through unchanged.
+    When ``quantity`` is given, the form matches it as the invoice shows it,
+    rounded to two decimals ("1 hour", "2 hours"). Plural spellings ("hours")
+    are accepted, as in ``einvoice.unit_to_unece``. Unknown units pass through
+    unchanged.
     """
     try:
-        count = 1 if quantity is None else float(quantity)
-    except (TypeError, ValueError):
+        count = 1 if quantity is None else float(round_quantity(quantity))
+    except (TypeError, ValueError, ArithmeticError):
         count = 1
     unit = raw_unit.lower().replace(" ", "_").rstrip("s")
     if unit == "hour":
@@ -167,11 +169,15 @@ def invoice_template_env(template_name: str, language: str, currency: str) -> ji
     def as_percentage(number):
         return f"{format_decimal(number * 100, format='0.0', locale=babel_locale())} %"
 
+    def as_quantity(number):
+        return fmt_quantity(round_quantity(number), locale=babel_locale())
+
     template_env = _document_environment(get_template_path(template_name), get_shared_template_path())
     template_env.filters["as_currency"] = as_currency
     template_env.filters["as_date"] = as_date
     template_env.filters["as_date_short"] = as_date_short
     template_env.filters["as_percentage"] = as_percentage
+    template_env.filters["as_quantity"] = as_quantity
     template_env.filters["unit_label"] = unit_label
     return template_env
 

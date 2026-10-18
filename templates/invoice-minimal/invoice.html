@@ -97,7 +97,7 @@
       <tr>
         <td class="col-date">{{ item.start_date | as_date_short }}&hairsp;&ndash;&hairsp;{{ item.end_date | as_date_short }}</td>
         <td class="col-desc">{{ item.description }}</td>
-        <td class="col-qty num">{{ item.quantity }}</td>
+        <td class="col-qty num">{{ item.quantity | as_quantity }}</td>
         <td class="col-unit">{{ item.unit | unit_label(item.quantity) }}</td>
         <td class="col-price num">{{ item.unit_price | as_currency }}</td>
         <td class="col-vat num">{% if invoice.is_outside_scope %}&mdash;{% else %}{{ item.VAT_rate | as_percentage }}{% endif %}</td>
