@@ -155,11 +155,10 @@ def _make_invoice(date, items_data, cancelled=False, vat_rate=None):
 
 
 class TestTaxSystemFramework:
-    def test_years_before_the_data_use_the_earliest_rules(self):
+    def test_years_before_the_data_have_no_rules(self):
         earliest = available_years("Germany")[0]
-        older = get_tax_system("Germany", date=datetime.date(earliest - 3, 6, 1))
-        first = get_tax_system("Germany", date=datetime.date(earliest, 6, 1))
-        assert older.income_tax(Decimal(50000)) == first.income_tax(Decimal(50000))
+        with pytest.raises(NoTaxRules, match=f"No tax rules for Germany in {earliest - 3}."):
+            get_tax_system("Germany", date=datetime.date(earliest - 3, 6, 1))
 
     def test_get_tax_system_germany(self):
         system = get_tax_system("Germany")
@@ -194,11 +193,10 @@ class TestTaxSystemFramework:
         # Basic allowance increased 2024 → 2026
         assert sys_2024.params.basic_allowance < sys_2026.params.basic_allowance
 
-    def test_year_fallback(self):
-        """Year without data falls back to nearest available."""
-        sys = get_tax_system("Germany", date=datetime.date(2030, 1, 1))
-        # Should get the latest available year
-        assert sys.year == max(available_years("Germany"))
+    def test_years_after_the_data_have_no_rules(self):
+        """No other year's rules stand in for a year without its own."""
+        with pytest.raises(NoTaxRules, match="No tax rules for Germany in 2030."):
+            get_tax_system("Germany", date=datetime.date(2030, 1, 1))
 
 
 # ── German income tax ────────────────────────────────────────

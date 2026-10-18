@@ -12,7 +12,7 @@ from typing import List, NamedTuple, Optional
 
 from pandas import DataFrame
 
-from .fx import convert, fx_haircut
+from .fx import convert, default_currency, fx_haircut
 from .fx import rate as fx_rate
 from .model import Invoice, Project, RecurringExpense
 from .tax import NoTaxRules, get_tax_system
@@ -235,8 +235,8 @@ def compute_income_tax_reserve(
     system's). The tariff is written in the tax system's currency, so income
     in another one is converted for it, and the tax back.
 
-    Raises ``NoTaxRules`` when there are no tax rules for *country*: a tax of
-    zero would pass for an estimate, so there is none.
+    Raises ``NoTaxRules`` when there are no tax rules for *country* in that
+    year: a tax of zero would pass for an estimate, so there is none.
     """
     today = datetime.date.today()
     _zero = IncomeTaxReserve(
@@ -324,9 +324,9 @@ def compute_spendable_income(
     year, as computed by ``forecasting.contracted_revenue``; other years
     ignore it.
 
-    Without tax rules for *country* the figures up to the tax base stay, and
-    the income tax, the expenses charged on taxed income and Safe to Spend
-    are None, with ``tax_unavailable_reason`` saying why.
+    Without tax rules for *country* in the year, the figures up to the tax
+    base stay, and the income tax, the expenses charged on taxed income and
+    Safe to Spend are None, with ``tax_unavailable_reason`` saying why.
     """
     today = datetime.date.today()
     # Any year but the current one is over: it has no planned or contracted work.
@@ -335,14 +335,7 @@ def compute_spendable_income(
     year_end = datetime.date(year or today.year, 12, 31)
     cent = Decimal("0.01")
 
-    ref_date = datetime.date(year, 7, 1) if year is not None else today
-
-    if currency is None:
-        try:
-            tax_system = get_tax_system(country, date=ref_date)
-            currency = tax_system.currency
-        except NotImplementedError:
-            pass
+    currency = currency or default_currency(country)
 
     received_gross = Decimal(0)
     received_vat = Decimal(0)
@@ -625,12 +618,7 @@ def compute_effective_salary(
     this_month = today.replace(day=1)
     cent = Decimal("0.01")
 
-    if currency is None:
-        try:
-            tax_system = get_tax_system(country, date=today)
-            currency = tax_system.currency
-        except NotImplementedError:
-            currency = "EUR"
+    currency = currency or default_currency(country)
 
     # A draft is not invoiced yet, so it is neither revenue nor where the history starts.
     invoices = [inv for inv in invoices if inv.is_issued and not inv.cancelled]
