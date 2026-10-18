@@ -747,6 +747,9 @@ def cash_flow_series(
     - Inflows from contracted work (:func:`contracted_revenue`), shifted the same way.
     - Outflows from normalized fixed recurring expenses, rate-based contributions,
       and income tax reserves at the tax view's effective rate for the year.
+      Without tax rules there is no rate: ``tax_included`` is False, and the
+      income tax and the contributions charged on taxed income (named in
+      ``left_out_with_tax``) are left out, never reserved at zero.
     - Net flow and running cumulative balance across the forecast window.
 
     Empty buckets are included so the time axis stays continuous.
@@ -882,7 +885,9 @@ def cash_flow_series(
         time_data=time_data,
         contracted=contracted_this_year(projects, invoices, time_data, currency=currency, today=today),
     )
-    effective_tax_rate = spending.income_tax_reserve / spending.tax_base if spending.tax_base > 0 else Decimal(0)
+    no_tax = spending.tax_unavailable_reason
+    if no_tax is None:
+        effective_tax_rate = spending.income_tax_reserve / spending.tax_base if spending.tax_base > 0 else Decimal(0)
 
     # 5. Net flow, cumulative balance, and summary totals
     running_balance = 0.0
@@ -893,10 +898,14 @@ def cash_flow_series(
         row = buckets[period]
         month_tax_base, dyn_deductible = month_data[period]
 
-        monthly_tax = (month_tax_base * effective_tax_rate).quantize(Decimal("0.01"))
-        post_tax = max(Decimal(0), month_tax_base - monthly_tax - (monthly_fixed - monthly_fixed_deductible))
-        nondeductible_lines = _dynamic_lines(dynamic_expenses, post_tax, deductible=False)
-        dyn_nondeductible = _lines_total(nondeductible_lines)
+        if no_tax is None:
+            monthly_tax = (month_tax_base * effective_tax_rate).quantize(Decimal("0.01"))
+            post_tax = max(Decimal(0), month_tax_base - monthly_tax - (monthly_fixed - monthly_fixed_deductible))
+            dyn_nondeductible = _lines_total(_dynamic_lines(dynamic_expenses, post_tax, deductible=False))
+        else:
+            # Without tax rules neither the tax nor what is charged on taxed
+            # income is known: both are left out, and the result says so.
+            monthly_tax = dyn_nondeductible = Decimal(0)
 
         total_outflow = monthly_fixed + dyn_deductible + monthly_tax + dyn_nondeductible
         row["outflow"] = round(float(total_outflow), 2)
@@ -921,4 +930,8 @@ def cash_flow_series(
         "total_inflow": total_inflow,
         "total_outflow": total_outflow,
         "net_cash_flow": net_cash_flow,
+        "tax_included": no_tax is None,
+        "tax_unavailable_reason": no_tax,
+        # Charged on taxed income, so left out with the tax.
+        "left_out_with_tax": [] if no_tax is None else [e.title for e in dynamic_expenses if not e.tax_deductible],
     }

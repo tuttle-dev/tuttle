@@ -906,7 +906,7 @@ class TestComputeKPIs:
     def test_tax_reserves_populated(self, paid_invoice, active_contract, project):
         # Without an agreed volume nothing is contracted, so the paid invoice is all the income.
         active_contract.volume = None
-        kpis = compute_kpis([paid_invoice], [active_contract], [project])
+        kpis = compute_kpis([paid_invoice], [active_contract], [project], country="Germany")
         assert kpis.vat_reserve >= 0
         assert kpis.income_tax_reserve >= 0
         assert kpis.spendable_income <= kpis.total_revenue_ytd
@@ -914,13 +914,13 @@ class TestComputeKPIs:
 
     def test_spendable_less_than_gross(self, paid_invoice, active_contract, project):
         active_contract.volume = None
-        kpis = compute_kpis([paid_invoice], [active_contract], [project])
+        kpis = compute_kpis([paid_invoice], [active_contract], [project], country="Germany")
         if kpis.total_revenue_ytd > 0:
             # Revenue is net of VAT; what clients paid also includes the VAT.
             assert kpis.spendable_income < kpis.total_revenue_ytd + kpis.vat_reserve
 
     def test_empty_data_tax_reserves(self):
-        kpis = compute_kpis([], [], [])
+        kpis = compute_kpis([], [], [], country="Germany")
         assert kpis.vat_reserve == 0
         assert kpis.income_tax_reserve == 0
         assert kpis.spendable_income == 0

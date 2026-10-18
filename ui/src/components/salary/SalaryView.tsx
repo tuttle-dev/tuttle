@@ -5,7 +5,7 @@ import { EmptyStateIntro } from "../shared/EmptyStateIntro";
 import { LoadError, LoadingState } from "../shared/LoadStates";
 import { PageLayout } from "../shared/ToolbarButtons";
 import type { Entity } from "../../api/types";
-import { num, str, type DynamicLine } from "../../api/entity";
+import { num, maybeNum, str, type DynamicLine } from "../../api/entity";
 
 function fmtMonth(iso: string): string {
   const [year, month] = iso.split("-").map(Number);
@@ -19,17 +19,19 @@ function fmt(value: number, currency = "EUR"): string {
 }
 
 type SalaryData = {
-  conservative: number;
-  optimistic: number;
+  // Null without tax rules: the core then gives no salary, and noTax says why.
+  conservative: number | null;
+  optimistic: number | null;
   grossMonthly: number;
   monthlyExpenses: number;
   dynamicLines: DynamicLine[];
-  incomeTaxReserve: number;
+  incomeTaxReserve: number | null;
   vatReserve: number;
   conversionFee: number;
   periodStart: string;
   periodEnd: string;
   currency: string;
+  noTax: string;
 };
 
 export function SalaryView() {
@@ -37,8 +39,6 @@ export function SalaryView() {
   const [target, setTarget] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
-  const [countrySupported, setCountrySupported] = useState(true);
-  const [taxCountry, setTaxCountry] = useState("");
 
   useEffect(() => { load(); }, []);
 
@@ -51,23 +51,22 @@ export function SalaryView() {
       const d = res.data as Entity;
       const sal = d.salary as Entity | undefined;
       const cur = (d.currency as string) || "EUR";
-      setCountrySupported(d.country_supported !== false);
-      setTaxCountry((d.country as string) || "");
       if (sal) {
-        const con = num(sal, "conservative_monthly");
-        const opt = num(sal, "optimistic_monthly");
+        const con = maybeNum(sal, "conservative_monthly");
+        const opt = maybeNum(sal, "optimistic_monthly");
         setSalary({
           conservative: con,
           optimistic: opt,
           grossMonthly: num(sal, "gross_monthly"),
           monthlyExpenses: num(sal, "monthly_expenses"),
           dynamicLines: (sal.dynamic_expenses as DynamicLine[]) || [],
-          incomeTaxReserve: num(sal, "income_tax_reserve_monthly"),
+          incomeTaxReserve: maybeNum(sal, "income_tax_reserve_monthly"),
           vatReserve: num(sal, "vat_reserve_monthly"),
           conversionFee: num(sal, "conversion_fee_monthly"),
           periodStart: str(sal, "period_start"),
           periodEnd: str(sal, "period_end"),
           currency: cur,
+          noTax: str(sal, "tax_unavailable_reason"),
         });
         if (target === null) setTarget(con);
       }
@@ -87,16 +86,35 @@ export function SalaryView() {
 
   return (
     <PageLayout title="Salary" className="grid gap-6 items-start @4xl:grid-cols-2">
-      <SalaryDial salary={salary} target={target!} onTargetChange={setTarget} />
-      <MonthlyBreakdown salary={salary} countrySupported={countrySupported} taxCountry={taxCountry} />
+      {salary.conservative === null || salary.optimistic === null ? (
+        <NoSalary reason={salary.noTax} />
+      ) : (
+        <SalaryDial conservative={salary.conservative} optimistic={salary.optimistic} currency={salary.currency}
+          target={target ?? salary.conservative} onTargetChange={setTarget} />
+      )}
+      <MonthlyBreakdown salary={salary} />
     </PageLayout>
   );
 }
 
-function SalaryDial({ salary, target, onTargetChange }: {
-  salary: SalaryData; target: number; onTargetChange: (v: number) => void;
+function NoSalary({ reason }: { reason: string }) {
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-2">
+        <Wallet size={16} className="text-secondary" />
+        <h2 className="text-sm font-semibold">Monthly Salary</h2>
+      </div>
+      <div className="bg-surface-overlay rounded-lg px-6 py-8 text-center">
+        <div className="text-4xl font-bold mb-1 text-muted">—</div>
+        <div className="text-sm text-muted">{reason}</div>
+      </div>
+    </div>
+  );
+}
+
+function SalaryDial({ conservative, optimistic, currency, target, onTargetChange }: {
+  conservative: number; optimistic: number; currency: string; target: number; onTargetChange: (v: number) => void;
 }) {
-  const { conservative, optimistic, currency } = salary;
   const sliderMin = Math.min(conservative, 0);
   const sliderMax = Math.max(optimistic * 1.1, 1);
 
@@ -160,17 +178,18 @@ function SalaryDial({ salary, target, onTargetChange }: {
   );
 }
 
-function MonthlyBreakdown({ salary, countrySupported, taxCountry }: { salary: SalaryData; countrySupported: boolean; taxCountry: string }) {
+function MonthlyBreakdown({ salary }: { salary: SalaryData }) {
   const { optimistic, grossMonthly: gross, vatReserve, incomeTaxReserve, monthlyExpenses, dynamicLines, conversionFee, periodStart, periodEnd, currency } = salary;
   if (gross <= 0) return null;
   const from = periodStart ? fmtMonth(periodStart) : "";
   const to = periodEnd ? fmtMonth(periodEnd) : "";
   const period = from === to ? from : `${from} – ${to}`;
 
-  const items: { label: string; amount: number; color: string; bold?: boolean; muted?: boolean }[] = [
+  // A null amount is a figure the core could not estimate: "—", no bar.
+  const items: { label: string; amount: number | null; color: string; bold?: boolean }[] = [
     { label: "Gross Revenue / month", amount: gross, color: "var(--color-status-info)" },
     { label: "VAT (to remit)", amount: vatReserve, color: "var(--color-status-warning)" },
-    { label: "Est. Income Tax", amount: incomeTaxReserve, color: "var(--color-status-warning)", muted: !countrySupported },
+    { label: "Est. Income Tax", amount: incomeTaxReserve, color: "var(--color-status-warning)" },
     ...(monthlyExpenses > 0
       ? [{ label: "Fixed Recurring Expenses", amount: monthlyExpenses, color: "var(--color-status-warning)" }]
       : []),
@@ -182,7 +201,7 @@ function MonthlyBreakdown({ salary, countrySupported, taxCountry }: { salary: Sa
     ...(conversionFee > 0
       ? [{ label: "Currency Conversion", amount: conversionFee, color: "var(--color-status-warning)" }]
       : []),
-    { label: "= Available Salary", amount: optimistic, color: optimistic >= 0 ? "var(--color-status-success)" : "var(--color-status-danger)", bold: true },
+    { label: "= Available Salary", amount: optimistic, color: optimistic === null ? "var(--color-muted)" : optimistic >= 0 ? "var(--color-status-success)" : "var(--color-status-danger)", bold: true },
   ];
 
   return (
@@ -194,14 +213,14 @@ function MonthlyBreakdown({ salary, countrySupported, taxCountry }: { salary: Sa
       </div>
       <div className="bg-surface-overlay rounded-lg p-4 space-y-1">
         {items.map((item, i) => {
-          const pct = Math.max(Math.abs(item.amount) / gross, 0.02);
-          const sign = item.amount < 0 ? "−" : "";
+          const pct = item.amount === null ? 0 : Math.max(Math.abs(item.amount) / gross, 0.02);
+          const shown = item.amount === null ? "—" : `${item.amount < 0 ? "−" : ""}${fmt(Math.abs(item.amount), currency)}`;
           return (
             <div key={i} className="py-1">
               <div className="flex justify-between mb-0.5">
                 <span className={`text-sm ${item.bold ? "font-semibold" : ""}`}>{item.label}</span>
                 <span className={`text-sm ${item.bold ? "font-semibold" : ""}`} style={{ color: item.color }}>
-                  {sign}{fmt(Math.abs(item.amount), currency)}
+                  {shown}
                 </span>
               </div>
               <div className={`w-full rounded-sm bg-border-subtle overflow-hidden ${item.bold ? "h-2" : "h-1.5"}`}>
