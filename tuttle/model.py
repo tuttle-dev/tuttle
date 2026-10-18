@@ -30,6 +30,7 @@ from typing import List, Literal, NamedTuple, Optional, Type
 import pandas
 import sqlalchemy
 from pydantic import BaseModel, condecimal, validator
+from sqlalchemy.orm.attributes import set_committed_value
 from sqlmodel import Field, Relationship, SQLModel
 
 from .app.core.formatting import fmt_currency, fmt_quantity
@@ -1348,6 +1349,14 @@ class Invoice(RpcMixin, SQLModel, table=True):
     def __repr__(self):
         return f"Invoice(id={self.id}, number={self.number}, date={self.date}, type={self.document_type})"
 
+    def to_rpc_dict(self, _depth: int = 2) -> dict:
+        # Each line formats its amounts in this invoice's currency. Lines loaded
+        # through this invoice leave their reference back to it unloaded, and a
+        # line can't load it once the session is closed, so set it here.
+        for item in self.items:
+            set_committed_value(item, "invoice", self)
+        return super().to_rpc_dict(_depth)
+
     # -- Computed properties -----------------------------------------------
 
     @property
@@ -1657,12 +1666,17 @@ class InvoiceItem(RpcMixin, VatCategoryMixin, SQLModel, table=True):
         return round_money(Decimal(str(self.quantity)) * Decimal(str(self.unit_price)))
 
     @property
+    def currency(self) -> str:
+        """The currency of the invoice this line is on; EUR for a line on none."""
+        return self.invoice.currency if self.invoice is not None else "EUR"
+
+    @property
     def subtotal_formatted(self) -> str:
-        return fmt_currency(self.subtotal)
+        return fmt_currency(self.subtotal, self.currency)
 
     @property
     def unit_price_formatted(self) -> str:
-        return fmt_currency(self.unit_price)
+        return fmt_currency(self.unit_price, self.currency)
 
     @property
     def quantity_formatted(self) -> str:

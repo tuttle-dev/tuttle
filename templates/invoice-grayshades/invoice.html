@@ -71,8 +71,8 @@
         <th class="col-qty">{{ _("Qty") }}</th>
         <th class="col-unit">{{ _("Unit") }}</th>
         <th class="col-desc">{{ _("Description") }}</th>
-        <th class="col-price">{{ _("Unit Price") }} (€)</th>
-        <th class="col-subtotal">{{ _("Subtotal") }} (€)</th>
+        <th class="col-price">{{ _("Unit Price") }}</th>
+        <th class="col-subtotal">{{ _("Subtotal") }}</th>
       </tr>
     </thead>
     <tbody>
@@ -108,7 +108,7 @@
     {% endif %}
     {% if is_final %}{{ doc.settlement_lines_table(invoice, deposit_deductions) }}{% endif %}
     <tr class="total-due-row">
-      <td class="totals-label"><strong>{{ doc.amount_due_label(is_deposit, is_final) }} (€)</strong></td>
+      <td class="totals-label"><strong>{{ doc.amount_due_label(is_deposit, is_final) }}</strong></td>
       <td class="totals-value"><strong>{{ remaining_balance | as_currency }}</strong></td>
     </tr>
   </table>
