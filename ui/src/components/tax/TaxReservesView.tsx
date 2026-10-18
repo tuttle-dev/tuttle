@@ -197,7 +197,7 @@ export function TaxReservesView() {
       </Section>
 
       {/* Income Tax Estimate */}
-      {taxEstimate && <IncomeTaxSection data={taxEstimate} currency={currency} />}
+      {taxEstimate && <IncomeTaxSection data={taxEstimate} currency={currency} year={selectedYear} />}
     </PageLayout>
   );
 }
@@ -221,11 +221,12 @@ function YearSelector({ years, selected, onChange }: {
   );
 }
 
-function IncomeTaxSection({ data, currency }: { data: Entity; currency: string }) {
+function IncomeTaxSection({ data, currency, year }: { data: Entity; currency: string; year: number }) {
   const tr = data.tax_reserve as Entity | undefined;
   const brackets = (data.brackets as Entity[]) || [];
   const country = str(data, "country");
   const supported = data.country_supported !== false;
+  const rulesYear = num(data, "rules_year");
 
   const received = num(data, "received_net");
   const outstanding = num(data, "outstanding_net");
@@ -255,6 +256,9 @@ function IncomeTaxSection({ data, currency }: { data: Entity; currency: string }
             <SummaryRow label="Estimated Income Tax" value={fmt(num(tr, "total_annual_reserve"), currency)} color="var(--color-status-warning)" bold />
             <SummaryRow label="Effective Tax Rate" value={fmtPct(num(tr, "effective_rate"))} />
           </div>
+        )}
+        {rulesYear > 0 && rulesYear !== year && (
+          <p className="text-xs text-muted italic">Estimated with the {rulesYear} tax rules.</p>
         )}
         {brackets.length > 0 && (
           <div className="mt-4">

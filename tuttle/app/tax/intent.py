@@ -82,7 +82,11 @@ class TaxIntent(SQLModelDataSourceMixin, Intent):
             )
 
     def get_income_tax_estimate(self, year: int | None = None) -> IntentResult:
-        """Get detailed income tax estimate with bracket info."""
+        """Get detailed income tax estimate with bracket info.
+
+        ``rules_year`` is the year whose tax rules the estimate uses: a year
+        without its own tax data is estimated with the nearest year's rules.
+        """
         try:
             today = datetime.date.today()
 
@@ -113,9 +117,11 @@ class TaxIntent(SQLModelDataSourceMixin, Intent):
                 tax_system = get_tax_system(country, date=ref_date)
                 bracket_data = self._compute_bracket_data(tax_system, total_income)
                 country_supported = True
+                rules_year = tax_system.year
             except NotImplementedError:
                 bracket_data = []
                 country_supported = False
+                rules_year = None
 
             data = {
                 "tax_reserve": tax_reserve,
@@ -128,6 +134,7 @@ class TaxIntent(SQLModelDataSourceMixin, Intent):
                 "brackets": bracket_data,
                 "country": country,
                 "country_supported": country_supported,
+                "rules_year": rules_year,
                 "currency": currency,
             }
             return IntentResult(was_intent_successful=True, data=data)
