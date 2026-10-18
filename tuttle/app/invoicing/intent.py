@@ -258,22 +258,18 @@ class InvoicingIntent(Intent):
                 was_intent_successful=False,
                 error_msg="Final invoices require a fixed-price contract.",
             )
+        final = project.final_invoice
+        if final is not None:
+            return IntentResult(
+                was_intent_successful=False,
+                error_msg=f"Final invoice {final.number} already settles this project. Cancel it to issue a new final invoice.",
+            )
 
+        # The deposits of a cancelled final invoice are open to be settled again.
         deposits_result = self._invoicing_data_source.get_deposit_invoices(contract.id, project.id)
         if not deposits_result.was_intent_successful:
             return deposits_result
         deposit_invoices = deposits_result.data or []
-
-        # A cancelled settlement is void, so its deposits are open to be settled again.
-        invoices = self.get_invoices_for_project_as_map(project.id) or {}
-        already_settled = [
-            d for d in deposit_invoices if d.deposit_for_id in invoices and not invoices[d.deposit_for_id].cancelled
-        ]
-        if already_settled:
-            return IntentResult(
-                was_intent_successful=False,
-                error_msg="A final invoice already settles the deposits of this project.",
-            )
 
         try:
             invoice = invoicing.generate_final_invoice(
@@ -419,17 +415,6 @@ class InvoicingIntent(Intent):
 
     def get_active_projects_as_map(self) -> Mapping[int, Project]:
         return self._projects_intent.get_active_as_map()
-
-    def get_invoices_for_project_as_map(self, project_id) -> IntentResult:
-        result = self._invoicing_data_source.get_invoices_for_project(project_id)
-        if result.was_intent_successful and result.data:
-            invoices_list = result.data
-            invoices_map = {invoice.id: invoice for invoice in invoices_list}
-            return invoices_map
-        else:
-            if not result.was_intent_successful:
-                result.log_message_if_any()
-            return {}
 
     def get_all_invoices_as_map(self) -> Mapping[int, Invoice]:
         result = self._invoicing_data_source.get_all_invoices()

@@ -914,7 +914,7 @@ class Project(RpcMixin, SQLModel, table=True):
     """A project is a group of contract work for a client."""
 
     __rpc_relationships__ = ("contract",)
-    __rpc_computed__ = ("is_fixed_price",)
+    __rpc_computed__ = ("is_fixed_price", "is_settled")
 
     id: Optional[int] = Field(default=None, primary_key=True)
     title: str = Field(
@@ -960,6 +960,19 @@ class Project(RpcMixin, SQLModel, table=True):
     @property
     def is_fixed_price(self) -> bool:
         return self.contract is not None and self.contract.is_fixed_price
+
+    @property
+    def final_invoice(self) -> Optional["Invoice"]:
+        """The final invoice that settles this project, if any.
+
+        A cancelled final invoice settles nothing, so it does not count.
+        """
+        return next((inv for inv in self.invoices if inv.is_final_invoice and not inv.cancelled), None)
+
+    @property
+    def is_settled(self) -> bool:
+        """Whether a final invoice settles the project. Only one may, or the contract is billed twice."""
+        return self.final_invoice is not None
 
     @property
     def client(self) -> Optional[Client]:
@@ -1147,7 +1160,9 @@ class Invoice(RpcMixin, SQLModel, table=True):
 
     __rpc_relationships__ = {
         "contract": None,
-        "project": None,
+        # Only what the invoice list shows: a full dump would compute whether the
+        # project is settled from its invoices, which are not loaded with an invoice.
+        "project": ("id", "title"),
         "items": None,
         "milestone": ("id", "title"),
         "deposits": None,
