@@ -588,11 +588,7 @@ function ContractForm({ contract, isDuplicate = false, clients, defaultCurrency,
       billingCycle: str(contract, "billing_cycle") || "monthly",
       volume: num(contract, "volume") || null,
       expectedPerWeek: contract.expected_units_per_week == null ? null : num(contract, "expected_units_per_week"),
-      vatRate: (() => {
-        const v = num(contract, "VAT_rate");
-        if (!v) return 0;
-        return v > 1 ? v / 100 : v;
-      })(),
+      vatRate: num(contract, "VAT_rate"),
       vatCategory: taxCategory(str(contract, "VAT_category")),
       // A copy is a new agreement: it gets its own dates and signature.
       signatureDate: isDuplicate ? "" : str(contract, "signature_date"),

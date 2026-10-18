@@ -53,6 +53,15 @@ def _pdf_failure(document: str, ex: Exception) -> str:
     return f"{document} PDF could not be generated. Details are in the application log."
 
 
+def _vat_rate_refusal(contract) -> Optional[IntentResult]:
+    """The error to show when ``contract``'s stored VAT rate cannot be billed, else None."""
+    try:
+        contract.billable_vat_rate()
+    except ValueError as ex:
+        return IntentResult(was_intent_successful=False, error_msg=str(ex))
+    return None
+
+
 def _document_language(client: Optional[Client]) -> str:
     """Language of documents for ``client``: its own, else the app-wide default."""
     if client is not None and client.language:
@@ -194,6 +203,9 @@ class InvoicingIntent(Intent):
                 was_intent_successful=False,
                 error_msg="Deposit invoices require a fixed-price contract.",
             )
+        refusal = _vat_rate_refusal(contract)
+        if refusal is not None:
+            return refusal
 
         milestone = next((m for m in contract.payment_milestones if m.id == int(milestone_id)), None)
         if milestone is None:
@@ -263,6 +275,9 @@ class InvoicingIntent(Intent):
         if not deposits_result.was_intent_successful:
             return deposits_result
         deposit_invoices = deposits_result.data or []
+        refusal = _vat_rate_refusal(contract)
+        if refusal is not None:
+            return refusal
 
         # A cancelled settlement is void, so its deposits are open to be settled again.
         invoices = self.get_invoices_for_project_as_map(project.id) or {}
@@ -522,6 +537,9 @@ class InvoicingIntent(Intent):
                 was_intent_successful=False,
                 error_msg=f"Project “{project.title}” has no contract. Create a contract and assign it to the project before invoicing.",
             )
+        refusal = _vat_rate_refusal(contract)
+        if refusal is not None:
+            return refusal
         language = language or _document_language(contract.client)
         user = self._user_data_source.get_user()
         try:
