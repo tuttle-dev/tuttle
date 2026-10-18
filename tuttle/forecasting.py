@@ -576,6 +576,16 @@ def _bucket_label(start: datetime.date, granularity: str) -> str:
     return calendar.month_abbr[start.month]
 
 
+def _bucket_year(start: datetime.date, granularity: str) -> int:
+    """The year a bucket belongs to: for a week, the ISO year its number counts in.
+
+    The week of 29 December 2025 is W01 of 2026, not of 2025.
+    """
+    if granularity == "week":
+        return start.isocalendar()[0]
+    return start.year
+
+
 def revenue_series(
     invoices: List[Invoice],
     projects: List[Project],
@@ -625,7 +635,7 @@ def revenue_series(
             "bucket": p.start_time.date().isoformat(),
             "bucket_end": p.end_time.date().isoformat(),
             "label": _bucket_label(p.start_time.date(), granularity),
-            "year": p.start_time.year,
+            "year": _bucket_year(p.start_time.date(), granularity),
             "received": 0.0,
             "invoiced": 0.0,
             "planned": 0.0,
