@@ -53,8 +53,8 @@ class DynamicExpenseLine(NamedTuple):
 class SpendableIncome(NamedTuple):
     """What the freelancer can actually spend."""
 
-    gross_revenue_ytd: Decimal  # total invoiced amount (incl. VAT)
-    business_expenses: Decimal  # tax-deductible fixed recurring expenses prorated to period
+    gross_revenue_ytd: Decimal  # total invoiced amount of the year (incl. VAT)
+    business_expenses: Decimal  # tax-deductible fixed recurring expenses for the year
     net_revenue_ytd: Decimal  # gross minus VAT
     taxable_profit: Decimal  # net_revenue - business_expenses
     vat_reserve: Decimal  # VAT to set aside
@@ -73,7 +73,7 @@ class SpendableIncome(NamedTuple):
     dynamic_expenses_post_tax: Decimal = Decimal(0)  # charged on post-tax money
     tax_base: Decimal = Decimal(0)  # taxable_profit - dynamic_expenses_deductible
     dynamic_expenses: list = []  # per-expense DynamicExpenseLine, never mutated
-    fixed_expenses_post_tax: Decimal = Decimal(0)  # non-deductible fixed expenses prorated to period
+    fixed_expenses_post_tax: Decimal = Decimal(0)  # non-deductible fixed expenses for the year
 
 
 def _invoice_currency(inv: Invoice) -> Optional[str]:
@@ -298,9 +298,11 @@ def compute_spendable_income(
 
     This answers the freelancer's core question: "How much of this money is mine?"
 
-    Income basis = received (paid) + outstanding (sent, unpaid) + planned
-    (calendar) + contracted (committed contract work for the rest of the year).
-    Drafts are not invoiced yet: their tracked time counts as planned.
+    Income basis = the year's received (paid) + outstanding (sent, unpaid)
+    invoices + planned (calendar) + contracted (committed contract work until
+    December). Drafts are not invoiced yet: their tracked time counts as
+    planned. The income spans the whole year, so the recurring expenses are
+    counted for all twelve months too.
     Fixed expenses marked tax deductible (operating costs, insurance, etc.) are
     deducted before estimating income tax, yielding the taxable profit; the
     others are paid out of taxed income.
@@ -322,15 +324,11 @@ def compute_spendable_income(
     ignore it.
     """
     today = datetime.date.today()
-    # Any year but the current one is a whole year, without planned revenue.
+    # Any year but the current one is over: it has no planned or contracted work.
     other_year = year is not None and year != today.year
-
-    if other_year:
-        year_start = datetime.date(year, 1, 1)
-        year_end = datetime.date(year, 12, 31)
-    else:
-        year_start = today.replace(month=1, day=1)
-        year_end = today
+    year_start = datetime.date(year or today.year, 1, 1)
+    year_end = datetime.date(year or today.year, 12, 31)
+    cent = Decimal("0.01")
 
     ref_date = datetime.date(year, 7, 1) if year is not None else today
 
@@ -373,68 +371,60 @@ def compute_spendable_income(
     if other_year:
         contracted = Decimal(0)
 
-    gross_ytd = received_gross + outstanding_gross
-    vat_ytd = received_vat + outstanding_vat
-    net_ytd = received_net + outstanding_net
+    gross_invoiced = received_gross + outstanding_gross
+    vat_invoiced = received_vat + outstanding_vat
+    net_invoiced = received_net + outstanding_net
 
-    if other_year:
-        months_elapsed = 12
-    else:
-        months_elapsed = max(
-            (today.year - year_start.year) * 12 + today.month - year_start.month + 1,
-            1,
-        )
-
-    # Prorate the fixed-amount recurring expenses to the period
+    # The income spans the whole year, so do the expenses: twelve months of
+    # each recurring one, whichever month this is.
     fixed_expenses = [e for e in (expenses or []) if e.rate is None]
     dynamic_expenses = [e for e in (expenses or []) if e.rate is not None]
     deductible_monthly = _monthly_expenses_total([e for e in fixed_expenses if e.tax_deductible], currency)
     post_tax_monthly = _monthly_expenses_total([e for e in fixed_expenses if not e.tax_deductible], currency)
-    biz_expenses_ytd = (deductible_monthly * months_elapsed).quantize(Decimal("0.01"))
-    fixed_post_tax_ytd = (post_tax_monthly * months_elapsed).quantize(Decimal("0.01"))
+    biz_expenses = (deductible_monthly * 12).quantize(cent)
+    fixed_post_tax = (post_tax_monthly * 12).quantize(cent)
 
-    taxable_profit = net_ytd + planned + contracted - biz_expenses_ytd
+    taxable_profit = net_invoiced + planned + contracted - biz_expenses
 
-    # Dynamic expenses are charged on income actually earned so far, so planned
-    # and contracted revenue stay out of their base even though they are taxed.
-    dynamic_base_monthly = (net_ytd - biz_expenses_ytd) / months_elapsed
+    # Dynamic expenses are charged on income actually earned, so planned and
+    # contracted revenue stay out of their base even though they are taxed:
+    # every month is charged on the average month invoiced so far.
+    months_invoiced = 12 if other_year else today.month
+    earned_monthly = net_invoiced / months_invoiced - deductible_monthly
 
-    deductible_lines = _dynamic_lines(dynamic_expenses, dynamic_base_monthly, deductible=True)
-    dyn_deductible = (_lines_total(deductible_lines) * months_elapsed).quantize(Decimal("0.01"))
+    deductible_lines = _dynamic_lines(dynamic_expenses, earned_monthly, deductible=True)
+    dyn_deductible = (_lines_total(deductible_lines) * 12).quantize(cent)
 
     # Deductible provisions (health insurance, Rürup) shrink the income the tax
     # is assessed on; the rest is paid out of money that was already taxed.
     tax_base = taxable_profit - dyn_deductible
     tax_reserve = compute_income_tax_reserve(tax_base, country, deductions, year=year, currency=currency)
 
-    post_tax = tax_base - tax_reserve.ytd_reserve - fixed_post_tax_ytd
+    post_tax = tax_base - tax_reserve.ytd_reserve - fixed_post_tax
 
     # Post-tax dynamic expenses are charged on earned income too: planned
-    # revenue, and its share of the tax, stay out of their base.
-    earned_base = net_ytd - biz_expenses_ytd - dyn_deductible
+    # revenue, and its share of the tax, stay out of their base. The earned
+    # month bears its part of the year's tax.
+    earned_base = earned_monthly - _lines_total(deductible_lines)
     earned_tax = tax_reserve.ytd_reserve * max(earned_base, Decimal(0)) / tax_base if tax_base > 0 else Decimal(0)
-    earned_post_tax = earned_base - earned_tax - fixed_post_tax_ytd
-    post_tax_lines = _dynamic_lines(dynamic_expenses, earned_post_tax / months_elapsed, deductible=False)
-    dyn_post_tax = (_lines_total(post_tax_lines) * months_elapsed).quantize(Decimal("0.01"))
+    post_tax_lines = _dynamic_lines(dynamic_expenses, earned_base - earned_tax - post_tax_monthly, deductible=False)
+    dyn_post_tax = (_lines_total(post_tax_lines) * 12).quantize(cent)
 
-    # The per-expense lines are monthly; the aggregates above cover the period.
-    dynamic_lines = [
-        line._replace(amount=(line.amount * months_elapsed).quantize(Decimal("0.01")))
-        for line in deductible_lines + post_tax_lines
-    ]
+    # The per-expense lines are monthly; the aggregates above cover the year.
+    dynamic_lines = [line._replace(amount=(line.amount * 12).quantize(cent)) for line in deductible_lines + post_tax_lines]
 
     # The bank/Wise spread never reduces taxable revenue — only what lands in
     # the account, so it is subtracted after the tax reserve, not before.
-    conversion_fee = (foreign_net * fx_haircut() / 100).quantize(Decimal("0.01"))
+    conversion_fee = (foreign_net * fx_haircut() / 100).quantize(cent)
 
     spendable = post_tax - dyn_post_tax - conversion_fee
 
     return SpendableIncome(
-        gross_revenue_ytd=gross_ytd,
-        business_expenses=biz_expenses_ytd,
-        net_revenue_ytd=net_ytd,
+        gross_revenue_ytd=gross_invoiced,
+        business_expenses=biz_expenses,
+        net_revenue_ytd=net_invoiced,
         taxable_profit=taxable_profit,
-        vat_reserve=vat_ytd,
+        vat_reserve=vat_invoiced,
         income_tax_reserve=tax_reserve.ytd_reserve,
         spendable=spendable,
         received_gross=received_gross,
@@ -448,7 +438,7 @@ def compute_spendable_income(
         dynamic_expenses_post_tax=dyn_post_tax,
         tax_base=tax_base,
         dynamic_expenses=dynamic_lines,
-        fixed_expenses_post_tax=fixed_post_tax_ytd,
+        fixed_expenses_post_tax=fixed_post_tax,
     )
 
 

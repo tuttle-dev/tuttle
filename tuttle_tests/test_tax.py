@@ -578,11 +578,11 @@ class TestSpendableIncome:
         assert result.business_expenses == 0
         assert result.taxable_profit == plain.taxable_profit
         assert result.income_tax_reserve == plain.income_tax_reserve
-        assert result.fixed_expenses_post_tax == Decimal(500) * today.month
+        assert result.fixed_expenses_post_tax == Decimal(500) * 12
         assert result.spendable == plain.spendable - result.fixed_expenses_post_tax
 
     def test_spendable_with_yearly_expense(self):
-        """Yearly expenses are normalized to monthly before YTD proration."""
+        """Yearly expenses are normalized to monthly before they are counted for the year."""
         today = datetime.date.today()
         invoices = [
             _make_invoice(today.replace(day=1), [(100, 100, 0.19)]),

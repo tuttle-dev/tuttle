@@ -142,7 +142,7 @@ def test_foreign_currency_expense_is_converted():
     spending = compute_spendable_income(invoices, "Germany", expenses=[expense], currency="EUR")
 
     assert salary.monthly_expenses == Decimal("90.00")
-    assert spending.business_expenses == Decimal("90.00") * datetime.date.today().month
+    assert spending.business_expenses == Decimal("90.00") * 12
 
 
 class TestCurrencyValidation:
