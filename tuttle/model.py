@@ -1366,8 +1366,12 @@ class Invoice(RpcMixin, SQLModel, table=True):
 
     @property
     def due_date(self) -> Optional[datetime.date]:
-        """Original due date derived from contract payment terms."""
-        if self.contract and self.contract.term_of_payment:
+        """Original due date derived from contract payment terms.
+
+        A term of 0 days makes the invoice due on its date; a contract without
+        a term gives no due date.
+        """
+        if self.contract and self.contract.term_of_payment is not None:
             return self.date + datetime.timedelta(days=self.contract.term_of_payment)
         return None
 
