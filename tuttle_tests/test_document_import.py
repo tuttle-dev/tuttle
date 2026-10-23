@@ -278,6 +278,25 @@ class TestInvoiceImport:
 
     def test_validation_skips_existing_entities(self, in_memory_db):
         """Entities with existing_id skip validation (they're link-only)."""
+        with Session(in_memory_db) as session:
+            contract = Contract(
+                title="Existing Contract",
+                rate=Decimal("80"),
+                currency="EUR",
+                VAT_rate=Decimal("0.19"),
+                start_date=datetime.date(2023, 1, 1),
+            )
+            project = Project(
+                title="Existing Project",
+                description="Project for testing",
+                tag="#ExistingProj",
+                contract=contract,
+                start_date=datetime.date(2023, 1, 1),
+            )
+            session.add(project)
+            session.commit()
+            project_id = project.id
+
         intent = ImportsIntent()
         data = {
             "contacts": [],
@@ -286,7 +305,7 @@ class TestInvoiceImport:
             "projects": [
                 {
                     "ref": "project_1",
-                    "existing_id": 999,
+                    "existing_id": project_id,
                     "title": "Incomplete",
                 }
             ],

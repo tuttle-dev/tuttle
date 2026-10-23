@@ -103,6 +103,14 @@ type ImportProgressEvent =
 
 type Phase = "upload" | "review" | "committed";
 
+/** Field rules per entity type, from `imports.get_field_metadata`. */
+interface FieldMeta {
+  required: string[];
+  enums: Record<string, string[]>;
+  /** Contracts only: what each contract type needs on top of `required`. */
+  required_by_type?: Record<string, string[]>;
+}
+
 // ---------------------------------------------------------------------------
 // Main View
 // ---------------------------------------------------------------------------
@@ -122,7 +130,7 @@ export function DocumentImportView() {
   const [invoices, setInvoices] = useState<ImportEntity<ParsedInvoice>[]>([]);
 
   const [existing, setExisting] = useState<ExistingEntities | null>(null);
-  const [fieldMeta, setFieldMeta] = useState<Record<string, { required: string[]; enums: Record<string, string[]> }>>({});
+  const [fieldMeta, setFieldMeta] = useState<Record<string, FieldMeta>>({});
   // Standard VAT rate of the operating country, for invoice lines added here; null when unknown.
   const [defaultVatRate, setDefaultVatRate] = useState<number | null>(null);
   const [commitResult, setCommitResult] = useState<Record<string, string[]> | null>(null);
@@ -136,7 +144,7 @@ export function DocumentImportView() {
     rpc<ExistingEntities>("imports.get_existing_entities").then((res) => {
       if (res.ok && res.data) setExisting(res.data);
     });
-    rpc<Record<string, { required: string[]; enums: Record<string, string[]> }>>("imports.get_field_metadata").then((res) => {
+    rpc<Record<string, FieldMeta>>("imports.get_field_metadata").then((res) => {
       if (res.ok && res.data) setFieldMeta(res.data);
     });
     rpc<number | null>("contracts.get_default_vat_rate").then((res) => {
@@ -339,6 +347,7 @@ export function DocumentImportView() {
                   existing={existing?.contracts || []}
                   clients={clients}
                   requiredFields={fieldMeta.contracts?.required || []}
+                  requiredByType={fieldMeta.contracts?.required_by_type || {}}
                   enumFields={fieldMeta.contracts?.enums || {}}
                 />
               )}
@@ -899,7 +908,7 @@ function InvoiceCard({ item, onUpdate, importedContracts, importedProjects, exis
                   VAT %{ireq("VAT_rate") && <span className="text-status-danger ml-0.5">*</span>}
                 </label>
                 <input type="number" step="any"
-                  value={li.VAT_rate != null ? String(Math.round((li.VAT_rate > 1 ? li.VAT_rate : li.VAT_rate * 100) * 100) / 100) : ""}
+                  value={li.VAT_rate != null ? String(Math.round(li.VAT_rate * 10000) / 100) : ""}
                   onChange={(e) => {
                     const pct = e.target.value ? parseFloat(e.target.value) : null;
                     updateItem(idx, "VAT_rate", pct == null ? null : pct / 100);
@@ -1150,12 +1159,13 @@ function ClientCard({ item, onUpdate, existing, contacts, existingContacts, requ
   );
 }
 
-function ContractCard({ item, onUpdate, existing, clients, requiredFields, enumFields }: {
+function ContractCard({ item, onUpdate, existing, clients, requiredFields, requiredByType, enumFields }: {
   item: ImportEntity<ParsedContract>;
   onUpdate: (u: ImportEntity<ParsedContract>) => void;
   existing: ExistingEntity[];
   clients: ImportEntity<ParsedClient>[];
   requiredFields: string[];
+  requiredByType: Record<string, string[]>;
   enumFields: Record<string, string[]>;
 }) {
   const d = item.data;
@@ -1165,8 +1175,6 @@ function ContractCard({ item, onUpdate, existing, clients, requiredFields, enumF
   function set<K extends keyof ParsedContract>(field: K, value: ParsedContract[K]) {
     onUpdate({ ...item, data: { ...d, [field]: value } });
   }
-
-  const req = (f: string) => requiredFields.includes(f);
 
   // ``type`` is the single source of truth for pricing. Derive a sensible
   // initial value when the LLM did not set it explicitly, then switching
@@ -1184,6 +1192,7 @@ function ContractCard({ item, onUpdate, existing, clients, requiredFields, enumF
     });
   }
   const isFixed = ctype === "fixed_price";
+  const req = (f: string) => requiredFields.includes(f) || (requiredByType[ctype] || []).includes(f);
 
   return (
     <div className="space-y-2">
@@ -1199,9 +1208,9 @@ function ContractCard({ item, onUpdate, existing, clients, requiredFields, enumF
       <div className="grid grid-cols-3 gap-2">
         <AiField label="Title" value={d.title} dbValue={ex?.title as string} onChange={(v) => set("title", v)} required={req("title")} />
         {isFixed ? (
-          <AiField label="Fixed Price" value={String(d.fixed_price ?? "")} onChange={(v) => set("fixed_price", v ? parseFloat(v) : null)} />
+          <AiField label="Fixed Price" value={String(d.fixed_price ?? "")} onChange={(v) => set("fixed_price", v ? parseFloat(v) : null)} required={req("fixed_price")} />
         ) : (
-          <AiField label="Rate" value={String(d.rate ?? "")} onChange={(v) => set("rate", v ? parseFloat(v) : null)} />
+          <AiField label="Rate" value={String(d.rate ?? "")} onChange={(v) => set("rate", v ? parseFloat(v) : null)} required={req("rate")} />
         )}
         <AiField label="Currency" value={d.currency} onChange={(v) => set("currency", v)} required={req("currency")} />
         {!isFixed && <AiField label="Unit" value={d.unit} onChange={(v) => set("unit", v)} required={req("unit")} options={enumFields.unit} />}
@@ -1224,15 +1233,12 @@ function ContractCard({ item, onUpdate, existing, clients, requiredFields, enumF
       <div className="grid grid-cols-2 gap-2">
         <AiField
           label="VAT Rate (%)"
-          value={
-            d.VAT_rate == null
-              ? ""
-              : String(Math.round((d.VAT_rate > 1 ? d.VAT_rate : d.VAT_rate * 100) * 100) / 100)
-          }
+          value={d.VAT_rate == null ? "" : String(Math.round(d.VAT_rate * 10000) / 100)}
           onChange={(v) => {
             const pct = v ? parseFloat(v) : null;
             set("VAT_rate", pct == null || !Number.isFinite(pct) ? null : pct / 100);
           }}
+          required={req("VAT_rate")}
         />
         <AiField label="Term of Payment (days)" value={String(d.term_of_payment ?? "")} onChange={(v) => set("term_of_payment", v ? parseInt(v) : null)} />
       </div>
