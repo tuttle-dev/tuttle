@@ -4,6 +4,7 @@ import {
 } from "recharts";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { rpc } from "../../api/rpc";
+import { UnconvertedNote } from "../shared/UnconvertedNote";
 
 type Granularity = "week" | "month" | "year";
 type SeriesKey = "received" | "invoiced" | "planned" | "contracted";
@@ -35,6 +36,8 @@ interface RevenueSeries {
   total: number;
   has_earlier: boolean;
   has_later: boolean;
+  /** Amounts left out of the buckets for lack of an exchange rate, one line each. */
+  unconverted: string[];
 }
 
 interface Series { key: SeriesKey; name: string; color: string; opacity: number; dashed?: boolean; hint: string }
@@ -327,6 +330,8 @@ export function RevenueChart() {
           );
         })}
       </div>
+
+      <UnconvertedNote items={data?.unconverted} className="justify-center mt-2" />
     </div>
   );
 }

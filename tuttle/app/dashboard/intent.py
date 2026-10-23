@@ -16,7 +16,7 @@ from ...kpi import (
     project_budget_status,
 )
 from ...model import Contract, FinancialGoal, Invoice, Project, RecurringExpense, User
-from ...tax_reserves import convert_invoice
+from ...tax_reserves import convert_invoice, distinct
 from ..core.abstractions import Intent, SQLModelDataSourceMixin
 from ..core.intent_result import IntentResult
 from ..timetracking.data_source import TimeTrackingDataFrameSource
@@ -196,24 +196,27 @@ class DashboardIntent(SQLModelDataSourceMixin, Intent):
                 exception=e,
             )
 
-    def _revenue_by_target_year(self, invoices, currency: str) -> dict:
+    def _revenue_by_target_year(self, invoices, currency: str) -> tuple[dict, dict]:
         """Paid revenue, net of VAT, accumulated from Jan 1 of each year up to today.
 
         A goal is measured against its own target year, not the current one,
         so a goal due in a future year does not inherit this year's revenue.
+        Returns the totals by year, and by year the invoices each leaves out
+        for lack of an exchange rate.
         """
         today = datetime.date.today()
         totals: dict = {}
+        left_out: dict = {}
         for inv in invoices:
             if inv.cancelled or not inv.paid or inv.date > today:
                 continue
-            converted = convert_invoice(inv, currency)
+            year = inv.date.year
+            converted = convert_invoice(inv, currency, left_out.setdefault(year, []))
             if converted is None:
                 # No resolvable FX rate — leave it out rather than count it as zero.
                 continue
-            year = inv.date.year
             totals[year] = totals.get(year, Decimal(0)) + converted[0] - converted[1]
-        return totals
+        return totals, left_out
 
     def get_financial_goals(self) -> IntentResult:
         """Load all financial goals with progress against their target year's revenue."""
@@ -222,7 +225,7 @@ class DashboardIntent(SQLModelDataSourceMixin, Intent):
             invoices = self.query(Invoice)
             country = self._get_country()
             currency = primary_currency(country)
-            revenue_by_year = self._revenue_by_target_year(invoices, currency)
+            revenue_by_year, left_out_by_year = self._revenue_by_target_year(invoices, currency)
 
             goals_with_progress = []
             for g in goals:
@@ -241,6 +244,7 @@ class DashboardIntent(SQLModelDataSourceMixin, Intent):
                         "progress": progress,
                         "ytd_revenue": revenue,
                         "currency": currency,
+                        "unconverted": distinct(left_out_by_year.get(g.target_date.year, [])),
                     }
                 )
             return IntentResult(was_intent_successful=True, data=goals_with_progress)

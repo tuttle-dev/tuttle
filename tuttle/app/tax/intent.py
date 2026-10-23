@@ -3,7 +3,7 @@
 import datetime
 from decimal import Decimal
 
-from ...forecasting import contracted_revenue, spread
+from ...forecasting import contracted_this_year
 from ...fx import primary_currency
 from ...model import Invoice, Project, RecurringExpense, User
 from ...tax import (
@@ -15,6 +15,7 @@ from ...tax import (
 from ...tax_reserves import (
     compute_income_tax_reserve,
     compute_spendable_income,
+    distinct,
     monthly_vat_breakdown,
 )
 from ..core.abstractions import Intent, SQLModelDataSourceMixin
@@ -43,14 +44,11 @@ class TaxIntent(SQLModelDataSourceMixin, Intent):
         """The currency aggregates are shown in (settings, default: tax system)."""
         return primary_currency(country)
 
-    def _contracted_this_year(self, year, invoices, projects, time_data, currency: str) -> Decimal:
+    def _contracted_this_year(self, year, invoices, projects, time_data, currency: str, left_out=None) -> Decimal:
         """Revenue committed contracts will still bring in from today to the end of the year."""
-        today = datetime.date.today()
-        if year is not None and year != today.year:
+        if year is not None and year != datetime.date.today().year:
             return Decimal(0)
-        year_end = datetime.date(today.year, 12, 31)
-        slices = contracted_revenue(projects, invoices, time_data, year_end, currency=currency, today=today)
-        return Decimal(str(round(sum(spread(slices, "Y", today, year_end).values()), 2)))
+        return contracted_this_year(projects, invoices, time_data, currency=currency, left_out=left_out)
 
     def get_spendable_income(self, year: int | None = None) -> IntentResult:
         """Compute spendable income breakdown."""
@@ -61,6 +59,7 @@ class TaxIntent(SQLModelDataSourceMixin, Intent):
             country = self._get_country()
             currency = self._get_tax_currency(country)
             time_data = self._time_data_source.get_data_frame()
+            left_out: list = []
             spending = compute_spendable_income(
                 invoices,
                 country,
@@ -69,7 +68,8 @@ class TaxIntent(SQLModelDataSourceMixin, Intent):
                 year=year,
                 projects=projects,
                 time_data=time_data,
-                contracted=self._contracted_this_year(year, invoices, projects, time_data, currency),
+                contracted=self._contracted_this_year(year, invoices, projects, time_data, currency, left_out),
+                left_out=left_out,
             )
             data = {"spending": spending, "currency": currency}
             return IntentResult(was_intent_successful=True, data=data)
@@ -82,7 +82,11 @@ class TaxIntent(SQLModelDataSourceMixin, Intent):
             )
 
     def get_income_tax_estimate(self, year: int | None = None) -> IntentResult:
-        """Get detailed income tax estimate with bracket info."""
+        """Get detailed income tax estimate with bracket info.
+
+        Without tax rules for the country and year there is no estimate:
+        ``tax_reserve`` is None and ``tax_unavailable_reason`` says why.
+        """
         try:
             today = datetime.date.today()
 
@@ -106,16 +110,13 @@ class TaxIntent(SQLModelDataSourceMixin, Intent):
             # tax_base, not taxable_profit: deductible dynamic expenses have already
             # been taken off, and charging them again here would double-count.
             total_income = spending.tax_base
-            tax_reserve = compute_income_tax_reserve(total_income, country, year=year, currency=currency)
-
-            ref_date = datetime.date(year, 7, 1) if year else today
-            try:
-                tax_system = get_tax_system(country, date=ref_date)
-                bracket_data = self._compute_bracket_data(tax_system, total_income)
-                country_supported = True
-            except NotImplementedError:
-                bracket_data = []
-                country_supported = False
+            no_tax = spending.tax_unavailable_reason
+            tax_reserve = None
+            bracket_data = []
+            if no_tax is None:
+                tax_reserve = compute_income_tax_reserve(total_income, country, year=year, currency=currency)
+                ref_date = datetime.date(year, 7, 1) if year else today
+                bracket_data = self._compute_bracket_data(get_tax_system(country, date=ref_date), total_income)
 
             data = {
                 "tax_reserve": tax_reserve,
@@ -127,7 +128,8 @@ class TaxIntent(SQLModelDataSourceMixin, Intent):
                 "deducted_expenses": spending.business_expenses + spending.dynamic_expenses_deductible,
                 "brackets": bracket_data,
                 "country": country,
-                "country_supported": country_supported,
+                "country_supported": no_tax is None,
+                "tax_unavailable_reason": no_tax,
                 "currency": currency,
             }
             return IntentResult(was_intent_successful=True, data=data)
@@ -207,8 +209,9 @@ class TaxIntent(SQLModelDataSourceMixin, Intent):
             invoices = self.query(Invoice)
             country = self._get_country()
             currency = self._get_tax_currency(country)
-            months = monthly_vat_breakdown(invoices, year=year, currency=currency)
-            data = {"months": months, "currency": currency}
+            left_out: list = []
+            months = monthly_vat_breakdown(invoices, year=year, currency=currency, left_out=left_out)
+            data = {"months": months, "currency": currency, "unconverted": distinct(left_out)}
             return IntentResult(was_intent_successful=True, data=data)
         except Exception as e:
             return IntentResult(

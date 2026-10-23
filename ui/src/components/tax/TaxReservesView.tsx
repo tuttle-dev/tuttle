@@ -4,8 +4,9 @@ import { rpc } from "../../api/rpc";
 import { EmptyStateIntro } from "../shared/EmptyStateIntro";
 import { LoadError, LoadingState } from "../shared/LoadStates";
 import { PageLayout } from "../shared/ToolbarButtons";
+import { UnconvertedNote } from "../shared/UnconvertedNote";
 import type { Entity } from "../../api/types";
-import { str, num, bool, type DynamicLine } from "../../api/entity";
+import { str, num, maybeNum, bool, type DynamicLine } from "../../api/entity";
 
 function fmt(value: number, currency = "EUR"): string {
   try {
@@ -17,14 +18,11 @@ function fmtPct(value: number): string {
   return `${(value * 100).toFixed(1)}%`;
 }
 
-function noTaxModel(country: string): string {
-  return `No tax model for ${country || "your country"} yet.`;
-}
-
 export function TaxReservesView() {
   const [spending, setSpending] = useState<Entity | null>(null);
   const [taxEstimate, setTaxEstimate] = useState<Entity | null>(null);
   const [months, setMonths] = useState<Entity[]>([]);
+  const [vatUnconverted, setVatUnconverted] = useState<string[]>([]);
   const [currency, setCurrency] = useState("EUR");
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -64,6 +62,7 @@ export function TaxReservesView() {
     if (vatRes.ok && vatRes.data) {
       const d = vatRes.data as Entity;
       setMonths((d.months as Entity[]) || []);
+      setVatUnconverted((d.unconverted as string[]) || []);
       if (str(d, "currency")) setCurrency(str(d, "currency"));
     }
     setLoading(false);
@@ -80,10 +79,8 @@ export function TaxReservesView() {
 
   const sp = spending?.spending as Entity | undefined;
   const hasAnyIncome = sp && (num(sp, "gross_revenue_ytd") > 0 || num(sp, "planned_revenue") > 0 || num(sp, "contracted_revenue") > 0);
-  const isCurrentYear = selectedYear === new Date().getFullYear();
-  const periodLabel = isCurrentYear ? "YTD" : `${selectedYear}`;
-  const countrySupported = taxEstimate ? taxEstimate.country_supported !== false : true;
-  const taxCountry = taxEstimate ? str(taxEstimate, "country") : "";
+  // The breakdown and the monthly VAT leave out the same invoices: name each once.
+  const unconverted = [...new Set([...((sp?.unconverted as string[]) || []), ...vatUnconverted])];
 
   if (!hasAnyIncome && months.length === 0) {
     return <PageLayout title="Tax & Reserves" right={yearSelector}
@@ -94,7 +91,7 @@ export function TaxReservesView() {
     <PageLayout title="Tax & Reserves" className="grid gap-6 items-start @4xl:grid-cols-2 @4xl:grid-rows-[auto_1fr]"
       right={yearSelector}>
       {/* Revenue Waterfall */}
-      <Section title={`Revenue Breakdown (${periodLabel})`} icon={<BarChart3 size={16} />}>
+      <Section title={`Revenue Breakdown (${selectedYear})`} icon={<BarChart3 size={16} />}>
         {!hasAnyIncome ? (
           <p className="text-sm text-muted">No revenue data yet.</p>
         ) : (() => {
@@ -111,8 +108,10 @@ export function TaxReservesView() {
           const taxBase = num(sp!, "tax_base");
           const dynLines = (sp!.dynamic_expenses as DynamicLine[]) || [];
           const deductibleLines = dynLines.filter((l) => l.tax_deductible);
-          const tax = num(sp!, "income_tax_reserve");
-          const spendable = num(sp!, "spendable");
+          // Without tax rules the core leaves out the tax and everything after it.
+          const tax = maybeNum(sp!, "income_tax_reserve");
+          const spendable = maybeNum(sp!, "spendable");
+          const noTax = str(sp!, "tax_unavailable_reason");
           return (
             <div className="space-y-1">
               <WaterfallBar label="Received" amount={received} total={totalBase} color="var(--color-status-info)" currency={currency} />
@@ -138,9 +137,7 @@ export function TaxReservesView() {
                   <WaterfallBar label="= Tax Base" amount={taxBase} total={totalBase} color="var(--color-status-info)" currency={currency} />
                 </>
               )}
-              <div className={countrySupported ? "" : "opacity-40"}>
-                <WaterfallBar label="Est. Income Tax" amount={tax} total={totalBase} color="var(--color-status-warning)" currency={currency} />
-              </div>
+              <WaterfallBar label="Est. Income Tax" amount={tax} total={totalBase} color="var(--color-status-warning)" currency={currency} />
               {fixedPostTax > 0 && (
                 <WaterfallBar label="Fixed Recurring Expenses (from taxed income)" amount={fixedPostTax} total={totalBase} color="var(--color-status-warning)" currency={currency} />
               )}
@@ -150,21 +147,22 @@ export function TaxReservesView() {
               {conversionFee > 0 && (
                 <WaterfallBar label="Currency Conversion" amount={conversionFee} total={totalBase} color="var(--color-status-warning)" currency={currency} />
               )}
-              {!countrySupported && (
-                <p className="text-xs text-muted italic">{noTaxModel(taxCountry)}</p>
+              {noTax && (
+                <p className="text-xs text-muted italic">{noTax}</p>
               )}
-              <WaterfallBar label="= Safe to Spend" amount={spendable} total={totalBase} color={spendable >= 0 ? "var(--color-status-success)" : "var(--color-status-danger)"} currency={currency} bold />
+              <WaterfallBar label="= Safe to Spend" amount={spendable} total={totalBase} color={spendable === null ? "var(--color-muted)" : spendable >= 0 ? "var(--color-status-success)" : "var(--color-status-danger)"} currency={currency} bold />
               {totalBase > 0 && (
                 <div className="border-t border-border-subtle mt-3 pt-3 flex justify-between text-xs text-muted">
                   <span>Effective reserve rate</span>
                   <span className="text-secondary">
-                    {fmtPct((vat + tax) / totalBase)} of gross revenue
+                    {tax === null ? "—" : `${fmtPct((vat + tax) / totalBase)} of gross revenue`}
                   </span>
                 </div>
               )}
             </div>
           );
         })()}
+        <UnconvertedNote items={unconverted} className="mt-3" />
       </Section>
 
       {/* Monthly VAT */}
@@ -222,10 +220,10 @@ function YearSelector({ years, selected, onChange }: {
 }
 
 function IncomeTaxSection({ data, currency }: { data: Entity; currency: string }) {
-  const tr = data.tax_reserve as Entity | undefined;
+  const tr = data.tax_reserve as Entity | null;
   const brackets = (data.brackets as Entity[]) || [];
   const country = str(data, "country");
-  const supported = data.country_supported !== false;
+  const noTax = str(data, "tax_unavailable_reason");
 
   const received = num(data, "received_net");
   const outstanding = num(data, "outstanding_net");
@@ -250,12 +248,8 @@ function IncomeTaxSection({ data, currency }: { data: Entity; currency: string }
             {breakdown}
           </div>
         )}
-        {tr && (
-          <div className={supported ? "" : "opacity-30 pointer-events-none"}>
-            <SummaryRow label="Estimated Income Tax" value={fmt(num(tr, "total_annual_reserve"), currency)} color="var(--color-status-warning)" bold />
-            <SummaryRow label="Effective Tax Rate" value={fmtPct(num(tr, "effective_rate"))} />
-          </div>
-        )}
+        <SummaryRow label="Estimated Income Tax" value={tr ? fmt(num(tr, "total_annual_reserve"), currency) : "—"} color={tr ? "var(--color-status-warning)" : undefined} bold />
+        <SummaryRow label="Effective Tax Rate" value={tr ? fmtPct(num(tr, "effective_rate")) : "—"} />
         {brackets.length > 0 && (
           <div className="mt-4">
             <div className="text-[11px] font-semibold text-muted uppercase tracking-wide mb-2">Tax Brackets (marginal rates)</div>
@@ -278,8 +272,8 @@ function IncomeTaxSection({ data, currency }: { data: Entity; currency: string }
             </div>
           </div>
         )}
-        {!supported && (
-          <p className="text-xs text-muted italic mt-3">{noTaxModel(country)} VAT reserves still apply.</p>
+        {noTax && (
+          <p className="text-xs text-muted italic mt-3">{noTax} VAT reserves still apply.</p>
         )}
       </div>
     </Section>
@@ -298,18 +292,18 @@ function Section({ title, icon, className, children }: { title: string; icon?: R
   );
 }
 
+/** One row of the waterfall. A null amount is a figure the core could not estimate: "—", no bar. */
 function WaterfallBar({ label, amount, total, color, currency, bold }: {
-  label: string; amount: number; total: number; color: string; currency: string; bold?: boolean;
+  label: string; amount: number | null; total: number; color: string; currency: string; bold?: boolean;
 }) {
-  const pct = total > 0 ? Math.max(Math.abs(amount) / total, 0.02) : 0;
-  const sign = amount < 0 ? "−" : "";
-  const display = Math.abs(amount);
+  const pct = amount === null ? 0 : total > 0 ? Math.max(Math.abs(amount) / total, 0.02) : 0;
+  const shown = amount === null ? "—" : `${amount < 0 ? "−" : ""}${fmt(Math.abs(amount), currency)}`;
 
   return (
     <div className="py-1">
       <div className="flex justify-between mb-0.5">
         <span className={`text-sm ${bold ? "font-semibold" : ""}`}>{label}</span>
-        <span className={`text-sm ${bold ? "font-semibold" : ""}`} style={{ color }}>{sign}{fmt(display, currency)}</span>
+        <span className={`text-sm ${bold ? "font-semibold" : ""}`} style={{ color }}>{shown}</span>
       </div>
       <div className={`w-full rounded-sm bg-border-subtle overflow-hidden ${bold ? "h-2" : "h-1.5"}`}>
         <div className="h-full rounded-sm" style={{ width: `${pct * 100}%`, backgroundColor: color }} />

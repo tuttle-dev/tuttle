@@ -9,7 +9,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from tuttle import tax_reserves
+from tuttle import tax, tax_reserves
 from tuttle.model import RecurringExpense
 from tuttle.tax_reserves import compute_effective_salary, compute_spendable_income
 from tuttle.time import Cycle
@@ -68,9 +68,12 @@ def test_steady_income_gives_the_same_salary_all_year(today, country):
     assert len(salaries) == 1
 
 
-def test_a_full_year_matches_safe_to_spend(today):
+def test_a_full_year_matches_safe_to_spend(today, monkeypatch):
     """On New Year's Day the salary averages exactly the year just closed."""
     today(datetime.date(2027, 1, 1))
+    # The salary is taxed with this year's rules, the estimate with 2026's: let
+    # 2027 have the same ones, so that only the averaging is compared.
+    monkeypatch.setitem(tax._REGISTRY["Germany"], 2027, tax.get_tax_system("Germany", datetime.date(2026, 7, 1)).params)
     invoices = _monthly_invoices(2026, range(1, 13))
     expenses = [_fixed("800"), _fixed("200", deductible=False)]
 

@@ -5,7 +5,8 @@ Each file covers one year and contains all formula parameters (bracket
 thresholds, polynomial coefficients, surcharge rates, VAT rates).
 
 The engine loads the right year's data for any given date, so historical
-invoices are taxed with the rules that were actually in force.
+invoices are taxed with the rules that were actually in force. A year
+without its own file has no tax rules: no other year's stand in for it.
 
 Adding a new year:  copy the JSON file, update the coefficients.
 Adding a new country: create a new subdirectory with its own JSON files.
@@ -23,6 +24,19 @@ from typing import Optional
 # ── Data package directory ────────────────────────────────────
 
 _DATA_DIR = Path(__file__).parent / "tax_data"
+
+
+class TaxUnavailable(Exception):
+    """Income tax cannot be estimated.
+
+    Its message says what is missing, in one sentence fit to show the user.
+    Every figure after income tax depends on it, so callers show none rather
+    than one computed with a tax of zero.
+    """
+
+
+class NoTaxRules(TaxUnavailable, NotImplementedError):
+    """There are no tax rules for the country, or none for the year."""
 
 
 # ── TaxParams: one loaded year for one country ───────────────
@@ -87,28 +101,30 @@ def _resolve_country(country: str) -> str:
     _load_all()
     canonical = _ALIAS_MAP.get(country)
     if canonical is None:
-        raise NotImplementedError(
-            f"Tax system for '{country}' not yet implemented. Supported: {', '.join(sorted(_ALIAS_MAP.keys()))}"
-        )
+        raise NoTaxRules(f"No tax model for {country}." if country else "No operating country set.")
     return canonical
 
 
 def _get_params(country: str, year: int) -> TaxParams:
     """Get TaxParams for a country and year.
 
-    Falls back to the closest available year if the exact year isn't found.
+    A year without its own data raises ``NoTaxRules``: another year's rules
+    would pass for that year's, and the estimate with them.
     """
     canonical = _resolve_country(country)
-    years = _REGISTRY[canonical]
-    if year in years:
-        return years[year]
-    # Fall back: the most recent past year, else the earliest one we have
-    available = sorted(years.keys())
-    best = available[0]
-    for y in available:
-        if y <= year:
-            best = y
-    return years[best]
+    params = _REGISTRY[canonical].get(year)
+    if params is None:
+        raise NoTaxRules(f"No tax rules for {canonical} in {year}.")
+    return params
+
+
+def tax_currency(country: str) -> str:
+    """The currency *country*'s tax rules are written in, whatever the year.
+
+    Raises ``NoTaxRules`` when there is no tax model for *country*.
+    """
+    years = _REGISTRY[_resolve_country(country)]
+    return years[max(years)].currency
 
 
 def supported_countries() -> list[str]:
@@ -354,7 +370,7 @@ def get_tax_system(
               Defaults to today.
 
     Raises:
-        NotImplementedError: If the country has no data packages.
+        NoTaxRules: If the country has no data packages, or none for the year.
     """
     if date is None:
         date = datetime.date.today()

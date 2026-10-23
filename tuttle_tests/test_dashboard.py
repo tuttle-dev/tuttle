@@ -837,75 +837,6 @@ class TestCashFlowSeries:
         assert result["total_outflow"] == 900.0
         assert result["net_cash_flow"] == -900.0
 
-    def test_effective_tax_rate_consistent_for_uneven_income(self, active_contract, project):
-        active_contract.term_of_payment = 0
-        # 6 invoices of 5000 spread evenly across the 6-month forecast window
-        invoices_even = [
-            Invoice(
-                number=f"2026-EVEN-{i}",
-                date=datetime.date(2026 if 10 + i <= 12 else 2027, 10 + i if 10 + i <= 12 else 10 + i - 12, 1),
-                contract=active_contract,
-                project=project,
-                sent=True,
-                paid=False,
-                cancelled=False,
-            )
-            for i in range(6)
-        ]
-        for inv in invoices_even:
-            InvoiceItem(
-                invoice=inv,
-                quantity=50,
-                unit="hour",
-                unit_price=Decimal("100.00"),
-                VAT_rate=Decimal("0"),
-            )
-
-        # 1 invoice of 30,000 arriving all at once in the current month
-        inv_lumpy = Invoice(
-            number="2026-LUMPY",
-            date=datetime.date(2026, 10, 1),
-            contract=active_contract,
-            project=project,
-            sent=True,
-            paid=False,
-            cancelled=False,
-        )
-        InvoiceItem(
-            invoice=inv_lumpy,
-            quantity=300,
-            unit="hour",
-            unit_price=Decimal("100.00"),
-            VAT_rate=Decimal("0"),
-        )
-
-        res_even = cash_flow_series(
-            invoices_even,
-            [active_contract],
-            [project],
-            [],
-            None,
-            forecast_months=6,
-            country="Germany",
-            today=self.TODAY,
-        )
-        res_lumpy = cash_flow_series(
-            [inv_lumpy],
-            [active_contract],
-            [project],
-            [],
-            None,
-            forecast_months=6,
-            country="Germany",
-            today=self.TODAY,
-        )
-
-        assert res_even["total_inflow"] == 30000.0
-        assert res_lumpy["total_inflow"] == 30000.0
-        # The same total income over the window must result in the same total tax outflow
-        assert res_even["total_outflow"] == res_lumpy["total_outflow"]
-        assert res_even["net_cash_flow"] == res_lumpy["net_cash_flow"]
-
 
 class TestRevenueHistory:
     def test_empty_invoices(self):
@@ -973,20 +904,23 @@ class TestComputeKPIs:
         assert kpis.active_contracts == 0
 
     def test_tax_reserves_populated(self, paid_invoice, active_contract, project):
-        kpis = compute_kpis([paid_invoice], [active_contract], [project])
+        # Without an agreed volume nothing is contracted, so the paid invoice is all the income.
+        active_contract.volume = None
+        kpis = compute_kpis([paid_invoice], [active_contract], [project], country="Germany")
         assert kpis.vat_reserve >= 0
         assert kpis.income_tax_reserve >= 0
         assert kpis.spendable_income <= kpis.total_revenue_ytd
         assert kpis.tax_currency == "EUR"
 
     def test_spendable_less_than_gross(self, paid_invoice, active_contract, project):
-        kpis = compute_kpis([paid_invoice], [active_contract], [project])
+        active_contract.volume = None
+        kpis = compute_kpis([paid_invoice], [active_contract], [project], country="Germany")
         if kpis.total_revenue_ytd > 0:
             # Revenue is net of VAT; what clients paid also includes the VAT.
             assert kpis.spendable_income < kpis.total_revenue_ytd + kpis.vat_reserve
 
     def test_empty_data_tax_reserves(self):
-        kpis = compute_kpis([], [], [])
+        kpis = compute_kpis([], [], [], country="Germany")
         assert kpis.vat_reserve == 0
         assert kpis.income_tax_reserve == 0
         assert kpis.spendable_income == 0

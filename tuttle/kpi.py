@@ -7,10 +7,11 @@ from typing import List, NamedTuple, Optional
 from pandas import DataFrame, Timestamp
 
 from .app.core.formatting import fmt_currency
+from .forecasting import contracted_this_year
 from .fx import primary_currency
 from .model import Contract, Invoice, Project, RecurringExpense
-from .tax import get_tax_system, has_tax_model
-from .tax_reserves import compute_spendable_income, convert_invoice
+from .tax import NoTaxRules, get_tax_system
+from .tax_reserves import compute_spendable_income, convert_invoice, distinct
 from .time import TimeUnit
 from .timetracking import sum_hours_by_tag
 
@@ -30,11 +31,13 @@ class KPISummary(NamedTuple):
     overdue_invoices: int
     # Tax reserves
     vat_reserve: Decimal
-    income_tax_reserve: Decimal
-    spendable_income: Decimal
+    income_tax_reserve: Optional[Decimal]  # None without tax rules
+    spendable_income: Optional[Decimal]  # None without tax rules
     tax_currency: str = "EUR"
-    country_supported: bool = True
+    country_supported: bool = True  # whether there are tax rules to estimate income tax with
     country: str = ""
+    tax_unavailable_reason: Optional[str] = None
+    unconverted: list = []  # amounts left out for lack of an exchange rate, one line each; never mutated
 
     def to_rpc_dict(self) -> dict:
         d = self._asdict()
@@ -43,8 +46,10 @@ class KPISummary(NamedTuple):
         d["outstanding_amount_formatted"] = fmt_currency(self.outstanding_amount, tc)
         d["overdue_amount_formatted"] = fmt_currency(self.overdue_amount, tc)
         d["vat_reserve_formatted"] = fmt_currency(self.vat_reserve, tc)
-        d["income_tax_reserve_formatted"] = fmt_currency(self.income_tax_reserve, tc)
-        d["spendable_income_formatted"] = fmt_currency(self.spendable_income, tc)
+        d["income_tax_reserve_formatted"] = (
+            fmt_currency(self.income_tax_reserve, tc) if self.income_tax_reserve is not None else "—"
+        )
+        d["spendable_income_formatted"] = fmt_currency(self.spendable_income, tc) if self.spendable_income is not None else "—"
         d["effective_hourly_rate_formatted"] = (
             fmt_currency(self.effective_hourly_rate, tc) if self.effective_hourly_rate is not None else "—"
         )
@@ -66,7 +71,8 @@ def compute_kpis(
     worked.  It drives ``effective_hourly_rate`` and ``utilization_rate``.
     Revenue metrics come from invoices, converted into the primary currency:
     revenue is net of VAT, while the outstanding and overdue amounts are what
-    clients still owe, VAT included.
+    clients still owe, VAT included. Amounts without an exchange rate are left
+    out of every figure, and ``unconverted`` names them.
     """
     today = datetime.date.today()
     year_start = today.replace(month=1, day=1)
@@ -81,12 +87,13 @@ def compute_kpis(
     unpaid_invoices = 0
     overdue_invoices = 0
     paid_revenue = Decimal(0)
+    left_out: list = []
 
     for inv in invoices:
         # A reminder chases an invoice that is already counted; a draft is not invoiced yet.
         if inv.cancelled or inv.is_reminder or not inv.is_issued:
             continue
-        converted = convert_invoice(inv, currency)
+        converted = convert_invoice(inv, currency, left_out)
         if converted is None:
             continue
         inv_total, inv_vat = converted
@@ -133,14 +140,16 @@ def compute_kpis(
             utilization_rate = float(total_hours / available_hours)
 
     # The same inputs as the Tax page, so Spendable Income equals its Safe to Spend.
-    country_supported = has_tax_model(country)
     spending = compute_spendable_income(
-        invoices, country, expenses=expenses, currency=currency, projects=projects, time_data=time_data
+        invoices,
+        country,
+        expenses=expenses,
+        currency=currency,
+        projects=projects,
+        time_data=time_data,
+        contracted=contracted_this_year(projects, invoices, time_data, currency=currency, left_out=left_out),
+        left_out=left_out,
     )
-    vat_reserve = spending.vat_reserve
-    income_tax_reserve = spending.income_tax_reserve
-    spendable_income = spending.spendable
-
     return KPISummary(
         total_revenue=total_revenue,
         total_revenue_ytd=total_revenue_ytd,
@@ -152,12 +161,14 @@ def compute_kpis(
         active_contracts=active_contracts,
         unpaid_invoices=unpaid_invoices,
         overdue_invoices=overdue_invoices,
-        vat_reserve=vat_reserve,
-        income_tax_reserve=income_tax_reserve,
-        spendable_income=spendable_income,
+        vat_reserve=spending.vat_reserve,
+        income_tax_reserve=spending.income_tax_reserve,
+        spendable_income=spending.spendable,
         tax_currency=currency,
-        country_supported=country_supported,
+        country_supported=spending.tax_unavailable_reason is None,
         country=country,
+        tax_unavailable_reason=spending.tax_unavailable_reason,
+        unconverted=distinct(left_out),
     )
 
 
@@ -219,6 +230,9 @@ def monthly_spendable_breakdown(
     - net_revenue: gross_revenue - vat_due
     - income_tax_true_up: monthly delta in YTD tax reserve estimate
     - spendable: net_revenue - income_tax_true_up
+
+    Without tax rules for a month of this year, its true-up and spendable
+    figure are None.
     """
     today = datetime.date.today()
     start = (today - datetime.timedelta(days=30 * n_months)).replace(day=1)
@@ -263,27 +277,28 @@ def monthly_spendable_breakdown(
         m["net_revenue"] = m["gross_revenue"] - m["vat_due"]
         year_str, month_str = key.split("-")
         month_start = datetime.date(int(year_str), int(month_str), 1)
-        if month_start.year == today.year:
-            cumulative_net_ytd += m["net_revenue"]
-            taxable = cumulative_net_ytd - deductions
-            if taxable <= 0:
-                cumulative_reserve = Decimal(0)
-            else:
-                try:
-                    month_end = (month_start + datetime.timedelta(days=32)).replace(day=1) - datetime.timedelta(days=1)
-                    as_of = min(month_end, today)
-                    tax_system = get_tax_system(country, date=as_of)
-                    annual_tax = tax_system.income_tax(taxable)
-                    annual_soli = tax_system.solidarity_surcharge(annual_tax)
-                    cumulative_reserve = (annual_tax + annual_soli).quantize(Decimal("0.01"))
-                except NotImplementedError:
-                    cumulative_reserve = Decimal(0)
-
-            m["income_tax_true_up"] = cumulative_reserve - previous_reserve
-            previous_reserve = cumulative_reserve
-        else:
+        if month_start.year != today.year:
             m["income_tax_true_up"] = Decimal(0)
+            m["spendable"] = m["net_revenue"]
+            continue
 
+        cumulative_net_ytd += m["net_revenue"]
+        month_end = (month_start + datetime.timedelta(days=32)).replace(day=1) - datetime.timedelta(days=1)
+        try:
+            tax_system = get_tax_system(country, date=min(month_end, today))
+        except NoTaxRules:
+            # Without tax rules there is no true-up, and no spendable figure after it.
+            m["income_tax_true_up"] = m["spendable"] = None
+            continue
+        taxable = cumulative_net_ytd - deductions
+        cumulative_reserve = Decimal(0)
+        if taxable > 0:
+            annual_tax = tax_system.income_tax(taxable)
+            annual_soli = tax_system.solidarity_surcharge(annual_tax)
+            cumulative_reserve = (annual_tax + annual_soli).quantize(Decimal("0.01"))
+
+        m["income_tax_true_up"] = cumulative_reserve - previous_reserve
+        previous_reserve = cumulative_reserve
         m["spendable"] = m["net_revenue"] - m["income_tax_true_up"]
 
     return [months[k] for k in sorted_keys]
