@@ -18,6 +18,7 @@ import { useAutoSelect } from "../../hooks/useAutoSelect";
 import { LoadError, LoadingState } from "../shared/LoadStates";
 import { Section } from "../shared/Section";
 import type { Entity } from "../../api/types";
+import { localDateIso } from "../../api/entity";
 
 type InvoiceChain = { root: Entity; reminders: Entity[]; deposits: Entity[] };
 
@@ -375,7 +376,7 @@ function makeDefaultItems(project?: Entity | null, charges?: Entity[] | null): L
 function CreateInvoiceDialog({ onClose, onCreated }: { onClose: () => void; onCreated: (newId?: number, warning?: string | null) => Promise<void> | void }) {
   const [projects, setProjects] = useState<Entity[]>([]);
   const [projectId, setProjectId] = useState<number | null>(null);
-  const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().slice(0, 10));
+  const [invoiceDate, setInvoiceDate] = useState(localDateIso);
   const [fromDate, setFromDate] = useState(() => {
     const d = new Date(); d.setMonth(d.getMonth() - 1); d.setDate(1);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
@@ -1682,8 +1683,10 @@ function StatusMenu({ status, isSent, isPaid, isCancelled, onToggleSent, onToggl
 function CreateReminderDialog({ invoiceId, invoiceNumber, onClose, onCreated }: {
   invoiceId: number; invoiceNumber: string; onClose: () => void; onCreated: (newId?: number, warning?: string | null) => void;
 }) {
-  const today = new Date().toISOString().slice(0, 10);
-  const twoWeeks = new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10);
+  const today = localDateIso();
+  const inTwoWeeks = new Date();
+  inTwoWeeks.setDate(inTwoWeeks.getDate() + 14);
+  const twoWeeks = localDateIso(inTwoWeeks);
   const [reminderDate, setReminderDate] = useState(today);
   const [newDueDate, setNewDueDate] = useState(twoWeeks);
   const [fee, setFee] = useState("");
