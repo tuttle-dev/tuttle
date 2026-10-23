@@ -675,3 +675,78 @@ def test_project_without_contract_is_removed_and_reported(tmp_db: tuple[Path, st
         assert con.execute("SELECT project_id FROM invoice WHERE id = 1").fetchone() == (None,)
     finally:
         con.close()
+
+
+# -- Task rules (revision d9313ebf3426) ----------------------------------------
+
+_BEFORE_TASK_RULES = "100b18f437fb"
+_TASK_RULES_REVISION = "d9313ebf3426"
+
+
+def test_task_rules_start_with_overdue_and_contract_end(tmp_db: tuple[Path, str]) -> None:
+    """Every user starts with the overdue-invoice rule and a heads-up before a
+    contract ends. Overdue tasks made before rules existed become the overdue
+    rule's, keeping their status, so a dismissed one stays dismissed."""
+    db, url = tmp_db
+    cfg = _alembic_config_for(url)
+    command.upgrade(cfg, _BEFORE_TASK_RULES)
+
+    con = sqlite3.connect(db)
+    cur = con.cursor()
+    _insert(cur, "task", id=1, key="overdue:7", title="Invoice 2026-007 is overdue — send a reminder", status="dismissed")
+    _insert(cur, "task", id=2, key="tutorial:first_contact", title="Add your first contact", status="done")
+    con.commit()
+    con.close()
+
+    command.upgrade(cfg, _TASK_RULES_REVISION)
+    con = sqlite3.connect(db)
+    try:
+        rules = con.execute(
+            'SELECT id, kind, event, "offset", offset_unit, before, paused FROM taskrule ORDER BY id'
+        ).fetchall()
+        assert [r[1:] for r in rules] == [
+            ("event", "invoice.due", 1, "day", 0, 0),
+            ("event", "contract.end", 30, "day", 1, 0),
+        ]
+        overdue_id = rules[0][0]
+        assert con.execute("SELECT key, status, rule_id, subject_type, subject_id FROM task WHERE id = 1").fetchone() == (
+            f"rule:{overdue_id}:invoice:7",
+            "dismissed",
+            overdue_id,
+            "invoice",
+            7,
+        )
+        assert con.execute("SELECT key, rule_id FROM task WHERE id = 2").fetchone() == ("tutorial:first_contact", None)
+    finally:
+        con.close()
+
+
+def test_task_rules_start_over_after_a_run_that_failed_halfway(tmp_db: tuple[Path, str]) -> None:
+    """SQLite commits CREATE TABLE as it runs: a run that failed after creating the
+    new tables, and Alembic's copy of task, left them behind without recording the
+    revision. The next run must clear them rather than fail on "already exists"."""
+    db, url = tmp_db
+    cfg = _alembic_config_for(url)
+    command.upgrade(cfg, _BEFORE_TASK_RULES)
+
+    con = sqlite3.connect(db)
+    cur = con.cursor()
+    _insert(cur, "task", id=1, key="overdue:7", title="Invoice 2026-007 is overdue — send a reminder", status="done")
+    # What the interrupted run had committed: empty tables, and the temp copy of task.
+    cur.execute("CREATE TABLE taskrule (id INTEGER NOT NULL PRIMARY KEY, title VARCHAR NOT NULL)")
+    cur.execute("CREATE TABLE taskrulenotice (id INTEGER NOT NULL PRIMARY KEY, rule_id INTEGER NOT NULL)")
+    cur.execute("CREATE TABLE _alembic_tmp_task (id INTEGER NOT NULL PRIMARY KEY, key VARCHAR NOT NULL)")
+    con.commit()
+    con.close()
+
+    assert ensure_schema(url) == []
+
+    assert _get_current_revision(url) == _heads(url)[1]
+    con = sqlite3.connect(db)
+    try:
+        tables = {r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+        assert "_alembic_tmp_task" not in tables
+        assert con.execute("SELECT COUNT(*) FROM taskrule").fetchone() == (2,)
+        assert con.execute("SELECT status, subject_id FROM task WHERE id = 1").fetchone() == ("done", 7)
+    finally:
+        con.close()

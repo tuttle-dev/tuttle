@@ -12,7 +12,7 @@ import ics
 import numpy
 from loguru import logger
 from pandas import DataFrame
-from sqlmodel import Session, create_engine
+from sqlmodel import Session, create_engine, select
 
 from tuttle import invoicing, rendering, timetracking
 from tuttle.calendar import ICSCalendar
@@ -36,6 +36,8 @@ from tuttle.model import (
     PaymentMilestone,
     Project,
     RecurringExpense,
+    TaskRule,
+    TaskRuleNotice,
     TaxCategory,
     Timesheet,
     TimeTrackingItem,
@@ -1260,6 +1262,82 @@ def create_demo_manual_entries(today: date) -> List[TimeTrackingItem]:
     ]
 
 
+def create_demo_task_rules(session: Session, today: datetime.date) -> None:
+    """Harry's own task rules, besides the two every user starts with.
+
+    One of each kind: repeating and one-off dates, a status change that has
+    already produced a task, one that is only watching, a rule for one client,
+    and a paused one.
+    """
+
+    def made(days_ago: int) -> datetime.datetime:
+        return datetime.datetime.combine(today - timedelta(days=days_ago), datetime.time(9))
+
+    first_of_month = today.replace(day=1)
+    renewal = date(today.year if today.month < 12 else today.year + 1, 12, 1)
+    rules = [
+        TaskRule(
+            title="Send invoices for {period}",
+            kind="date",
+            start_date=first_of_month,
+            unit="month",
+            created_at=made((today - first_of_month).days + 1),
+        ),
+        TaskRule(
+            title="File the VAT return for {period}",
+            note="Due by the 10th of the month after the quarter.",
+            kind="date",
+            start_date=date(today.year, 1, 10),
+            unit="month",
+            every=3,
+            created_at=made((today - date(today.year, 1, 1)).days),
+        ),
+        TaskRule(
+            title="Renew the professional liability insurance",
+            note="The policy runs out at the end of the year.",
+            kind="date",
+            start_date=renewal,
+            created_at=made(20),
+        ),
+        TaskRule(
+            title="Follow up on the offer for {project}",
+            kind="event",
+            event="project=Offer",
+            offset=1,
+            offset_unit="week",
+            created_at=made(30),
+        ),
+        TaskRule(
+            title="Ask {client} for feedback on {project}",
+            kind="event",
+            event="project=Completed",
+            created_at=made(30),
+        ),
+        TaskRule(
+            title="Invoice {contract} for the period ending {date}",
+            kind="event",
+            event="contract.period_end",
+            paused=True,
+            created_at=made(30),
+        ),
+    ]
+    central_services = session.exec(select(Client).where(Client.name == "Central Services")).first()
+    if central_services:
+        rules[4].client_id = central_services.id
+    for rule in rules:
+        session.add(rule)
+    session.flush()
+
+    # The offer went out nine days ago, so its follow-up is due. Projects
+    # already completed when the feedback rule was made get no task.
+    for project in session.exec(select(Project)).all():
+        stage = project.board_stage(today)
+        if stage == "Offer":
+            session.add(TaskRuleNotice(rule_id=rules[3].id, subject_id=project.id, noticed_on=today - timedelta(days=9)))
+        if stage == "Completed" and (not central_services or project.client and project.client.id == central_services.id):
+            session.add(TaskRuleNotice(rule_id=rules[4].id, subject_id=project.id, noticed_on=today, already=True))
+
+
 def _render_demo_documents(user: User, invoice: Invoice, language: str, template: str):
     """Render *invoice* and its timesheet to PDF, in the client's language if it has one."""
     language = invoice.contract.client.language or language
@@ -1331,6 +1409,11 @@ def install_demo_data(
         logger.info(f"Rendering {len(invoices)} demo invoices...")
         for invoice in invoices:
             _render_demo_documents(user, invoice, invoice_language, invoice_template)
+        session.commit()
+
+    logger.info("Adding task rules...")
+    with Session(db_engine) as session:
+        create_demo_task_rules(session, today)
         session.commit()
 
     db_engine.dispose()

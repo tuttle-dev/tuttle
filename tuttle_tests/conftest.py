@@ -9,7 +9,11 @@ import pytest
 from pypdf import PdfWriter
 
 import tuttle
+import tuttle.app.core.abstractions as abstractions
+import tuttle.app_db as app_db_mod
 from tuttle import fx, rendering
+from tuttle.app.core.dispatch import _intents, dispatch
+from tuttle.app.core.rpc_utils import reset_all
 from tuttle.model import Address, BankAccount, Client, Contact, Contract, Project, User
 
 # Every non-EUR amount in the suite converts at this rate. A fixed number keeps
@@ -229,3 +233,27 @@ def demo_calendar_timetracking():
     timetracking_calendar_path = Path("tuttle_tests/data/TuttleDemo-TimeTracking.ics")
     cal = tuttle.calendar.ICSCalendar(path=timetracking_calendar_path, name="TimeTracking")
     return cal
+
+
+@pytest.fixture(scope="module")
+def harry_tuttle_db(tmp_path_factory):
+    """Harry Tuttle's demo data in a fresh data directory, as the active user. Yields his database's path."""
+    tmp = tmp_path_factory.mktemp("harry_tuttle")
+    orig_app_init = app_db_mod.AppDatabase.__init__
+
+    def _patched_init(self, app_dir=None):
+        orig_app_init(self, app_dir=tmp)
+
+    previous_db = abstractions._active_db_path
+    app_db_mod.AppDatabase.__init__ = _patched_init
+    abstractions._active_db_path = tmp / "tuttle.db"
+    try:
+        assert dispatch("db.ensure", {})["ok"]
+        assert dispatch("users.ensure_demo", {})["ok"]
+        assert dispatch("users.switch", {"db_file": "harry-tuttle.db"})["ok"]
+        yield abstractions.get_active_db()
+    finally:
+        app_db_mod.AppDatabase.__init__ = orig_app_init
+        abstractions._active_db_path = previous_db
+        reset_all()
+        _intents.clear()

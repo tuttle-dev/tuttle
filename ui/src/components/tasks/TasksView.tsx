@@ -1,15 +1,23 @@
 import { useEffect, useState } from "react";
-import { ArrowRight, CheckSquare, Circle, CheckCircle2, X } from "lucide-react";
+import { ArrowRight, CheckSquare, Circle, CheckCircle2, Repeat, X, Zap, CalendarDays } from "lucide-react";
 import { rpc } from "../../api/rpc";
 import { EmptyStateIntro } from "../shared/EmptyStateIntro";
 import { LoadError, LoadingState } from "../shared/LoadStates";
-import { PageLayout } from "../shared/ToolbarButtons";
+import { PageLayout, ToolbarFilterGroup } from "../shared/ToolbarButtons";
 import { useNavigation, type NavigationFilter } from "../shared/NavigationContext";
+import { localDateIso } from "../../api/entity";
 import type { Entity } from "../../api/types";
+import { RuleComposer } from "./RuleComposer";
+import { RulesList } from "./RulesList";
+import { fmtDay, relDay, ruleSentence, subjectDestination, type RuleOptions, type TaskRule } from "./rules";
 
 type Destination = { view: string; filter?: NavigationFilter };
+type Mode = "tasks" | "rules";
 
-// Where each task gets done, by task key (see tuttle/app/tasks/generator.py).
+/** Tells the sidebar how many tasks are pending. */
+export const TASKS_CHANGED_EVENT = "tuttle:tasks-changed";
+
+// Where each getting-started task gets done, by task key (see tuttle/app/tasks/generator.py).
 const DESTINATIONS: Record<string, Destination> = {
   "tutorial:first_contact": { view: "contacts" },
   "tutorial:first_client": { view: "clients" },
@@ -20,14 +28,18 @@ const DESTINATIONS: Record<string, Destination> = {
   "tutorial:import_document": { view: "import" },
 };
 
-function destinationOf(key: string): Destination | undefined {
-  if (key.startsWith("overdue:")) return { view: "invoicing", filter: { invoiceId: Number(key.slice("overdue:".length)) } };
-  return DESTINATIONS[key];
+function destinationOf(task: Entity): Destination | undefined {
+  return DESTINATIONS[(task.key as string) ?? ""]
+    ?? subjectDestination((task.subject_type as string) ?? null, (task.subject_id as number) ?? null);
 }
 
 export function TasksView() {
   const { navigate } = useNavigation();
+  const [mode, setMode] = useState<Mode>("tasks");
   const [tasks, setTasks] = useState<Entity[]>([]);
+  const [rules, setRules] = useState<TaskRule[]>([]);
+  const [options, setOptions] = useState<RuleOptions | null>(null);
+  const [composing, setComposing] = useState<TaskRule | "new" | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
 
@@ -36,9 +48,19 @@ export function TasksView() {
   async function load(showSpinner = false) {
     if (showSpinner) setLoading(true);
     setLoadFailed(false);
-    const res = await rpc<Entity[]>("tasks.get_all");
-    setLoadFailed(!res.ok);
-    if (res.ok && Array.isArray(res.data)) setTasks(res.data);
+    const [tasksRes, rulesRes, optionsRes] = await Promise.all([
+      rpc<Entity[]>("tasks.get_all"),
+      rpc<TaskRule[]>("tasks.get_rules"),
+      rpc<RuleOptions>("tasks.rule_options"),
+    ]);
+    setLoadFailed(!tasksRes.ok || !rulesRes.ok || !optionsRes.ok);
+    if (tasksRes.ok && Array.isArray(tasksRes.data)) {
+      setTasks(tasksRes.data);
+      const pending = tasksRes.data.filter((t) => t.status === "pending").length;
+      window.dispatchEvent(new CustomEvent(TASKS_CHANGED_EVENT, { detail: pending }));
+    }
+    if (rulesRes.ok && Array.isArray(rulesRes.data)) setRules(rulesRes.data);
+    if (optionsRes.ok && optionsRes.data) setOptions(optionsRes.data);
     if (showSpinner) setLoading(false);
   }
 
@@ -65,28 +87,77 @@ export function TasksView() {
     await load();
   }
 
-  if (loadFailed) return <PageLayout title="Tasks" fallback={<LoadError what="tasks" onRetry={() => load(true)} />} />;
-  if (loading) return <PageLayout title="Tasks" fallback={<LoadingState />} />;
-  if (tasks.length === 0) {
-    return <PageLayout title="Tasks" fallback={<EmptyStateIntro icon={CheckSquare} description="You're all caught up — no pending tasks." />} />;
+  async function togglePause(rule: TaskRule) {
+    await rpc("tasks.set_rule_paused", { id: rule.id, paused: !rule.paused });
+    await load();
   }
 
-  const pending = tasks.filter((t) => t.status === "pending");
+  const pending = tasks
+    .filter((t) => t.status === "pending")
+    // Getting started first, then by the date each task is about.
+    .sort((a, b) => String(a.due_date ?? "").localeCompare(String(b.due_date ?? "")));
   const completed = tasks.filter((t) => t.status === "done" || t.status === "dismissed");
+  const ruleById = new Map(rules.map((r) => [r.id, r]));
+
+  const toggle = (
+    <ToolbarFilterGroup
+      options={["tasks", "rules"] as const}
+      value={mode}
+      onChange={setMode}
+      icons={{ tasks: <CheckSquare size={12} />, rules: <Zap size={12} /> }}
+      labels={{
+        tasks: <>Tasks <span className="text-muted tabular-nums">{pending.length}</span></>,
+        rules: <>Rules <span className="text-muted tabular-nums">{rules.length}</span></>,
+      }}
+    />
+  );
+
+  const composer = composing && options && (
+    <RuleComposer
+      rule={composing === "new" ? null : composing}
+      options={options}
+      onClose={() => setComposing(null)}
+      onSaved={() => { setComposing(null); load(); }}
+      onDeleted={() => { setComposing(null); load(); }}
+    />
+  );
+
+  if (loadFailed) return <PageLayout title="Tasks" fallback={<LoadError what="tasks" onRetry={() => load(true)} />} />;
+  if (loading) return <PageLayout title="Tasks" fallback={<LoadingState />} />;
+
+  if (mode === "rules") {
+    return (
+      <PageLayout title="Tasks" right={toggle}>
+        <RulesList rules={rules} options={options} onEdit={setComposing} onNew={() => setComposing("new")} onTogglePause={togglePause} />
+        {composer}
+      </PageLayout>
+    );
+  }
+
+  if (tasks.length === 0) {
+    return (
+      <PageLayout title="Tasks" right={toggle}
+        fallback={<EmptyStateIntro icon={CheckSquare} description="You're all caught up — no pending tasks." />} />
+    );
+  }
 
   return (
-    <PageLayout title="Tasks">
+    <PageLayout title="Tasks" right={toggle}>
       {pending.length > 0 && (
         <div className="space-y-2 mb-6">
           {pending.map((task) => {
-            const dest = destinationOf((task.key as string) ?? "");
+            const dest = destinationOf(task);
+            const rule = ruleById.get(task.rule_id as number);
             return (
               <TaskCard
                 key={task.id as number}
                 task={task}
+                rule={rule}
+                ruleLabel={rule ? ruleSentence(rule, options) : undefined}
                 onOpen={dest ? () => navigate(dest.view, dest.filter) : undefined}
                 onDone={() => markDone(task.id as number)}
                 onDismiss={() => dismiss(task.id as number)}
+                onEditRule={rule ? () => setComposing(rule) : undefined}
               />
             );
           })}
@@ -120,21 +191,28 @@ export function TasksView() {
           })}
         </div>
       )}
+      {composer}
     </PageLayout>
   );
 }
 
-function TaskCard({ task, done, onOpen, onDone, onDismiss, onReopen }: {
+function TaskCard({ task, rule, ruleLabel, done, onOpen, onDone, onDismiss, onReopen, onEditRule }: {
   task: Entity;
+  rule?: TaskRule;
+  ruleLabel?: string;
   done?: boolean;
   onOpen?: () => void;
   onDone?: () => void;
   onDismiss?: () => void;
   onReopen?: () => void;
+  onEditRule?: () => void;
 }) {
   const [confirmDismiss, setConfirmDismiss] = useState(false);
   const key = (task.key as string) ?? "";
   const isTutorial = key.startsWith("tutorial:");
+  const dueDate = (task.due_date as string) || null;
+  const today = localDateIso();
+  const RuleIcon = rule?.kind === "event" ? Zap : rule?.unit ? Repeat : CalendarDays;
   // The card navigates; its own buttons must not.
   const own = (fn?: () => void) => (e: React.MouseEvent) => { e.stopPropagation(); fn?.(); };
 
@@ -183,6 +261,21 @@ function TaskCard({ task, done, onOpen, onDone, onDismiss, onReopen }: {
             <span className="inline-block mt-1.5 text-[10px] uppercase tracking-wide text-tertiary bg-bg-hover px-1.5 py-0.5 rounded">
               Getting started
             </span>
+          )}
+          {!done && (dueDate || ruleLabel) && (
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-xs">
+              {dueDate && (
+                <span className={`tabular-nums ${dueDate > today ? "text-accent" : "text-tertiary"}`}>
+                  {fmtDay(dueDate)} · {relDay(dueDate)}
+                </span>
+              )}
+              {ruleLabel && (
+                <button type="button" onClick={own(onEditRule)} title="Edit the rule"
+                  className="inline-flex items-center gap-1 text-muted hover:text-accent hover:underline">
+                  <RuleIcon size={11} /> {ruleLabel}
+                </button>
+              )}
+            </div>
           )}
         </div>
 
