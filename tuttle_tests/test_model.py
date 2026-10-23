@@ -523,6 +523,7 @@ def _seed(session):
         end_date=datetime.date(2024, 12, 31),
         rate=100,
         currency="EUR",
+        VAT_rate=Decimal("0.19"),
         billing_cycle=Cycle.monthly,
         unit=TimeUnit.hour,
     )

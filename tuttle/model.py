@@ -434,9 +434,6 @@ class Client(RpcMixin, SQLModel, table=True):
         return self.address
 
 
-CONTRACT_DEFAULT_VAT_RATE = 0.19
-
-
 class TaxCategory(enum.Enum):
     """VAT category of a supply, as UNTDID 5305 codes used verbatim by EN16931.
 
@@ -590,9 +587,10 @@ class Contract(RpcMixin, VatCategoryMixin, SQLModel, table=True):
     )
     is_completed: bool = Field(default=False, description="flag marking if contract has been completed")
     currency: str = Field(description="Currency code, e.g. EUR or USD")
+    # No default: the rate depends on where the user operates, so every write
+    # path states it (0 for a category other than standard).
     VAT_rate: Decimal = Field(
-        description="VAT rate applied to the contractual rate.",
-        default=CONTRACT_DEFAULT_VAT_RATE,  # TODO: configure by country?
+        description="VAT rate applied to the contractual rate, as a fraction (0.19 is 19%).",
     )
     VAT_category: TaxCategory = Field(
         description="Tax category of the supply. Determines the EN16931 category "
@@ -624,9 +622,11 @@ class Contract(RpcMixin, VatCategoryMixin, SQLModel, table=True):
         description="Units of work (hours or days) expected per week: the pace at which a "
         "time-based contract is forecast to be billed. None when there is no expected pace.",
     )
+    # No default of 31 days: a column default would also replace an explicit
+    # None on insert, so a contract without a payment term could not be saved.
     term_of_payment: Optional[int] = Field(
-        description="How many days after receipt of invoice this invoice is due.",
-        default=31,
+        description="How many days after receipt of invoice this invoice is due. None when no term is agreed.",
+        default=None,
     )
     billing_cycle: Cycle = Field(
         default=Cycle.monthly,
@@ -761,6 +761,19 @@ class Contract(RpcMixin, VatCategoryMixin, SQLModel, table=True):
         else:
             # default
             return default
+
+    def billable_vat_rate(self) -> Decimal:
+        """The VAT rate to invoice, as a fraction (0.19 is 19%).
+
+        Every write path stores the rate as a fraction (``validate_vat``), so a
+        stored rate outside 0–1 is bad data. It is refused rather than rescaled:
+        guessing which percentage was meant would bill the wrong tax.
+        """
+        rate = Decimal(str(self.VAT_rate))
+        if not Decimal("0") <= rate <= Decimal("1"):
+            percent = f"{(rate * 100).normalize():f}"
+            raise ValueError(f"The VAT rate of contract “{self.title}” is {percent}%. Correct it, then create the invoice.")
+        return rate
 
     def validate_currency(self) -> None:
         """Normalise the currency code in place and reject an unsupported one.

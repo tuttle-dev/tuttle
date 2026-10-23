@@ -40,6 +40,7 @@ export function ContractsView() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [defaultCurrency, setDefaultCurrency] = useState("EUR");
+  const [defaultVatRate, setDefaultVatRate] = useState<number | null>(null);
   const [currencies, setCurrencies] = useState<string[]>(["EUR", "USD", "GBP", "CHF"]);
   const [parsedContracts, setParsedContracts] = useState<ParsedContract[]>([]);
   const [parsing, setParsing] = useState(false);
@@ -54,12 +55,13 @@ export function ContractsView() {
   async function load(selectId?: number) {
     setLoading(true);
     setLoadFailed(false);
-    const [res, clRes, curRes, supRes, accRes] = await Promise.all([
+    const [res, clRes, curRes, supRes, accRes, vatRes] = await Promise.all([
       rpc<Entity[]>("contracts.get_all"),
       rpc<Record<string, Entity>>("contracts.get_all_clients"),
       rpc<string>("contracts.get_default_currency"),
       rpc<{ supported: string[] }>("settings.get_currency"),
       rpc<Entity>("users.get_active"),
+      rpc<number | null>("contracts.get_default_vat_rate"),
     ]);
     setLoadFailed([res, clRes, curRes, supRes, accRes].some((r) => !r.ok));
     if (res.ok && res.data) {
@@ -72,6 +74,8 @@ export function ContractsView() {
     }
     if (clRes.ok && clRes.data) setClients(clRes.data);
     if (curRes.ok && curRes.data) setDefaultCurrency(curRes.data);
+    // Without a lookup the VAT field just starts empty, and the form asks for it.
+    setDefaultVatRate(vatRes.ok ? vatRes.data ?? null : null);
     if (supRes.ok && supRes.data?.supported?.length) setCurrencies(supRes.data.supported);
     const profile = accRes.ok && accRes.data ? (accRes.data.profile as Entity | undefined) : undefined;
     setBankAccounts(profile ? entityList(profile, "bank_accounts") : []);
@@ -276,9 +280,9 @@ export function ContractsView() {
               ))}
             </DocumentImportPanel>
           ) : mode === "create" ? (
-            <ContractForm key={duplicateSource?.id ?? "new"} contract={duplicateSource} isDuplicate={duplicateSource != null} clients={clients} defaultCurrency={defaultCurrency} currencies={currencies} bankAccounts={bankAccounts} onSave={handleSave} onCancel={() => setMode("view")} error={saveError} />
+            <ContractForm key={duplicateSource?.id ?? "new"} contract={duplicateSource} isDuplicate={duplicateSource != null} clients={clients} defaultCurrency={defaultCurrency} defaultVatRate={defaultVatRate} currencies={currencies} bankAccounts={bankAccounts} onSave={handleSave} onCancel={() => setMode("view")} error={saveError} />
           ) : mode === "edit" && selected ? (
-            <ContractForm contract={selected} clients={clients} defaultCurrency={defaultCurrency} currencies={currencies} bankAccounts={bankAccounts} onSave={handleSave} onCancel={() => setMode("view")} error={saveError} />
+            <ContractForm contract={selected} clients={clients} defaultCurrency={defaultCurrency} defaultVatRate={defaultVatRate} currencies={currencies} bankAccounts={bankAccounts} onSave={handleSave} onCancel={() => setMode("view")} error={saveError} />
           ) : selected ? (
             <ContractDetail contract={selected}
               onEdit={() => setMode("edit")}
@@ -516,7 +520,7 @@ interface ContractFormData {
   billingCycle: string;
   volume: number | null;
   expectedPerWeek: number | null;
-  vatRate: number;
+  vatRate: number | null;
   vatCategory: TaxCategory;
   signatureDate: string;
   startDate: string;
@@ -562,11 +566,13 @@ function isBlankMilestone(row: MilestoneRow): boolean {
   return !row.title.trim() && !row.percentage.trim();
 }
 
-function ContractForm({ contract, isDuplicate = false, clients, defaultCurrency, currencies, bankAccounts, onSave, onCancel, error }: {
+function ContractForm({ contract, isDuplicate = false, clients, defaultCurrency, defaultVatRate, currencies, bankAccounts, onSave, onCancel, error }: {
   contract: Entity | null;
   isDuplicate?: boolean;
   clients: Record<string, Entity>;
   defaultCurrency: string;
+  /** Standard VAT rate of the operating country, or null when Tuttle does not know it. */
+  defaultVatRate: number | null;
   currencies: string[];
   bankAccounts: Entity[];
   onSave: (data: ContractFormData, milestones?: MilestoneSavePayload) => Promise<boolean>;
@@ -592,11 +598,7 @@ function ContractForm({ contract, isDuplicate = false, clients, defaultCurrency,
       billingCycle: str(contract, "billing_cycle") || "monthly",
       volume: num(contract, "volume") || null,
       expectedPerWeek: contract.expected_units_per_week == null ? null : num(contract, "expected_units_per_week"),
-      vatRate: (() => {
-        const v = num(contract, "VAT_rate");
-        if (!v) return 0;
-        return v > 1 ? v / 100 : v;
-      })(),
+      vatRate: num(contract, "VAT_rate"),
       vatCategory: taxCategory(str(contract, "VAT_category")),
       // A copy is a new agreement: it gets its own dates and signature.
       signatureDate: isDuplicate ? "" : str(contract, "signature_date"),
@@ -609,7 +611,7 @@ function ContractForm({ contract, isDuplicate = false, clients, defaultCurrency,
     };
     return {
       title: "", clientId: null, type: "time_based", fixedPrice: null, rate: null, currency: defaultCurrency,
-      unit: "hour", billingCycle: "monthly", volume: null, expectedPerWeek: null, vatRate: 0.19, vatCategory: "S",
+      unit: "hour", billingCycle: "monthly", volume: null, expectedPerWeek: null, vatRate: defaultVatRate, vatCategory: "S",
       signatureDate: "", startDate: "", endDate: "", termOfPayment: 31, unitsPerWorkday: 8,
       bankAccountId: "",
       charges: [],
@@ -651,9 +653,14 @@ function ContractForm({ contract, isDuplicate = false, clients, defaultCurrency,
   }
 
   // Only standard-rated supplies carry a VAT rate; the backend rejects any
-  // other category with a non-zero rate.
+  // other category with a non-zero rate. Switching back to standard starts
+  // from the operating country's rate, not the 0 the other category needed.
   function setVatCategory(category: TaxCategory) {
-    setForm((prev) => ({ ...prev, vatCategory: category, vatRate: category === "S" ? prev.vatRate : 0 }));
+    setForm((prev) => ({
+      ...prev,
+      vatCategory: category,
+      vatRate: category !== "S" ? 0 : prev.vatCategory === "S" ? prev.vatRate : defaultVatRate,
+    }));
     setValidationError(null);
   }
 
@@ -707,6 +714,7 @@ function ContractForm({ contract, isDuplicate = false, clients, defaultCurrency,
         return;
       }
     }
+    if (form.vatCategory === "S" && form.vatRate == null) { setValidationError("Enter the VAT rate"); return; }
     if (!form.startDate) { setValidationError("Start date is required"); return; }
     if (form.endDate && form.startDate && form.endDate < form.startDate) {
       setValidationError("End date must be on or after start date"); return;
@@ -803,11 +811,11 @@ function ContractForm({ contract, isDuplicate = false, clients, defaultCurrency,
               </select>
             </div>
             <div>
-              <label className="block text-xs text-tertiary mb-1">VAT Rate (%)</label>
+              <label className="block text-xs text-tertiary mb-1">VAT Rate (%){form.vatCategory === "S" && <span className="text-accent ml-0.5">*</span>}</label>
               <input type="number" step="0.1" min="0" max="100"
                 disabled={form.vatCategory !== "S"}
-                value={Math.round(form.vatRate * 10000) / 100}
-                onChange={(e) => { const pct = parseFloat(e.target.value); update("vatRate", Number.isFinite(pct) ? pct / 100 : 0); }}
+                value={form.vatRate == null ? "" : Math.round(form.vatRate * 10000) / 100}
+                onChange={(e) => { const pct = parseFloat(e.target.value); update("vatRate", Number.isFinite(pct) ? pct / 100 : null); }}
                 className={`${inputCls} disabled:opacity-50 disabled:cursor-not-allowed`} />
             </div>
           </div>
@@ -839,11 +847,11 @@ function ContractForm({ contract, isDuplicate = false, clients, defaultCurrency,
               </select>
             </div>
             <div>
-              <label className="block text-xs text-tertiary mb-1">VAT Rate (%)</label>
+              <label className="block text-xs text-tertiary mb-1">VAT Rate (%){form.vatCategory === "S" && <span className="text-accent ml-0.5">*</span>}</label>
               <input type="number" step="0.1" min="0" max="100"
                 disabled={form.vatCategory !== "S"}
-                value={Math.round(form.vatRate * 10000) / 100}
-                onChange={(e) => { const pct = parseFloat(e.target.value); update("vatRate", Number.isFinite(pct) ? pct / 100 : 0); }}
+                value={form.vatRate == null ? "" : Math.round(form.vatRate * 10000) / 100}
+                onChange={(e) => { const pct = parseFloat(e.target.value); update("vatRate", Number.isFinite(pct) ? pct / 100 : null); }}
                 className={`${inputCls} disabled:opacity-50 disabled:cursor-not-allowed`} />
             </div>
             <div>
@@ -1147,6 +1155,9 @@ function ParsedContractCard({ contract, clients, onAccept, onDiscard, onUpdate }
         <AiField label="Unit" value={contract.unit} onChange={(v) => onUpdate({ ...contract, unit: v })} />
         <AiField label="Start Date" value={contract.start_date} onChange={(v) => onUpdate({ ...contract, start_date: v })} />
         <AiField label="End Date" value={contract.end_date} onChange={(v) => onUpdate({ ...contract, end_date: v })} />
+        <AiField label="VAT Rate (%)"
+          value={contract.VAT_rate == null ? "" : String(Math.round(contract.VAT_rate * 10000) / 100)}
+          onChange={(v) => { const pct = parseFloat(v); onUpdate({ ...contract, VAT_rate: Number.isFinite(pct) ? pct / 100 : null }); }} />
         {!contract.fixed_price && (
           <>
             <AiField label="Volume" value={String(contract.volume ?? "")} onChange={(v) => onUpdate({ ...contract, volume: parseInt(v) || null })} />

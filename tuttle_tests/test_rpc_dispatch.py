@@ -601,7 +601,7 @@ class TestFieldRequirements:
             ("contacts", set()),
             ("clients", {"name"}),
             ("projects", {"title", "description", "tag", "start_date"}),
-            ("contracts", {"title", "start_date", "currency"}),
+            ("contracts", {"title", "start_date", "currency", "VAT_rate"}),
         ],
     )
     def test_required_fields_match_model(self, rpc_env, domain, required_fields):

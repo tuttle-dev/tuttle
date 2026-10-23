@@ -157,7 +157,9 @@ export function Shell() {
         return;
       }
       // Fetch new events from a connected calendar before any view sums up tracked time.
-      await rpc("timetracking.restore");
+      const restored = await rpc("timetracking.restore");
+      const calendarNotice = restored.ok ? restored.warning : restored.error || "Your calendar could not be synced.";
+      if (calendarNotice) setBootNotice((shown) => [shown, calendarNotice].filter(Boolean).join("\n\n"));
       setBootState("ready");
     })();
   }, []);

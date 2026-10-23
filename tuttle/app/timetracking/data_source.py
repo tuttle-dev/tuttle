@@ -161,14 +161,17 @@ class TimeTrackingDataFrameSource:
     # Everything below reads and writes the *active* user's database and cache
     # directory. Nothing here may live in app.db or a shared file.
 
-    def save_to_cache(self):
+    def save_to_cache(self) -> bool:
+        """Write the calendar rows to disk; False if that failed (the details are logged)."""
         calendar = self.calendar_rows()
         if calendar is None:
-            return
+            return True
         try:
             write_calendar_cache(get_active_db(), calendar)
         except Exception as ex:
-            logger.warning(f"Failed to persist time-tracking cache: {ex}")
+            logger.exception(f"Failed to persist time-tracking cache: {ex}")
+            return False
+        return True
 
     def load_from_cache(self) -> bool:
         # Marked loaded up front: a missing or unreadable cache is not retried on every read.

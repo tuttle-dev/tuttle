@@ -9,6 +9,8 @@ System Settings → Privacy → Calendars as "Tuttle Calendar".
 
 On non-macOS platforms every public function degrades gracefully:
 ``is_available()`` returns False, listing/fetching return empty results.
+On macOS, listing and fetching raise a ``CalendarError`` when the helper
+fails or has no access, so a failure never looks like an empty calendar.
 """
 
 from __future__ import annotations
@@ -28,6 +30,22 @@ from .calendar import extract_hashtag
 from .data_dir import get_data_dir
 
 _IS_DARWIN = platform.system() == "Darwin"
+
+# What the helper reports when it may not read events.
+_NO_ACCESS = {"denied", "restricted", "not_determined", "write_only"}
+
+
+class CalendarError(RuntimeError):
+    """The system calendar could not be read; the details are in the log."""
+
+
+class CalendarAccessError(CalendarError):
+    """Tuttle has no permission to read the user's calendars."""
+
+
+class CalendarNotFoundError(CalendarError):
+    """The calendar is no longer on this Mac."""
+
 
 # ---------------------------------------------------------------------------
 # Swift helper source — compiled on first use
@@ -328,15 +346,26 @@ def list_calendars() -> List[Dict[str, str]]:
         return []
 
 
+def _query_helper(*args: str) -> dict:
+    """Run the helper and return its answer, or raise ``CalendarError``."""
+    try:
+        data = _run_helper(*args)
+    except Exception as ex:
+        logger.exception(f"Calendar helper failed on {args[0]}: {ex}")
+        raise CalendarError(str(ex)) from ex
+    if not isinstance(data, dict) or "error" in data:
+        detail = data.get("error") if isinstance(data, dict) else data
+        logger.error(f"Calendar helper failed on {args[0]}: {detail}")
+        raise CalendarError(str(detail))
+    return data
+
+
 def list_calendars_with_status() -> Dict[str, Any]:
     """Return calendars and auth_status together."""
     if not _IS_DARWIN:
         return {"calendars": [], "auth_status": "not_available"}
-    try:
-        return _run_helper("list-calendars")
-    except Exception as ex:
-        logger.warning(f"Could not list calendars: {ex}")
-        return {"calendars": [], "auth_status": "unknown"}
+    data = _query_helper("list-calendars")
+    return {"calendars": data.get("calendars", []), "auth_status": data.get("auth_status", "unknown")}
 
 
 def fetch_events(
@@ -344,23 +373,29 @@ def fetch_events(
     from_date: datetime.date,
     to_date: datetime.date,
 ) -> pandas.DataFrame:
-    """Fetch events from a macOS system calendar and return a time-tracking DataFrame."""
+    """Fetch events from a macOS system calendar and return a time-tracking DataFrame.
+
+    An empty frame means the calendar has no events in the range; anything
+    that keeps Tuttle from reading them raises a ``CalendarError``.
+    """
     if not _IS_DARWIN:
         return _empty_df()
 
-    try:
-        data = _run_helper(
-            "fetch-events",
-            calendar_id,
-            from_date.isoformat(),
-            to_date.isoformat(),
-        )
-    except Exception as ex:
-        logger.warning(f"Could not fetch events: {ex}")
-        return _empty_df()
-
-    raw_events = data.get("events", [])
+    data = _query_helper("fetch-events", calendar_id, from_date.isoformat(), to_date.isoformat())
+    raw_events = data.get("events")
+    if not isinstance(raw_events, list):
+        logger.error(f"Calendar helper sent no event list: {data}")
+        raise CalendarError("no event list in the helper output")
     if not raw_events:
+        status = data.get("auth_status")
+        if status in _NO_ACCESS:
+            logger.warning(f"No access to calendars: {status}")
+            raise CalendarAccessError(status)
+        # The helper also answers an unknown calendar id with no events.
+        calendars = _query_helper("list-calendars").get("calendars", [])
+        if not any(cal.get("id") == calendar_id for cal in calendars):
+            logger.warning(f"Calendar {calendar_id} is no longer on this Mac")
+            raise CalendarNotFoundError(calendar_id)
         return _empty_df()
 
     rows = []
