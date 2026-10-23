@@ -168,11 +168,12 @@ def revenue_from_calendar(
     period alias — "W", "M" or "Y".
 
     If *invoices* is given, hours already captured in a timesheet attached
-    to a (non-cancelled) invoice are excluded, keyed by the timesheet's own
-    period rather than the invoice's date — otherwise work billed in a
-    later month than it was performed would show up twice: once as
-    "planned" for the month it was done, and again as "invoiced" for the
-    month the invoice was actually raised.
+    to an issued invoice (sent or paid, not cancelled) are excluded, keyed
+    by the timesheet's own period rather than the invoice's date —
+    otherwise work billed in a later month than it was performed would
+    show up twice: once as "planned" for the month it was done, and again
+    as "invoiced" for the month the invoice was actually raised. A draft's
+    hours stay planned until it is sent.
 
     Completed projects are left out: they are invoiced and paid in full.
 
@@ -292,10 +293,10 @@ def _term_end(contract: Contract, members: List[Project]) -> Optional[datetime.d
 
 
 def _invoiced_net(contract: Contract, invoices: List[Invoice]) -> Decimal:
-    """Net amount invoiced on *contract*. A reminder repeats an invoice and adds nothing."""
+    """Net amount invoiced on *contract*. A reminder repeats an invoice and adds nothing; a draft is not invoiced yet."""
     total = Decimal(0)
     for inv in invoices:
-        if inv.cancelled or inv.is_reminder:
+        if inv.cancelled or inv.is_reminder or not inv.is_issued:
             continue
         if inv.contract is contract or (contract.id is not None and inv.contract_id == contract.id):
             total += inv.sum
@@ -559,7 +560,7 @@ def _data_extent(
     time_data: Optional[DataFrame],
 ) -> tuple:
     """Earliest and latest date covered by invoices or calendar events."""
-    dates = [inv.date for inv in invoices if not inv.cancelled and inv.date]
+    dates = [inv.date for inv in invoices if not inv.cancelled and inv.is_issued and inv.date]
     if time_data is not None and not time_data.empty:
         dates.append(time_data.index.min().date())
         dates.append(time_data.index.max().date())
@@ -719,8 +720,9 @@ def cash_flow_series(
     """Project monthly cash inflows, expense outflows, and cumulative balance.
 
     Reconciles upcoming cash movements for a forward-looking forecast window:
-    - Inflows from unpaid invoices (both draft and sent) placed in their effective due date bucket
-      (overdue invoices map to the current month).
+    - Inflows from sent, unpaid invoices placed in their effective due date bucket
+      (overdue invoices map to the current month). A draft is not invoiced yet:
+      its tracked time arrives with the planned work.
     - Inflows from planned calendar work shifted forward by contract payment terms
       (past un-invoiced work maps to the current month).
     - Inflows from contracted work (:func:`contracted_revenue`), shifted the same way.
@@ -758,9 +760,9 @@ def cash_flow_series(
         for p in periods
     }
 
-    # 1. Inflows from unpaid invoices (both draft and sent)
+    # 1. Inflows from sent, unpaid invoices
     for inv in invoices:
-        if inv.paid or inv.cancelled:
+        if inv.paid or inv.cancelled or not inv.is_issued:
             continue
         converted = convert_invoice(inv, currency)
         if converted is None:

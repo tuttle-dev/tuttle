@@ -49,11 +49,11 @@ def invoiced_ranges_by_tag(invoices: List[Invoice]) -> dict:
     A timesheet's period is the exact slice of calendar hours that were
     pulled into an invoice, regardless of the invoice's own date (an
     invoice raised in August can cover a timesheet for July). Cancelled
-    invoices don't count: their hours are still un-invoiced.
+    invoices and drafts don't count: their hours are still un-invoiced.
     """
     ranges: dict = {}
     for inv in invoices:
-        if inv.cancelled:
+        if inv.cancelled or not inv.is_issued:
             continue
         for ts in inv.timesheets:
             tag = ts.project.tag if ts.project else None
@@ -64,7 +64,7 @@ def invoiced_ranges_by_tag(invoices: List[Invoice]) -> dict:
 
 
 def drop_invoiced(time_data: DataFrame, invoices: List[Invoice]) -> DataFrame:
-    """Calendar rows that no timesheet of a non-cancelled invoice covers yet."""
+    """Calendar rows that no timesheet of an issued, non-cancelled invoice covers yet."""
     invoiced_ranges = invoiced_ranges_by_tag(invoices)
     if not invoiced_ranges:
         return time_data
