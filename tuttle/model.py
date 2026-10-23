@@ -762,6 +762,19 @@ class Contract(RpcMixin, VatCategoryMixin, SQLModel, table=True):
             # default
             return default
 
+    def billable_vat_rate(self) -> Decimal:
+        """The VAT rate to invoice, as a fraction (0.19 is 19%).
+
+        Every write path stores the rate as a fraction (``validate_vat``), so a
+        stored rate outside 0–1 is bad data. It is refused rather than rescaled:
+        guessing which percentage was meant would bill the wrong tax.
+        """
+        rate = Decimal(str(self.VAT_rate))
+        if not Decimal("0") <= rate <= Decimal("1"):
+            percent = f"{(rate * 100).normalize():f}"
+            raise ValueError(f"The VAT rate of contract “{self.title}” is {percent}%. Correct it, then create the invoice.")
+        return rate
+
     def validate_currency(self) -> None:
         """Normalise the currency code in place and reject an unsupported one.
 

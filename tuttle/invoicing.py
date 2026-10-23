@@ -21,17 +21,8 @@ from .timetracking import Timesheet
 
 
 def _contract_vat_rate(contract: Contract) -> Decimal:
-    """VAT rate of a contract as a fraction.
-
-    Defensive: VAT_rate is stored as a fraction (0.19 = 19%). Some legacy /
-    LLM-imported contracts persisted percent values directly (e.g. 19 or 1900),
-    which previously produced absurd VAT totals like 1900%. Normalize any
-    value > 1 back into a fraction.
-    """
-    vat_rate = Decimal(str(contract.VAT_rate))
-    while vat_rate > Decimal("1"):
-        vat_rate = vat_rate / Decimal("100")
-    return vat_rate
+    """VAT rate of a contract as a fraction, refusing bad stored data (``Contract.billable_vat_rate``)."""
+    return contract.billable_vat_rate()
 
 
 def _applicable_charges(
