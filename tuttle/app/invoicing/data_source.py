@@ -15,28 +15,6 @@ class InvoicingDataSource(SQLModelDataSourceMixin):
     def __init__(self):
         super().__init__()
 
-    def get_invoices_for_project(self, project_id) -> IntentResult[List[Invoice]]:
-        """TODO Get all invoices associated with a given project
-
-        Returns:
-            IntentResult:
-                was_intent_successful : bool
-                data : list[Invoice] was_intent_successful else None
-                log_message  : str  if an error or exception occurs
-                exception : Exception if an exception occurs
-        """
-        try:
-            return IntentResult(
-                was_intent_successful=False,
-                log_message="NotImplementedError @InvoicingDataSource.get_invoices_for_project",
-            )
-        except Exception as e:
-            return IntentResult(
-                was_intent_successful=False,
-                log_message=f"Exception raised @TimeTrackingDataSource.get_invoices_for_project {e.__class__.__name__}",
-                exception=e,
-            )
-
     def get_invoice_by_id(self, invoice_id: int) -> IntentResult[Optional[Invoice]]:
         """Fetch a single invoice by primary key."""
         try:

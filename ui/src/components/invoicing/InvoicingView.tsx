@@ -411,7 +411,9 @@ function CreateInvoiceDialog({ onClose, onCreated }: { onClose: () => void; onCr
   const openMilestones = milestones.filter((m) => !bool(m, "invoiced"));
   const isLastOpenMilestone =
     openMilestones.length === 1 && selectedMilestoneId === openMilestones[0]?.id;
-  const canSettle = hasMilestones && openMilestones.length < milestones.length;
+  // A project is settled once: a second final invoice would bill the contract again.
+  const isSettled = selectedProject ? bool(selectedProject, "is_settled") : false;
+  const canSettle = hasMilestones && openMilestones.length < milestones.length && !isSettled;
 
   // The document type resets with the project, so a picker option that no
   // longer applies cannot survive into a submission.
@@ -595,10 +597,13 @@ function CreateInvoiceDialog({ onClose, onCreated }: { onClose: () => void; onCr
                 {DOCUMENT_TYPE_OPTIONS.map(({ value, label, icon: Icon }) => {
                   // Settling early is only meaningful once a deposit exists to deduct.
                   const disabled = value === "final" && !canSettle;
+                  const disabledReason = isSettled
+                    ? "A final invoice already settles this project"
+                    : "Invoice at least one milestone first";
                   return (
                     <button key={value} type="button" disabled={disabled}
                       onClick={() => { setDocType(value); setSelectedMilestoneId(null); }}
-                      title={disabled ? "Invoice at least one milestone first" : undefined}
+                      title={disabled ? disabledReason : undefined}
                       className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-colors border
                         ${docType === value ? "border-accent bg-accent/15 text-primary" : "border-border-subtle text-tertiary"}
                         ${disabled ? "opacity-40 cursor-not-allowed" : ""}`}>
