@@ -123,6 +123,8 @@ export function DocumentImportView() {
 
   const [existing, setExisting] = useState<ExistingEntities | null>(null);
   const [fieldMeta, setFieldMeta] = useState<Record<string, { required: string[]; enums: Record<string, string[]> }>>({});
+  // Standard VAT rate of the operating country, for invoice lines added here; null when unknown.
+  const [defaultVatRate, setDefaultVatRate] = useState<number | null>(null);
   const [commitResult, setCommitResult] = useState<Record<string, string[]> | null>(null);
   const [commitError, setCommitError] = useState<string | null>(null);
   const [committing, setCommitting] = useState(false);
@@ -136,6 +138,9 @@ export function DocumentImportView() {
     });
     rpc<Record<string, { required: string[]; enums: Record<string, string[]> }>>("imports.get_field_metadata").then((res) => {
       if (res.ok && res.data) setFieldMeta(res.data);
+    });
+    rpc<number | null>("contracts.get_default_vat_rate").then((res) => {
+      if (res.ok) setDefaultVatRate(res.data ?? null);
     });
   }, []);
 
@@ -287,6 +292,7 @@ export function DocumentImportView() {
                 existingProjects={existing?.projects || []}
                 requiredFields={fieldMeta.invoices?.required || []}
                 itemRequiredFields={fieldMeta.invoice_items?.required || []}
+                defaultVatRate={defaultVatRate}
               />
             )}
 
@@ -640,7 +646,7 @@ function CommittedPhase({ result, onDone }: {
 // Invoice Section
 // ---------------------------------------------------------------------------
 
-function InvoiceSection({ invoices, setInvoices, importedContracts, importedProjects, existingContracts, existingProjects, requiredFields, itemRequiredFields }: {
+function InvoiceSection({ invoices, setInvoices, importedContracts, importedProjects, existingContracts, existingProjects, requiredFields, itemRequiredFields, defaultVatRate }: {
   invoices: ImportEntity<ParsedInvoice>[];
   setInvoices: React.Dispatch<React.SetStateAction<ImportEntity<ParsedInvoice>[]>>;
   importedContracts: ImportEntity<ParsedContract>[];
@@ -649,6 +655,7 @@ function InvoiceSection({ invoices, setInvoices, importedContracts, importedProj
   existingProjects: ExistingEntity[];
   requiredFields: string[];
   itemRequiredFields: string[];
+  defaultVatRate: number | null;
 }) {
   const [collapsed, setCollapsed] = useState(false);
   if (invoices.length === 0) return null;
@@ -713,6 +720,7 @@ function InvoiceSection({ invoices, setInvoices, importedContracts, importedProj
                   existingProjects={existingProjects}
                   requiredFields={requiredFields}
                   itemRequiredFields={itemRequiredFields}
+                  defaultVatRate={defaultVatRate}
                 />
               )}
             </div>
@@ -723,7 +731,7 @@ function InvoiceSection({ invoices, setInvoices, importedContracts, importedProj
   );
 }
 
-function InvoiceCard({ item, onUpdate, importedContracts, importedProjects, existingContracts, existingProjects, requiredFields, itemRequiredFields }: {
+function InvoiceCard({ item, onUpdate, importedContracts, importedProjects, existingContracts, existingProjects, requiredFields, itemRequiredFields, defaultVatRate }: {
   item: ImportEntity<ParsedInvoice>;
   onUpdate: (u: ImportEntity<ParsedInvoice>) => void;
   importedContracts: ImportEntity<ParsedContract>[];
@@ -732,6 +740,7 @@ function InvoiceCard({ item, onUpdate, importedContracts, importedProjects, exis
   existingProjects: ExistingEntity[];
   requiredFields: string[];
   itemRequiredFields: string[];
+  defaultVatRate: number | null;
 }) {
   const d = item.data;
   const acceptedContracts = importedContracts.filter((c) => c.status === "accepted");
@@ -754,7 +763,7 @@ function InvoiceCard({ item, onUpdate, importedContracts, importedProjects, exis
     set("items", [...d.items, {
       start_date: d.date || "", end_date: "",
       quantity: 1, unit: "hour", unit_price: 0,
-      description: "", VAT_rate: 0.19,
+      description: "", VAT_rate: defaultVatRate,
     }]);
   }
 

@@ -40,6 +40,7 @@ def _schedule(engine, *percentages: str) -> tuple[int, list[int]]:
             )
         )
         contract = Contract(
+            term_of_payment=14,
             title="Central Heating Overhaul",
             client=Client(
                 name="Sam Lowry",

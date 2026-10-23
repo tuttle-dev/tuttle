@@ -434,9 +434,6 @@ class Client(RpcMixin, SQLModel, table=True):
         return self.address
 
 
-CONTRACT_DEFAULT_VAT_RATE = 0.19
-
-
 class TaxCategory(enum.Enum):
     """VAT category of a supply, as UNTDID 5305 codes used verbatim by EN16931.
 
@@ -590,9 +587,10 @@ class Contract(RpcMixin, VatCategoryMixin, SQLModel, table=True):
     )
     is_completed: bool = Field(default=False, description="flag marking if contract has been completed")
     currency: str = Field(description="Currency code, e.g. EUR or USD")
+    # No default: the rate depends on where the user operates, so every write
+    # path states it (0 for a category other than standard).
     VAT_rate: Decimal = Field(
-        description="VAT rate applied to the contractual rate.",
-        default=CONTRACT_DEFAULT_VAT_RATE,  # TODO: configure by country?
+        description="VAT rate applied to the contractual rate, as a fraction (0.19 is 19%).",
     )
     VAT_category: TaxCategory = Field(
         description="Tax category of the supply. Determines the EN16931 category "

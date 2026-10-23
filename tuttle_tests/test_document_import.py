@@ -139,6 +139,7 @@ class TestInvoiceImport:
                 client_id=client.id,
                 rate=Decimal("80"),
                 currency="EUR",
+                VAT_rate=Decimal("0.19"),
                 unit="hour",
                 start_date=datetime.date(2023, 1, 1),
             )

@@ -36,7 +36,8 @@ def _validation_error_message(exc: ValidationError) -> str:
     for err in exc.errors():
         loc = err.get("loc") or ()
         field = str(loc[0]) if loc else "field"
-        label = field.removesuffix("_id").replace("_", " ").capitalize()
+        label = field.removesuffix("_id").replace("_", " ")
+        label = label[:1].upper() + label[1:]  # keeps "VAT rate" from becoming "Vat rate"
         if err.get("type") == "missing" or err.get("input", ...) is None:
             parts.append(f"{label} is required.")
             continue
