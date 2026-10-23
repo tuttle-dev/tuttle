@@ -52,6 +52,7 @@ export function InvoicingView() {
   const [createOpen, setCreateOpen] = useState(false);
   const [newlyCreatedId, setNewlyCreatedId] = useState<number | null>(null);
   const [mailError, setMailError] = useState<string | null>(null);
+  const [statusError, setStatusError] = useState<string | null>(null);
   const [renderWarning, setRenderWarning] = useState<string | null>(null);
 
   const defaultColumn = useCallback(
@@ -67,7 +68,7 @@ export function InvoicingView() {
     navScrolled.current = true;
     document.querySelector(`[data-invoice-id="${navFilter.invoiceId}"]`)?.scrollIntoView({ block: "center" });
   }, [invoices]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { setMailError(null); }, [selected?.id]);
+  useEffect(() => { setMailError(null); setStatusError(null); }, [selected?.id]);
 
   async function load(selectId?: number) {
     setLoading(true);
@@ -127,9 +128,16 @@ export function InvoicingView() {
     preferred: navFilter.contractId != null ? (inv) => num(inv, "contract_id") === navFilter.contractId : undefined,
   });
 
-  async function toggleSent(id: number) { await rpc("invoicing.toggle_sent", { id }); load(); }
-  async function togglePaid(id: number) { await rpc("invoicing.toggle_paid", { id }); load(); }
-  async function toggleCancelled(id: number) { await rpc("invoicing.toggle_cancelled", { id }); load(); }
+  // A status change can be refused, e.g. cancelling a deposit that a final invoice settles.
+  async function toggleStatus(method: "toggle_sent" | "toggle_paid" | "toggle_cancelled", id: number) {
+    setStatusError(null);
+    const res = await rpc(`invoicing.${method}`, { id });
+    if (!res.ok) setStatusError(res.error || "The invoice status could not be changed.");
+    load();
+  }
+  async function toggleSent(id: number) { await toggleStatus("toggle_sent", id); }
+  async function togglePaid(id: number) { await toggleStatus("toggle_paid", id); }
+  async function toggleCancelled(id: number) { await toggleStatus("toggle_cancelled", id); }
   async function sendMail(id: number) {
     setMailError(null);
     const res = await rpc<void>("invoicing.send_mail", { id });
@@ -173,6 +181,14 @@ export function InvoicingView() {
           <AlertTriangle size={14} className="shrink-0" />
           <span className="flex-1">{renderWarning}</span>
           <button onClick={() => setRenderWarning(null)} className="text-status-warning hover:text-status-warning/80">✕</button>
+        </div>
+      )}
+
+      {statusError && (
+        <div className="mx-4 mt-2 flex items-center gap-2 px-3 py-2 rounded-md text-xs text-status-danger bg-status-danger/10 border border-status-danger/30">
+          <AlertTriangle size={14} className="shrink-0" />
+          <span className="flex-1">{statusError}</span>
+          <button onClick={() => setStatusError(null)} className="text-status-danger hover:text-status-danger/80">✕</button>
         </div>
       )}
 

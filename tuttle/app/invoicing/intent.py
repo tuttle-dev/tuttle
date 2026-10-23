@@ -964,7 +964,9 @@ class InvoicingIntent(Intent):
             logger.exception(ex)
             return IntentResult(
                 was_intent_successful=False,
-                error_msg=f"Failed to toggle the invoice sent status: {ex}",
+                error_msg=(
+                    "The sent status could not be changed because of an unexpected error. Details are in the application log."
+                ),
             )
 
     def toggle_invoice_paid_status(self, invoice: Invoice) -> IntentResult[Invoice]:
@@ -985,10 +987,13 @@ class InvoicingIntent(Intent):
             # Settling the Schlussrechnung settles the whole contract: its
             # remaining balance is what is left after the deposits, so a paid
             # final invoice means every deposit in the chain was paid too.
+            # A cancelled deposit was never charged, so it stays unpaid.
             if invoice.is_final_invoice and new_paid:
                 reload = self._invoicing_data_source.get_invoice_by_id(invoice.id)
                 final = reload.data if reload.was_intent_successful and reload.data else invoice
                 for dep in final.deposits:
+                    if dep.cancelled:
+                        continue
                     dep_fresh = self._invoicing_data_source.get_invoice_by_id(dep.id)
                     if dep_fresh.was_intent_successful and dep_fresh.data:
                         dep_fresh.data.paid = True
@@ -1004,7 +1009,9 @@ class InvoicingIntent(Intent):
             logger.exception(ex)
             return IntentResult(
                 was_intent_successful=False,
-                error_msg=f"Failed to toggle the invoice paid status: {ex}",
+                error_msg=(
+                    "The paid status could not be changed because of an unexpected error. Details are in the application log."
+                ),
             )
 
     def toggle_invoice_cancelled_status(self, invoice: Invoice) -> IntentResult[Invoice]:
@@ -1019,6 +1026,18 @@ class InvoicingIntent(Intent):
             IntentResult[Invoice]:
                 An IntentResult object containing the updated invoice, or old invoice if update was not successful.
         """
+        if invoice.is_deposit and not invoice.cancelled and invoice.deposit_for_id is not None:
+            # The final invoice deducts this deposit. Voided on its own, the deposit
+            # would stay deducted there and the client would be asked for too little.
+            final = self._invoicing_data_source.get_invoice_by_id(invoice.deposit_for_id).data
+            if final is not None and not final.cancelled:
+                return IntentResult(
+                    was_intent_successful=False,
+                    error_msg=(
+                        f"Deposit invoice {invoice.number} is settled by final invoice {final.number}. "
+                        "Cancel the final invoice first, then the deposit."
+                    ),
+                )
         try:
             invoice.cancelled = not invoice.cancelled
             self._invoicing_data_source.save_invoice(invoice)
@@ -1033,7 +1052,10 @@ class InvoicingIntent(Intent):
             logger.exception(ex)
             return IntentResult(
                 was_intent_successful=False,
-                error_msg=f"Failed to toggle the invoice cancelled status: {ex}",
+                error_msg=(
+                    "The invoice could not be cancelled or restored because of an unexpected error. "
+                    "Details are in the application log."
+                ),
             )
 
     def view_invoice(self, invoice: Invoice) -> IntentResult[Path]:
