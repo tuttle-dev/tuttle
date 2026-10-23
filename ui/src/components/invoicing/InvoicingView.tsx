@@ -1362,7 +1362,7 @@ function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid, onTog
                       <span className="text-sm font-semibold tabular-nums">{str(item, "subtotal_formatted")}</span>
                     </div>
                     <div className="flex items-center gap-3 mt-1.5 text-xs text-secondary">
-                      <span>{num(item, "quantity").toFixed(1)} {str(item, "unit") || "hour"}</span>
+                      <span>{str(item, "quantity_formatted")} {str(item, "unit") || "hour"}</span>
                       <span>{str(item, "unit_price_formatted")}/{str(item, "unit") || "hour"}</span>
                       <span>{taxTreatment(taxCategory(str(item, "VAT_category")), num(item, "VAT_rate"))}</span>
                     </div>

@@ -79,7 +79,7 @@
       {% for item in invoice.items %}
       <tr>
         <td class="col-date">{{ item.start_date | as_date_short }}&ndash;{{ item.end_date | as_date_short }}</td>
-        <td class="col-qty">{{ item.quantity }}</td>
+        <td class="col-qty">{{ item.quantity | as_quantity }}</td>
         <td class="col-unit">{{ item.unit | unit_label(item.quantity) }}</td>
         <td class="col-desc">{{ item.description }}</td>
         <td class="col-price num">{{ item.unit_price | as_currency }}</td>

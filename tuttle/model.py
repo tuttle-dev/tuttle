@@ -24,15 +24,15 @@ import datetime
 import enum
 import re
 import textwrap
-from decimal import Decimal
-from typing import List, Literal, Optional, Type
+from decimal import ROUND_HALF_UP, Decimal
+from typing import List, Literal, NamedTuple, Optional, Type
 
 import pandas
 import sqlalchemy
 from pydantic import BaseModel, condecimal, validator
 from sqlmodel import Field, Relationship, SQLModel
 
-from .app.core.formatting import fmt_currency
+from .app.core.formatting import fmt_currency, fmt_quantity
 from .data_dir import get_data_dir
 from .dev import deprecated
 from .fx import convert, primary_currency, rate
@@ -1145,6 +1145,33 @@ class Timesheet(SQLModel, table=True):
         return len(self.items) == 0
 
 
+# Invoices round half-up (commercial rounding): money to the cent, billed
+# quantities to two decimals. Every amount the model hands out is already
+# rounded, so the lines of a document add up to its totals, and the PDF, the
+# app and the e-invoice XML all show the same figures.
+
+CENT = Decimal("0.01")
+
+
+def round_money(value) -> Decimal:
+    """``value`` rounded half-up to the cent: 3.125 becomes 3.13."""
+    return Decimal(str(value)).quantize(CENT, rounding=ROUND_HALF_UP)
+
+
+def round_quantity(value) -> Decimal:
+    """A billed quantity rounded half-up to two decimals: 1.3333… hours become 1.33."""
+    return Decimal(str(value)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+
+class VatBreakdown(NamedTuple):
+    """The VAT of the invoice lines that share a tax category and rate (EN16931 BG-23)."""
+
+    category: TaxCategory
+    rate: Decimal  # a fraction, e.g. 0.19
+    taxable_amount: Decimal  # the sum of the line subtotals
+    tax_amount: Decimal  # taxable_amount × rate, rounded to the cent
+
+
 class Invoice(RpcMixin, SQLModel, table=True):
     """An invoice, payment reminder, deposit invoice, or final invoice.
 
@@ -1352,15 +1379,29 @@ class Invoice(RpcMixin, SQLModel, table=True):
 
     @property
     def sum(self) -> Decimal:
-        """Sum over all invoice items."""
-        s = sum([item.subtotal for item in self.items])
-        return Decimal(s)
+        """Net amount: the sum of the line subtotals, each rounded to the cent."""
+        return sum((item.subtotal for item in self.items), Decimal("0.00"))
+
+    @property
+    def vat_breakdown(self) -> List[VatBreakdown]:
+        """VAT per tax category and rate, calculated on the summed line subtotals.
+
+        This is the EN16931 calculation (BR-CO-17): VAT is rounded once per
+        category and rate, not once per line.
+        """
+        taxable_amounts: dict[tuple[TaxCategory, Decimal], Decimal] = {}
+        for item in self.items:
+            key = (normalize_tax_category(item.VAT_category), Decimal(str(item.VAT_rate)))
+            taxable_amounts[key] = taxable_amounts.get(key, Decimal("0.00")) + item.subtotal
+        return [
+            VatBreakdown(category, rate, taxable_amount, round_money(taxable_amount * rate))
+            for (category, rate), taxable_amount in taxable_amounts.items()
+        ]
 
     @property
     def VAT_total(self) -> Decimal:
-        """Sum of VAT over all invoice items."""
-        s = sum(item.VAT for item in self.items)
-        return Decimal(round(s, 2))
+        """VAT of the invoice: the sum of its VAT breakdown."""
+        return sum((entry.tax_amount for entry in self.vat_breakdown), Decimal("0.00"))
 
     @property
     def is_outside_scope(self) -> bool:
@@ -1373,11 +1414,11 @@ class Invoice(RpcMixin, SQLModel, table=True):
 
     @property
     def total(self) -> Decimal:
-        """Total invoiced amount, including reminder fee if present."""
-        t = self.sum + self.VAT_total
+        """Total invoiced amount: net sum plus VAT, plus the reminder fee if present."""
+        total = self.sum + self.VAT_total
         if self.reminder_fee:
-            t += self.reminder_fee
-        return Decimal(t)
+            total += round_money(self.reminder_fee)
+        return total
 
     @property
     def due_date(self) -> Optional[datetime.date]:
@@ -1601,7 +1642,7 @@ class Invoice(RpcMixin, SQLModel, table=True):
 
 
 class InvoiceItem(RpcMixin, VatCategoryMixin, SQLModel, table=True):
-    __rpc_computed__ = ("subtotal", "subtotal_formatted", "unit_price_formatted")
+    __rpc_computed__ = ("subtotal", "subtotal_formatted", "unit_price_formatted", "quantity_formatted")
 
     id: Optional[int] = Field(default=None, primary_key=True)
     # date and time
@@ -1656,7 +1697,8 @@ class InvoiceItem(RpcMixin, VatCategoryMixin, SQLModel, table=True):
 
     @property
     def subtotal(self) -> Decimal:
-        return Decimal(str(self.quantity)) * self.unit_price
+        """Net amount of the line: quantity × unit price, rounded half-up to the cent."""
+        return round_money(Decimal(str(self.quantity)) * Decimal(str(self.unit_price)))
 
     @property
     def subtotal_formatted(self) -> str:
@@ -1667,9 +1709,15 @@ class InvoiceItem(RpcMixin, VatCategoryMixin, SQLModel, table=True):
         return fmt_currency(self.unit_price)
 
     @property
+    def quantity_formatted(self) -> str:
+        """The quantity as invoices show it, with up to two decimals: "8", "0.5", "1.33"."""
+        return fmt_quantity(round_quantity(self.quantity))
+
+    @property
     def VAT(self) -> Decimal:
-        """VAT for the invoice item."""
-        return self.subtotal * self.VAT_rate
+        """This line's share of the VAT, not rounded: the invoice rounds VAT once
+        per tax category and rate (see ``Invoice.vat_breakdown``)."""
+        return self.subtotal * Decimal(str(self.VAT_rate))
 
 
 # class Payment(SQLModel, table=True):
