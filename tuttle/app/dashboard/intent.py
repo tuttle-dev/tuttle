@@ -197,7 +197,7 @@ class DashboardIntent(SQLModelDataSourceMixin, Intent):
             )
 
     def _revenue_by_target_year(self, invoices, currency: str) -> dict:
-        """Paid revenue accumulated from Jan 1 of each year up to today.
+        """Paid revenue, net of VAT, accumulated from Jan 1 of each year up to today.
 
         A goal is measured against its own target year, not the current one,
         so a goal due in a future year does not inherit this year's revenue.
@@ -212,7 +212,7 @@ class DashboardIntent(SQLModelDataSourceMixin, Intent):
                 # No resolvable FX rate — leave it out rather than count it as zero.
                 continue
             year = inv.date.year
-            totals[year] = totals.get(year, Decimal(0)) + converted[0]
+            totals[year] = totals.get(year, Decimal(0)) + converted[0] - converted[1]
         return totals
 
     def get_financial_goals(self) -> IntentResult:
