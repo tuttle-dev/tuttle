@@ -86,5 +86,5 @@ def test_outstanding_is_what_the_client_owes(project):
 
 def test_goals_measure_net_revenue(project):
     paid = _invoice(project, TODAY, sent=True, paid=True)
-    totals = DashboardIntent.__new__(DashboardIntent)._revenue_by_target_year([paid], "EUR")
+    totals, _ = DashboardIntent.__new__(DashboardIntent)._revenue_by_target_year([paid], "EUR")
     assert totals == {TODAY.year: Decimal("4000")}

@@ -6,6 +6,7 @@ import {
 import { rpc } from "../../api/rpc";
 import { str, num, int } from "../../api/entity";
 import { KPICard } from "../shared/KPICard";
+import { UnconvertedNote } from "../shared/UnconvertedNote";
 import { ProgressBar } from "../shared/ProgressBar";
 import { EmptyStateIntro } from "../shared/EmptyStateIntro";
 import { LoadError, LoadingState } from "../shared/LoadStates";
@@ -79,6 +80,7 @@ export function DashboardView() {
               valueColor={num(kpis, "spendable_income") > 0 ? "var(--color-status-success)" : "var(--color-status-danger)"} tooltip="Estimated income remaining after VAT, income tax and recurring expenses."/>
           </div>
         </div>
+        <UnconvertedNote items={kpis.unconverted as string[] | undefined} className="mt-2" />
       </div>
 
       <RevenueChart />

@@ -4,6 +4,7 @@ import { rpc } from "../../api/rpc";
 import { EmptyStateIntro } from "../shared/EmptyStateIntro";
 import { LoadError, LoadingState } from "../shared/LoadStates";
 import { PageLayout } from "../shared/ToolbarButtons";
+import { UnconvertedNote } from "../shared/UnconvertedNote";
 import type { Entity } from "../../api/types";
 import { str, num, maybeNum, bool, type DynamicLine } from "../../api/entity";
 
@@ -21,6 +22,7 @@ export function TaxReservesView() {
   const [spending, setSpending] = useState<Entity | null>(null);
   const [taxEstimate, setTaxEstimate] = useState<Entity | null>(null);
   const [months, setMonths] = useState<Entity[]>([]);
+  const [vatUnconverted, setVatUnconverted] = useState<string[]>([]);
   const [currency, setCurrency] = useState("EUR");
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -60,6 +62,7 @@ export function TaxReservesView() {
     if (vatRes.ok && vatRes.data) {
       const d = vatRes.data as Entity;
       setMonths((d.months as Entity[]) || []);
+      setVatUnconverted((d.unconverted as string[]) || []);
       if (str(d, "currency")) setCurrency(str(d, "currency"));
     }
     setLoading(false);
@@ -76,6 +79,8 @@ export function TaxReservesView() {
 
   const sp = spending?.spending as Entity | undefined;
   const hasAnyIncome = sp && (num(sp, "gross_revenue_ytd") > 0 || num(sp, "planned_revenue") > 0 || num(sp, "contracted_revenue") > 0);
+  // The breakdown and the monthly VAT leave out the same invoices: name each once.
+  const unconverted = [...new Set([...((sp?.unconverted as string[]) || []), ...vatUnconverted])];
 
   if (!hasAnyIncome && months.length === 0) {
     return <PageLayout title="Tax & Reserves" right={yearSelector}
@@ -157,6 +162,7 @@ export function TaxReservesView() {
             </div>
           );
         })()}
+        <UnconvertedNote items={unconverted} className="mt-3" />
       </Section>
 
       {/* Monthly VAT */}

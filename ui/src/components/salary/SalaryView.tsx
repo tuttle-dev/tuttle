@@ -4,6 +4,7 @@ import { rpc } from "../../api/rpc";
 import { EmptyStateIntro } from "../shared/EmptyStateIntro";
 import { LoadError, LoadingState } from "../shared/LoadStates";
 import { PageLayout } from "../shared/ToolbarButtons";
+import { UnconvertedNote } from "../shared/UnconvertedNote";
 import type { Entity } from "../../api/types";
 import { num, maybeNum, str, type DynamicLine } from "../../api/entity";
 
@@ -32,6 +33,7 @@ type SalaryData = {
   periodEnd: string;
   currency: string;
   noTax: string;
+  unconverted: string[];
 };
 
 export function SalaryView() {
@@ -67,6 +69,7 @@ export function SalaryView() {
           periodEnd: str(sal, "period_end"),
           currency: cur,
           noTax: str(sal, "tax_unavailable_reason"),
+          unconverted: (sal.unconverted as string[]) || [],
         });
         if (target === null) setTarget(con);
       }
@@ -93,6 +96,7 @@ export function SalaryView() {
           target={target ?? salary.conservative} onTargetChange={setTarget} />
       )}
       <MonthlyBreakdown salary={salary} />
+      <UnconvertedNote items={salary.unconverted} className="@4xl:col-span-2" />
     </PageLayout>
   );
 }

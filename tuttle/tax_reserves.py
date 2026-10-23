@@ -15,7 +15,7 @@ from pandas import DataFrame
 from .fx import convert, default_currency, fx_haircut
 from .fx import rate as fx_rate
 from .model import Invoice, Project, RecurringExpense
-from .tax import NoTaxRules, get_tax_system
+from .tax import TaxUnavailable, get_tax_system
 from .time import Cycle, TimeUnit
 from .timetracking import drop_completed, drop_invoiced, sum_hours_by_tag
 
@@ -75,6 +75,17 @@ class SpendableIncome(NamedTuple):
     dynamic_expenses: list = []  # per-expense DynamicExpenseLine, never mutated
     fixed_expenses_post_tax: Decimal = Decimal(0)  # non-deductible fixed expenses for the year
     tax_unavailable_reason: Optional[str] = None  # why there is no tax estimate, e.g. "No tax model for Norway."
+    unconverted: list = []  # amounts left out for lack of an exchange rate, one line each; never mutated
+
+
+def distinct(items: List[str]) -> List[str]:
+    """*items* in their order, each once: a total can meet the same amount twice."""
+    return list(dict.fromkeys(items))
+
+
+def planned_work_label(project: Project) -> str:
+    """How a total names a project's planned work it left out for lack of an exchange rate."""
+    return f"Planned work on {project.title} ({project.contract.currency})"
 
 
 def _invoice_currency(inv: Invoice) -> Optional[str]:
@@ -99,12 +110,14 @@ def _revenue_amounts(inv: Invoice) -> tuple[Decimal, Decimal]:
     return total, vat
 
 
-def convert_invoice(inv: Invoice, currency: Optional[str]) -> Optional[tuple[Decimal, Decimal]]:
+def convert_invoice(
+    inv: Invoice, currency: Optional[str], left_out: Optional[List[str]] = None
+) -> Optional[tuple[Decimal, Decimal]]:
     """The (total, VAT) an invoice adds to revenue, expressed in *currency*.
 
     Returns ``None`` when the invoice is in another currency and the ECB rate
     for its month cannot be resolved — the caller must leave it out and say so,
-    never count it as zero.
+    never count it as zero. Then *left_out*, if given, gets a line naming it.
     """
     total, vat = _revenue_amounts(inv)
     inv_currency = _invoice_currency(inv)
@@ -126,6 +139,8 @@ def convert_invoice(inv: Invoice, currency: Optional[str]) -> Optional[tuple[Dec
     converted_total = convert(total, inv_currency, currency, inv.date)
     converted_vat = convert(vat, inv_currency, currency, inv.date)
     if converted_total is None or converted_vat is None:
+        if left_out is not None:
+            left_out.append(f"Invoice {inv.number or inv.id} ({inv_currency}, {inv.date:%b %Y})")
         return None
     return converted_total, converted_vat
 
@@ -135,6 +150,7 @@ def compute_planned_revenue(
     time_data: Optional[DataFrame] = None,
     currency: Optional[str] = None,
     invoices: Optional[List[Invoice]] = None,
+    left_out: Optional[List[str]] = None,
 ) -> Decimal:
     """Net revenue from this year's calendar work, past and future, not yet invoiced.
 
@@ -142,7 +158,8 @@ def compute_planned_revenue(
     completed projects, which are invoiced and paid in full. Converts
     hours to revenue via each project's contract rate, and contracts in a
     foreign currency into *currency* at the current month's rate (uninvoiced
-    work has no invoice date to pin a rate to).
+    work has no invoice date to pin a rate to). Work without a rate is left
+    out, and named in *left_out* if given.
     """
     if time_data is None or time_data.empty:
         return Decimal(0)
@@ -180,6 +197,8 @@ def compute_planned_revenue(
         if currency and contract.currency not in (currency, None):
             converted = convert(revenue, contract.currency, currency, today)
             if converted is None:
+                if left_out is not None:
+                    left_out.append(planned_work_label(project))
                 continue
             revenue = converted
         total += revenue
@@ -192,13 +211,15 @@ def compute_vat_reserves(
     period_start: datetime.date,
     period_end: datetime.date,
     currency: Optional[str] = None,
+    left_out: Optional[List[str]] = None,
 ) -> VATReserve:
     """Sum VAT collected on issued, non-cancelled invoices in the given period.
 
     Invoices in another currency are converted to *currency* at the ECB monthly
     average. For the supported cases (reverse charge, outside scope) their VAT
     is zero before and after conversion. Reminders collect no VAT of their own,
-    and drafts none yet.
+    and drafts none yet. An invoice without a rate is left out, and named in
+    *left_out* if given.
     """
     vat_total = Decimal(0)
     count = 0
@@ -206,7 +227,7 @@ def compute_vat_reserves(
         if inv.cancelled or inv.is_reminder or not inv.is_issued:
             continue
         if period_start <= inv.date <= period_end:
-            converted = convert_invoice(inv, currency)
+            converted = convert_invoice(inv, currency, left_out)
             if converted is None:
                 continue
             vat_total += converted[1]
@@ -236,7 +257,9 @@ def compute_income_tax_reserve(
     in another one is converted for it, and the tax back.
 
     Raises ``NoTaxRules`` when there are no tax rules for *country* in that
-    year: a tax of zero would pass for an estimate, so there is none.
+    year: a tax of zero would pass for an estimate, so there is none. Raises
+    ``TaxUnavailable`` when income in another currency cannot be converted
+    for the tariff.
     """
     today = datetime.date.today()
     _zero = IncomeTaxReserve(
@@ -259,14 +282,7 @@ def compute_income_tax_reserve(
     if currency and currency != tax_system.currency:
         to_tax_currency = fx_rate(currency, tax_system.currency, ref_date)
         if to_tax_currency is None:
-            logger.warning(
-                "No %s/%s rate; estimating %s tax on the %s amount as is.",
-                currency,
-                tax_system.currency,
-                tax_system.country,
-                currency,
-            )
-            to_tax_currency = Decimal(1)
+            raise TaxUnavailable(f"No {currency}/{tax_system.currency} exchange rate for {ref_date:%b %Y}.")
 
     annual_tax = tax_system.income_tax(taxable_income * to_tax_currency) / to_tax_currency
     annual_soli = tax_system.solidarity_surcharge(annual_tax * to_tax_currency) / to_tax_currency
@@ -294,6 +310,7 @@ def compute_spendable_income(
     projects: Optional[List[Project]] = None,
     time_data: Optional[DataFrame] = None,
     contracted: Decimal = Decimal(0),
+    left_out: Optional[List[str]] = None,
 ) -> SpendableIncome:
     """Compute spendable income: what's left after VAT, expenses, and income tax.
 
@@ -327,6 +344,10 @@ def compute_spendable_income(
     Without tax rules for *country* in the year, the figures up to the tax
     base stay, and the income tax, the expenses charged on taxed income and
     Safe to Spend are None, with ``tax_unavailable_reason`` saying why.
+
+    Amounts without an exchange rate are left out, and ``unconverted`` names
+    them. *left_out* lists those the caller already left out, such as in
+    *contracted*; it is extended with this function's own.
     """
     today = datetime.date.today()
     # Any year but the current one is over: it has no planned or contracted work.
@@ -336,6 +357,7 @@ def compute_spendable_income(
     cent = Decimal("0.01")
 
     currency = currency or default_currency(country)
+    left_out = [] if left_out is None else left_out
 
     received_gross = Decimal(0)
     received_vat = Decimal(0)
@@ -347,7 +369,7 @@ def compute_spendable_income(
         if inv.cancelled or not inv.is_issued:
             continue
         if year_start <= inv.date <= year_end:
-            converted = convert_invoice(inv, currency)
+            converted = convert_invoice(inv, currency, left_out)
             if converted is None:
                 continue
             gross, vat = converted
@@ -365,7 +387,7 @@ def compute_spendable_income(
 
     planned = Decimal(0)
     if not other_year and projects and time_data is not None:
-        planned = compute_planned_revenue(projects, time_data, currency=currency, invoices=invoices)
+        planned = compute_planned_revenue(projects, time_data, currency=currency, invoices=invoices, left_out=left_out)
     if other_year:
         contracted = Decimal(0)
 
@@ -377,8 +399,8 @@ def compute_spendable_income(
     # each recurring one, whichever month this is.
     fixed_expenses = [e for e in (expenses or []) if e.rate is None]
     dynamic_expenses = [e for e in (expenses or []) if e.rate is not None]
-    deductible_monthly = _monthly_expenses_total([e for e in fixed_expenses if e.tax_deductible], currency)
-    post_tax_monthly = _monthly_expenses_total([e for e in fixed_expenses if not e.tax_deductible], currency)
+    deductible_monthly = _monthly_expenses_total([e for e in fixed_expenses if e.tax_deductible], currency, left_out)
+    post_tax_monthly = _monthly_expenses_total([e for e in fixed_expenses if not e.tax_deductible], currency, left_out)
     biz_expenses = (deductible_monthly * 12).quantize(cent)
     fixed_post_tax = (post_tax_monthly * 12).quantize(cent)
 
@@ -403,7 +425,7 @@ def compute_spendable_income(
 
     try:
         tax_reserve = compute_income_tax_reserve(tax_base, country, deductions, year=year, currency=currency)
-    except NoTaxRules as e:
+    except TaxUnavailable as e:
         # Without tax rules nothing after the tax is known: no tax, no Safe to
         # Spend, and no expense charged on taxed income.
         no_tax = str(e)
@@ -450,6 +472,7 @@ def compute_spendable_income(
         dynamic_expenses=dynamic_lines,
         fixed_expenses_post_tax=fixed_post_tax,
         tax_unavailable_reason=no_tax,
+        unconverted=distinct(left_out),
     )
 
 
@@ -512,27 +535,33 @@ def _lines_total(lines: List[DynamicExpenseLine]) -> Decimal:
     return sum((line.amount for line in lines), Decimal(0))
 
 
-def _normalize_to_monthly(expense: RecurringExpense, currency: Optional[str] = None) -> Optional[Decimal]:
+def _normalize_to_monthly(
+    expense: RecurringExpense, currency: Optional[str] = None, left_out: Optional[List[str]] = None
+) -> Optional[Decimal]:
     """A recurring expense's monthly equivalent, in *currency* at this month's rate.
 
     Returns ``None`` when the expense is in another currency and the rate
-    cannot be resolved.
+    cannot be resolved; *left_out*, if given, then gets a line naming it.
     """
     monthly = expense.amount / PERIOD_TO_MONTHS.get(expense.period, Decimal(1))
     if currency and expense.currency not in (currency, None):
         monthly = convert(monthly, expense.currency, currency, datetime.date.today())
         if monthly is None:
+            if left_out is not None:
+                left_out.append(f"Expense {expense.title} ({expense.currency})")
             return None
     return monthly.quantize(Decimal("0.01"))
 
 
-def _monthly_expenses_total(expenses: List[RecurringExpense], currency: Optional[str] = None) -> Decimal:
+def _monthly_expenses_total(
+    expenses: List[RecurringExpense], currency: Optional[str] = None, left_out: Optional[List[str]] = None
+) -> Decimal:
     """Sum recurring expenses as monthly amounts in *currency*.
 
     An expense whose exchange rate cannot be resolved is left out, as an
-    invoice is; fx logs which.
+    invoice is, and named in *left_out* if given.
     """
-    amounts = (_normalize_to_monthly(e, currency) for e in expenses)
+    amounts = (_normalize_to_monthly(e, currency, left_out) for e in expenses)
     return sum((a for a in amounts if a is not None), Decimal(0))
 
 
@@ -553,9 +582,9 @@ class EffectiveSalary(NamedTuple):
     conversion_fee_monthly — bank spread on foreign-currency revenue per month
     currency             — ISO 4217 currency code
     period_start, period_end — the months the averages are taken over
-    tax_unavailable_reason — why there are no tax rules to estimate with; the
-        salaries, the income tax and the expenses charged on taxed income are
-        then None
+    tax_unavailable_reason — why income tax cannot be estimated; the salaries,
+        the income tax and the expenses charged on taxed income are then None
+    unconverted          — amounts left out for lack of an exchange rate, one line each
     """
 
     conservative_monthly: Optional[Decimal]
@@ -570,6 +599,7 @@ class EffectiveSalary(NamedTuple):
     period_start: Optional[datetime.date] = None
     period_end: Optional[datetime.date] = None
     tax_unavailable_reason: Optional[str] = None
+    unconverted: list = []  # never mutated
 
 
 class _Revenue(NamedTuple):
@@ -631,12 +661,13 @@ def compute_effective_salary(
         period_end = this_month - datetime.timedelta(days=1)
         months = (period_end.year - period_start.year) * 12 + period_end.month - period_start.month + 1
 
+    left_out: List[str] = []
     paid = _Revenue()
     outstanding = _Revenue()
     for inv in invoices:
         if not period_start <= inv.date <= period_end:
             continue
-        converted = convert_invoice(inv, currency)
+        converted = convert_invoice(inv, currency, left_out)
         if converted is None:
             continue
         gross, vat = converted
@@ -649,7 +680,7 @@ def compute_effective_salary(
 
     fixed_expenses = [e for e in expenses if e.rate is None]
     dynamic_expenses = [e for e in expenses if e.rate is not None]
-    monthly_exp = _monthly_expenses_total(fixed_expenses, currency)
+    monthly_exp = _monthly_expenses_total(fixed_expenses, currency, left_out)
     monthly_exp_deductible = _monthly_expenses_total([e for e in fixed_expenses if e.tax_deductible], currency)
     fx_spread = fx_haircut()
 
@@ -666,8 +697,8 @@ def compute_effective_salary(
             # Tax a year of this monthly profit: progressive tax on the year-to-date
             # sum would treat a few months of income as a whole year's.
             yearly_tax = compute_income_tax_reserve(tax_base * 12, country, currency=currency).ytd_reserve
-        except NoTaxRules as e:
-            # Without tax rules there is no salary, and nothing charged on taxed income.
+        except TaxUnavailable as e:
+            # Without a tax estimate there is no salary, and nothing charged on taxed income.
             unknown_lines = _dynamic_lines(dynamic_expenses, None, deductible=False)
             return _SalaryScenario(None, gross, vat, None, conversion_fee, deductible_lines + unknown_lines, str(e))
         income_tax = (yearly_tax / 12).quantize(cent)
@@ -692,6 +723,7 @@ def compute_effective_salary(
         period_start=period_start,
         period_end=period_end,
         tax_unavailable_reason=optimistic.no_tax,
+        unconverted=distinct(left_out),
     )
 
 
@@ -699,10 +731,12 @@ def monthly_vat_breakdown(
     invoices: List[Invoice],
     year: Optional[int] = None,
     currency: Optional[str] = None,
+    left_out: Optional[List[str]] = None,
 ) -> list:
     """VAT breakdown by month for the given year.
 
     Returns list of dicts: month, vat_collected, invoice_count, period_start, period_end.
+    Invoices without an exchange rate are left out, and named in *left_out* if given.
     """
     if year is None:
         year = datetime.date.today().year
@@ -716,7 +750,7 @@ def monthly_vat_breakdown(
         else:
             period_end = datetime.date(year, m + 1, 1) - datetime.timedelta(days=1)
 
-        reserve = compute_vat_reserves(invoices, period_start, period_end, currency=currency)
+        reserve = compute_vat_reserves(invoices, period_start, period_end, currency=currency, left_out=left_out)
         months.append(
             {
                 "month": month_names[m - 1],
