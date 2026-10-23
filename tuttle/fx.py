@@ -23,7 +23,7 @@ import pycountry
 from babel.numbers import get_territory_currencies
 
 from .app_db import AppDatabase
-from .tax import get_tax_system
+from .tax import NoTaxRules, tax_currency
 
 logger = logging.getLogger(__name__)
 
@@ -94,8 +94,8 @@ def default_currency(country: str) -> str:
     otherwise); else EUR.
     """
     try:
-        return get_tax_system(country).currency
-    except NotImplementedError:
+        return tax_currency(country)
+    except NoTaxRules:
         pass
     code = _COUNTRY_ALIASES.get(country)
     if code is None:
