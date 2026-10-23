@@ -55,7 +55,6 @@ class DatabaseStorageImpl(DatabaseStorage):
         self.reset_database()
         try:
             demo.install_demo_data(
-                n_projects=4,
                 db_path=self.db_path,
                 on_cache_timetracking_dataframe=self.store_demo_dataframe_callback,
             )

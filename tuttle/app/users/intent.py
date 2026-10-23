@@ -497,7 +497,6 @@ class UsersIntent:
 
         try:
             install_demo_data(
-                n_projects=4,
                 db_path=str(db_path),
                 on_cache_timetracking_dataframe=_cache_demo_timetracking,
                 invoice_language=invoice_language,
