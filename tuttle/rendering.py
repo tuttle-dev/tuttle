@@ -17,8 +17,9 @@ from babel.numbers import format_currency, format_decimal
 from loguru import logger
 from segno.helpers import make_epc_qr
 
+from .app.core.formatting import fmt_quantity
 from .i18n import _, babel_locale, ngettext, use_language
-from .model import BankAccount, Invoice, Timesheet, User
+from .model import BankAccount, Invoice, Timesheet, User, round_quantity
 
 try:
     import plutoprint
@@ -33,13 +34,14 @@ except ImportError as ex:
 def unit_label(raw_unit, quantity=None) -> str:
     """Name of an invoice item's unit (e.g. "hour") in the current language.
 
-    When ``quantity`` is given, the form matches it ("1 hour", "2 hours").
-    Plural spellings ("hours") are accepted, as in ``einvoice.unit_to_unece``.
-    Unknown units pass through unchanged.
+    When ``quantity`` is given, the form matches it as the invoice shows it,
+    rounded to two decimals ("1 hour", "2 hours"). Plural spellings ("hours")
+    are accepted, as in ``einvoice.unit_to_unece``. Unknown units pass through
+    unchanged.
     """
     try:
-        count = 1 if quantity is None else float(quantity)
-    except (TypeError, ValueError):
+        count = 1 if quantity is None else float(round_quantity(quantity))
+    except (TypeError, ValueError, ArithmeticError):
         count = 1
     unit = raw_unit.lower().replace(" ", "_").rstrip("s")
     if unit == "hour":
@@ -117,19 +119,25 @@ def convert_html_to_pdf(
 def generate_payment_qr(bank_account: Optional[BankAccount], invoice: Invoice) -> Optional[str]:
     """Generate a SEPA payment (EPC/Girocode) QR code for an invoice, if eligible.
 
+    The code asks for the amount due, which on a final invoice, or a reminder for
+    one, is what the deposits left.
+
     Returns an SVG data URI, or None if ``bank_account`` is missing or incomplete,
-    or the invoice isn't in EUR (the EPC QR format is SEPA-only).
+    the invoice isn't in EUR (the EPC QR format is SEPA-only), or nothing is due.
     """
     if bank_account is None or not (bank_account.BIC and bank_account.IBAN and bank_account.name):
         return None
     if invoice.currency != "EUR":
+        return None
+    amount_due = invoice.remaining_balance
+    if amount_due <= 0:
         return None
 
     try:
         qr = make_epc_qr(
             name=bank_account.name,
             iban=bank_account.IBAN,
-            amount=float(invoice.total),
+            amount=float(amount_due),
             text=invoice.number,
             bic=bank_account.BIC,
         )
@@ -167,11 +175,15 @@ def invoice_template_env(template_name: str, language: str, currency: str) -> ji
     def as_percentage(number):
         return f"{format_decimal(number * 100, format='0.0', locale=babel_locale())} %"
 
+    def as_quantity(number):
+        return fmt_quantity(round_quantity(number), locale=babel_locale())
+
     template_env = _document_environment(get_template_path(template_name), get_shared_template_path())
     template_env.filters["as_currency"] = as_currency
     template_env.filters["as_date"] = as_date
     template_env.filters["as_date_short"] = as_date_short
     template_env.filters["as_percentage"] = as_percentage
+    template_env.filters["as_quantity"] = as_quantity
     template_env.filters["unit_label"] = unit_label
     return template_env
 
@@ -234,8 +246,9 @@ def render_invoice(
 
         # Deposit and final invoices are the two halves of one settlement: the
         # deposit states what share of the contract it bills, the final states the
-        # whole contract and deducts every deposit already issued. Both need the
-        # invoice fully hydrated — callers render from a session-loaded instance.
+        # whole contract and deducts every deposit already issued. A reminder for a
+        # final invoice restates those deductions. All need the invoice fully
+        # hydrated — callers render from a session-loaded instance.
         is_deposit = invoice.is_deposit
         is_final = invoice.is_final_invoice
         deposit_deductions = invoice.deposit_deductions

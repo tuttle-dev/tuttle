@@ -3,7 +3,7 @@ import {
   FileText, Send, CheckCircle, XCircle, Mail, Trash2, Building2, FolderKanban, Calendar, Banknote, Eye, Plus, Clock, AlertTriangle, ChevronDown, ChevronLeft, ChevronRight, Share, Receipt, Milestone, FileSignature, RotateCcw,
 } from "lucide-react";
 import { rpc, readFileAsDataURL } from "../../api/rpc";
-import { str, num, bool, entity as subEntity, list as entityList, formatDate, invoiceStatus, deepStr, isReminder, isDeposit, isFinalInvoice, reminderLevel, depositChainHeadId, depositMilestoneLabel, milestoneScheduleStatus, type MilestoneScheduleStatus } from "../../api/entity";
+import { str, num, bool, entity as subEntity, list as entityList, formatDate, formatMoney, invoiceStatus, deepStr, isReminder, isDeposit, isFinalInvoice, reminderLevel, depositChainHeadId, depositMilestoneLabel, milestoneScheduleStatus, type MilestoneScheduleStatus } from "../../api/entity";
 import { taxCategory, taxTreatment } from "../../api/tax";
 import { StatusBadge } from "../shared/StatusBadge";
 import { statusColor } from "../shared/status-colors";
@@ -18,6 +18,7 @@ import { useAutoSelect } from "../../hooks/useAutoSelect";
 import { LoadError, LoadingState } from "../shared/LoadStates";
 import { Section } from "../shared/Section";
 import type { Entity } from "../../api/types";
+import { localDateIso } from "../../api/entity";
 
 type InvoiceChain = { root: Entity; reminders: Entity[]; deposits: Entity[] };
 
@@ -52,6 +53,7 @@ export function InvoicingView() {
   const [createOpen, setCreateOpen] = useState(false);
   const [newlyCreatedId, setNewlyCreatedId] = useState<number | null>(null);
   const [mailError, setMailError] = useState<string | null>(null);
+  const [statusError, setStatusError] = useState<string | null>(null);
   const [renderWarning, setRenderWarning] = useState<string | null>(null);
 
   const defaultColumn = useCallback(
@@ -67,7 +69,7 @@ export function InvoicingView() {
     navScrolled.current = true;
     document.querySelector(`[data-invoice-id="${navFilter.invoiceId}"]`)?.scrollIntoView({ block: "center" });
   }, [invoices]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { setMailError(null); }, [selected?.id]);
+  useEffect(() => { setMailError(null); setStatusError(null); }, [selected?.id]);
 
   async function load(selectId?: number) {
     setLoading(true);
@@ -127,9 +129,16 @@ export function InvoicingView() {
     preferred: navFilter.contractId != null ? (inv) => num(inv, "contract_id") === navFilter.contractId : undefined,
   });
 
-  async function toggleSent(id: number) { await rpc("invoicing.toggle_sent", { id }); load(); }
-  async function togglePaid(id: number) { await rpc("invoicing.toggle_paid", { id }); load(); }
-  async function toggleCancelled(id: number) { await rpc("invoicing.toggle_cancelled", { id }); load(); }
+  // A status change can be refused, e.g. cancelling a deposit that a final invoice settles.
+  async function toggleStatus(method: "toggle_sent" | "toggle_paid" | "toggle_cancelled", id: number) {
+    setStatusError(null);
+    const res = await rpc(`invoicing.${method}`, { id });
+    if (!res.ok) setStatusError(res.error || "The invoice status could not be changed.");
+    load();
+  }
+  async function toggleSent(id: number) { await toggleStatus("toggle_sent", id); }
+  async function togglePaid(id: number) { await toggleStatus("toggle_paid", id); }
+  async function toggleCancelled(id: number) { await toggleStatus("toggle_cancelled", id); }
   async function sendMail(id: number) {
     setMailError(null);
     const res = await rpc<void>("invoicing.send_mail", { id });
@@ -173,6 +182,14 @@ export function InvoicingView() {
           <AlertTriangle size={14} className="shrink-0" />
           <span className="flex-1">{renderWarning}</span>
           <button onClick={() => setRenderWarning(null)} className="text-status-warning hover:text-status-warning/80">✕</button>
+        </div>
+      )}
+
+      {statusError && (
+        <div className="mx-4 mt-2 flex items-center gap-2 px-3 py-2 rounded-md text-xs text-status-danger bg-status-danger/10 border border-status-danger/30">
+          <AlertTriangle size={14} className="shrink-0" />
+          <span className="flex-1">{statusError}</span>
+          <button onClick={() => setStatusError(null)} className="text-status-danger hover:text-status-danger/80">✕</button>
         </div>
       )}
 
@@ -359,7 +376,7 @@ function makeDefaultItems(project?: Entity | null, charges?: Entity[] | null): L
 function CreateInvoiceDialog({ onClose, onCreated }: { onClose: () => void; onCreated: (newId?: number, warning?: string | null) => Promise<void> | void }) {
   const [projects, setProjects] = useState<Entity[]>([]);
   const [projectId, setProjectId] = useState<number | null>(null);
-  const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().slice(0, 10));
+  const [invoiceDate, setInvoiceDate] = useState(localDateIso);
   const [fromDate, setFromDate] = useState(() => {
     const d = new Date(); d.setMonth(d.getMonth() - 1); d.setDate(1);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
@@ -411,7 +428,9 @@ function CreateInvoiceDialog({ onClose, onCreated }: { onClose: () => void; onCr
   const openMilestones = milestones.filter((m) => !bool(m, "invoiced"));
   const isLastOpenMilestone =
     openMilestones.length === 1 && selectedMilestoneId === openMilestones[0]?.id;
-  const canSettle = hasMilestones && openMilestones.length < milestones.length;
+  // A project is settled once: a second final invoice would bill the contract again.
+  const isSettled = selectedProject ? bool(selectedProject, "is_settled") : false;
+  const canSettle = hasMilestones && openMilestones.length < milestones.length && !isSettled;
 
   // The document type resets with the project, so a picker option that no
   // longer applies cannot survive into a submission.
@@ -595,10 +614,13 @@ function CreateInvoiceDialog({ onClose, onCreated }: { onClose: () => void; onCr
                 {DOCUMENT_TYPE_OPTIONS.map(({ value, label, icon: Icon }) => {
                   // Settling early is only meaningful once a deposit exists to deduct.
                   const disabled = value === "final" && !canSettle;
+                  const disabledReason = isSettled
+                    ? "A final invoice already settles this project"
+                    : "Invoice at least one milestone first";
                   return (
                     <button key={value} type="button" disabled={disabled}
                       onClick={() => { setDocType(value); setSelectedMilestoneId(null); }}
-                      title={disabled ? "Invoice at least one milestone first" : undefined}
+                      title={disabled ? disabledReason : undefined}
                       className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-colors border
                         ${docType === value ? "border-accent bg-accent/15 text-primary" : "border-border-subtle text-tertiary"}
                         ${disabled ? "opacity-40 cursor-not-allowed" : ""}`}>
@@ -1113,6 +1135,10 @@ function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid, onTog
       .sort((a, b) => num(a, "reminder_level") - num(b, "reminder_level"));
     return [root, ...reminders];
   }, [invoice, allInvoices]);
+  // The final invoice whose settlement this document states: itself, or the one a reminder chases.
+  const settlement = isFinalInvoice(invoice) ? invoice
+    : isRem && chain[0] && isFinalInvoice(chain[0]) ? chain[0] : null;
+  const reminderFee = isRem ? num(invoice, "reminder_fee") : 0;
 
   const [detailTab, setDetailTab] = useState<"invoice" | "timesheet" | "details">(pdfPath ? "invoice" : "details");
   const [pdfDataUrl, setPdfDataUrl] = useState<string | null>(null);
@@ -1202,13 +1228,17 @@ function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid, onTog
           </div>
         </div>
 
-        {/* A final invoice settles the whole contract: what matters is the
-            balance still due after deducting the deposits, not the full total. */}
+        {/* A final invoice settles the whole contract, and a reminder for it
+            restates that settlement: what matters is the balance still due
+            after deducting the deposits, not the full total. */}
         <div className="flex flex-wrap gap-2">
-          {isFinalInvoice(invoice) ? (
+          {settlement ? (
             <>
-              <AmountCard label="Contract total" value={str(invoice, "total_formatted")} />
-              <AmountCard label="Deposits deducted" value={str(invoice, "deposits_deducted_formatted") ? `−${str(invoice, "deposits_deducted_formatted")}` : "—"} />
+              <AmountCard label="Contract total" value={str(settlement, "total_formatted")} />
+              <AmountCard label="Deposits deducted" value={str(settlement, "deposits_deducted_formatted") ? `−${str(settlement, "deposits_deducted_formatted")}` : "—"} />
+              {reminderFee > 0 && (
+                <AmountCard label="Reminder fee" value={formatMoney(reminderFee, str(invoice, "currency") || "EUR")} />
+              )}
               <AmountCard label="Balance due" value={str(invoice, "remaining_balance_formatted")} prominent />
             </>
           ) : (
@@ -1332,7 +1362,7 @@ function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid, onTog
                       <span className="text-sm font-semibold tabular-nums">{str(item, "subtotal_formatted")}</span>
                     </div>
                     <div className="flex items-center gap-3 mt-1.5 text-xs text-secondary">
-                      <span>{num(item, "quantity").toFixed(1)} {str(item, "unit") || "hour"}</span>
+                      <span>{str(item, "quantity_formatted")} {str(item, "unit") || "hour"}</span>
                       <span>{str(item, "unit_price_formatted")}/{str(item, "unit") || "hour"}</span>
                       <span>{taxTreatment(taxCategory(str(item, "VAT_category")), num(item, "VAT_rate"))}</span>
                     </div>
@@ -1653,8 +1683,10 @@ function StatusMenu({ status, isSent, isPaid, isCancelled, onToggleSent, onToggl
 function CreateReminderDialog({ invoiceId, invoiceNumber, onClose, onCreated }: {
   invoiceId: number; invoiceNumber: string; onClose: () => void; onCreated: (newId?: number, warning?: string | null) => void;
 }) {
-  const today = new Date().toISOString().slice(0, 10);
-  const twoWeeks = new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10);
+  const today = localDateIso();
+  const inTwoWeeks = new Date();
+  inTwoWeeks.setDate(inTwoWeeks.getDate() + 14);
+  const twoWeeks = localDateIso(inTwoWeeks);
   const [reminderDate, setReminderDate] = useState(today);
   const [newDueDate, setNewDueDate] = useState(twoWeeks);
   const [fee, setFee] = useState("");

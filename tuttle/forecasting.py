@@ -18,7 +18,7 @@ from .tax_reserves import (
     convert_invoice,
 )
 from .time import TimeUnit
-from .timetracking import drop_invoiced, event_hours
+from .timetracking import drop_completed, drop_invoiced, event_hours
 
 
 def monthly_revenue_from_contracts(
@@ -168,11 +168,14 @@ def revenue_from_calendar(
     period alias — "W", "M" or "Y".
 
     If *invoices* is given, hours already captured in a timesheet attached
-    to a (non-cancelled) invoice are excluded, keyed by the timesheet's own
-    period rather than the invoice's date — otherwise work billed in a
-    later month than it was performed would show up twice: once as
-    "planned" for the month it was done, and again as "invoiced" for the
-    month the invoice was actually raised.
+    to an issued invoice (sent or paid, not cancelled) are excluded, keyed
+    by the timesheet's own period rather than the invoice's date —
+    otherwise work billed in a later month than it was performed would
+    show up twice: once as "planned" for the month it was done, and again
+    as "invoiced" for the month the invoice was actually raised. A draft's
+    hours stay planned until it is sent.
+
+    Completed projects are left out: they are invoiced and paid in full.
 
     If *currency* is given, revenue from a contract in another currency is
     converted at the current month's rate (uninvoiced work has no invoice
@@ -189,7 +192,7 @@ def revenue_from_calendar(
 
     index_dates = time_data.index.date
     mask = (index_dates >= start_date) & (index_dates <= end_date)
-    filtered = time_data[mask]
+    filtered = drop_completed(time_data[mask], projects)
     if filtered.empty:
         return empty
 
@@ -290,10 +293,10 @@ def _term_end(contract: Contract, members: List[Project]) -> Optional[datetime.d
 
 
 def _invoiced_net(contract: Contract, invoices: List[Invoice]) -> Decimal:
-    """Net amount invoiced on *contract*. A reminder repeats an invoice and adds nothing."""
+    """Net amount invoiced on *contract*. A reminder repeats an invoice and adds nothing; a draft is not invoiced yet."""
     total = Decimal(0)
     for inv in invoices:
-        if inv.cancelled or inv.is_reminder:
+        if inv.cancelled or inv.is_reminder or not inv.is_issued:
             continue
         if inv.contract is contract or (contract.id is not None and inv.contract_id == contract.id):
             total += inv.sum
@@ -355,8 +358,9 @@ def contracted_revenue(
     project board. What is left of its agreed value — the fixed price, or
     volume × rate — after invoices and after the tracked or scheduled work that
     shows as planned revenue is spread evenly over the rest of its term: until
-    the contract's end date, else its projects'. With no term left it falls on
-    today.
+    the contract's end date, else its projects'. Without an end date it falls
+    on today. Once the term has ended, the contract adds nothing: whatever was
+    not worked by then will not be.
 
     A contract with an expected workload follows that pace instead: each week,
     the expected hours the calendar does not already hold, until the end date,
@@ -386,6 +390,9 @@ def contracted_revenue(
 
     slices = []
     for contract, members in committed:
+        last = _term_end(contract, members)
+        if last and last < today:
+            continue
         agreed = contract.agreed_value
         paced = not contract.is_fixed_price and bool(contract.rate) and bool(contract.expected_units_per_week)
         if agreed is None and not paced:
@@ -403,7 +410,6 @@ def contracted_revenue(
             continue
 
         first = max(today, contract.start_date)
-        last = _term_end(contract, members)
         if paced:
             hours = _hours_by_day(time_data, {p.tag for p in members}, contract.units_per_workday)
             parts = _paced(contract, hours, first, min(last, until) if last else until, budget)
@@ -554,7 +560,7 @@ def _data_extent(
     time_data: Optional[DataFrame],
 ) -> tuple:
     """Earliest and latest date covered by invoices or calendar events."""
-    dates = [inv.date for inv in invoices if not inv.cancelled and inv.date]
+    dates = [inv.date for inv in invoices if not inv.cancelled and inv.is_issued and inv.date]
     if time_data is not None and not time_data.empty:
         dates.append(time_data.index.min().date())
         dates.append(time_data.index.max().date())
@@ -569,6 +575,16 @@ def _bucket_label(start: datetime.date, granularity: str) -> str:
     if granularity == "year":
         return str(start.year)
     return calendar.month_abbr[start.month]
+
+
+def _bucket_year(start: datetime.date, granularity: str) -> int:
+    """The year a bucket belongs to: for a week, the ISO year its number counts in.
+
+    The week of 29 December 2025 is W01 of 2026, not of 2025.
+    """
+    if granularity == "week":
+        return start.isocalendar()[0]
+    return start.year
 
 
 def revenue_series(
@@ -620,7 +636,7 @@ def revenue_series(
             "bucket": p.start_time.date().isoformat(),
             "bucket_end": p.end_time.date().isoformat(),
             "label": _bucket_label(p.start_time.date(), granularity),
-            "year": p.start_time.year,
+            "year": _bucket_year(p.start_time.date(), granularity),
             "received": 0.0,
             "invoiced": 0.0,
             "planned": 0.0,
@@ -704,8 +720,9 @@ def cash_flow_series(
     """Project monthly cash inflows, expense outflows, and cumulative balance.
 
     Reconciles upcoming cash movements for a forward-looking forecast window:
-    - Inflows from unpaid invoices (both draft and sent) placed in their effective due date bucket
-      (overdue invoices map to the current month).
+    - Inflows from sent, unpaid invoices placed in their effective due date bucket
+      (overdue invoices map to the current month). A draft is not invoiced yet:
+      its tracked time arrives with the planned work.
     - Inflows from planned calendar work shifted forward by contract payment terms
       (past un-invoiced work maps to the current month).
     - Inflows from contracted work (:func:`contracted_revenue`), shifted the same way.
@@ -743,9 +760,9 @@ def cash_flow_series(
         for p in periods
     }
 
-    # 1. Inflows from unpaid invoices (both draft and sent)
+    # 1. Inflows from sent, unpaid invoices
     for inv in invoices:
-        if inv.paid or inv.cancelled:
+        if inv.paid or inv.cancelled or not inv.is_issued:
             continue
         converted = convert_invoice(inv, currency)
         if converted is None:

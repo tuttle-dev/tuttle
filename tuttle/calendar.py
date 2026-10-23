@@ -76,7 +76,8 @@ class ICSCalendar(Calendar):
             begin = pandas.to_datetime(event.begin.datetime).tz_convert("CET")
             end = pandas.to_datetime(event.end.datetime).tz_convert("CET")
             is_all_day = event.all_day
-            title = event.name
+            # An event without a title has no project tag; it still counts as time.
+            title = event.name or ""
             description = event.description
 
             if is_all_day and (end - begin).days > 1:

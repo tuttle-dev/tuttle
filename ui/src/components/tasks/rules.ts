@@ -3,6 +3,8 @@
  * rule's fields, what the composer offers, and the sentence a rule reads as.
  */
 
+import { localDateIso } from "../../api/entity";
+
 export type RuleKind = "date" | "event";
 export type OffsetUnit = "day" | "week" | "month";
 
@@ -80,10 +82,6 @@ export function parseDay(iso: string): Date {
   return new Date(y, m - 1, d);
 }
 
-export function isoDay(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
 /** "Nov 6, 2026"; without the year when it is this year's. */
 export function fmtDay(iso: string, withYear = false): string {
   const d = parseDay(iso);
@@ -158,7 +156,7 @@ export function subjectDestination(type: string | null, id: number | null): { vi
 /** A blank rule of either kind, as the composer starts it. */
 export function newRule(kind: RuleKind, options: RuleOptions | null): TaskRule {
   const today = new Date();
-  const firstOfNextMonth = isoDay(new Date(today.getFullYear(), today.getMonth() + 1, 1));
+  const firstOfNextMonth = localDateIso(new Date(today.getFullYear(), today.getMonth() + 1, 1));
   const contractEnd = findEvent(options, "contract.end");
   return {
     title: kind === "date" ? "Send invoices for {period}" : contractEnd?.event.title_before ?? "",

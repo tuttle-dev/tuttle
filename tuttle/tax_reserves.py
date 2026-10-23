@@ -17,7 +17,7 @@ from .fx import rate as fx_rate
 from .model import Invoice, Project, RecurringExpense
 from .tax import get_tax_system
 from .time import Cycle, TimeUnit
-from .timetracking import drop_invoiced, sum_hours_by_tag
+from .timetracking import drop_completed, drop_invoiced, sum_hours_by_tag
 
 logger = logging.getLogger(__name__)
 
@@ -137,7 +137,8 @@ def compute_planned_revenue(
 ) -> Decimal:
     """Net revenue from this year's calendar work, past and future, not yet invoiced.
 
-    Hours in a timesheet of a non-cancelled invoice are left out. Converts
+    Hours in a timesheet of a non-cancelled invoice are left out, and so are
+    completed projects, which are invoiced and paid in full. Converts
     hours to revenue via each project's contract rate, and contracts in a
     foreign currency into *currency* at the current month's rate (uninvoiced
     work has no invoice date to pin a rate to).
@@ -158,7 +159,7 @@ def compute_planned_revenue(
 
     idx_dates = time_data.index.date
     mask = (idx_dates >= year_start) & (idx_dates <= year_end)
-    planned = drop_invoiced(time_data[mask], invoices or [])
+    planned = drop_invoiced(drop_completed(time_data[mask], projects), invoices or [])
     if planned.empty:
         return Decimal(0)
 
@@ -191,16 +192,17 @@ def compute_vat_reserves(
     period_end: datetime.date,
     currency: Optional[str] = None,
 ) -> VATReserve:
-    """Sum VAT collected on non-cancelled invoices in the given period.
+    """Sum VAT collected on issued, non-cancelled invoices in the given period.
 
     Invoices in another currency are converted to *currency* at the ECB monthly
     average. For the supported cases (reverse charge, outside scope) their VAT
-    is zero before and after conversion. Reminders collect no VAT of their own.
+    is zero before and after conversion. Reminders collect no VAT of their own,
+    and drafts none yet.
     """
     vat_total = Decimal(0)
     count = 0
     for inv in invoices:
-        if inv.cancelled or inv.is_reminder:
+        if inv.cancelled or inv.is_reminder or not inv.is_issued:
             continue
         if period_start <= inv.date <= period_end:
             converted = convert_invoice(inv, currency)
@@ -296,8 +298,9 @@ def compute_spendable_income(
 
     This answers the freelancer's core question: "How much of this money is mine?"
 
-    Income basis = received (paid) + outstanding (invoiced) + planned (calendar)
-    + contracted (committed contract work for the rest of the year).
+    Income basis = received (paid) + outstanding (sent, unpaid) + planned
+    (calendar) + contracted (committed contract work for the rest of the year).
+    Drafts are not invoiced yet: their tracked time counts as planned.
     Fixed expenses marked tax deductible (operating costs, insurance, etc.) are
     deducted before estimating income tax, yielding the taxable profit; the
     others are paid out of taxed income.
@@ -345,7 +348,7 @@ def compute_spendable_income(
     foreign_net = Decimal(0)  # converted net revenue that must be exchanged
 
     for inv in invoices:
-        if inv.cancelled:
+        if inv.cancelled or not inv.is_issued:
             continue
         if year_start <= inv.date <= year_end:
             converted = convert_invoice(inv, currency)
@@ -609,7 +612,9 @@ def compute_effective_salary(
         except NotImplementedError:
             currency = "EUR"
 
-    first = min((inv.date for inv in invoices if not inv.cancelled and inv.date <= today), default=None)
+    # A draft is not invoiced yet, so it is neither revenue nor where the history starts.
+    invoices = [inv for inv in invoices if inv.is_issued and not inv.cancelled]
+    first = min((inv.date for inv in invoices if inv.date <= today), default=None)
     if first is None or first >= this_month:
         # Nothing invoiced before this month: the month so far is all there is.
         period_start, period_end, months = this_month, today, 1
@@ -621,7 +626,7 @@ def compute_effective_salary(
     paid = _Revenue()
     outstanding = _Revenue()
     for inv in invoices:
-        if inv.cancelled or not period_start <= inv.date <= period_end:
+        if not period_start <= inv.date <= period_end:
             continue
         converted = convert_invoice(inv, currency)
         if converted is None:

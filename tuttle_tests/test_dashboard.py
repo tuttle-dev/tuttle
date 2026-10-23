@@ -281,6 +281,13 @@ class TestMonthlyRevenueFromCalendar:
         assert not result.empty
         assert result["revenue"].sum() > 0
 
+    def test_completed_project_has_nothing_planned(self, project):
+        """A completed project is paid in full, even by invoices without a timesheet."""
+        time_data = self._time_data(project.tag, datetime.date(2026, 7, 15))
+        project.is_completed = True
+        result = monthly_revenue_from_calendar(time_data, [project], datetime.date(2026, 7, 1), datetime.date(2026, 7, 31))
+        assert result.empty
+
     def test_cancelled_invoice_does_not_exclude_hours(self, project, active_contract):
         time_data = self._time_data(project.tag, datetime.date(2026, 7, 15))
         inv = Invoice(
@@ -498,6 +505,12 @@ class TestContractedRevenue:
     def test_open_ended_contract_without_pace_adds_nothing(self, make_project):
         assert self._contracted(make_project(rate=Decimal("100"))) == 0
 
+    def test_nothing_once_the_term_has_ended(self, make_project):
+        """A project past its end date stays Active until completed, but its contract expects no more work."""
+        project = make_project(rate=Decimal("100"), volume=100, end_date=self.TODAY - datetime.timedelta(days=1))
+        assert project.is_committed(self.TODAY)
+        assert self._contracted(project) == 0
+
     def test_without_an_end_date_it_falls_on_today(self, make_project):
         project = make_project(rate=Decimal("100"), volume=10, end_date=None)
         slices = contracted_revenue([project], [], None, self.END, today=self.TODAY)
@@ -706,7 +719,8 @@ class TestCashFlowSeries:
         # Last month balance must match total net_cash_flow
         assert result["buckets"][-1]["balance"] == result["net_cash_flow"]
 
-    def test_draft_invoices_included_in_cash_flow(self, active_contract, project):
+    def test_draft_invoices_left_out_of_cash_flow(self, active_contract, project):
+        """A draft is not invoiced yet, so no money is due on it."""
         active_contract.term_of_payment = 14
         draft_inv = Invoice(
             number="2026-DRAFT",
@@ -725,9 +739,7 @@ class TestCashFlowSeries:
             VAT_rate=Decimal("0"),
         )
         result = cash_flow_series([draft_inv], [active_contract], [project], [], None, forecast_months=6, today=self.TODAY)
-        # Due date is Nov 8, 2026 (Month 1)
-        assert result["buckets"][1]["inflow_invoiced"] == 800.0
-        assert result["total_inflow"] == 800.0
+        assert result["total_inflow"] == 0.0
 
     def test_past_uninvoiced_work_placed_into_current_month(self, project, active_contract):
         active_contract.id = 1

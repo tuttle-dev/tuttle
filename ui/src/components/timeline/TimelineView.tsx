@@ -9,7 +9,7 @@ import { EmptyStateIntro } from "../shared/EmptyStateIntro";
 import { tint, onTint } from "../shared/status-colors";
 import { LoadError, LoadingState } from "../shared/LoadStates";
 import type { Entity } from "../../api/types";
-import { str, bool } from "../../api/entity";
+import { str, bool, localDateIso, parseLocalDate } from "../../api/entity";
 
 type Category = "all" | "invoice" | "contract" | "project" | "goal";
 
@@ -49,7 +49,7 @@ function dotColor(event: Entity): string {
 function formatDate(iso: string): string {
   if (!iso) return "";
   try {
-    return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    return parseLocalDate(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
   } catch { return iso; }
 }
 
@@ -60,7 +60,7 @@ function monthKey(iso: string): string {
 function monthLabel(iso: string): string {
   if (!iso) return "";
   try {
-    return new Date(iso + "-01").toLocaleDateString("en-US", { month: "long", year: "numeric" });
+    return parseLocalDate(iso + "-01").toLocaleDateString("en-US", { month: "long", year: "numeric" });
   } catch { return iso; }
 }
 
@@ -118,7 +118,7 @@ export function TimelineView() {
     return result;
   }, [filtered]);
 
-  const todayISO = new Date().toISOString().slice(0, 10);
+  const todayISO = localDateIso();
 
   const todayPosition = useMemo<{ group: number; event: number } | null>(() => {
     for (let gi = 0; gi < groups.length; gi++) {

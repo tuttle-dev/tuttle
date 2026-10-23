@@ -87,10 +87,27 @@ export function initials(e: Entity): string {
   return letters.toUpperCase();
 }
 
+/** Today, or *d*, as a local calendar date "YYYY-MM-DD". `toISOString()` gives the UTC date instead. */
+export function localDateIso(d: Date = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/**
+ * A calendar date such as "2026-10-18" as local midnight. `new Date("2026-10-18")`
+ * is UTC midnight, which west of UTC is still the day before. Strings with a time pass through.
+ */
+export function parseLocalDate(iso: string): Date {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) {
+    const [y, m, d] = iso.split("-").map(Number);
+    return new Date(y, m - 1, d);
+  }
+  return new Date(iso);
+}
+
 export function formatDate(iso: string): string {
   if (!iso) return "";
   try {
-    return new Date(iso).toLocaleDateString("en-US", {
+    return parseLocalDate(iso).toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
       year: "numeric",
@@ -125,38 +142,17 @@ export function projectStatus(e: Entity): string {
   if (stage) return stage;
   const completed = bool(e, "is_completed");
   if (completed) return "Completed";
-  const end = str(e, "end_date");
+  // A project past its end date stays Active until the user completes it.
   const start = str(e, "start_date");
-  const today = new Date().toISOString().slice(0, 10);
-  if (start > today) return "Upcoming";
-  if (end && end >= today) return "Active";
-  if (!end) return "Active";
-  return "Completed";
+  if (start > localDateIso()) return "Upcoming";
+  return "Active";
 }
 
 export function invoiceStatus(e: Entity): string {
-  if (bool(e, "cancelled")) return "Cancelled";
-  if (bool(e, "paid")) return "Paid";
-  if (bool(e, "sent")) {
-    // Use effective_due_date (set by reminder) if available, else compute from contract
-    const effectiveDue = str(e, "effective_due_date");
-    if (effectiveDue) {
-      if (new Date(effectiveDue) < new Date()) return "Overdue";
-    } else {
-      const contract = entity(e, "contract");
-      if (contract) {
-        const termDays = num(contract, "term_of_payment");
-        const dateStr = str(e, "date");
-        if (dateStr && termDays) {
-          const due = new Date(dateStr);
-          due.setDate(due.getDate() + termDays);
-          if (due < new Date()) return "Overdue";
-        }
-      }
-    }
-    return "Sent";
-  }
-  return "Draft";
+  // The core derives the status (Invoice.status) on the local date: an invoice is
+  // overdue from the day after its due date, the same for the app and every figure.
+  const status = str(e, "status");
+  return status ? status[0].toUpperCase() + status.slice(1) : "Draft";
 }
 
 export function isReminder(e: Entity): boolean {

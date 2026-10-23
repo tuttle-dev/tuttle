@@ -15,27 +15,19 @@ class InvoicingDataSource(SQLModelDataSourceMixin):
     def __init__(self):
         super().__init__()
 
-    def get_invoices_for_project(self, project_id) -> IntentResult[List[Invoice]]:
-        """TODO Get all invoices associated with a given project
+    @staticmethod
+    def _hydrate(entities, _depth: int = 2):
+        """Also load the settlement that a reminder of a final invoice restates.
 
-        Returns:
-            IntentResult:
-                was_intent_successful : bool
-                data : list[Invoice] was_intent_successful else None
-                log_message  : str  if an error or exception occurs
-                exception : Exception if an exception occurs
+        Its figures come from the final invoice at the head of its reminder
+        chain and from the deposits deducted there, which the generic
+        hydration does not reach.
         """
-        try:
-            return IntentResult(
-                was_intent_successful=False,
-                log_message="NotImplementedError @InvoicingDataSource.get_invoices_for_project",
-            )
-        except Exception as e:
-            return IntentResult(
-                was_intent_successful=False,
-                log_message=f"Exception raised @TimeTrackingDataSource.get_invoices_for_project {e.__class__.__name__}",
-                exception=e,
-            )
+        SQLModelDataSourceMixin._hydrate(entities, _depth)
+        for invoice in entities:
+            if isinstance(invoice, Invoice) and invoice.is_reminder:
+                # Reading the deductions walks the chain and loads what they need.
+                invoice.deposit_deductions
 
     def get_invoice_by_id(self, invoice_id: int) -> IntentResult[Optional[Invoice]]:
         """Fetch a single invoice by primary key."""

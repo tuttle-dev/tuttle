@@ -260,10 +260,14 @@ class UsersIntent:
         if not reg:
             return IntentResult(was_intent_successful=True, data=None)
         try:
-            ds = UserDataSource()
-            profile = ds.get_user()
-        except Exception:
-            profile = None
+            profile = UserDataSource().get_user()
+        except Exception as ex:
+            # An empty profile would be saved over the real one.
+            logger.exception(ex)
+            return IntentResult(
+                was_intent_successful=False,
+                error_msg="Your profile could not be loaded. Details are in the application log.",
+            )
         data = reg.model_dump()
         data["profile"] = profile
         return IntentResult(was_intent_successful=True, data=data)
@@ -493,7 +497,6 @@ class UsersIntent:
 
         try:
             install_demo_data(
-                n_projects=4,
                 db_path=str(db_path),
                 on_cache_timetracking_dataframe=_cache_demo_timetracking,
                 invoice_language=invoice_language,

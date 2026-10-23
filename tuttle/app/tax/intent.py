@@ -173,11 +173,11 @@ class TaxIntent(SQLModelDataSourceMixin, Intent):
         return brackets
 
     def get_available_years(self) -> IntentResult:
-        """Return the current year and every year with invoice data, descending."""
+        """Return the current year and every year with issued invoices, descending."""
         try:
             invoices = self.query(Invoice)
             years = sorted(
-                {inv.date.year for inv in invoices if not inv.cancelled} | {datetime.date.today().year},
+                {inv.date.year for inv in invoices if not inv.cancelled and inv.is_issued} | {datetime.date.today().year},
                 reverse=True,
             )
             return IntentResult(was_intent_successful=True, data=years)

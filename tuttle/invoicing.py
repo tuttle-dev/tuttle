@@ -13,6 +13,8 @@ from .model import (
     PaymentMilestone,
     Project,
     User,
+    round_money,
+    round_quantity,
 )
 from .time import ChargeBasis
 from .timetracking import Timesheet
@@ -117,12 +119,14 @@ def generate_invoice(
     period_start: Optional[datetime.date] = None
     period_end: Optional[datetime.date] = None
     for timesheet in timesheets:
-        quantity = timesheet.total / unit_td
-        total_quantity += Decimal(str(quantity))
+        # Bill the tracked time to two decimals (1 h 20 min → 1.33 h), so the
+        # line multiplies out to the cent it charges.
+        quantity = round_quantity(timesheet.total / unit_td)
+        total_quantity += quantity
         item = InvoiceItem(
             start_date=timesheet.table["begin"].min().date(),
             end_date=timesheet.table["end"].max().date(),
-            quantity=quantity,
+            quantity=float(quantity),
             unit=contract.unit.value,
             unit_price=unit_price,
             VAT_rate=vat_rate,
@@ -188,20 +192,20 @@ def milestone_amount(milestone: PaymentMilestone, contract: Contract) -> Decimal
     """The net amount a milestone bills, resolved against the contract total.
 
     A milestone is expressed either as an absolute amount or as a percentage
-    of the contract's fixed price. Percentages are quantized to cents, so a
+    of the contract's fixed price. Percentages are rounded to cents, so a
     schedule of thirds bills 3,333.33 rather than a repeating fraction; the
     resulting rounding difference is absorbed by the final invoice, which
     deducts the deposits actually issued.
     """
     if milestone.amount is not None:
-        return Decimal(str(milestone.amount)).quantize(Decimal("0.01"))
+        return round_money(milestone.amount)
     if milestone.percentage is None:
         raise ValueError("Milestone must have either a percentage or an amount.")
     if contract.fixed_price is None:
         raise ValueError("Percentage milestones require a fixed-price contract.")
     total_price = Decimal(str(contract.fixed_price))
     share = total_price * Decimal(str(milestone.percentage)) / Decimal("100")
-    return share.quantize(Decimal("0.01"))
+    return round_money(share)
 
 
 def generate_deposit_invoice(

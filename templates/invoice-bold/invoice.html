@@ -99,7 +99,7 @@
       <tr>
         <td class="col-date">{{ item.start_date | as_date_short }}&hairsp;&ndash;&hairsp;{{ item.end_date | as_date_short }}</td>
         <td class="col-desc">{{ item.description }}</td>
-        <td class="col-qty num">{{ item.quantity }}</td>
+        <td class="col-qty num">{{ item.quantity | as_quantity }}</td>
         <td class="col-unit">{{ item.unit | unit_label(item.quantity) }}</td>
         <td class="col-price num">{{ item.unit_price | as_currency }}</td>
         <td class="col-vat num">{% if invoice.is_outside_scope %}&mdash;{% else %}{{ item.VAT_rate | as_percentage }}{% endif %}</td>
@@ -134,13 +134,13 @@
         <span class="totals-amount">{{ invoice.VAT_total | as_currency }}</span>
       </div>
       {% endif %}
+      {% if is_final or deposit_deductions %}{{ doc.settlement_lines_div(invoice, deposit_deductions) }}{% endif %}
       {% if is_reminder and invoice.reminder_fee %}
       <div class="totals-line">
         <span class="totals-label">{{ _("Reminder Fee") }}</span>
         <span class="totals-amount">{{ invoice.reminder_fee | as_currency }}</span>
       </div>
       {% endif %}
-      {% if is_final %}{{ doc.settlement_lines_div(invoice, deposit_deductions) }}{% endif %}
       <div class="total-due">
         <span class="totals-label">{{ doc.amount_due_label(is_deposit, is_final) }}</span>
         <span class="totals-amount">{{ remaining_balance | as_currency }}</span>

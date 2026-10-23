@@ -5,6 +5,7 @@ import {
   Trash2, Unplug, Upload, X,
 } from "lucide-react";
 import { rpc } from "../../api/rpc";
+import { localDateIso, parseLocalDate } from "../../api/entity";
 import { Toolbar, ToolbarButtonSecondary } from "../shared/ToolbarButtons";
 import { LoadError, LoadingState } from "../shared/LoadStates";
 import { useStatusBar } from "../shared/status-bar-context";
@@ -814,7 +815,7 @@ function MonthGrid({
   selectedDay: string | null; onSelectDay: (d: string) => void;
 }) {
   const { year, month, first_weekday, days_in_month, days } = calData;
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = localDateIso();
 
   const markerOrder = (mk: DayMarker) => allTags.indexOf(mk.tag) * 2 + (mk.source === "manual" ? 0 : 1);
   const hasLogged = calData.events.some((ev) => ev.source === "manual");
@@ -1139,7 +1140,7 @@ function DayDetail({
 
 function formatShortDateTime(iso: string, allDay: boolean): string {
   try {
-    const d = new Date(iso);
+    const d = parseLocalDate(iso);
     const date = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
     if (allDay) return date;
     return `${date} ${formatTime(iso)}`;
@@ -1157,10 +1158,6 @@ function toTimeInput(iso: string): string {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return "";
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-}
-
-function localDateIso(d: Date = new Date()): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 function slotMinutes(start: string, end: string): number | null {

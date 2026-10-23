@@ -52,7 +52,7 @@ const SERIES: SeriesDef[] = [
     name: "Invoiced",
     color: "var(--color-status-warning)",
     opacity: 1,
-    hint: "Unpaid invoices placed by due date",
+    hint: "Sent, unpaid invoices placed by due date",
   },
   {
     key: "inflow_planned",

@@ -81,8 +81,8 @@ def compute_kpis(
     paid_revenue = Decimal(0)
 
     for inv in invoices:
-        # A reminder chases an invoice that is already counted.
-        if inv.cancelled or inv.is_reminder:
+        # A reminder chases an invoice that is already counted; a draft is not invoiced yet.
+        if inv.cancelled or inv.is_reminder or not inv.is_issued:
             continue
         converted = convert_invoice(inv, currency)
         if converted is None:

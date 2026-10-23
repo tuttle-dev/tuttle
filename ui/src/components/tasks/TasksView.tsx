@@ -5,10 +5,11 @@ import { EmptyStateIntro } from "../shared/EmptyStateIntro";
 import { LoadError, LoadingState } from "../shared/LoadStates";
 import { PageLayout, ToolbarFilterGroup } from "../shared/ToolbarButtons";
 import { useNavigation, type NavigationFilter } from "../shared/NavigationContext";
+import { localDateIso } from "../../api/entity";
 import type { Entity } from "../../api/types";
 import { RuleComposer } from "./RuleComposer";
 import { RulesList } from "./RulesList";
-import { fmtDay, isoDay, relDay, ruleSentence, subjectDestination, type RuleOptions, type TaskRule } from "./rules";
+import { fmtDay, relDay, ruleSentence, subjectDestination, type RuleOptions, type TaskRule } from "./rules";
 
 type Destination = { view: string; filter?: NavigationFilter };
 type Mode = "tasks" | "rules";
@@ -210,7 +211,7 @@ function TaskCard({ task, rule, ruleLabel, done, onOpen, onDone, onDismiss, onRe
   const key = (task.key as string) ?? "";
   const isTutorial = key.startsWith("tutorial:");
   const dueDate = (task.due_date as string) || null;
-  const today = isoDay(new Date());
+  const today = localDateIso();
   const RuleIcon = rule?.kind === "event" ? Zap : rule?.unit ? Repeat : CalendarDays;
   // The card navigates; its own buttons must not.
   const own = (fn?: () => void) => (e: React.MouseEvent) => { e.stopPropagation(); fn?.(); };
