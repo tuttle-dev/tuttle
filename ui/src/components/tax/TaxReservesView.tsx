@@ -80,8 +80,6 @@ export function TaxReservesView() {
 
   const sp = spending?.spending as Entity | undefined;
   const hasAnyIncome = sp && (num(sp, "gross_revenue_ytd") > 0 || num(sp, "planned_revenue") > 0 || num(sp, "contracted_revenue") > 0);
-  const isCurrentYear = selectedYear === new Date().getFullYear();
-  const periodLabel = isCurrentYear ? "YTD" : `${selectedYear}`;
   const countrySupported = taxEstimate ? taxEstimate.country_supported !== false : true;
   const taxCountry = taxEstimate ? str(taxEstimate, "country") : "";
 
@@ -94,7 +92,7 @@ export function TaxReservesView() {
     <PageLayout title="Tax & Reserves" className="grid gap-6 items-start @4xl:grid-cols-2 @4xl:grid-rows-[auto_1fr]"
       right={yearSelector}>
       {/* Revenue Waterfall */}
-      <Section title={`Revenue Breakdown (${periodLabel})`} icon={<BarChart3 size={16} />}>
+      <Section title={`Revenue Breakdown (${selectedYear})`} icon={<BarChart3 size={16} />}>
         {!hasAnyIncome ? (
           <p className="text-sm text-muted">No revenue data yet.</p>
         ) : (() => {

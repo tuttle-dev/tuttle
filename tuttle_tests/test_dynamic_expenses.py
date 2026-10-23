@@ -105,8 +105,9 @@ class TestSpendableIncome:
         assert dynamic.income_tax_reserve == plain.income_tax_reserve
         assert dynamic.dynamic_expenses_deductible == 0
 
+        # Charged every month of the year on the average month invoiced so far.
         post_tax = dynamic.taxable_profit - dynamic.income_tax_reserve
-        expected = post_tax * Decimal("0.196")
+        expected = post_tax / datetime.date.today().month * 12 * Decimal("0.196")
         assert abs(dynamic.dynamic_expenses_post_tax - expected) < 1  # per-month rounding
         assert dynamic.spendable == post_tax - dynamic.dynamic_expenses_post_tax
 
