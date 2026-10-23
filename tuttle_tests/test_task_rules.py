@@ -73,6 +73,7 @@ def contract(session, cl, title="Retainer", start=None, end=None, cycle=Cycle.mo
         client=cl,
         rate=Decimal("100"),
         currency="EUR",
+        VAT_rate=Decimal("0.19"),
         unit=TimeUnit.hour,
         units_per_workday=8,
         term_of_payment=14,
