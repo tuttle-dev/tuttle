@@ -4,7 +4,7 @@ import functools
 import gettext
 import os
 from datetime import datetime, timedelta, timezone
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Optional
 
 import pycountry
@@ -18,7 +18,7 @@ from loguru import logger
 
 from .fx import convert, default_currency
 from .i18n import _, ngettext
-from .model import Invoice, TaxCategory, User, normalize_tax_category
+from .model import CENT, Invoice, TaxCategory, User, normalize_tax_category, round_money
 from .tax import get_tax_system
 
 # -- Helpers ------------------------------------------------------------------
@@ -100,7 +100,7 @@ def _local_country_names() -> dict[str, str]:
 
 
 def _country_code(country: str) -> str:
-    """BT-40 / BT-55: the ISO code of an address's country. Issuing checks that there is one."""
+    """BT-40 / BT-55: the ISO code of an address's country. See `missing_details`."""
     code = country_to_iso(country)
     if code is None:
         raise ValueError(f"The country '{country}' is not recognised.")
@@ -117,15 +117,41 @@ def _rate_to_percent(vat_rate: Decimal) -> Decimal:
     return Decimal("0") if pct == 0 else pct
 
 
+def _amount(value) -> Decimal:
+    """A monetary amount with exactly two decimals, as EN16931 requires (BR-DEC).
+
+    The model already rounds every amount to the cent; this also fixes the
+    notation, so 0 becomes 0.00 and a value read back from the database as
+    5000.0000000000 becomes 5000.00.
+    """
+    return round_money(value)
+
+
+def _price(value) -> Decimal:
+    """BT-146 item net price: two decimals, or up to four when the price has them.
+
+    EN16931 sets no decimal limit on prices, so a sub-cent price is kept
+    rather than rounded to the cent.
+    """
+    price = Decimal(str(value)).quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)
+    cents = price.quantize(CENT)
+    return cents if cents == price else price.normalize()
+
+
+def _quantity(value) -> Decimal:
+    """BT-129 invoiced quantity with at most four decimals and no trailing zeros: 8, 0.5, 1.3333."""
+    quantity = Decimal(str(value)).quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)
+    if quantity == quantity.to_integral_value():
+        return quantity.quantize(Decimal("1"))
+    return quantity.normalize()
+
+
 #: BT-121 exemption reason code required by EN16931 BR-O-10 (BT-120 carries the text).
 VATEX_OUTSIDE_SCOPE = "VATEX-EU-O"
 
 
 def _tax_currency(user: User) -> str:
-    """The currency VAT is accounted in — the operating country's tax currency.
-
-    Issuing checks that the operating country is set.
-    """
+    """The currency VAT is accounted in — the operating country's tax currency. See `missing_details`."""
     if not user.operating_country:
         raise ValueError("The operating country is not set, so the currency VAT is accounted in is unknown.")
     try:
@@ -185,6 +211,29 @@ def unsupported_reason(invoice: Invoice) -> Optional[str]:
     if invoice.is_reminder:
         return "a payment reminder is not an invoice in the EN16931 sense"
     return None
+
+
+def missing_details(invoice: Invoice, user: User) -> Optional[str]:
+    """What to correct before *invoice* can carry e-invoice XML, or None.
+
+    The XML states each party's country as an ISO code (BT-40, BT-55) and the
+    currency VAT is accounted in, which is the operating country's (BT-6).
+    Tuttle guesses none of them.
+    """
+    corrections = []
+    if not user.operating_country:
+        corrections.append("Add your operating country.")
+    client = invoice.contract.client
+    owner = f"{client.name}'" if client.name.endswith("s") else f"{client.name}'s"
+    for address, whose in ((user.address, "your"), (client.address, owner)):
+        if not address:
+            continue
+        country = (address.country or "").strip()
+        if not country:
+            corrections.append(f"Add the country of {whose} address.")
+        elif country_to_iso(country) is None:
+            corrections.append(f"Correct the country of {whose} address: '{country}' is not recognised.")
+    return " ".join(corrections) or None
 
 
 # -- Core builder -------------------------------------------------------------
@@ -254,8 +303,7 @@ def build_zugferd_document(
 
     # -- Buyer (Client) -------------------------------------------------------
     doc.trade.agreement.buyer.name = client.invoice_recipient_name
-    # The address the PDF shows, which issuing checks for: the invoicing contact's, else the client's.
-    buyer_address = client.invoice_recipient_address
+    buyer_address = client.address
     if buyer_address:
         if not is_minimum:
             doc.trade.agreement.buyer.address.line_one = f"{buyer_address.street} {buyer_address.number}".strip()
@@ -283,76 +331,57 @@ def build_zugferd_document(
         doc.trade.settlement.payment_means.add(pm)
 
     # -- Line items & tax (not in MINIMUM) -------------------------------------
-    total_tax = Decimal("0")
-
+    # Every amount comes from the model, already rounded to the cent, so the
+    # EN16931 sums (BR-CO-10 to BR-CO-17) hold exactly and the grand total is
+    # the total on the PDF.
     if not is_minimum:
-        # Keyed by (category, rate) rather than rate alone: a zero-rated line and
-        # an outside-scope line both sit at 0% but must not collapse into one
-        # breakdown.
-        tax_aggregates: dict[tuple[str, Decimal], Decimal] = {}
         for idx, item in enumerate(invoice.items, start=1):
             li = LineItem()
             li.document.line_id = str(idx)
             li.product.name = item.description or _("Item {n}", n=idx)
 
             unit_code = unit_to_unece(item.unit)
-            quantity = Decimal(str(item.quantity))
-            net_price = item.unit_price
-            line_total = Decimal(str(item.subtotal))
             category = normalize_tax_category(item.VAT_category).value
-            vat_pct = _rate_to_percent(item.VAT_rate)
 
-            li.agreement.net.amount = net_price
+            li.agreement.net.amount = _price(item.unit_price)
             li.agreement.net.basis_quantity = (Decimal("1"), unit_code)
-            li.delivery.billed_quantity = (quantity, unit_code)
+            li.delivery.billed_quantity = (_quantity(item.quantity), unit_code)
             li.settlement.trade_tax.type_code = "VAT"
             li.settlement.trade_tax.category_code = category
             # BR-O-05: an outside-scope line carries no rate at all.
             if category != TaxCategory.outside_scope.value:
-                li.settlement.trade_tax.rate_applicable_percent = vat_pct
-            li.settlement.monetary_summation.total_amount = line_total
+                li.settlement.trade_tax.rate_applicable_percent = _rate_to_percent(item.VAT_rate)
+            li.settlement.monetary_summation.total_amount = _amount(item.subtotal)
             doc.trade.items.add(li)
-            key = (category, vat_pct)
-            tax_aggregates[key] = tax_aggregates.get(key, Decimal("0")) + line_total
 
         # -- Tax summary ------------------------------------------------------
-        for (category, rate_pct), basis in tax_aggregates.items():
-            tax_amount = (basis * rate_pct / Decimal("100")).quantize(Decimal("0.01"))
-            total_tax += tax_amount
+        # One breakdown per category and rate, not per rate alone: a zero-rated
+        # line and an outside-scope line both sit at 0% but must not collapse
+        # into one breakdown.
+        for entry in invoice.vat_breakdown:
             trade_tax = ApplicableTradeTax()
-            trade_tax.calculated_amount = tax_amount
-            trade_tax.basis_amount = basis
+            trade_tax.calculated_amount = _amount(entry.tax_amount)
+            trade_tax.basis_amount = _amount(entry.taxable_amount)
             trade_tax.type_code = "VAT"
-            trade_tax.category_code = category
-            if category == TaxCategory.outside_scope.value:
+            trade_tax.category_code = entry.category.value
+            if entry.category is TaxCategory.outside_scope:
                 # BR-O-10 requires a reason; BR-48 exempts O from carrying a rate.
                 trade_tax.exemption_reason_code = VATEX_OUTSIDE_SCOPE
                 trade_tax.exemption_reason = _("Not subject to VAT")
             else:
-                trade_tax.rate_applicable_percent = rate_pct
+                trade_tax.rate_applicable_percent = _rate_to_percent(entry.rate)
             doc.trade.settlement.trade_tax.add(trade_tax)
-    else:
-        # MINIMUM carries no breakdown, only the total, so the category does not
-        # matter here and the basis can be aggregated by rate alone.
-        rate_bases: dict[Decimal, Decimal] = {}
-        for item in invoice.items:
-            pct = _rate_to_percent(item.VAT_rate)
-            rate_bases[pct] = rate_bases.get(pct, Decimal("0")) + Decimal(str(item.subtotal))
-        for rate_pct, basis in rate_bases.items():
-            total_tax += (basis * rate_pct / Decimal("100")).quantize(Decimal("0.01"))
 
     # -- Monetary summation ---------------------------------------------------
-    line_total_sum = invoice.sum
+    line_total_sum = _amount(invoice.sum)
+    total_tax = _amount(invoice.VAT_total)
     grand_total = line_total_sum + total_tax
 
     # BT-113: a final invoice (Schlussrechnung) states the full contract
     # amount then deducts the gross totals already billed as deposits.
-    prepaid = Decimal("0")
+    prepaid = Decimal("0.00")
     if invoice.is_final_invoice:
-        prepaid = sum(
-            (Decimal(str(d["gross"])) for d in invoice.deposit_deductions),
-            Decimal("0"),
-        )
+        prepaid = sum((_amount(d["gross"]) for d in invoice.deposit_deductions), Decimal("0.00"))
     due_amount = grand_total - prepaid
 
     if not is_minimum:
@@ -369,7 +398,7 @@ def build_zugferd_document(
         doc.trade.settlement.tax_currency_code = tax_currency
         doc.trade.settlement.monetary_summation.tax_total_other_currency.add(
             (
-                _vat_in_tax_currency(invoice, total_tax, currency, tax_currency),
+                _amount(_vat_in_tax_currency(invoice, total_tax, currency, tax_currency)),
                 tax_currency,
             )
         )
@@ -380,7 +409,9 @@ def build_zugferd_document(
     doc.trade.settlement.monetary_summation.due_amount = due_amount
 
     # -- Payment terms (not in MINIMUM) ----------------------------------------
-    if not is_minimum and contract.term_of_payment:
+    # A term of 0 days is due on the invoice date. BR-CO-25 wants a due date or
+    # terms whenever an amount is due.
+    if not is_minimum and contract.term_of_payment is not None:
         terms = PaymentTerms()
         due_date = invoice.date + timedelta(days=contract.term_of_payment)
         terms.due = datetime(due_date.year, due_date.month, due_date.day, tzinfo=timezone.utc)

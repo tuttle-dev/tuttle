@@ -33,10 +33,7 @@ def _contract(*percentages: str) -> Contract:
     return Contract(
         term_of_payment=14,
         title="Central Heating Overhaul",
-        client=Client(
-            name="Sam Lowry",
-            address=Address(street="Main Street", number="9999", postal_code="55555", city="Sao Paolo", country="Brazil"),
-        ),
+        client=Client(name="Sam Lowry"),
         start_date=datetime.date(2026, 1, 10),
         type=ContractType.fixed_price,
         fixed_price=Decimal("10000"),
@@ -69,7 +66,6 @@ def _persist(engine, *percentages: str) -> tuple[int, list[int]]:
                 name="Harry Tuttle",
                 subtitle="Heating Engineer",
                 email="mail@tuttle.example",
-                VAT_number="27B-6",
                 operating_country="Germany",
                 address=Address(street="Main Street", number="450", postal_code="55555", city="Sao Paolo", country="Brazil"),
             )

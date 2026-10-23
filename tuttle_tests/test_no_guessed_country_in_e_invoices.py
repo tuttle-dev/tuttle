@@ -2,9 +2,9 @@
 
 A country name that did not resolve to an ISO code became Germany, and so did
 an empty one; a missing operating country was taken for Germany too, and a
-country without a tax model accounted VAT in euros. Now a country that does
-not resolve refuses issuing with a message that says whose it is, and the tax
-currency comes from the operating country or nowhere.
+country without a tax model accounted VAT in euros. Now an invoice whose
+country does not resolve, or whose user has no operating country, is saved
+without e-invoice data, with a warning that says what to correct.
 """
 
 import datetime
@@ -15,11 +15,11 @@ from sqlmodel import Session, SQLModel, create_engine, select
 
 from tuttle.app.core.abstractions import SQLModelDataSourceMixin
 from tuttle.app.invoicing.intent import InvoicingIntent
-from tuttle.einvoice import country_to_iso, serialize_zugferd_xml
-from tuttle.invoicing import missing_mandatory_details
-from tuttle.model import Address, Client, Contract, Invoice, InvoiceItem, Project, User
+from tuttle.data_dir import get_data_dir
+from tuttle.einvoice import country_to_iso, missing_details, serialize_zugferd_xml
+from tuttle.model import Address, Client, Contract, Invoice, InvoiceItem, PaymentMilestone, Project, User
 from tuttle.tax import ALL_COUNTRIES
-from tuttle.time import Cycle
+from tuttle.time import ContractType, Cycle
 
 DATE = datetime.date(2026, 2, 1)
 
@@ -79,38 +79,33 @@ class TestCountryToISO:
         assert country_to_iso("gb") == "GB"
 
 
-class TestIssuingChecksTheCountries:
+class TestMissingDetails:
     def test_names_whose_country_is_not_recognised(self):
-        message = missing_mandatory_details(_user(), _contract("Schweitz"), "EN16931")
+        message = missing_details(_invoice(_contract("Schweitz")), _user())
 
         assert message == "Correct the country of Central Services' address: 'Schweitz' is not recognised."
 
     def test_checks_the_seller_country_too(self):
-        message = missing_mandatory_details(_user(country="Atlantis"), _contract(), "EN16931")
+        message = missing_details(_invoice(_contract()), _user(country="Atlantis"))
 
         assert message == "Correct the country of your address: 'Atlantis' is not recognised."
 
-    def test_follows_what_is_missing(self):
-        user = _user(country="Atlantis")
-        user.VAT_number = None
+    def test_an_empty_country_is_not_taken_for_germany(self):
+        assert missing_details(_invoice(_contract("")), _user()) == "Add the country of Central Services' address."
 
-        message = missing_mandatory_details(user, _contract(), "EN16931")
+    def test_needs_the_operating_country(self):
+        message = missing_details(_invoice(_contract()), _user(operating_country=""))
 
-        assert message == (
-            "Add your VAT number or tax number before issuing this invoice. "
-            "Correct the country of your address: 'Atlantis' is not recognised."
-        )
+        assert message == "Add your operating country."
 
-    def test_a_pdf_alone_prints_the_country_as_written(self):
-        assert missing_mandatory_details(_user(), _contract("Schweitz"), None) is None
+    def test_a_client_without_an_address_states_no_country(self):
+        contract = _contract()
+        contract.client.address = None
 
-    def test_an_e_invoice_needs_the_operating_country(self):
-        user = _user(operating_country="")
+        assert missing_details(_invoice(contract), _user()) is None
 
-        assert missing_mandatory_details(user, _contract(), "EN16931") == (
-            "Add your operating country before issuing this invoice."
-        )
-        assert missing_mandatory_details(user, _contract(), None) is None
+    def test_recognised_countries_need_nothing(self):
+        assert missing_details(_invoice(_contract("Schweiz")), _user()) is None
 
 
 class TestTheEInvoice:
@@ -135,10 +130,16 @@ class TestTheEInvoice:
         assert '<ram:TaxTotalAmount currencyID="CHF">' in xml
 
 
-def test_issuing_is_refused_before_anything_is_saved(monkeypatch):
+@pytest.fixture
+def db(monkeypatch):
     engine = create_engine("sqlite:///:memory:")
     SQLModel.metadata.create_all(engine)
     monkeypatch.setattr(SQLModelDataSourceMixin, "create_session", lambda self: Session(engine))
+    return engine
+
+
+def _project(engine, contract: Contract) -> tuple[int, list[int]]:
+    """Persist a project on *contract*: its id and its milestones' ids."""
     with Session(engine) as session:
         session.add(_user())
         project = Project(
@@ -146,17 +147,48 @@ def test_issuing_is_refused_before_anything_is_saved(monkeypatch):
             description="Ducts",
             tag="#ducts",
             start_date=datetime.date(2026, 1, 10),
-            contract=_contract("Schweitz"),
+            contract=contract,
         )
         session.add(project)
         session.commit()
-        project_id = project.id
+        return project.id, [m.id for m in contract.payment_milestones]
 
-    result = InvoicingIntent().create(project_id, DATE, DATE, DATE, manual_quantity=8)
 
-    assert result.error_msg == "Correct the country of Central Services' address: 'Schweitz' is not recognised."
-    with Session(engine) as session:
-        assert session.exec(select(Invoice)).all() == []
+class TestIssuing:
+    """Tuttle does not refuse the invoice: it leaves out the e-invoice data and says what to correct."""
+
+    WARNING = "Saved without e-invoice data. Correct the country of Central Services' address: 'Schweitz' is not recognised."
+
+    def test_an_invoice_is_saved_with_its_pdf_and_a_warning(self, db):
+        project_id, _ = _project(db, _contract("Schweitz"))
+
+        result = InvoicingIntent().create(project_id, DATE, DATE, DATE, manual_quantity=8)
+
+        assert result.was_intent_successful, result.error_msg
+        assert result.warning == self.WARNING
+        assert (get_data_dir() / "Invoices" / result.data.file_name).exists()
+        with Session(db) as session:
+            assert len(session.exec(select(Invoice)).all()) == 1
+
+    def test_a_deposit_invoice_too(self, db):
+        contract = _contract("Schweitz")
+        contract.type = ContractType.fixed_price
+        contract.fixed_price = Decimal("10000")
+        contract.payment_milestones = [PaymentMilestone(title="On signing", percentage=Decimal("40"), position=0)]
+        project_id, (milestone_id,) = _project(db, contract)
+
+        result = InvoicingIntent().create_deposit(project_id, milestone_id, DATE)
+
+        assert result.was_intent_successful, result.error_msg
+        assert result.warning == self.WARNING
+
+    def test_no_warning_when_the_countries_are_recognised(self, db):
+        project_id, _ = _project(db, _contract("Schweiz"))
+
+        result = InvoicingIntent().create(project_id, DATE, DATE, DATE, manual_quantity=8)
+
+        assert result.was_intent_successful, result.error_msg
+        assert not result.warning
 
 
 @pytest.mark.parametrize(

@@ -719,7 +719,8 @@ class TestCashFlowSeries:
         # Last month balance must match total net_cash_flow
         assert result["buckets"][-1]["balance"] == result["net_cash_flow"]
 
-    def test_draft_invoices_included_in_cash_flow(self, active_contract, project):
+    def test_draft_invoices_left_out_of_cash_flow(self, active_contract, project):
+        """A draft is not invoiced yet, so no money is due on it."""
         active_contract.term_of_payment = 14
         draft_inv = Invoice(
             number="2026-DRAFT",
@@ -738,9 +739,7 @@ class TestCashFlowSeries:
             VAT_rate=Decimal("0"),
         )
         result = cash_flow_series([draft_inv], [active_contract], [project], [], None, forecast_months=6, today=self.TODAY)
-        # Due date is Nov 8, 2026 (Month 1)
-        assert result["buckets"][1]["inflow_invoiced"] == 800.0
-        assert result["total_inflow"] == 800.0
+        assert result["total_inflow"] == 0.0
 
     def test_past_uninvoiced_work_placed_into_current_month(self, project, active_contract):
         active_contract.id = 1
@@ -983,7 +982,8 @@ class TestComputeKPIs:
     def test_spendable_less_than_gross(self, paid_invoice, active_contract, project):
         kpis = compute_kpis([paid_invoice], [active_contract], [project])
         if kpis.total_revenue_ytd > 0:
-            assert kpis.spendable_income < kpis.total_revenue_ytd
+            # Revenue is net of VAT; what clients paid also includes the VAT.
+            assert kpis.spendable_income < kpis.total_revenue_ytd + kpis.vat_reserve
 
     def test_empty_data_tax_reserves(self):
         kpis = compute_kpis([], [], [])

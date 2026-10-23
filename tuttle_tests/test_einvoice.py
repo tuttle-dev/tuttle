@@ -411,7 +411,7 @@ class TestOutsideScopeOfTax:
         """Net 7200 with nothing added, against 8568 on the standard invoice."""
         xml_str = self._xml()
         assert '<ram:TaxTotalAmount currencyID="EUR">0.00</ram:TaxTotalAmount>' in xml_str
-        assert "<ram:GrandTotalAmount>7200.000</ram:GrandTotalAmount>" in xml_str
+        assert "<ram:GrandTotalAmount>7200.00</ram:GrandTotalAmount>" in xml_str
         assert "8568" not in xml_str
 
     @pytest.mark.parametrize("profile", ["EN16931", "EXTENDED", "BASIC", "MINIMUM"])

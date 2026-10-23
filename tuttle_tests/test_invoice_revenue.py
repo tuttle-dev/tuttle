@@ -38,7 +38,7 @@ def test_reminders_add_no_revenue():
 
     assert compute_spendable_income(chain, "Germany") == compute_spendable_income([invoice], "Germany")
     assert compute_effective_salary(chain, [], "Germany") == compute_effective_salary([invoice], [], "Germany")
-    assert compute_kpis(chain, [], [], country="Germany").total_revenue == Decimal("1190")
+    assert compute_kpis(chain, [], [], country="Germany").total_revenue == Decimal("1000")
     vat = compute_vat_reserves(chain, today, today)
     assert (vat.vat_collected, vat.invoice_count) == (Decimal("190"), 1)
 
@@ -50,6 +50,7 @@ def test_final_invoice_adds_only_what_the_deposits_left():
     deposit = invoicing.generate_deposit_invoice(project.contract, project, milestone, number="1", date=today)
     deposit.paid = True
     final = invoicing.generate_final_invoice(project.contract, project, [deposit], number="2", date=today)
+    final.sent = True
 
     spending = compute_spendable_income([deposit, final], "Germany")
 

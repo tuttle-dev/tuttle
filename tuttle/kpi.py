@@ -64,7 +64,9 @@ def compute_kpis(
 
     *time_data* (the calendar DataFrame) is the source of truth for hours
     worked.  It drives ``effective_hourly_rate`` and ``utilization_rate``.
-    Revenue metrics come from invoices, converted into the primary currency.
+    Revenue metrics come from invoices, converted into the primary currency:
+    revenue is net of VAT, while the outstanding and overdue amounts are what
+    clients still owe, VAT included.
     """
     today = datetime.date.today()
     year_start = today.replace(month=1, day=1)
@@ -81,19 +83,20 @@ def compute_kpis(
     paid_revenue = Decimal(0)
 
     for inv in invoices:
-        # A reminder chases an invoice that is already counted.
-        if inv.cancelled or inv.is_reminder:
+        # A reminder chases an invoice that is already counted; a draft is not invoiced yet.
+        if inv.cancelled or inv.is_reminder or not inv.is_issued:
             continue
         converted = convert_invoice(inv, currency)
         if converted is None:
             continue
-        inv_total = converted[0]
+        inv_total, inv_vat = converted
 
         if inv.paid:
-            total_revenue += inv_total
+            revenue = inv_total - inv_vat
+            total_revenue += revenue
             if inv.date >= year_start:
-                total_revenue_ytd += inv_total
-            paid_revenue += inv_total
+                total_revenue_ytd += revenue
+            paid_revenue += revenue
         else:
             outstanding_amount += inv_total
             unpaid_invoices += 1

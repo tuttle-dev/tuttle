@@ -71,15 +71,15 @@
         <th class="col-qty">{{ _("Qty") }}</th>
         <th class="col-unit">{{ _("Unit") }}</th>
         <th class="col-desc">{{ _("Description") }}</th>
-        <th class="col-price">{{ _("Unit Price") }} (€)</th>
-        <th class="col-subtotal">{{ _("Subtotal") }} (€)</th>
+        <th class="col-price">{{ _("Unit Price") }}</th>
+        <th class="col-subtotal">{{ _("Subtotal") }}</th>
       </tr>
     </thead>
     <tbody>
       {% for item in invoice.items %}
       <tr>
         <td class="col-date">{{ item.start_date | as_date_short }}&ndash;{{ item.end_date | as_date_short }}</td>
-        <td class="col-qty">{{ item.quantity }}</td>
+        <td class="col-qty">{{ item.quantity | as_quantity }}</td>
         <td class="col-unit">{{ item.unit | unit_label(item.quantity) }}</td>
         <td class="col-desc">{{ item.description }}</td>
         <td class="col-price num">{{ item.unit_price | as_currency }}</td>
@@ -108,7 +108,7 @@
     </tr>
     {% endif %}
     <tr class="total-due-row">
-      <td class="totals-label"><strong>{{ doc.amount_due_label(is_deposit, is_final) }} (€)</strong></td>
+      <td class="totals-label"><strong>{{ doc.amount_due_label(is_deposit, is_final) }}</strong></td>
       <td class="totals-value"><strong>{{ remaining_balance | as_currency }}</strong></td>
     </tr>
   </table>

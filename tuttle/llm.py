@@ -904,6 +904,24 @@ def _dump_extracted(items: list) -> List[Dict[str, Any]]:
     return results
 
 
+def _with_fraction_vat_rates(contracts: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Turn the VAT rates of extracted contracts into fractions, as the review and the database hold them.
+
+    A document's "19" is 19%, so the review shows it as such and the commit
+    stores 0.19, not 19 (1900%). A rate that is no percentage at all is left
+    as extracted: the review shows it, and the commit refuses it by name.
+    """
+    for contract in contracts:
+        vat = contract.get("VAT_rate")
+        if vat is None:
+            continue
+        try:
+            contract["VAT_rate"] = float(normalize_vat_rate(vat))
+        except ValueError as e:
+            logger.warning(f"LLM extraction returned invalid contract VAT rate {vat!r}: {e}")
+    return contracts
+
+
 def _map_document_extraction(
     result: DocumentExtractionResult,
 ) -> Dict[str, Any]:
@@ -911,7 +929,7 @@ def _map_document_extraction(
     mapped = {
         "contacts": _dump_extracted(result.contacts),
         "clients": _dump_extracted(result.clients),
-        "contracts": _dump_extracted(result.contracts),
+        "contracts": _with_fraction_vat_rates(_dump_extracted(result.contracts)),
         "projects": _dump_extracted(result.projects),
         "invoices": _map_invoices(result.invoices),
     }

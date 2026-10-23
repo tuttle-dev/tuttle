@@ -4,10 +4,8 @@ import datetime
 from decimal import Decimal
 from typing import Dict, List, Optional, Sequence
 
-from .einvoice import country_to_iso
 from .i18n import _
 from .model import (
-    Address,
     Contract,
     ContractCharge,
     Invoice,
@@ -15,23 +13,16 @@ from .model import (
     PaymentMilestone,
     Project,
     User,
+    round_money,
+    round_quantity,
 )
 from .time import ChargeBasis
 from .timetracking import Timesheet
 
 
 def _contract_vat_rate(contract: Contract) -> Decimal:
-    """VAT rate of a contract as a fraction.
-
-    Defensive: VAT_rate is stored as a fraction (0.19 = 19%). Some legacy /
-    LLM-imported contracts persisted percent values directly (e.g. 19 or 1900),
-    which previously produced absurd VAT totals like 1900%. Normalize any
-    value > 1 back into a fraction.
-    """
-    vat_rate = Decimal(str(contract.VAT_rate))
-    while vat_rate > Decimal("1"):
-        vat_rate = vat_rate / Decimal("100")
-    return vat_rate
+    """VAT rate of a contract as a fraction, refusing bad stored data (``Contract.billable_vat_rate``)."""
+    return contract.billable_vat_rate()
 
 
 def _applicable_charges(
@@ -119,12 +110,14 @@ def generate_invoice(
     period_start: Optional[datetime.date] = None
     period_end: Optional[datetime.date] = None
     for timesheet in timesheets:
-        quantity = timesheet.total / unit_td
-        total_quantity += Decimal(str(quantity))
+        # Bill the tracked time to two decimals (1 h 20 min → 1.33 h), so the
+        # line multiplies out to the cent it charges.
+        quantity = round_quantity(timesheet.total / unit_td)
+        total_quantity += quantity
         item = InvoiceItem(
             start_date=timesheet.table["begin"].min().date(),
             end_date=timesheet.table["end"].max().date(),
-            quantity=quantity,
+            quantity=float(quantity),
             unit=contract.unit.value,
             unit_price=unit_price,
             VAT_rate=vat_rate,
@@ -190,20 +183,20 @@ def milestone_amount(milestone: PaymentMilestone, contract: Contract) -> Decimal
     """The net amount a milestone bills, resolved against the contract total.
 
     A milestone is expressed either as an absolute amount or as a percentage
-    of the contract's fixed price. Percentages are quantized to cents, so a
+    of the contract's fixed price. Percentages are rounded to cents, so a
     schedule of thirds bills 3,333.33 rather than a repeating fraction; the
     resulting rounding difference is absorbed by the final invoice, which
     deducts the deposits actually issued.
     """
     if milestone.amount is not None:
-        return Decimal(str(milestone.amount)).quantize(Decimal("0.01"))
+        return round_money(milestone.amount)
     if milestone.percentage is None:
         raise ValueError("Milestone must have either a percentage or an amount.")
     if contract.fixed_price is None:
         raise ValueError("Percentage milestones require a fixed-price contract.")
     total_price = Decimal(str(contract.fixed_price))
     share = total_price * Decimal(str(milestone.percentage)) / Decimal("100")
-    return share.quantize(Decimal("0.01"))
+    return round_money(share)
 
 
 def generate_deposit_invoice(
@@ -295,103 +288,6 @@ def generate_final_invoice(
 
     invoice.deposits = deposit_invoices
     return invoice
-
-
-def _join(parts: Sequence[str]) -> str:
-    """Join words as a sentence does: a; a and b; a, b and c."""
-    if len(parts) < 2:
-        return "".join(parts)
-    return f"{', '.join(parts[:-1])} and {parts[-1]}"
-
-
-def _possessive(name: str) -> str:
-    """Central Services → Central Services', Sam Lowry → Sam Lowry's."""
-    return f"{name}'" if name.endswith("s") else f"{name}'s"
-
-
-def _address_gap(address: Optional[Address], owner: str) -> Optional[str]:
-    """What *address* lacks to be printed on an invoice, in words, or None.
-
-    Street, city and country are part of every postal address. House number
-    and postcode are not: some addresses have none.
-    """
-    if address is None or address.is_empty:
-        return f"{owner} address"
-    gaps = [part for part in ("street", "city", "country") if not (getattr(address, part) or "").strip()]
-    return f"the {_join(gaps)} of {owner} address" if gaps else None
-
-
-def _unrecognised_country(address: Address, owner: str) -> Optional[str]:
-    """How to correct an address whose country has no ISO code, or None if it has one."""
-    if country_to_iso(address.country) is not None:
-        return None
-    return f"Correct the country of {owner} address: '{address.country.strip()}' is not recognised."
-
-
-def missing_mandatory_details(
-    user: Optional[User],
-    contract: Contract,
-    e_invoice_profile: Optional[str] = None,
-    outside_scope: Optional[bool] = None,
-    document: str = "invoice",
-) -> Optional[str]:
-    """Why a document for *contract* may not be issued yet, or None if it may.
-
-    §14 Abs. 4 UStG and EN16931 require the seller's name, address and VAT
-    number or tax number, and the buyer's name and address (BR-6 to BR-10,
-    BR-S-02). The documents leave out what is not set, and the XML still
-    passes schema validation, so the gap would go unnoticed. An e-invoice
-    also needs payment terms whenever an amount is due (BR-CO-25), each
-    party's country as an ISO code (BT-40, BT-55), and the operating country
-    for the currency VAT is accounted in (BT-6).
-
-    An invoice outside the scope of VAT may not show the VAT number
-    (BR-O-02), so it needs the tax number. *outside_scope* defaults to the
-    contract's tax category; a reminder passes that of the invoice it chases.
-    """
-    if outside_scope is None:
-        outside_scope = contract.is_outside_scope
-    missing: List[str] = []
-    corrections: List[Optional[str]] = []
-    if user is None or not (user.name or "").strip():
-        missing.append("your name")
-    user_address = user.address if user else None
-    gap = _address_gap(user_address, "your")
-    if gap:
-        missing.append(gap)
-    elif e_invoice_profile:
-        corrections.append(_unrecognised_country(user_address, "your"))
-    if outside_scope:
-        if not (user and user.tax_number):
-            missing.append("your tax number")
-    elif not (user and (user.VAT_number or user.tax_number)):
-        missing.append("your VAT number or tax number")
-    if e_invoice_profile and not (user and user.operating_country):
-        missing.append("your operating country")
-
-    client = contract.client
-    if client is None:
-        missing.append("a client on the contract")
-    else:
-        # The documents print the invoicing contact's address, else the client's
-        # own, so a gap is named after whoever's address it is.
-        contact = client.invoice_recipient_contact
-        address = client.invoice_recipient_address
-        holder = client.name
-        if contact is not None and address is not None and address is contact.address:
-            holder = contact.name or client.name
-        gap = _address_gap(address, _possessive(holder))
-        if gap:
-            missing.append(gap)
-        elif e_invoice_profile:
-            corrections.append(_unrecognised_country(address, _possessive(holder)))
-
-    if e_invoice_profile and contract.term_of_payment is None:
-        missing.append("the contract's term of payment")
-
-    sentences = [f"Add {_join(missing)} before issuing this {document}."] if missing else []
-    sentences += [c for c in corrections if c]
-    return " ".join(sentences) or None
 
 
 def generate_invoice_email(

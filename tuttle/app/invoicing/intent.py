@@ -7,11 +7,11 @@ from typing import Mapping, Optional
 from loguru import logger
 from pandas import DataFrame
 
-from ... import invoicing, mail, rendering, timetracking
+from ... import einvoice, invoicing, mail, rendering, timetracking
 from ...app_db import AppDatabase
 from ...data_dir import get_data_dir
 from ...i18n import SUPPORTED, use_language
-from ...model import Client, Invoice, InvoiceItem, Project, Timesheet, User
+from ...model import Client, Invoice, InvoiceItem, Project, Timesheet, User, round_quantity
 from ...time import ChargeBasis
 from ..auth.data_source import UserDataSource
 from ..auth.intent import AuthIntent
@@ -51,6 +51,23 @@ def _pdf_failure(document: str, ex: Exception) -> str:
         # together read as one warning.
         return f"Saved without a PDF. {ex}"
     return f"{document} PDF could not be generated. Details are in the application log."
+
+
+def _e_invoice_gap(invoice: Invoice, user: Optional[User], profile: Optional[str]) -> Optional[str]:
+    """The warning for an invoice saved without e-invoice XML, which would have to guess a detail, else None."""
+    if not profile or user is None or einvoice.unsupported_reason(invoice):
+        return None
+    missing = einvoice.missing_details(invoice, user)
+    return f"Saved without e-invoice data. {missing}" if missing else None
+
+
+def _vat_rate_refusal(contract) -> Optional[IntentResult]:
+    """The error to show when ``contract``'s stored VAT rate cannot be billed, else None."""
+    try:
+        contract.billable_vat_rate()
+    except ValueError as ex:
+        return IntentResult(was_intent_successful=False, error_msg=str(ex))
+    return None
 
 
 def _document_language(client: Optional[Client]) -> str:
@@ -109,6 +126,7 @@ class InvoicingIntent(Intent):
         number_scheme = (
             app_db.get_setting(PreferencesStorageKeys.invoice_number_scheme_key.value) or DEFAULT_INVOICE_NUMBER_SCHEME
         )
+        e_invoice_profile = app_db.get_setting(PreferencesStorageKeys.e_invoice_profile_key.value) or DEFAULT_E_INVOICE_PROFILE
 
         return self.create_invoice(
             invoice_date=invoice_date,
@@ -121,7 +139,7 @@ class InvoicingIntent(Intent):
             template_name=template_name,
             number_scheme=number_scheme,
             with_timesheet=with_timesheet,
-            e_invoice_profile=self._e_invoice_profile(),
+            e_invoice_profile=e_invoice_profile or None,
             notes=notes,
         )
 
@@ -193,6 +211,9 @@ class InvoicingIntent(Intent):
                 was_intent_successful=False,
                 error_msg="Deposit invoices require a fixed-price contract.",
             )
+        refusal = _vat_rate_refusal(contract)
+        if refusal is not None:
+            return refusal
 
         milestone = next((m for m in contract.payment_milestones if m.id == int(milestone_id)), None)
         if milestone is None:
@@ -207,12 +228,6 @@ class InvoicingIntent(Intent):
         if len(open_milestones) == 1:
             # ``create_final`` closes out every remaining milestone itself.
             return self.create_final(project_id, invoice_date)
-
-        missing = invoicing.missing_mandatory_details(
-            self._user_data_source.get_user(), contract, self._e_invoice_profile(), document="deposit invoice"
-        )
-        if missing:
-            return IntentResult(was_intent_successful=False, error_msg=missing)
 
         try:
             invoice = invoicing.generate_deposit_invoice(
@@ -269,17 +284,15 @@ class InvoicingIntent(Intent):
                 was_intent_successful=False,
                 error_msg=f"Final invoice {final.number} already settles this project. Cancel it to issue a new final invoice.",
             )
-        missing = invoicing.missing_mandatory_details(
-            self._user_data_source.get_user(), contract, self._e_invoice_profile(), document="final invoice"
-        )
-        if missing:
-            return IntentResult(was_intent_successful=False, error_msg=missing)
 
         # The deposits of a cancelled final invoice are open to be settled again.
         deposits_result = self._invoicing_data_source.get_deposit_invoices(contract.id, project.id)
         if not deposits_result.was_intent_successful:
             return deposits_result
         deposit_invoices = deposits_result.data or []
+        refusal = _vat_rate_refusal(contract)
+        if refusal is not None:
+            return refusal
 
         try:
             invoice = invoicing.generate_final_invoice(
@@ -333,11 +346,6 @@ class InvoicingIntent(Intent):
         for milestone in milestones:
             milestone.invoiced = True
 
-    def _e_invoice_profile(self) -> Optional[str]:
-        """The e-invoice profile from the preferences, which rendering embeds in invoices."""
-        app_db = AppDatabase()
-        return app_db.get_setting(PreferencesStorageKeys.e_invoice_profile_key.value) or DEFAULT_E_INVOICE_PROFILE or None
-
     def _next_invoice_number(self, invoice_date: date) -> str:
         app_db = AppDatabase()
         scheme = app_db.get_setting(PreferencesStorageKeys.invoice_number_scheme_key.value) or DEFAULT_INVOICE_NUMBER_SCHEME
@@ -359,9 +367,14 @@ class InvoicingIntent(Intent):
             return invoice, warnings
 
         options = self._resolved_render_options(invoice)
+        user = self._user_data_source.get_user()
+        gap = _e_invoice_gap(invoice, user, options["e_invoice_profile"])
+        if gap:
+            warnings.append(gap)
+            options["e_invoice_profile"] = None
         try:
             rendering.render_invoice(
-                user=self._user_data_source.get_user(),
+                user=user,
                 invoice=invoice,
                 out_dir=get_data_dir() / "Invoices",
                 only_final=True,
@@ -376,6 +389,7 @@ class InvoicingIntent(Intent):
 
     def _resolved_render_options(self, invoice: Invoice) -> dict:
         """Template, language and layout preferences for rendering ``invoice``."""
+        app_db = AppDatabase()
 
         def _pref(getter, default):
             result = getter()
@@ -383,10 +397,13 @@ class InvoicingIntent(Intent):
                 return result.data
             return default
 
-        # Rendering decides per document type whether XML can be embedded at all.
+        # The e-invoice profile is resolved like any other preference; rendering
+        # decides per document type whether XML can be embedded at all.
+        e_invoice_profile = app_db.get_setting(PreferencesStorageKeys.e_invoice_profile_key.value) or DEFAULT_E_INVOICE_PROFILE
+
         return {
             "language": _document_language(invoice.client),
-            "e_invoice_profile": self._e_invoice_profile(),
+            "e_invoice_profile": e_invoice_profile or None,
             "template_name": _pref(
                 self._preferences_intent.get_preferred_invoice_template,
                 DEFAULT_INVOICE_TEMPLATE,
@@ -518,21 +535,23 @@ class InvoicingIntent(Intent):
                 was_intent_successful=False,
                 error_msg=f"Project “{project.title}” has no contract. Create a contract and assign it to the project before invoicing.",
             )
+        refusal = _vat_rate_refusal(contract)
+        if refusal is not None:
+            return refusal
         language = language or _document_language(contract.client)
         user = self._user_data_source.get_user()
-        missing = invoicing.missing_mandatory_details(user, contract, e_invoice_profile)
-        if missing:
-            return IntentResult(was_intent_successful=False, error_msg=missing)
         try:
             invoice_number = self._invoicing_data_source.generate_invoice_number(invoice_date, scheme=number_scheme)
 
+            # A typed quantity is billed to two decimals, as the documents show it,
+            # so each line multiplies out to the cent it charges.
             if manual_items is not None:
                 unit_fallback = contract.unit.value if contract.unit else "hour"
                 items = [
                     InvoiceItem(
                         start_date=from_date,
                         end_date=to_date,
-                        quantity=float(it["quantity"]),
+                        quantity=float(round_quantity(it["quantity"])),
                         unit=it.get("unit") or unit_fallback,
                         unit_price=Decimal(str(it["unit_price"])),
                         description=it.get("description", project.title),
@@ -554,7 +573,7 @@ class InvoicingIntent(Intent):
                 item = InvoiceItem(
                     start_date=from_date,
                     end_date=to_date,
-                    quantity=manual_quantity,
+                    quantity=float(round_quantity(manual_quantity)),
                     unit=contract.unit.value if contract.unit else "hour",
                     unit_price=contract.rate,
                     description=project.title,
@@ -674,6 +693,10 @@ class InvoicingIntent(Intent):
                     qr_result.data if qr_result.was_intent_successful and qr_result.data is not None else False
                 )
 
+                gap = _e_invoice_gap(invoice, user, e_invoice_profile)
+                if gap:
+                    render_warnings.append(gap)
+                    e_invoice_profile = None
                 try:
                     rendering.render_invoice(
                         user=user,
@@ -752,12 +775,6 @@ class InvoicingIntent(Intent):
                 was_intent_successful=False,
                 error_msg="Cannot create a reminder for a cancelled invoice.",
             )
-        # A reminder carries no e-invoice, but restates the invoice and its parties.
-        missing = invoicing.missing_mandatory_details(
-            self._user_data_source.get_user(), root.contract, outside_scope=root.is_outside_scope, document="reminder"
-        )
-        if missing:
-            return IntentResult(was_intent_successful=False, error_msg=missing)
         language = language or _document_language(predecessor.client)
 
         try:
