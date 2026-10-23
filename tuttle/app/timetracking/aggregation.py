@@ -9,6 +9,7 @@ import calendar as cal_mod
 import datetime
 from typing import Optional
 
+import pandas
 from pandas import DataFrame
 
 from ...timetracking import (
@@ -211,23 +212,40 @@ def build_summary(
     }
 
 
+# Neither source hands Tuttle an event id (the ICS parser makes up a random UID
+# when a file has none, and the EventKit helper sends none), so an event is
+# known by what it is. The description is left out: it credits no hours.
+_IDENTITY_COLUMNS = ["end", "duration", "all_day", "title", "tag", "source"]
+
+
+def _event_keys(df: DataFrame) -> list[tuple]:
+    keys = df.reindex(columns=_IDENTITY_COLUMNS).reset_index(names="begin")
+    for col in ("begin", "end"):
+        keys[col] = pandas.to_datetime(keys[col], utc=True)
+    keys["all_day"] = keys["all_day"].eq(True)
+    return list(keys.astype(str).fillna("").itertuples(index=False, name=None))
+
+
 def merge_dataframes(existing: Optional[DataFrame], new_df: DataFrame) -> DataFrame:
     """Merge *new_df* into *existing*.
 
-    Calendar rows are deduplicated by begin timestamp: a re-imported calendar
-    event replaces its earlier copy. Manual entries are database rows with their
-    own ids and are never dropped, even when several start at the same moment
-    (amounts logged on one day all begin at midnight) or share a start with a
-    calendar event.
+    Every row of *new_df* is kept. A re-imported calendar event replaces its
+    earlier copy, matched on start, end, duration, all-day, title, tag and
+    source, so different events that start at the same time all stay. An
+    event whose title or times changed is a different event. Manual entries
+    are database rows with their own ids and are never dropped.
     """
     if existing is None or existing.empty:
         return new_df
-    import pandas
-
     combined = pandas.concat([existing, new_df])
     if "source" not in combined.columns:
         combined["source"] = "calendar"
     combined["source"] = combined["source"].fillna("calendar")
-    source = combined["source"].to_numpy()
-    key = pandas.MultiIndex.from_arrays([combined.index, source])
-    return combined[~(key.duplicated(keep="last") & (source != "manual"))]
+    keys = _event_keys(combined)
+    old = len(existing)
+    reimported = set(keys[old:])
+    keep = [
+        i >= old or source == "manual" or key not in reimported
+        for i, (key, source) in enumerate(zip(keys, combined["source"]))
+    ]
+    return combined[keep]
