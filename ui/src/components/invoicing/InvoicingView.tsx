@@ -3,7 +3,7 @@ import {
   FileText, Send, CheckCircle, XCircle, Mail, Trash2, Building2, FolderKanban, Calendar, Banknote, Eye, Plus, Clock, AlertTriangle, ChevronDown, ChevronLeft, ChevronRight, Share, Receipt, Milestone, FileSignature, RotateCcw,
 } from "lucide-react";
 import { rpc, readFileAsDataURL } from "../../api/rpc";
-import { str, num, bool, entity as subEntity, list as entityList, formatDate, invoiceStatus, deepStr, isReminder, isDeposit, isFinalInvoice, reminderLevel, depositChainHeadId, depositMilestoneLabel, milestoneScheduleStatus, type MilestoneScheduleStatus } from "../../api/entity";
+import { str, num, bool, entity as subEntity, list as entityList, formatDate, formatMoney, invoiceStatus, deepStr, isReminder, isDeposit, isFinalInvoice, reminderLevel, depositChainHeadId, depositMilestoneLabel, milestoneScheduleStatus, type MilestoneScheduleStatus } from "../../api/entity";
 import { taxCategory, taxTreatment } from "../../api/tax";
 import { StatusBadge } from "../shared/StatusBadge";
 import { statusColor } from "../shared/status-colors";
@@ -1134,6 +1134,10 @@ function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid, onTog
       .sort((a, b) => num(a, "reminder_level") - num(b, "reminder_level"));
     return [root, ...reminders];
   }, [invoice, allInvoices]);
+  // The final invoice whose settlement this document states: itself, or the one a reminder chases.
+  const settlement = isFinalInvoice(invoice) ? invoice
+    : isRem && chain[0] && isFinalInvoice(chain[0]) ? chain[0] : null;
+  const reminderFee = isRem ? num(invoice, "reminder_fee") : 0;
 
   const [detailTab, setDetailTab] = useState<"invoice" | "timesheet" | "details">(pdfPath ? "invoice" : "details");
   const [pdfDataUrl, setPdfDataUrl] = useState<string | null>(null);
@@ -1223,13 +1227,17 @@ function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid, onTog
           </div>
         </div>
 
-        {/* A final invoice settles the whole contract: what matters is the
-            balance still due after deducting the deposits, not the full total. */}
+        {/* A final invoice settles the whole contract, and a reminder for it
+            restates that settlement: what matters is the balance still due
+            after deducting the deposits, not the full total. */}
         <div className="flex flex-wrap gap-2">
-          {isFinalInvoice(invoice) ? (
+          {settlement ? (
             <>
-              <AmountCard label="Contract total" value={str(invoice, "total_formatted")} />
-              <AmountCard label="Deposits deducted" value={str(invoice, "deposits_deducted_formatted") ? `−${str(invoice, "deposits_deducted_formatted")}` : "—"} />
+              <AmountCard label="Contract total" value={str(settlement, "total_formatted")} />
+              <AmountCard label="Deposits deducted" value={str(settlement, "deposits_deducted_formatted") ? `−${str(settlement, "deposits_deducted_formatted")}` : "—"} />
+              {reminderFee > 0 && (
+                <AmountCard label="Reminder fee" value={formatMoney(reminderFee, str(invoice, "currency") || "EUR")} />
+              )}
               <AmountCard label="Balance due" value={str(invoice, "remaining_balance_formatted")} prominent />
             </>
           ) : (

@@ -15,6 +15,20 @@ class InvoicingDataSource(SQLModelDataSourceMixin):
     def __init__(self):
         super().__init__()
 
+    @staticmethod
+    def _hydrate(entities, _depth: int = 2):
+        """Also load the settlement that a reminder of a final invoice restates.
+
+        Its figures come from the final invoice at the head of its reminder
+        chain and from the deposits deducted there, which the generic
+        hydration does not reach.
+        """
+        SQLModelDataSourceMixin._hydrate(entities, _depth)
+        for invoice in entities:
+            if isinstance(invoice, Invoice) and invoice.is_reminder:
+                # Reading the deductions walks the chain and loads what they need.
+                invoice.deposit_deductions
+
     def get_invoice_by_id(self, invoice_id: int) -> IntentResult[Optional[Invoice]]:
         """Fetch a single invoice by primary key."""
         try:

@@ -1439,12 +1439,36 @@ class Invoice(RpcMixin, SQLModel, table=True):
         return None
 
     @property
+    def reminder_chain_head(self) -> "Invoice":
+        """The invoice a reminder chases, at the start of its chain; any other document is its own head.
+
+        Needs the chain loaded: ``InvoicingDataSource`` loads it with every reminder.
+        """
+        node = self
+        visited: set[int] = set()
+        while node.is_reminder and node.reminder_for is not None and id(node) not in visited:
+            visited.add(id(node))
+            node = node.reminder_for
+        return node
+
+    @property
+    def settlement(self) -> Optional["Invoice"]:
+        """The final invoice whose settlement this document states, if any.
+
+        That is a final invoice itself, and a reminder for one: the reminder
+        restates the final's deductions and asks for its remaining balance.
+        """
+        head = self.reminder_chain_head
+        return head if head.is_final_invoice else None
+
+    @property
     def deposit_deductions(self) -> list:
-        """For a final invoice, return list of deposit deduction dicts for rendering."""
-        if not self.is_final_invoice:
+        """The deposits a final invoice, or a reminder for one, deducts, as dicts for rendering."""
+        settlement = self.settlement
+        if settlement is None:
             return []
         deductions = []
-        for dep in self.deposits:
+        for dep in settlement.deposits:
             deductions.append(
                 {
                     "invoice_number": dep.number,
@@ -1457,9 +1481,10 @@ class Invoice(RpcMixin, SQLModel, table=True):
 
     @property
     def remaining_balance(self) -> Decimal:
-        """For a final invoice: total minus sum of deposit gross amounts."""
-        if not self.is_final_invoice:
-            return self.total
+        """What the client still owes on this document: its total less the deposits it deducts.
+
+        For a reminder of a final invoice that is the final's remaining balance plus the reminder fee.
+        """
         deposit_gross = sum(d["gross"] for d in self.deposit_deductions)
         return Decimal(self.total - deposit_gross)
 
@@ -1470,8 +1495,8 @@ class Invoice(RpcMixin, SQLModel, table=True):
 
     @property
     def deposits_deducted_formatted(self) -> str:
-        """For a final invoice: formatted sum of the gross amounts it deducts."""
-        if not self.is_final_invoice:
+        """For a final invoice, or a reminder for one: formatted sum of the gross amounts it deducts."""
+        if self.settlement is None:
             return ""
         currency = self.contract.currency if self.contract else "EUR"
         deducted = sum(d["gross"] for d in self.deposit_deductions)

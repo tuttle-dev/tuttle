@@ -100,13 +100,13 @@
       <td class="totals-value">{{ invoice.VAT_total | as_currency }}</td>
     </tr>
     {% endif %}
+    {% if is_final or deposit_deductions %}{{ doc.settlement_lines_table(invoice, deposit_deductions) }}{% endif %}
     {% if is_reminder and invoice.reminder_fee %}
     <tr>
       <td class="totals-label">{{ _("Reminder Fee") }}</td>
       <td class="totals-value">{{ invoice.reminder_fee | as_currency }}</td>
     </tr>
     {% endif %}
-    {% if is_final %}{{ doc.settlement_lines_table(invoice, deposit_deductions) }}{% endif %}
     <tr class="total-due-row">
       <td class="totals-label"><strong>{{ doc.amount_due_label(is_deposit, is_final) }} (€)</strong></td>
       <td class="totals-value"><strong>{{ remaining_balance | as_currency }}</strong></td>
