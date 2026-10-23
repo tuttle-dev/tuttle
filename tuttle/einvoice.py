@@ -335,7 +335,9 @@ def build_zugferd_document(
     doc.trade.settlement.monetary_summation.due_amount = due_amount
 
     # -- Payment terms (not in MINIMUM) ----------------------------------------
-    if not is_minimum and contract.term_of_payment:
+    # A term of 0 days is due on the invoice date. BR-CO-25 wants a due date or
+    # terms whenever an amount is due.
+    if not is_minimum and contract.term_of_payment is not None:
         terms = PaymentTerms()
         due_date = invoice.date + timedelta(days=contract.term_of_payment)
         terms.due = datetime(due_date.year, due_date.month, due_date.day, tzinfo=timezone.utc)

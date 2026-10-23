@@ -142,10 +142,11 @@ export function invoiceStatus(e: Entity): string {
       if (new Date(effectiveDue) < new Date()) return "Overdue";
     } else {
       const contract = entity(e, "contract");
-      if (contract) {
+      // A term of 0 days is due on the invoice date; only a missing term means no due date.
+      if (contract && contract.term_of_payment != null) {
         const termDays = num(contract, "term_of_payment");
         const dateStr = str(e, "date");
-        if (dateStr && termDays) {
+        if (dateStr) {
           const due = new Date(dateStr);
           due.setDate(due.getDate() + termDays);
           if (due < new Date()) return "Overdue";
