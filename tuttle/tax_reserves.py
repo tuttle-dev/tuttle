@@ -15,7 +15,7 @@ from pandas import DataFrame
 from .fx import convert, fx_haircut
 from .fx import rate as fx_rate
 from .model import Invoice, Project, RecurringExpense
-from .tax import get_tax_system
+from .tax import NoTaxRules, get_tax_system
 from .time import Cycle, TimeUnit
 from .timetracking import drop_completed, drop_invoiced, sum_hours_by_tag
 
@@ -46,7 +46,7 @@ class DynamicExpenseLine(NamedTuple):
 
     title: str
     rate: Decimal  # percentage of the income it is charged on
-    amount: Decimal
+    amount: Optional[Decimal]  # None when charged on taxed income and the tax is unknown
     tax_deductible: bool
 
 
@@ -58,8 +58,8 @@ class SpendableIncome(NamedTuple):
     net_revenue_ytd: Decimal  # gross minus VAT
     taxable_profit: Decimal  # net_revenue - business_expenses
     vat_reserve: Decimal  # VAT to set aside
-    income_tax_reserve: Decimal  # estimated income tax + soli
-    spendable: Decimal  # post-tax minus non-deductible expenses and FX fee
+    income_tax_reserve: Optional[Decimal]  # estimated income tax + soli; None without tax rules
+    spendable: Optional[Decimal]  # post-tax minus non-deductible expenses and FX fee; None without tax rules
     # breakdown by income source
     received_gross: Decimal  # paid invoices, gross
     received_net: Decimal  # paid invoices, net of VAT
@@ -70,10 +70,11 @@ class SpendableIncome(NamedTuple):
     conversion_fee: Decimal = Decimal(0)  # FX spread on foreign-currency revenue
     # income-dependent (dynamic) expenses, split by where they land in the waterfall
     dynamic_expenses_deductible: Decimal = Decimal(0)  # charged on the taxable profit
-    dynamic_expenses_post_tax: Decimal = Decimal(0)  # charged on post-tax money
+    dynamic_expenses_post_tax: Optional[Decimal] = Decimal(0)  # charged on post-tax money; None without tax rules
     tax_base: Decimal = Decimal(0)  # taxable_profit - dynamic_expenses_deductible
     dynamic_expenses: list = []  # per-expense DynamicExpenseLine, never mutated
     fixed_expenses_post_tax: Decimal = Decimal(0)  # non-deductible fixed expenses for the year
+    tax_unavailable_reason: Optional[str] = None  # why there is no tax estimate, e.g. "No tax model for Norway."
 
 
 def _invoice_currency(inv: Invoice) -> Optional[str]:
@@ -233,6 +234,9 @@ def compute_income_tax_reserve(
     *income* and the returned amounts are in *currency* (default: the tax
     system's). The tariff is written in the tax system's currency, so income
     in another one is converted for it, and the tax back.
+
+    Raises ``NoTaxRules`` when there are no tax rules for *country*: a tax of
+    zero would pass for an estimate, so there is none.
     """
     today = datetime.date.today()
     _zero = IncomeTaxReserve(
@@ -245,10 +249,7 @@ def compute_income_tax_reserve(
 
     ref_date = datetime.date(year, 7, 1) if year is not None else today
 
-    try:
-        tax_system = get_tax_system(country, date=ref_date)
-    except NotImplementedError:
-        return _zero
+    tax_system = get_tax_system(country, date=ref_date)
 
     taxable_income = income - deductions
     if taxable_income <= 0:
@@ -322,6 +323,10 @@ def compute_spendable_income(
     *contracted* is net revenue still expected from committed contracts this
     year, as computed by ``forecasting.contracted_revenue``; other years
     ignore it.
+
+    Without tax rules for *country* the figures up to the tax base stay, and
+    the income tax, the expenses charged on taxed income and Safe to Spend
+    are None, with ``tax_unavailable_reason`` saying why.
     """
     today = datetime.date.today()
     # Any year but the current one is over: it has no planned or contracted work.
@@ -398,26 +403,38 @@ def compute_spendable_income(
     # Deductible provisions (health insurance, Rürup) shrink the income the tax
     # is assessed on; the rest is paid out of money that was already taxed.
     tax_base = taxable_profit - dyn_deductible
-    tax_reserve = compute_income_tax_reserve(tax_base, country, deductions, year=year, currency=currency)
-
-    post_tax = tax_base - tax_reserve.ytd_reserve - fixed_post_tax
-
-    # Post-tax dynamic expenses are charged on earned income too: planned
-    # revenue, and its share of the tax, stay out of their base. The earned
-    # month bears its part of the year's tax.
-    earned_base = earned_monthly - _lines_total(deductible_lines)
-    earned_tax = tax_reserve.ytd_reserve * max(earned_base, Decimal(0)) / tax_base if tax_base > 0 else Decimal(0)
-    post_tax_lines = _dynamic_lines(dynamic_expenses, earned_base - earned_tax - post_tax_monthly, deductible=False)
-    dyn_post_tax = (_lines_total(post_tax_lines) * 12).quantize(cent)
-
-    # The per-expense lines are monthly; the aggregates above cover the year.
-    dynamic_lines = [line._replace(amount=(line.amount * 12).quantize(cent)) for line in deductible_lines + post_tax_lines]
 
     # The bank/Wise spread never reduces taxable revenue — only what lands in
     # the account, so it is subtracted after the tax reserve, not before.
     conversion_fee = (foreign_net * fx_haircut() / 100).quantize(cent)
 
-    spendable = post_tax - dyn_post_tax - conversion_fee
+    try:
+        tax_reserve = compute_income_tax_reserve(tax_base, country, deductions, year=year, currency=currency)
+    except NoTaxRules as e:
+        # Without tax rules nothing after the tax is known: no tax, no Safe to
+        # Spend, and no expense charged on taxed income.
+        no_tax = str(e)
+        income_tax = dyn_post_tax = spendable = None
+        post_tax_lines = _dynamic_lines(dynamic_expenses, None, deductible=False)
+    else:
+        no_tax = None
+        income_tax = tax_reserve.ytd_reserve
+        post_tax = tax_base - income_tax - fixed_post_tax
+
+        # Post-tax dynamic expenses are charged on earned income too: planned
+        # revenue, and its share of the tax, stay out of their base. The earned
+        # month bears its part of the year's tax.
+        earned_base = earned_monthly - _lines_total(deductible_lines)
+        earned_tax = income_tax * max(earned_base, Decimal(0)) / tax_base if tax_base > 0 else Decimal(0)
+        post_tax_lines = _dynamic_lines(dynamic_expenses, earned_base - earned_tax - post_tax_monthly, deductible=False)
+        dyn_post_tax = (_lines_total(post_tax_lines) * 12).quantize(cent)
+        spendable = post_tax - dyn_post_tax - conversion_fee
+
+    # The per-expense lines are monthly; the aggregates above cover the year.
+    dynamic_lines = [
+        line._replace(amount=None if line.amount is None else (line.amount * 12).quantize(cent))
+        for line in deductible_lines + post_tax_lines
+    ]
 
     return SpendableIncome(
         gross_revenue_ytd=gross_invoiced,
@@ -425,7 +442,7 @@ def compute_spendable_income(
         net_revenue_ytd=net_invoiced,
         taxable_profit=taxable_profit,
         vat_reserve=vat_invoiced,
-        income_tax_reserve=tax_reserve.ytd_reserve,
+        income_tax_reserve=income_tax,
         spendable=spendable,
         received_gross=received_gross,
         received_net=received_net,
@@ -439,6 +456,7 @@ def compute_spendable_income(
         tax_base=tax_base,
         dynamic_expenses=dynamic_lines,
         fixed_expenses_post_tax=fixed_post_tax,
+        tax_unavailable_reason=no_tax,
     )
 
 
@@ -477,15 +495,19 @@ def dynamic_monthly(expense: RecurringExpense, monthly_income: Decimal) -> Decim
 
 def _dynamic_lines(
     expenses: List[RecurringExpense],
-    monthly_income: Decimal,
+    monthly_income: Optional[Decimal],
     deductible: bool,
 ) -> List[DynamicExpenseLine]:
-    """Monthly amount of each dynamic expense matching *deductible*."""
+    """Monthly amount of each dynamic expense matching *deductible*.
+
+    An unknown *monthly_income* (taxed income without tax rules) leaves the
+    amounts unknown too.
+    """
     return [
         DynamicExpenseLine(
             title=e.title,
             rate=e.rate,
-            amount=dynamic_monthly(e, monthly_income),
+            amount=None if monthly_income is None else dynamic_monthly(e, monthly_income),
             tax_deductible=bool(e.tax_deductible),
         )
         for e in expenses
@@ -538,12 +560,15 @@ class EffectiveSalary(NamedTuple):
     conversion_fee_monthly — bank spread on foreign-currency revenue per month
     currency             — ISO 4217 currency code
     period_start, period_end — the months the averages are taken over
+    tax_unavailable_reason — why there are no tax rules to estimate with; the
+        salaries, the income tax and the expenses charged on taxed income are
+        then None
     """
 
-    conservative_monthly: Decimal
-    optimistic_monthly: Decimal
+    conservative_monthly: Optional[Decimal]
+    optimistic_monthly: Optional[Decimal]
     monthly_expenses: Decimal
-    income_tax_reserve_monthly: Decimal
+    income_tax_reserve_monthly: Optional[Decimal]
     vat_reserve_monthly: Decimal
     currency: str
     dynamic_expenses: list = []  # per-expense DynamicExpenseLine, never mutated
@@ -551,6 +576,7 @@ class EffectiveSalary(NamedTuple):
     conversion_fee_monthly: Decimal = Decimal(0)
     period_start: Optional[datetime.date] = None
     period_end: Optional[datetime.date] = None
+    tax_unavailable_reason: Optional[str] = None
 
 
 class _Revenue(NamedTuple):
@@ -565,12 +591,13 @@ class _Revenue(NamedTuple):
 
 
 class _SalaryScenario(NamedTuple):
-    salary: Decimal
+    salary: Optional[Decimal]
     gross: Decimal
     vat: Decimal
-    income_tax: Decimal
+    income_tax: Optional[Decimal]
     conversion_fee: Decimal
     dynamic_lines: List[DynamicExpenseLine]
+    no_tax: Optional[str] = None
 
 
 def compute_effective_salary(
@@ -590,6 +617,9 @@ def compute_effective_salary(
 
     The month in progress is left out: most of its invoices are not written
     yet, so counting it would lower the average every time a month begins.
+
+    Without tax rules for *country* there is no salary figure: see
+    ``EffectiveSalary.tax_unavailable_reason``.
     """
     today = datetime.date.today()
     this_month = today.replace(day=1)
@@ -642,13 +672,19 @@ def compute_effective_salary(
         profit = gross - vat - monthly_exp_deductible
         deductible_lines = _dynamic_lines(dynamic_expenses, profit, deductible=True)
         tax_base = profit - _lines_total(deductible_lines)
-        # Tax a year of this monthly profit: progressive tax on the year-to-date
-        # sum would treat a few months of income as a whole year's.
-        income_tax = (compute_income_tax_reserve(tax_base * 12, country, currency=currency).ytd_reserve / 12).quantize(cent)
-        post_tax = tax_base - income_tax - (monthly_exp - monthly_exp_deductible)
-        post_tax_lines = _dynamic_lines(dynamic_expenses, post_tax, deductible=False)
         # The bank spread never reduces taxable revenue, only what lands in the account.
         conversion_fee = (revenue.foreign_net / months * fx_spread / 100).quantize(cent)
+        try:
+            # Tax a year of this monthly profit: progressive tax on the year-to-date
+            # sum would treat a few months of income as a whole year's.
+            yearly_tax = compute_income_tax_reserve(tax_base * 12, country, currency=currency).ytd_reserve
+        except NoTaxRules as e:
+            # Without tax rules there is no salary, and nothing charged on taxed income.
+            unknown_lines = _dynamic_lines(dynamic_expenses, None, deductible=False)
+            return _SalaryScenario(None, gross, vat, None, conversion_fee, deductible_lines + unknown_lines, str(e))
+        income_tax = (yearly_tax / 12).quantize(cent)
+        post_tax = tax_base - income_tax - (monthly_exp - monthly_exp_deductible)
+        post_tax_lines = _dynamic_lines(dynamic_expenses, post_tax, deductible=False)
         salary = post_tax - _lines_total(post_tax_lines) - conversion_fee
         return _SalaryScenario(salary, gross, vat, income_tax, conversion_fee, deductible_lines + post_tax_lines)
 
@@ -667,6 +703,7 @@ def compute_effective_salary(
         conversion_fee_monthly=optimistic.conversion_fee,
         period_start=period_start,
         period_end=period_end,
+        tax_unavailable_reason=optimistic.no_tax,
     )
 
 

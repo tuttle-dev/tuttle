@@ -19,7 +19,7 @@ from tuttle.model import (
     RecurringExpense,
     Timesheet,
 )
-from tuttle.tax import TaxSystem, available_years, get_tax_system, supported_countries
+from tuttle.tax import NoTaxRules, TaxSystem, available_years, get_tax_system, supported_countries
 from tuttle.tax_reserves import (
     _normalize_to_monthly,
     compute_income_tax_reserve,
@@ -172,7 +172,7 @@ class TestTaxSystemFramework:
         assert system.country == "Germany"
 
     def test_get_tax_system_unsupported(self):
-        with pytest.raises(NotImplementedError, match="not yet implemented"):
+        with pytest.raises(NoTaxRules, match="No tax model for Narnia."):
             get_tax_system("Narnia")
 
     def test_supported_countries(self):

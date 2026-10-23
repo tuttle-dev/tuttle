@@ -34,6 +34,19 @@ export interface CashFlowSeries {
   total_inflow: number;
   total_outflow: number;
   net_cash_flow: number;
+  /** False without tax rules: outflows then hold no income tax, nor what is charged on taxed income. */
+  tax_included: boolean;
+  tax_unavailable_reason: string | null;
+  left_out_with_tax: string[];
+}
+
+/** "Income tax and Pension not included: no tax model for Norway." — or "" when tax is included. */
+function taxNote(data: CashFlowSeries | null): string {
+  if (!data || data.tax_included !== false) return "";
+  const items = ["Income tax", ...(data.left_out_with_tax ?? [])];
+  const list = items.length > 1 ? `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}` : items[0];
+  const reason = data.tax_unavailable_reason ?? "";
+  return `${list} not included: ${reason.charAt(0).toLowerCase()}${reason.slice(1)}`;
 }
 
 type SeriesKey = "inflow_invoiced" | "inflow_planned" | "inflow_contracted" | "outflow" | "balance";
@@ -163,6 +176,7 @@ export function CashFlowChart() {
     visible.includes(k),
   );
   const netCashFlow = data?.net_cash_flow ?? 0;
+  const note = taxNote(data);
   const isPositive = netCashFlow >= 0;
 
   const windowLabel = useMemo(() => {
@@ -421,6 +435,8 @@ export function CashFlowChart() {
           );
         })}
       </div>
+
+      {note && <p className="text-[11px] text-muted text-center mt-2">{note}</p>}
     </div>
   );
 }

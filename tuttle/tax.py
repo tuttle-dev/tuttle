@@ -25,6 +25,15 @@ from typing import Optional
 _DATA_DIR = Path(__file__).parent / "tax_data"
 
 
+class NoTaxRules(NotImplementedError):
+    """There are no tax rules to estimate income tax with.
+
+    Its message says what is missing, in one sentence fit to show the user.
+    Every figure after income tax depends on it, so callers show none rather
+    than one computed with a tax of zero.
+    """
+
+
 # ── TaxParams: one loaded year for one country ───────────────
 
 
@@ -87,9 +96,7 @@ def _resolve_country(country: str) -> str:
     _load_all()
     canonical = _ALIAS_MAP.get(country)
     if canonical is None:
-        raise NotImplementedError(
-            f"Tax system for '{country}' not yet implemented. Supported: {', '.join(sorted(_ALIAS_MAP.keys()))}"
-        )
+        raise NoTaxRules(f"No tax model for {country}." if country else "No operating country set.")
     return canonical
 
 
@@ -354,7 +361,7 @@ def get_tax_system(
               Defaults to today.
 
     Raises:
-        NotImplementedError: If the country has no data packages.
+        NoTaxRules: If the country has no data packages.
     """
     if date is None:
         date = datetime.date.today()

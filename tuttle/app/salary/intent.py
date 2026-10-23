@@ -2,7 +2,6 @@
 
 from ...fx import primary_currency, validate_currency_code
 from ...model import Invoice, RecurringExpense, User
-from ...tax import has_tax_model
 from ...tax_reserves import compute_effective_salary
 from ..core.abstractions import Intent, SQLModelDataSourceMixin
 from ..core.intent_result import IntentResult
@@ -51,7 +50,7 @@ class SalaryIntent(SQLModelDataSourceMixin, Intent):
                     "salary": salary,
                     "currency": currency,
                     "country": country,
-                    "country_supported": has_tax_model(country) if country else False,
+                    "country_supported": salary.tax_unavailable_reason is None,
                 },
             )
         except Exception as e:

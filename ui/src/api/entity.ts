@@ -4,8 +4,9 @@
 
 import type { Entity } from "./types";
 
-/** One income-dependent recurring expense, already resolved to an amount. */
-export type DynamicLine = { title: string; rate: number; amount: number; tax_deductible: boolean };
+/** One income-dependent recurring expense, already resolved to an amount.
+ * The amount is null when it is charged on taxed income and the tax is unknown. */
+export type DynamicLine = { title: string; rate: number; amount: number | null; tax_deductible: boolean };
 
 export function str(e: Entity, key: string): string {
   const v = e[key];
@@ -21,6 +22,11 @@ export function num(e: Entity, key: string): number {
   if (typeof v === "number") return v;
   if (typeof v === "string") return parseFloat(v) || 0;
   return 0;
+}
+
+/** A number the core may leave out (null), e.g. a figure that needs a tax estimate. */
+export function maybeNum(e: Entity, key: string): number | null {
+  return e[key] == null ? null : num(e, key);
 }
 
 export function int(e: Entity, key: string): number {
