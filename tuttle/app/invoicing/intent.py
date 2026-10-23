@@ -714,10 +714,24 @@ class InvoicingIntent(Intent):
             return IntentResult(was_intent_successful=False, error_msg="Invoice not found.")
         predecessor = result.data
 
+        # Walk to root via explicit queries to avoid DetachedInstanceError
+        root = predecessor
+        while root.reminder_for_id is not None:
+            parent_result = self._invoicing_data_source.get_invoice_by_id(root.reminder_for_id)
+            if not parent_result.was_intent_successful or not parent_result.data:
+                break
+            root = parent_result.data
+
         if predecessor.paid:
             return IntentResult(
                 was_intent_successful=False,
                 error_msg="Cannot create a reminder for a paid invoice.",
+            )
+        # A cancelled invoice is owed no more, whichever reminder of it is chased.
+        if root.cancelled:
+            return IntentResult(
+                was_intent_successful=False,
+                error_msg=f"Invoice {root.number} is cancelled. Restore it first if the client still owes it.",
             )
         if predecessor.cancelled:
             return IntentResult(
@@ -729,14 +743,6 @@ class InvoicingIntent(Intent):
         try:
             user = self._user_data_source.get_user()
             new_level = predecessor.reminder_level + 1
-
-            # Walk to root via explicit queries to avoid DetachedInstanceError
-            root = predecessor
-            while root.reminder_for_id is not None:
-                parent_result = self._invoicing_data_source.get_invoice_by_id(root.reminder_for_id)
-                if not parent_result.was_intent_successful or not parent_result.data:
-                    break
-                root = parent_result.data
 
             items = [
                 InvoiceItem(
@@ -1018,18 +1024,14 @@ class InvoicingIntent(Intent):
             )
 
     def toggle_invoice_cancelled_status(self, invoice: Invoice) -> IntentResult[Invoice]:
-        """
-        Toggles the "cancelled" status of an invoice and updates it in the data source.
+        """Toggle cancelled status. Propagates from an invoice to its reminders.
 
-        Parameters:
-            invoice (Invoice):
-                The invoice object whose "cancelled" status will be toggled.
-
-        Returns:
-            IntentResult[Invoice]:
-                An IntentResult object containing the updated invoice, or old invoice if update was not successful.
+        A cancelled invoice is owed no more, so its reminders are void with it
+        and come back when it is restored. A reminder can be cancelled on its
+        own, but not restored while its invoice is cancelled.
         """
-        if invoice.is_deposit and not invoice.cancelled and invoice.deposit_for_id is not None:
+        new_cancelled = not invoice.cancelled
+        if invoice.is_deposit and new_cancelled and invoice.deposit_for_id is not None:
             # The final invoice deducts this deposit. Voided on its own, the deposit
             # would stay deducted there and the client would be asked for too little.
             final = self._invoicing_data_source.get_invoice_by_id(invoice.deposit_for_id).data
@@ -1041,14 +1043,28 @@ class InvoicingIntent(Intent):
                         "Cancel the final invoice first, then the deposit."
                     ),
                 )
+        chain_result = self._invoicing_data_source.get_reminder_chain(invoice.id)
+        chain = chain_result.data if chain_result.was_intent_successful and chain_result.data else [invoice]
+        head = chain[0]
+        if invoice.is_reminder:
+            if not new_cancelled and head.id != invoice.id and head.cancelled:
+                return IntentResult(
+                    was_intent_successful=False,
+                    error_msg=f"Invoice {head.number} is cancelled. Restore the invoice to restore its reminders.",
+                )
+            chain = [invoice]
         try:
-            invoice.cancelled = not invoice.cancelled
-            self._invoicing_data_source.save_invoice(invoice)
+            for inv in chain:
+                fresh = self._invoicing_data_source.get_invoice_by_id(inv.id)
+                if fresh.was_intent_successful and fresh.data:
+                    fresh.data.cancelled = new_cancelled
+                    self._invoicing_data_source.save_invoice(fresh.data)
             if invoice.is_deposit or invoice.is_final_invoice:
                 self._invoicing_data_source.reconcile_milestones_invoiced(invoice.contract_id)
+            result = self._invoicing_data_source.get_invoice_by_id(invoice.id)
             return IntentResult(
                 was_intent_successful=True,
-                data=invoice,
+                data=result.data if result.was_intent_successful and result.data else invoice,
             )
         except Exception as ex:
             logger.error(f"Error toggling invoice cancelled status: {ex}")
