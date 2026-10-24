@@ -7,7 +7,7 @@ from typing import Mapping, Optional
 from loguru import logger
 from pandas import DataFrame
 
-from ... import invoicing, mail, rendering, timetracking
+from ... import einvoice, invoicing, mail, rendering, timetracking
 from ...app_db import AppDatabase
 from ...data_dir import get_data_dir
 from ...i18n import SUPPORTED, use_language
@@ -51,6 +51,14 @@ def _pdf_failure(document: str, ex: Exception) -> str:
         # together read as one warning.
         return f"Saved without a PDF. {ex}"
     return f"{document} PDF could not be generated. Details are in the application log."
+
+
+def _e_invoice_gap(invoice: Invoice, user: Optional[User], profile: Optional[str]) -> Optional[str]:
+    """The warning for an invoice saved without e-invoice XML, which would have to guess a detail, else None."""
+    if not profile or user is None or einvoice.unsupported_reason(invoice):
+        return None
+    missing = einvoice.missing_details(invoice, user)
+    return f"Saved without e-invoice data. {missing}" if missing else None
 
 
 def _vat_rate_refusal(contract) -> Optional[IntentResult]:
@@ -359,9 +367,14 @@ class InvoicingIntent(Intent):
             return invoice, warnings
 
         options = self._resolved_render_options(invoice)
+        user = self._user_data_source.get_user()
+        gap = _e_invoice_gap(invoice, user, options["e_invoice_profile"])
+        if gap:
+            warnings.append(gap)
+            options["e_invoice_profile"] = None
         try:
             rendering.render_invoice(
-                user=self._user_data_source.get_user(),
+                user=user,
                 invoice=invoice,
                 out_dir=get_data_dir() / "Invoices",
                 only_final=True,
@@ -680,6 +693,10 @@ class InvoicingIntent(Intent):
                     qr_result.data if qr_result.was_intent_successful and qr_result.data is not None else False
                 )
 
+                gap = _e_invoice_gap(invoice, user, e_invoice_profile)
+                if gap:
+                    render_warnings.append(gap)
+                    e_invoice_profile = None
                 try:
                     rendering.render_invoice(
                         user=user,
