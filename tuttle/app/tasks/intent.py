@@ -288,7 +288,7 @@ def _same(a: TaskRule, b: TaskRule, fields) -> bool:
 def _int(value, message: str) -> int:
     try:
         return int(value)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         raise ValueError(message) from None
 
 

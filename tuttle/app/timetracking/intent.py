@@ -64,7 +64,7 @@ def _validate_entry(tag: str, date: str, start_time, end_time, duration_minutes=
         return (*_validate_amount(date, duration_minutes), True)
     try:
         begin, end = _parse_local(date, start_time), _parse_local(date, end_time)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         raise _EntryError("Enter the date as YYYY-MM-DD and the times as HH:MM.")
     if end <= begin:
         raise _EntryError("The end time must be after the start time.")
@@ -74,11 +74,11 @@ def _validate_entry(tag: str, date: str, start_time, end_time, duration_minutes=
 def _validate_amount(date: str, duration_minutes):
     try:
         begin = _parse_local(date, "00:00")
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         raise _EntryError("Enter the date as YYYY-MM-DD.")
     try:
         minutes = round(float(duration_minutes))
-    except (TypeError, ValueError, OverflowError):
+    except TypeError, ValueError, OverflowError:
         minutes = 0
     if not 0 < minutes <= _MAX_DAY_MINUTES:
         raise _EntryError("Enter a duration between 1 minute and 24 hours, for example 1h 30m.")
@@ -120,7 +120,7 @@ def _fetch_system_calendar(calendar_id, from_date, to_date) -> tuple[Optional[Da
 def _coerce_id(value) -> Optional[int]:
     try:
         return int(value)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
 
 
@@ -423,7 +423,7 @@ class TimeTrackingIntent(Intent):
         begin = to_cet(state["start_time"])
         try:
             end = to_cet(end_time) if end_time else to_cet(datetime.datetime.now(tz=datetime.timezone.utc))
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             return IntentResult(
                 was_intent_successful=False,
                 error_msg="The end time could not be read. Stop the timer again.",

@@ -83,8 +83,7 @@ markers = [
 ]
 
 [tool.ruff]
-# py314 would make ruff format drop the parentheses in `except (A, B):`.
-target-version = "py313"
+target-version = "py314"
 line-length = 127
 # Python fenced code blocks in docs (.ai/rules/, migrations/README.md, etc.) are
 # illustrative snippets, not standalone modules — they reference names like `op`

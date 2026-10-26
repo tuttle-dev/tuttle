@@ -403,7 +403,7 @@ def fetch_events(
         try:
             begin_dt = datetime.datetime.fromisoformat(ev["begin"])
             end_dt = datetime.datetime.fromisoformat(ev["end"])
-        except (KeyError, ValueError):
+        except KeyError, ValueError:
             continue
 
         title = ev.get("title", "")

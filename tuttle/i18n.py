@@ -75,7 +75,7 @@ def _fill(text: str, source: str, values: dict) -> str:
         return text
     try:
         return text.format(**values)
-    except (KeyError, IndexError, ValueError):
+    except KeyError, IndexError, ValueError:
         # A translation with a broken placeholder must not break the document.
         return source.format(**values)
 

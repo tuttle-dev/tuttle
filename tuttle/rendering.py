@@ -41,7 +41,7 @@ def unit_label(raw_unit, quantity=None) -> str:
     """
     try:
         count = 1 if quantity is None else float(round_quantity(quantity))
-    except (TypeError, ValueError, ArithmeticError):
+    except TypeError, ValueError, ArithmeticError:
         count = 1
     unit = raw_unit.lower().replace(" ", "_").rstrip("s")
     if unit == "hour":

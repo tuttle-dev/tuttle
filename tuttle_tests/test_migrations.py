@@ -242,7 +242,7 @@ def test_versions_are_append_only_in_git() -> None:
             check=True,
             capture_output=True,
         )
-    except (FileNotFoundError, subprocess.CalledProcessError):
+    except FileNotFoundError, subprocess.CalledProcessError:
         pytest.skip("Not a git checkout; cannot enforce append-only.")
 
     # c3d70beffa72 was edited after shipping (commit 9cec3e0 changed its

@@ -311,7 +311,7 @@ class InvoicingDataSource(SQLModelDataSourceMixin):
                 try:
                     seq = int(inv.number.rsplit("-", 1)[-1]) if prefix else int(inv.number)
                     max_seq = max(max_seq, seq)
-                except (ValueError, IndexError):
+                except ValueError, IndexError:
                     continue
 
             next_seq = max_seq + 1

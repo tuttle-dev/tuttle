@@ -40,7 +40,7 @@ def _as_date(value, what: str) -> date:
         return value
     try:
         return _dt.date.fromisoformat(value)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         raise ValueError(f"Enter a valid {what}.") from None
 
 
