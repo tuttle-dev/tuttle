@@ -140,7 +140,7 @@ def fx_haircut() -> Decimal:
     raw = AppDatabase().get_setting("currency.fx_haircut")
     try:
         return Decimal(raw) if raw else Decimal("1.0")
-    except (ArithmeticError, ValueError):
+    except ArithmeticError, ValueError:
         return Decimal("1.0")
 
 

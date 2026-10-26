@@ -46,7 +46,7 @@ jobs:
       with:
         version: "latest"
     - name: Set up Python
-      run: uv python install 3.13
+      run: uv python install 3.14
     # Only runtime + build deps: dev-group packages must never influence what
     # PyInstaller bundles (see logging.config regression in v4.3.0).
     - name: Install Python dependencies

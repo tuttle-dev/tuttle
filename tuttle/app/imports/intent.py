@@ -544,7 +544,7 @@ def _model_fields(data: dict, model_cls: type) -> dict:
         if field_info and field_info.annotation is not None:
             try:
                 v = _coerce_value(v, field_info.annotation)
-            except (ValueError, ArithmeticError):
+            except ValueError, ArithmeticError:
                 raise ValueError(f"the {_field_label(k)} {v!r} is not valid") from None
         if v is not None:
             result[k] = v

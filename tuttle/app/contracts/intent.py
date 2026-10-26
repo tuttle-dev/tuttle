@@ -27,7 +27,7 @@ def _parse_amount(value) -> Decimal:
     """
     try:
         return Decimal(str(value))
-    except (InvalidOperation, TypeError, ValueError):
+    except InvalidOperation, TypeError, ValueError:
         raise ValueError(f"Additional charge amount must be a number, got {value!r}")
 
 
@@ -35,7 +35,7 @@ def _parse_milestone_number(value, field: str) -> Decimal:
     """Coerce a milestone percentage or amount from JSON into a Decimal."""
     try:
         parsed = Decimal(str(value))
-    except (InvalidOperation, TypeError, ValueError):
+    except InvalidOperation, TypeError, ValueError:
         raise ValueError(f"Milestone {field} must be a number, got {value!r}")
     if parsed <= 0:
         raise ValueError(f"Milestone {field} must be greater than zero, got {value!r}")
