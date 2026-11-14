@@ -1,0 +1,23 @@
+{
+    "country": "Estonia",
+    "country_aliases": ["Eesti"],
+    "year": 2027,
+    "formula_type": "flat_rate",
+    "source": "Tulumaksuseadus (current law; no 2027 change announced as of Nov 2026): income tax 22%, basic exemption 8,400 EUR (700 EUR/month) regardless of income",
+    "currency": "EUR",
+
+    "income_tax": {
+        "basic_allowance": 8400,
+        "zones": [
+            {
+                "label": "22%",
+                "up_to": null,
+                "rate": 0.22
+            }
+        ]
+    },
+
+    "solidarity_surcharge": {"rate": 0.0},
+
+    "vat": {"standard_rate": 0.24, "reduced_rate": 0.09}
+}

@@ -1,0 +1,59 @@
+{
+    "country": "France",
+    "country_aliases": [],
+    "year": 2027,
+    "formula_type": "marginal_brackets",
+    "source": "Barème for revenus 2027: the barème for revenus 2026 (PLF 2027, art. 2) carried over, single, 1 part; décote ignored; CEHR (Article 223 sexies CGI) folded in (current law; no 2027 change announced as of Nov 2026)",
+    "currency": "EUR",
+
+    "income_tax": {
+        "basic_allowance": 0,
+        "zones": [
+            {
+                "label": "0%",
+                "up_to": 11844,
+                "rate": 0.0
+            },
+            {
+                "label": "11%",
+                "up_to": 30200,
+                "rate": 0.11
+            },
+            {
+                "label": "30%",
+                "up_to": 86353,
+                "rate": 0.30
+            },
+            {
+                "label": "41%",
+                "up_to": 185737,
+                "rate": 0.41
+            },
+            {
+                "label": "45%",
+                "up_to": 250000,
+                "rate": 0.45
+            },
+            {
+                "label": "48%",
+                "up_to": 500000,
+                "rate": 0.48
+            },
+            {
+                "label": "49%",
+                "up_to": null,
+                "rate": 0.49
+            }
+        ]
+    },
+
+    "solidarity_surcharge": {
+        "rate": 0.0,
+        "comment": "No separate surcharge. The contribution exceptionnelle sur les hauts revenus (3% above €250,000, 4% above €500,000, single) is folded into the zones. CSG/CRDS are social contributions and excluded"
+    },
+
+    "vat": {
+        "standard_rate": 0.20,
+        "reduced_rate": 0.055
+    }
+}

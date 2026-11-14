@@ -88,7 +88,7 @@ class TestPresetFromOperatingCountry:
         assert self._default_for(in_memory_db, country) == Decimal(rate)
 
     def test_a_country_without_a_tax_model_presets_nothing(self, in_memory_db):
-        assert self._default_for(in_memory_db, "Austria") is None
+        assert self._default_for(in_memory_db, "Norway") is None
 
     def test_no_operating_country_presets_nothing(self, in_memory_db):
         assert self._default_for(in_memory_db, "") is None

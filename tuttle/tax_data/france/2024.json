@@ -3,7 +3,7 @@
     "country_aliases": [],
     "year": 2024,
     "formula_type": "marginal_brackets",
-    "source": "Barème progressif 2024 (revenus 2023) — Article 197 CGI",
+    "source": "Barème for revenus 2024: Loi n° 2025-127 de finances pour 2025, art. 2 (Article 197 CGI), single, 1 part; décote ignored; CEHR (Article 223 sexies CGI) folded in",
     "currency": "EUR",
 
     "income_tax": {
@@ -11,35 +11,45 @@
         "zones": [
             {
                 "label": "0%",
-                "up_to": 11294,
+                "up_to": 11497,
                 "rate": 0.0
             },
             {
                 "label": "11%",
-                "up_to": 28797,
+                "up_to": 29315,
                 "rate": 0.11
             },
             {
                 "label": "30%",
-                "up_to": 82341,
+                "up_to": 83823,
                 "rate": 0.30
             },
             {
                 "label": "41%",
-                "up_to": 177106,
+                "up_to": 180294,
                 "rate": 0.41
             },
             {
                 "label": "45%",
-                "up_to": null,
+                "up_to": 250000,
                 "rate": 0.45
+            },
+            {
+                "label": "48%",
+                "up_to": 500000,
+                "rate": 0.48
+            },
+            {
+                "label": "49%",
+                "up_to": null,
+                "rate": 0.49
             }
         ]
     },
 
     "solidarity_surcharge": {
         "rate": 0.0,
-        "comment": "No separate solidarity surcharge; social contributions (CSG/CRDS) are handled separately"
+        "comment": "No separate surcharge. The contribution exceptionnelle sur les hauts revenus (3% above €250,000, 4% above €500,000, single) is folded into the zones. CSG/CRDS are social contributions and excluded"
     },
 
     "vat": {

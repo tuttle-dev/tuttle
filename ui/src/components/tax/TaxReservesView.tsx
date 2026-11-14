@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { BarChart3, ReceiptText, Calculator, ChevronDown } from "lucide-react";
 import { rpc } from "../../api/rpc";
 import { EmptyStateIntro } from "../shared/EmptyStateIntro";
+import { InfoHint } from "../shared/InfoHint";
 import { LoadError, LoadingState } from "../shared/LoadStates";
 import { PageLayout } from "../shared/ToolbarButtons";
 import { UnconvertedNote } from "../shared/UnconvertedNote";
@@ -240,7 +241,8 @@ function IncomeTaxSection({ data, currency }: { data: Entity; currency: string }
   const breakdown = parts.join(" + ") + (deducted > 0 ? ` − ${fmt(deducted, currency)} deductible expenses` : "");
 
   return (
-    <Section title={country ? `Income Tax Estimate (${country})` : "Income Tax Estimate"} icon={<Calculator size={16} />}>
+    <Section title={country ? `Income Tax Estimate (${country})` : "Income Tax Estimate"} icon={<Calculator size={16} />}
+      hint="A best-guess estimate from simplified tax rules. Tuttle is not a tax advisor.">
       <div className="space-y-2">
         <SummaryRow label="Income Basis" value={fmt(incomeBasis, currency)} />
         {parts.length > 0 && (
@@ -280,12 +282,13 @@ function IncomeTaxSection({ data, currency }: { data: Entity; currency: string }
   );
 }
 
-function Section({ title, icon, className, children }: { title: string; icon?: React.ReactNode; className?: string; children: React.ReactNode }) {
+function Section({ title, icon, hint, className, children }: { title: string; icon?: React.ReactNode; hint?: string; className?: string; children: React.ReactNode }) {
   return (
     <div className={className}>
       <div className="flex items-center gap-2 mb-2">
         {icon && <span className="text-secondary">{icon}</span>}
         <h2 className="text-sm font-semibold">{title}</h2>
+        {hint && <InfoHint label={title} text={hint} />}
       </div>
       <div className="bg-surface-overlay rounded-lg p-4">{children}</div>
     </div>

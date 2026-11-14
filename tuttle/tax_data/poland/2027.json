@@ -1,0 +1,49 @@
+{
+    "country": "Poland",
+    "country_aliases": ["Polska"],
+    "year": 2027,
+    "formula_type": "marginal_brackets",
+    "source": "Amendment to the Ustawa o PIT, Sejm print 3293: skala 12% to 130 000 zł, 24% to 150 000 zł, 32% above, kwota zmniejszająca podatek 3600 zł, danina solidarnościowa 5% above 1 mln zł (bill, not yet passed: Sejm and Senate approved it on 5-6 Nov 2026, awaiting the President's signature)",
+    "currency": "PLN",
+
+    "income_tax": {
+        "basic_allowance": 0,
+        "zones": [
+            {
+                "label": "0%",
+                "up_to": 30000,
+                "rate": 0.0
+            },
+            {
+                "label": "12%",
+                "up_to": 130000,
+                "rate": 0.12
+            },
+            {
+                "label": "24%",
+                "up_to": 150000,
+                "rate": 0.24
+            },
+            {
+                "label": "32%",
+                "up_to": 1000000,
+                "rate": 0.32
+            },
+            {
+                "label": "37%",
+                "up_to": null,
+                "rate": 0.37
+            }
+        ]
+    },
+
+    "solidarity_surcharge": {
+        "rate": 0.0,
+        "comment": "The 5% danina solidarnościowa above 1 mln zł is folded into the top zone"
+    },
+
+    "vat": {
+        "standard_rate": 0.23,
+        "reduced_rate": 0.08
+    }
+}

@@ -65,9 +65,19 @@ def _tax_system(country: str | None = None):
     return get_tax_system(country or _sample_country())
 
 
+def _tax_free_income(tax_system) -> Decimal:
+    """Income on which no tax is due: the basic allowance, plus a leading 0% bracket."""
+    params = tax_system.params
+    tax_free = Decimal(str(params.basic_allowance))
+    first = params.zones[0]
+    if params.formula_type == "marginal_brackets" and first["rate"] == 0:
+        tax_free += Decimal(str(first["up_to"]))
+    return tax_free
+
+
 def _income_below_allowance(tax_system) -> Decimal:
-    """Net income safely below the configured basic allowance."""
-    allowance = Decimal(str(tax_system.params.basic_allowance))
+    """Net income safely below the tax-free income."""
+    allowance = _tax_free_income(tax_system)
     if allowance <= 0:
         return Decimal("1000")
     margin = min(Decimal("500"), allowance / 2)
@@ -75,9 +85,8 @@ def _income_below_allowance(tax_system) -> Decimal:
 
 
 def _income_above_allowance(tax_system) -> Decimal:
-    """Net income safely above the configured basic allowance."""
-    allowance = Decimal(str(tax_system.params.basic_allowance))
-    return (allowance + Decimal("10000")).quantize(Decimal("0.01"))
+    """Net income safely above the tax-free income."""
+    return (_tax_free_income(tax_system) + Decimal("10000")).quantize(Decimal("0.01"))
 
 
 def _invoice_items_for_net(net: Decimal, unit_price: int = 100) -> list:
@@ -215,10 +224,13 @@ class TestGermanIncomeTax:
             (2026, 12348, 0),
             (2026, 50000, 10548),
             (2026, 300000, 115529),
+            (2027, 12564, 0),
+            (2027, 40000, 7156),
+            (2027, 300000, 116658),
         ],
     )
     def test_official_tariff(self, year, income, tax):
-        """§32a EStG, single filer, rounded down to full euros."""
+        """§32a EStG, single filer, rounded down to full euros. 2027: the Einkommensteuerreformgesetz 2027 bill."""
         german = get_tax_system("Germany", date=datetime.date(year, 6, 1))
         assert german.income_tax(Decimal(income)) == tax
 
@@ -749,33 +761,21 @@ class TestSpanishIncomeTax:
         assert spanish_tax.income_tax(Decimal("5550")) == 0
 
     def test_first_bracket(self, spanish_tax):
-        """Income in first bracket (19% on income above 5,550€ up to 12,450+5,550)."""
-        # 10,000€ income → 4,450€ taxable at 19% = 845.50 → rounds to 846
-        tax_amount = spanish_tax.income_tax(Decimal("10000"))
-        assert tax_amount > 0
-        assert tax_amount < 1000
+        """10,000€: 19% of the 4,450€ above the mínimo personal = 845.50."""
+        assert spanish_tax.income_tax(Decimal("10000")) == 846
 
     def test_manual_calculation_20000(self, spanish_tax):
-        """Manual check: 20,000€ income, personal allowance 5,550€.
-        Taxable = 14,450€
-        First 12,450€ at 19% = 2,365.50
-        Next 2,000€ at 24% = 480.00
-        Total = 2,845.50 → 2846
+        """The scale applies to the whole income; the mínimo personal is then taken off at the lowest rate.
+        Scale: 12,450€ at 19% = 2,365.50, next 7,550€ at 24% = 1,812.00 → 4,177.50
+        Less 5,550€ at 19% = 1,054.50 → 3,123.00
         """
-        tax_amount = spanish_tax.income_tax(Decimal("20000"))
-        assert 2800 < tax_amount < 2900
+        assert spanish_tax.income_tax(Decimal("20000")) == 3123
 
     def test_manual_calculation_50000(self, spanish_tax):
-        """Manual check: 50,000€ income, personal allowance 5,550€.
-        Taxable = 44,450€
-        First 12,450€ at 19% = 2,365.50
-        Next 7,750€ (20,200-12,450) at 24% = 1,860.00
-        Next 15,000€ (35,200-20,200) at 30% = 4,500.00
-        Next 9,250€ (44,450-35,200) at 37% = 3,422.50
-        Total = 12,148.00 → 12148
+        """Scale: 2,365.50 + 7,750€ at 24% (1,860.00) + 15,000€ at 30% (4,500.00)
+        + 14,800€ at 37% (5,476.00) = 14,201.50; less 1,054.50 → 13,147.00
         """
-        tax_amount = spanish_tax.income_tax(Decimal("50000"))
-        assert 12100 < tax_amount < 12200
+        assert spanish_tax.income_tax(Decimal("50000")) == 13147
 
     def test_top_bracket(self, spanish_tax):
         """Very high income hits the 47% top marginal rate."""

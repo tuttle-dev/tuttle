@@ -3,37 +3,51 @@
     "country_aliases": ["Sverige"],
     "year": 2024,
     "formula_type": "marginal_brackets",
-    "source": "Skatteverket 2024 — kommunalskatt 32.28% avg + statlig inkomstskatt",
+    "source": "Skatteverket SKV 433 (2024): kommunalskatt 32.37% (SCB average), grundavdrag, jobbskatteavdrag and skattereduktion för förvärvsinkomst folded into the brackets (incl. the 3% jobbskatteavdrag phase-out above 13.54 PBB); statlig skatt 20% above skiktgräns 598,500 SEK (brytpunkt 615,300)",
     "currency": "SEK",
 
     "income_tax": {
         "basic_allowance": 0,
         "zones": [
             {
-                "label": "0% (grundavdrag)",
-                "up_to": 24238,
+                "label": "0%",
+                "up_to": 52143,
                 "rate": 0.0
             },
             {
-                "label": "~32% (kommunalskatt)",
-                "up_to": 598500,
-                "rate": 0.3228
+                "label": "19.3%",
+                "up_to": 185652,
+                "rate": 0.1926
             },
             {
-                "label": "~52% (kommunal + statlig)",
+                "label": "26.8%",
+                "up_to": 462984,
+                "rate": 0.2678
+            },
+            {
+                "label": "32.4%",
+                "up_to": 615300,
+                "rate": 0.3237
+            },
+            {
+                "label": "52.4%",
+                "up_to": 775842,
+                "rate": 0.5237
+            },
+            {
+                "label": "55.4%",
+                "up_to": 2207010,
+                "rate": 0.5537
+            },
+            {
+                "label": "52.4%",
                 "up_to": null,
-                "rate": 0.5228
+                "rate": 0.5237
             }
         ]
     },
 
-    "solidarity_surcharge": {
-        "rate": 0.0,
-        "comment": "No separate surcharge; state tax is included in brackets"
-    },
+    "solidarity_surcharge": {"rate": 0.0},
 
-    "vat": {
-        "standard_rate": 0.25,
-        "reduced_rate": 0.12
-    }
+    "vat": {"standard_rate": 0.25, "reduced_rate": 0.12}
 }

@@ -1,0 +1,59 @@
+{
+    "country": "Spain",
+    "country_aliases": ["España", "Espana"],
+    "year": 2027,
+    "formula_type": "marginal_brackets",
+    "source": "IRPF 2027: Ley 35/2006 del IRPF, state scale (art. 63) plus an equal general autonomous scale; mínimo personal of €5,550 (art. 57) as a 0% band (current law; no 2027 change announced as of Nov 2026)",
+    "currency": "EUR",
+
+    "income_tax": {
+        "basic_allowance": 0,
+        "zones": [
+            {
+                "label": "0%",
+                "up_to": 5550,
+                "rate": 0.0
+            },
+            {
+                "label": "19%",
+                "up_to": 12450,
+                "rate": 0.19
+            },
+            {
+                "label": "24%",
+                "up_to": 20200,
+                "rate": 0.24
+            },
+            {
+                "label": "30%",
+                "up_to": 35200,
+                "rate": 0.30
+            },
+            {
+                "label": "37%",
+                "up_to": 60000,
+                "rate": 0.37
+            },
+            {
+                "label": "45%",
+                "up_to": 300000,
+                "rate": 0.45
+            },
+            {
+                "label": "47%",
+                "up_to": null,
+                "rate": 0.47
+            }
+        ]
+    },
+
+    "solidarity_surcharge": {
+        "rate": 0.0,
+        "comment": "No solidarity surcharge in Spain"
+    },
+
+    "vat": {
+        "standard_rate": 0.21,
+        "reduced_rate": 0.10
+    }
+}

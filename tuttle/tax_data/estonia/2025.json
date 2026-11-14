@@ -2,13 +2,28 @@
     "country": "Estonia",
     "country_aliases": ["Eesti"],
     "year": 2025,
-    "formula_type": "flat_rate",
-    "source": "Tulumaksuseadus (Income Tax Act) 2025",
+    "formula_type": "marginal_brackets",
+    "source": "Tulumaksuseadus 2025: income tax 22% (up from 20%); basic exemption 7,848 EUR, reduced linearly to 0 between 14,400 and 25,200 EUR of income (the 'tax hump', encoded as a higher marginal rate in that band); VAT 24% from 1 July 2025",
     "currency": "EUR",
 
     "income_tax": {
-        "basic_allowance": 7848,
+        "basic_allowance": 0,
         "zones": [
+            {
+                "label": "0%",
+                "up_to": 7848,
+                "rate": 0.0
+            },
+            {
+                "label": "22%",
+                "up_to": 14400,
+                "rate": 0.22
+            },
+            {
+                "label": "38%",
+                "up_to": 25200,
+                "rate": 0.37987
+            },
             {
                 "label": "22%",
                 "up_to": null,
@@ -17,13 +32,7 @@
         ]
     },
 
-    "solidarity_surcharge": {
-        "rate": 0.0,
-        "comment": "No solidarity surcharge in Estonia"
-    },
+    "solidarity_surcharge": {"rate": 0.0},
 
-    "vat": {
-        "standard_rate": 0.22,
-        "reduced_rate": 0.09
-    }
+    "vat": {"standard_rate": 0.24, "reduced_rate": 0.09}
 }
