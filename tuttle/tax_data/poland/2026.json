@@ -1,0 +1,44 @@
+{
+    "country": "Poland",
+    "country_aliases": ["Polska"],
+    "year": 2026,
+    "formula_type": "marginal_brackets",
+    "source": "Ustawa o PIT 2026: skala podatkowa art. 27 ust. 1 (12%/32%, kwota zmniejszająca podatek 3600 zł), danina solidarnościowa 4% above 1 mln zł (art. 30h)",
+    "currency": "PLN",
+
+    "income_tax": {
+        "basic_allowance": 0,
+        "zones": [
+            {
+                "label": "0%",
+                "up_to": 30000,
+                "rate": 0.0
+            },
+            {
+                "label": "12%",
+                "up_to": 120000,
+                "rate": 0.12
+            },
+            {
+                "label": "32%",
+                "up_to": 1000000,
+                "rate": 0.32
+            },
+            {
+                "label": "36%",
+                "up_to": null,
+                "rate": 0.36
+            }
+        ]
+    },
+
+    "solidarity_surcharge": {
+        "rate": 0.0,
+        "comment": "The 4% danina solidarnościowa above 1 mln zł is folded into the top zone"
+    },
+
+    "vat": {
+        "standard_rate": 0.23,
+        "reduced_rate": 0.08
+    }
+}

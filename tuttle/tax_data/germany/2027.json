@@ -1,0 +1,71 @@
+{
+    "country": "Germany",
+    "country_aliases": ["Deutschland"],
+    "year": 2027,
+    "formula_type": "german_progressive",
+    "source": "§32a EStG 2027 as in the Einkommensteuerreformgesetz 2027, BT-Drs. 21/8235 (government bill, not yet passed); Soli exemption limit unchanged under current law",
+    "currency": "EUR",
+
+    "income_tax": {
+        "basic_allowance": 12564,
+        "zones": [
+            {
+                "label": "Tax-free zone",
+                "up_to": 12564,
+                "type": "zero"
+            },
+            {
+                "label": "Zone 2 (14%–24%)",
+                "up_to": 17799,
+                "type": "quadratic",
+                "reference_offset": 12564,
+                "divisor": 10000,
+                "a": 952.24,
+                "b": 1400
+            },
+            {
+                "label": "Zone 3 (24%–42%)",
+                "up_to": 70600,
+                "type": "quadratic",
+                "reference_offset": 17799,
+                "divisor": 10000,
+                "a": 170.74,
+                "b": 2397,
+                "c": 993.86
+            },
+            {
+                "label": "Zone 4 (42%)",
+                "up_to": 249999,
+                "type": "linear",
+                "rate": 0.42,
+                "offset": -11241.73
+            },
+            {
+                "label": "Zone 5 (45%)",
+                "up_to": 279999,
+                "type": "linear",
+                "rate": 0.45,
+                "offset": -18741.70
+            },
+            {
+                "label": "Zone 6 (47%)",
+                "up_to": null,
+                "type": "linear",
+                "rate": 0.47,
+                "offset": -24341.68
+            }
+        ]
+    },
+
+    "solidarity_surcharge": {
+        "rate": 0.055,
+        "exemption_limit": 20350,
+        "phase_in_rate": 0.119,
+        "comment": "5.5% of income tax, none up to the exemption limit (§3 SolZG, single filer), at most 11.9% of the tax above it (§4 SolZG)"
+    },
+
+    "vat": {
+        "standard_rate": 0.19,
+        "reduced_rate": 0.07
+    }
+}

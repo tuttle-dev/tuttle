@@ -1,0 +1,49 @@
+{
+    "country": "Belgium",
+    "country_aliases": ["België", "Belgique", "Belgien"],
+    "year": 2026,
+    "formula_type": "marginal_brackets",
+    "source": "WIB 92 art. 130-131, income year 2026 = assessment year 2027: brackets as indexed for AJ 2027, tax-free sum 11,550 (Law of 15 July 2026 reforming personal income tax) credited at 25%; average municipal surcharge of 7% folded in",
+    "currency": "EUR",
+
+    "income_tax": {
+        "basic_allowance": 0,
+        "zones": [
+            {
+                "label": "0%",
+                "up_to": 11550,
+                "rate": 0.0
+            },
+            {
+                "label": "26.8%",
+                "up_to": 16720,
+                "rate": 0.2675
+            },
+            {
+                "label": "42.8%",
+                "up_to": 29510,
+                "rate": 0.428
+            },
+            {
+                "label": "48.2%",
+                "up_to": 51070,
+                "rate": 0.4815
+            },
+            {
+                "label": "53.5%",
+                "up_to": null,
+                "rate": 0.535
+            }
+        ]
+    },
+
+    "solidarity_surcharge": {
+        "rate": 0.0,
+        "comment": "No solidarity surcharge in Belgium"
+    },
+
+    "vat": {
+        "standard_rate": 0.21,
+        "reduced_rate": 0.06
+    }
+}

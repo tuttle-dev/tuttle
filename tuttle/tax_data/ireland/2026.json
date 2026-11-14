@@ -1,0 +1,59 @@
+{
+    "country": "Ireland",
+    "country_aliases": ["Éire", "Eire", "Republic of Ireland"],
+    "year": 2026,
+    "formula_type": "marginal_brackets",
+    "source": "Revenue: tax rates, bands and reliefs 2026 and USC rates 2026 (Finance Act 2025). Single standard rate band EUR 44,000; personal + earned income tax credits EUR 4,000 as a 0% zone; USC bands merged, incl. the 3% surcharge on self-employed income over EUR 100,000. PRSI excluded",
+    "currency": "EUR",
+
+    "income_tax": {
+        "basic_allowance": 0,
+        "zones": [
+            {
+                "label": "0.5%",
+                "up_to": 12012,
+                "rate": 0.005
+            },
+            {
+                "label": "2%",
+                "up_to": 20000,
+                "rate": 0.02
+            },
+            {
+                "label": "22%",
+                "up_to": 28700,
+                "rate": 0.22
+            },
+            {
+                "label": "23%",
+                "up_to": 44000,
+                "rate": 0.23
+            },
+            {
+                "label": "43%",
+                "up_to": 70044,
+                "rate": 0.43
+            },
+            {
+                "label": "48%",
+                "up_to": 100000,
+                "rate": 0.48
+            },
+            {
+                "label": "51%",
+                "up_to": null,
+                "rate": 0.51
+            }
+        ]
+    },
+
+    "solidarity_surcharge": {
+        "rate": 0.0,
+        "comment": "No solidarity surcharge; USC is merged into the zones"
+    },
+
+    "vat": {
+        "standard_rate": 0.23,
+        "reduced_rate": 0.135
+    }
+}

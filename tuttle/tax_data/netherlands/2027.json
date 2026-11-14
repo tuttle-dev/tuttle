@@ -1,0 +1,44 @@
+{
+    "country": "Netherlands",
+    "country_aliases": ["Nederland", "The Netherlands", "Holland"],
+    "year": 2027,
+    "formula_type": "marginal_brackets",
+    "source": "Belastingplan 2027 (Kamerstuk 37 022) as passed by the Tweede Kamer on 12 Nov 2026 with amendments nrs. 42 and 80 and the 3rd and 4th nota van wijziging (budget bill, not yet passed). Rates include premies volksverzekeringen. Algemene heffingskorting + arbeidskorting at the CPB modal wage (about EUR 50,000) estimated at EUR 7,642, as a 0% zone",
+    "currency": "EUR",
+
+    "income_tax": {
+        "basic_allowance": 0,
+        "zones": [
+            {
+                "label": "0%",
+                "up_to": 21323,
+                "rate": 0.0
+            },
+            {
+                "label": "35.8%",
+                "up_to": 39337,
+                "rate": 0.3584
+            },
+            {
+                "label": "38%",
+                "up_to": 80819,
+                "rate": 0.3802
+            },
+            {
+                "label": "49.5%",
+                "up_to": null,
+                "rate": 0.495
+            }
+        ]
+    },
+
+    "solidarity_surcharge": {
+        "rate": 0.0,
+        "comment": "No solidarity surcharge in the Netherlands"
+    },
+
+    "vat": {
+        "standard_rate": 0.21,
+        "reduced_rate": 0.09
+    }
+}

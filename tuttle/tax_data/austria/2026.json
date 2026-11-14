@@ -1,0 +1,59 @@
+{
+    "country": "Austria",
+    "country_aliases": ["Österreich", "Oesterreich"],
+    "year": 2026,
+    "formula_type": "marginal_brackets",
+    "source": "§33 Abs. 1 EStG 1988 as indexed by the Inflationsanpassungsverordnung 2026, BGBl. II Nr. 191/2025 (limits +1.7333%, two thirds of 2.6% inflation; the 1 million limit is not indexed)",
+    "currency": "EUR",
+
+    "income_tax": {
+        "basic_allowance": 0,
+        "zones": [
+            {
+                "label": "0%",
+                "up_to": 13539,
+                "rate": 0.0
+            },
+            {
+                "label": "20%",
+                "up_to": 21992,
+                "rate": 0.20
+            },
+            {
+                "label": "30%",
+                "up_to": 36458,
+                "rate": 0.30
+            },
+            {
+                "label": "40%",
+                "up_to": 70365,
+                "rate": 0.40
+            },
+            {
+                "label": "48%",
+                "up_to": 104859,
+                "rate": 0.48
+            },
+            {
+                "label": "50%",
+                "up_to": 1000000,
+                "rate": 0.50
+            },
+            {
+                "label": "55%",
+                "up_to": null,
+                "rate": 0.55
+            }
+        ]
+    },
+
+    "solidarity_surcharge": {
+        "rate": 0.0,
+        "comment": "No solidarity surcharge in Austria"
+    },
+
+    "vat": {
+        "standard_rate": 0.20,
+        "reduced_rate": 0.10
+    }
+}

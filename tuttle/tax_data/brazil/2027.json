@@ -1,0 +1,44 @@
+{
+    "country": "Brazil",
+    "country_aliases": ["Brasil"],
+    "year": 2027,
+    "formula_type": "marginal_brackets",
+    "source": "Receita Federal: IRPF monthly table x 12, less the desconto simplificado mensal (R$607.20), with the reduction of Lei 15.270/2025 art. 3-A (no tax up to R$5,000/month, tapering to R$7,350/month); limits are on income before the discount (current law; no 2027 change announced as of Nov 2026)",
+    "currency": "BRL",
+
+    "income_tax": {
+        "basic_allowance": 0,
+        "zones": [
+            {
+                "label": "0%",
+                "up_to": 60000.00,
+                "rate": 0.0
+            },
+            {
+                "label": "35.8%",
+                "up_to": 63262.56,
+                "rate": 0.358145
+            },
+            {
+                "label": "40.8%",
+                "up_to": 88200.00,
+                "rate": 0.408145
+            },
+            {
+                "label": "27.5%",
+                "up_to": null,
+                "rate": 0.275
+            }
+        ]
+    },
+
+    "solidarity_surcharge": {
+        "rate": 0.0
+    },
+
+    "vat": {
+        "standard_rate": 0.0,
+        "reduced_rate": 0.0,
+        "comment": "CBS (federal VAT) starts in 2027 at a rate the Senate had not fixed by Nov 2026; ICMS/ISS remain; not modeled"
+    }
+}

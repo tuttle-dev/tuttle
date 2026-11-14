@@ -3,30 +3,30 @@
     "country_aliases": ["Brasil"],
     "year": 2025,
     "formula_type": "marginal_brackets",
-    "source": "Receita Federal — IRPF 2025 (tabela mensal × 12, updated brackets)",
+    "source": "Receita Federal: IRPF monthly table x 12 (Lei 14.848/2024 Jan-Apr, Lei 15.191/2025 from May), less the desconto simplificado mensal (R$564.80 Jan-Apr, R$607.20 from May); limits are on income before the discount",
     "currency": "BRL",
 
     "income_tax": {
         "basic_allowance": 0,
         "zones": [
             {
-                "label": "Isento",
-                "up_to": 28559.70,
+                "label": "0%",
+                "up_to": 35584.00,
                 "rate": 0.0
             },
             {
                 "label": "7.5%",
-                "up_to": 33919.80,
+                "up_to": 41036.60,
                 "rate": 0.075
             },
             {
                 "label": "15%",
-                "up_to": 45012.60,
+                "up_to": 52129.40,
                 "rate": 0.15
             },
             {
                 "label": "22.5%",
-                "up_to": 55976.16,
+                "up_to": 63092.96,
                 "rate": 0.225
             },
             {
@@ -38,13 +38,12 @@
     },
 
     "solidarity_surcharge": {
-        "rate": 0.0,
-        "comment": "No separate solidarity surcharge in Brazil"
+        "rate": 0.0
     },
 
     "vat": {
         "standard_rate": 0.0,
         "reduced_rate": 0.0,
-        "comment": "Brazil has no single federal VAT; uses ICMS/ISS/IPI — not modeled here"
+        "comment": "No single national VAT (ICMS/ISS/IPI/PIS/Cofins); not modeled"
     }
 }

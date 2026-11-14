@@ -1,0 +1,43 @@
+{
+    "country": "Sweden",
+    "country_aliases": ["Sverige"],
+    "year": 2027,
+    "formula_type": "marginal_brackets",
+    "source": "Budgetpropositionen för 2027 of 12 Nov 2026 (budget bill, not yet passed; no tariff change): prisbasbelopp 59,600, skiktgräns 660,400 SEK by statutory indexation (brytpunkt 677,900), grundavdrag, jobbskatteavdrag and skattereduktion för förvärvsinkomst folded into the brackets; kommunalskatt 32.38% = 2026 SCB average (2027 average not yet published)",
+    "currency": "SEK",
+
+    "income_tax": {
+        "basic_allowance": 0,
+        "zones": [
+            {
+                "label": "0%",
+                "up_to": 54236,
+                "rate": 0.0
+            },
+            {
+                "label": "19.2%",
+                "up_to": 193104,
+                "rate": 0.1925
+            },
+            {
+                "label": "24%",
+                "up_to": 481568,
+                "rate": 0.2401
+            },
+            {
+                "label": "32.4%",
+                "up_to": 677900,
+                "rate": 0.3238
+            },
+            {
+                "label": "52.4%",
+                "up_to": null,
+                "rate": 0.5238
+            }
+        ]
+    },
+
+    "solidarity_surcharge": {"rate": 0.0},
+
+    "vat": {"standard_rate": 0.25, "reduced_rate": 0.12}
+}
