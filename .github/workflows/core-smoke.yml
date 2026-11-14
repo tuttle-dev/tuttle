@@ -7,10 +7,12 @@ name: Core Smoke Test
 # back to PR status. Deliberately skips the expensive electron-builder packaging,
 # so it is far cheaper than Pack Electron.
 #
-# Make the "Core smoke gate" check required in branch protection / the merge
-# queue so this actually blocks merges.
+# "Core smoke gate" is a required check. A required check must also report on
+# the PR itself, or the PR can never enter the queue, so on pull requests the
+# gate passes without building; the smoke builds run only in the queue.
 
 on:
+  pull_request:
   merge_group:
 
 permissions:
@@ -24,6 +26,7 @@ concurrency:
 jobs:
   smoke:
     name: smoke (${{ matrix.platform }})
+    if: github.event_name == 'merge_group'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -65,6 +68,10 @@ jobs:
     steps:
     - name: Verify all smoke jobs passed
       run: |
+        if [ "${{ github.event_name }}" = "pull_request" ]; then
+          echo "The core smoke test runs in the merge queue."
+          exit 0
+        fi
         if [ "${{ needs.smoke.result }}" != "success" ]; then
           echo "Core smoke test failed on at least one platform."
           exit 1
