@@ -5,7 +5,7 @@ from loguru import logger
 
 from ...fx import default_currency
 from ...model import Client, Contract, ContractCharge, PaymentMilestone, User
-from ...tax import get_tax_system, has_tax_model
+from ...tax import NoTaxRules, get_tax_system
 from ...time import ChargeBasis
 from ..clients.intent import ClientsIntent
 from ..contacts.intent import ContactsIntent
@@ -98,16 +98,18 @@ class ContractsIntent(CrudIntent):
     def get_default_vat_rate(self) -> IntentResult:
         """The standard VAT rate of the user's operating country, to preset on a new contract.
 
-        None when Tuttle has no tax model for the country, or the model states
-        no positive standard rate: the user then enters the rate themselves
-        rather than getting another country's.
+        None when Tuttle has no tax rules for the country this year, or they
+        state no positive standard rate: the user then enters the rate
+        themselves rather than getting another country's or another year's.
         """
         try:
             users = self.query(User)
             country = users[0].operating_country if users else ""
-            if not country or not has_tax_model(country):
+            if not country:
                 return IntentResult(was_intent_successful=True, data=None)
             rate = get_tax_system(country).vat_rate_standard()
+        except NoTaxRules:
+            return IntentResult(was_intent_successful=True, data=None)
         except Exception as ex:
             logger.exception(ex)
             return IntentResult(
