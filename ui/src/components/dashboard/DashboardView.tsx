@@ -1,11 +1,6 @@
 import { useEffect, useState } from "react";
-import {
-  TrendingUp, Wallet, AlertTriangle, Gauge, FolderKanban,
-  FileSignature, FileText, BarChart3,
-} from "lucide-react";
+import { AlertTriangle, BarChart3 } from "lucide-react";
 import { rpc } from "../../api/rpc";
-import { str, num, int } from "../../api/entity";
-import { KPICard } from "../shared/KPICard";
 import { UnconvertedNote } from "../shared/UnconvertedNote";
 import { ProgressBar } from "../shared/ProgressBar";
 import { EmptyStateIntro } from "../shared/EmptyStateIntro";
@@ -14,6 +9,7 @@ import { PageLayout } from "../shared/ToolbarButtons";
 import { RevenueChart } from "./RevenueChart";
 import { CashFlowChart } from "./CashFlowChart";
 import { FinancialGoalsCard } from "./FinancialGoalsCard";
+import { YearOverview } from "./YearOverview";
 import { formatHours } from "../timetracking/format";
 import type { Entity } from "../../api/types";
 
@@ -62,24 +58,7 @@ export function DashboardView() {
   return (
     <PageLayout title="Dashboard" className="space-y-6">
       <div className="@container">
-        <div className="grid grid-cols-2 @4xl:grid-cols-4 gap-3">
-          <KPICard title="Revenue (YTD)" value={str(kpis, "total_revenue_ytd_formatted")} icon={TrendingUp}
-            valueColor={num(kpis, "total_revenue_ytd") > 0 ? "var(--color-status-success)" : undefined} tooltip="Revenue from invoices paid this calendar year, net of VAT." />
-          <KPICard title="Outstanding" value={str(kpis, "outstanding_amount_formatted")} icon={Wallet}
-            valueColor={num(kpis, "outstanding_amount") > 0 ? "var(--color-status-warning)" : undefined} tooltip="Total amount, VAT included, of invoices that have been issued but not yet paid."/>
-          <KPICard title="Overdue" value={str(kpis, "overdue_amount_formatted")} icon={AlertTriangle}
-            valueColor={num(kpis, "overdue_amount") > 0 ? "var(--color-status-danger)" : undefined} tooltip="Outstanding invoices whose payment due date has already passed."/>
-          <KPICard title="Eff. Hourly Rate" value={str(kpis, "effective_hourly_rate_formatted")} icon={Gauge}
-            valueColor="var(--color-status-info)" tooltip="Net revenue from paid invoices per tracked work hour."/>
-          <KPICard title="Active Projects" value={String(int(kpis, "active_projects"))} icon={FolderKanban} tooltip="Number of projects that currently have at least one active contract."/>
-          <KPICard title="Active Contracts" value={String(int(kpis, "active_contracts"))} icon={FileSignature} tooltip="Number of contracts that are currently active and generating work or invoices."/>
-          <KPICard title="Unpaid Invoices" value={String(int(kpis, "unpaid_invoices"))} icon={FileText}
-            valueColor={int(kpis, "unpaid_invoices") > 0 ? "var(--color-status-warning)" : undefined} tooltip="Number of invoices that have been issued but have not yet been paid." />
-          <div className={kpis.country_supported === false ? "opacity-40" : ""}>
-            <KPICard title="Spendable Income" value={kpis.country_supported === false ? "—" : str(kpis, "spendable_income_formatted")} icon={Wallet}
-              valueColor={num(kpis, "spendable_income") > 0 ? "var(--color-status-success)" : "var(--color-status-danger)"} tooltip="Estimated income remaining after VAT, income tax and recurring expenses."/>
-          </div>
-        </div>
+        <YearOverview kpis={kpis} />
         <UnconvertedNote items={kpis.unconverted as string[] | undefined} className="mt-2" />
       </div>
 

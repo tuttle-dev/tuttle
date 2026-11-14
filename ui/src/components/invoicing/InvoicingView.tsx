@@ -48,9 +48,10 @@ export function InvoicingView() {
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
   const [viewMode, setViewMode] = useState<"list" | "board">("list");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("All");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>(
+    () => STATUS_FILTERS.find((f) => f === navFilter.invoiceStatus) ?? "All");
   const [search, setSearch] = useState("");
-  const [createOpen, setCreateOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(!!navFilter.newInvoice);
   const [newlyCreatedId, setNewlyCreatedId] = useState<number | null>(null);
   const [mailError, setMailError] = useState<string | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);

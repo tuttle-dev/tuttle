@@ -7,6 +7,10 @@ export interface NavigationFilter {
   invoiceId?: number;
   /** Settings tab to open, e.g. "llm". */
   tab?: string;
+  /** Invoice list filter to start with, e.g. "Overdue". */
+  invoiceStatus?: string;
+  /** Open the New Invoice dialog. */
+  newInvoice?: boolean;
 }
 
 interface NavigationContextValue {

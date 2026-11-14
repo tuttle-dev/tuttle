@@ -115,9 +115,9 @@ export function TaxReservesView() {
           const noTax = str(sp!, "tax_unavailable_reason");
           return (
             <div className="space-y-1">
-              <WaterfallBar label="Received" amount={received} total={totalBase} color="var(--color-status-info)" currency={currency} />
+              <WaterfallBar label="Received (incl. VAT)" amount={received} total={totalBase} color="var(--color-status-info)" currency={currency} />
               {outstanding > 0 && (
-                <WaterfallBar label="Invoiced" amount={outstanding} total={totalBase} color="var(--color-status-info-muted, var(--color-status-info))" currency={currency} />
+                <WaterfallBar label="Invoiced (incl. VAT)" amount={outstanding} total={totalBase} color="var(--color-status-info-muted, var(--color-status-info))" currency={currency} />
               )}
               {planned > 0 && (
                 <WaterfallBar label="Planned" amount={planned} total={totalBase} color="var(--color-accent, #6366f1)" currency={currency} />

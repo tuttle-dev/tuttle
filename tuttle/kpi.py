@@ -6,12 +6,11 @@ from typing import List, NamedTuple, Optional
 
 from pandas import DataFrame, Timestamp
 
-from .app.core.formatting import fmt_currency
 from .forecasting import contracted_this_year
 from .fx import primary_currency
 from .model import Contract, Invoice, Project, RecurringExpense
 from .tax import NoTaxRules, get_tax_system
-from .tax_reserves import compute_spendable_income, convert_invoice, distinct
+from .tax_reserves import compute_planned_revenue, compute_spendable_income, convert_invoice, distinct
 from .time import TimeUnit
 from .timetracking import sum_hours_by_tag
 
@@ -33,6 +32,14 @@ class KPISummary(NamedTuple):
     vat_reserve: Decimal
     income_tax_reserve: Optional[Decimal]  # None without tax rules
     spendable_income: Optional[Decimal]  # None without tax rules
+    # The year's income, net of VAT, by how certain it is; together the income basis of Spendable Income
+    received_net: Decimal = Decimal(0)
+    invoiced_net: Decimal = Decimal(0)  # issued, not yet paid
+    planned_revenue: Decimal = Decimal(0)  # tracked or scheduled work, not yet invoiced
+    contracted_revenue: Decimal = Decimal(0)
+    # Everything taken off that income besides the income tax; None without tax rules
+    expenses: Optional[Decimal] = None
+    ready_to_invoice: Decimal = Decimal(0)  # the tracked part of planned_revenue
     tax_currency: str = "EUR"
     country_supported: bool = True  # whether there are tax rules to estimate income tax with
     country: str = ""
@@ -40,21 +47,8 @@ class KPISummary(NamedTuple):
     unconverted: list = []  # amounts left out for lack of an exchange rate, one line each; never mutated
 
     def to_rpc_dict(self) -> dict:
-        d = self._asdict()
-        tc = self.tax_currency or "EUR"
-        d["total_revenue_ytd_formatted"] = fmt_currency(self.total_revenue_ytd, tc)
-        d["outstanding_amount_formatted"] = fmt_currency(self.outstanding_amount, tc)
-        d["overdue_amount_formatted"] = fmt_currency(self.overdue_amount, tc)
-        d["vat_reserve_formatted"] = fmt_currency(self.vat_reserve, tc)
-        d["income_tax_reserve_formatted"] = (
-            fmt_currency(self.income_tax_reserve, tc) if self.income_tax_reserve is not None else "—"
-        )
-        d["spendable_income_formatted"] = fmt_currency(self.spendable_income, tc) if self.spendable_income is not None else "—"
-        d["effective_hourly_rate_formatted"] = (
-            fmt_currency(self.effective_hourly_rate, tc) if self.effective_hourly_rate is not None else "—"
-        )
-        d["utilization_rate_formatted"] = f"{self.utilization_rate * 100:.0f}%" if self.utilization_rate is not None else "—"
-        return d
+        # The dashboard formats the amounts itself.
+        return self._asdict()
 
 
 def compute_kpis(
@@ -150,6 +144,17 @@ def compute_kpis(
         contracted=contracted_this_year(projects, invoices, time_data, currency=currency, left_out=left_out),
         left_out=left_out,
     )
+    # Received, invoiced, planned and contracted, less the income tax and these, leave Spendable Income.
+    expenses = None
+    if spending.dynamic_expenses_post_tax is not None:
+        expenses = (
+            spending.business_expenses
+            + spending.dynamic_expenses_deductible
+            + spending.fixed_expenses_post_tax
+            + spending.dynamic_expenses_post_tax
+            + spending.conversion_fee
+        )
+    ready_to_invoice = compute_planned_revenue(projects, time_data, currency=currency, invoices=invoices, tracked_only=True)
     return KPISummary(
         total_revenue=total_revenue,
         total_revenue_ytd=total_revenue_ytd,
@@ -164,6 +169,12 @@ def compute_kpis(
         vat_reserve=spending.vat_reserve,
         income_tax_reserve=spending.income_tax_reserve,
         spendable_income=spending.spendable,
+        received_net=spending.received_net,
+        invoiced_net=spending.outstanding_net,
+        planned_revenue=spending.planned_revenue,
+        contracted_revenue=spending.contracted_revenue,
+        expenses=expenses,
+        ready_to_invoice=ready_to_invoice,
         tax_currency=currency,
         country_supported=spending.tax_unavailable_reason is None,
         country=country,

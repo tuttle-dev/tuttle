@@ -96,9 +96,8 @@ def test_dashboard_shows_no_spendable_income():
     assert kpis.spendable_income is None
     assert not kpis.country_supported
     assert kpis.tax_unavailable_reason == "No tax model for Norway."
-    rpc = kpis.to_rpc_dict()
-    assert rpc["spendable_income_formatted"] == "—"
-    assert rpc["income_tax_reserve_formatted"] == "—"
+    rpc = kpis.to_rpc_dict()  # the dashboard shows "—" for each
+    assert rpc["spendable_income"] is rpc["income_tax_reserve"] is rpc["expenses"] is None
 
 
 def test_salary_shows_no_salary_but_keeps_what_does_not_depend_on_tax():

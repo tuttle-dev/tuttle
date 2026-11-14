@@ -151,6 +151,7 @@ def compute_planned_revenue(
     currency: Optional[str] = None,
     invoices: Optional[List[Invoice]] = None,
     left_out: Optional[List[str]] = None,
+    tracked_only: bool = False,
 ) -> Decimal:
     """Net revenue from this year's calendar work, past and future, not yet invoiced.
 
@@ -160,13 +161,15 @@ def compute_planned_revenue(
     foreign currency into *currency* at the current month's rate (uninvoiced
     work has no invoice date to pin a rate to). Work without a rate is left
     out, and named in *left_out* if given.
+
+    With *tracked_only*, only work before today counts: what is ready to invoice.
     """
     if time_data is None or time_data.empty:
         return Decimal(0)
 
     today = datetime.date.today()
     year_start = datetime.date(today.year, 1, 1)
-    year_end = datetime.date(today.year, 12, 31)
+    year_end = today - datetime.timedelta(days=1) if tracked_only else datetime.date(today.year, 12, 31)
 
     tag_to_project = {p.tag: p for p in projects if p.tag and p.contract}
 
