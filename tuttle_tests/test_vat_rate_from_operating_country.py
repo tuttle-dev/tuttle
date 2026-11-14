@@ -6,11 +6,13 @@ every write path states it, and the form presets the operating country's
 standard rate where Tuttle knows it.
 """
 
+import datetime
 from decimal import Decimal
 
 import pytest
 from sqlmodel import Session, SQLModel, create_engine, select
 
+from tuttle import tax
 from tuttle.app.contracts.intent import ContractsIntent
 from tuttle.app.core.abstractions import SQLModelDataSourceMixin
 from tuttle.app.imports.intent import _validate_import_data
@@ -88,7 +90,15 @@ class TestPresetFromOperatingCountry:
         assert self._default_for(in_memory_db, country) == Decimal(rate)
 
     def test_a_country_without_a_tax_model_presets_nothing(self, in_memory_db):
-        assert self._default_for(in_memory_db, "Austria") is None
+        assert self._default_for(in_memory_db, "Norway") is None
+
+    def test_a_year_without_rules_presets_nothing(self, in_memory_db, monkeypatch):
+        """Before the new year's tax data is in, the form presets no rate rather than failing to open."""
+        tax._load_all()
+        this_year = datetime.date.today().year
+        earlier = {year: params for year, params in tax._REGISTRY["Germany"].items() if year != this_year}
+        monkeypatch.setitem(tax._REGISTRY, "Germany", earlier)
+        assert self._default_for(in_memory_db, "Germany") is None
 
     def test_no_operating_country_presets_nothing(self, in_memory_db):
         assert self._default_for(in_memory_db, "") is None
