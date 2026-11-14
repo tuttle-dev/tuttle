@@ -5,9 +5,9 @@ import {
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { rpc } from "../../api/rpc";
 import { UnconvertedNote } from "../shared/UnconvertedNote";
+import { INCOME_SERIES, incomeFill, type IncomeKey, type IncomeSeries } from "../shared/income";
 
 type Granularity = "week" | "month" | "year";
-type SeriesKey = "received" | "invoiced" | "planned" | "contracted";
 
 interface Bucket {
   bucket: string;
@@ -40,24 +40,10 @@ interface RevenueSeries {
   unconverted: string[];
 }
 
-interface Series { key: SeriesKey; name: string; color: string; opacity: number; dashed?: boolean; hint: string }
-
-// Planned revenue is drawn translucent: it is an estimate, not money in hand.
-// Contracted revenue is fainter still and outlined, the least certain layer.
-const SERIES: Series[] = [
-  { key: "received", name: "Received", color: "var(--color-status-success)", opacity: 1, hint: "Paid invoices, net of VAT" },
-  { key: "invoiced", name: "Invoiced", color: "var(--color-status-warning)", opacity: 1, hint: "Invoiced, not yet paid, net of VAT" },
-  { key: "planned", name: "Planned", color: "var(--color-status-info)", opacity: 0.45, hint: "Tracked or scheduled work, not yet invoiced" },
-  { key: "contracted", name: "Contracted", color: "var(--color-status-info)", opacity: 0.15, dashed: true, hint: "Agreed in a contract, not yet scheduled or tracked" },
-];
-
-/** A series' colour key: a translucent fill, outlined when the series is dashed. */
-function swatchStyle(s: Series, dimmed = false): React.CSSProperties {
+/** A series' colour key, faint when the series is hidden. */
+function swatchStyle(s: IncomeSeries, dimmed = false): React.CSSProperties {
   if (dimmed) return { background: s.color, opacity: 0.2 };
-  return {
-    background: `color-mix(in srgb, ${s.color} ${Math.round(s.opacity * 100)}%, transparent)`,
-    border: s.dashed ? `1px dashed ${s.color}` : undefined,
-  };
+  return incomeFill(s);
 }
 
 const GRANULARITIES: { key: Granularity; name: string }[] = [
@@ -76,7 +62,7 @@ const X_AXIS_HEIGHT = 28;
 export function RevenueChart() {
   const [granularity, setGranularity] = useState<Granularity>("month");
   const [offset, setOffset] = useState(0);
-  const [visible, setVisible] = useState<SeriesKey[]>(SERIES.map((s) => s.key));
+  const [visible, setVisible] = useState<IncomeKey[]>(INCOME_SERIES.map((s) => s.key));
   const [data, setData] = useState<RevenueSeries | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -98,13 +84,13 @@ export function RevenueChart() {
 
   // Clicking a series isolates it; clicking the isolated one restores all.
   // Cmd/Ctrl-click adds or removes a single series instead.
-  function toggleSeries(key: SeriesKey, additive: boolean) {
+  function toggleSeries(key: IncomeKey, additive: boolean) {
     setVisible((current) => {
       if (additive) {
         const next = current.includes(key) ? current.filter((k) => k !== key) : [...current, key];
         return next.length ? next : current;
       }
-      if (current.length === 1 && current[0] === key) return SERIES.map((s) => s.key);
+      if (current.length === 1 && current[0] === key) return INCOME_SERIES.map((s) => s.key);
       return [key];
     });
   }
@@ -127,7 +113,7 @@ export function RevenueChart() {
   );
 
   const buckets = data?.buckets ?? [];
-  const activeSeries = useMemo(() => SERIES.filter((s) => visible.includes(s.key)), [visible]);
+  const activeSeries = useMemo(() => INCOME_SERIES.filter((s) => visible.includes(s.key)), [visible]);
 
   const rows = useMemo(
     () => buckets.map((b) => ({
@@ -312,7 +298,7 @@ export function RevenueChart() {
       )}
 
       <div className="flex items-center justify-center gap-2 mt-3 flex-wrap">
-        {SERIES.map((s) => {
+        {INCOME_SERIES.map((s) => {
           const on = visible.includes(s.key);
           const subtotal = buckets.reduce((sum, b) => sum + (b[s.key] || 0), 0);
           return (
@@ -398,7 +384,7 @@ function dayRange(startISO: string, endISO: string): string {
 interface TooltipProps {
   active?: boolean;
   payload?: { payload?: unknown }[];
-  series: Series[];
+  series: IncomeSeries[];
   fmt: (v: number) => string;
   granularity: Granularity;
 }
