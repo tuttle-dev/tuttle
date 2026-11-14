@@ -232,6 +232,7 @@ function IncomeTaxSection({ data, currency }: { data: Entity; currency: string }
   const contracted = num(data, "contracted_revenue");
   const deducted = num(data, "deducted_expenses");
   const incomeBasis = num(data, "income_basis");
+  const otherIncome = num(data, "other_income");
 
   const parts: string[] = [];
   if (received > 0) parts.push(`${fmt(received, currency)} received`);
@@ -249,6 +250,14 @@ function IncomeTaxSection({ data, currency }: { data: Entity; currency: string }
           <div className="text-xs text-muted -mt-1 text-right">
             {breakdown}
           </div>
+        )}
+        {otherIncome > 0 && (
+          <>
+            <SummaryRow label="Other Income" value={fmt(otherIncome, currency)} />
+            <div className="text-xs text-muted -mt-1 text-right">
+              Not revenue. It sets your bracket: only the extra tax your freelance income causes is reserved.
+            </div>
+          </>
         )}
         <SummaryRow label="Estimated Income Tax" value={tr ? fmt(num(tr, "total_annual_reserve"), currency) : "—"} color={tr ? "var(--color-status-warning)" : undefined} bold />
         <SummaryRow label="Effective Tax Rate" value={tr ? fmtPct(num(tr, "effective_rate")) : "—"} />

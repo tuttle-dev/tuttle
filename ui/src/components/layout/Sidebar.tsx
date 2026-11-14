@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import {
   LayoutDashboard, CalendarDays, PieChart, Banknote,
   FolderKanban, FileSignature, Building2, Users, Clock, FileText,
-  FileUp, Settings, ChevronUp, UserPlus, Trash2, CheckSquare, ReceiptText, PanelLeft,
+  FileUp, Settings, ChevronUp, UserPlus, Trash2, CheckSquare, ReceiptText, PanelLeft, Wallet,
   type LucideIcon,
 } from "lucide-react";
 
@@ -35,6 +35,7 @@ const SECTIONS: { label: string; items: SidebarItem[] }[] = [
       { id: "contracts", label: "Contracts", icon: FileSignature },
       { id: "projects", label: "Projects", icon: FolderKanban },
       { id: "expenses", label: "Expenses", icon: ReceiptText },
+      { id: "other-income", label: "Other Income", icon: Wallet },
     ],
   },
 ];

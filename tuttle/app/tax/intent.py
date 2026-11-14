@@ -5,7 +5,7 @@ from decimal import Decimal
 
 from ...forecasting import contracted_this_year
 from ...fx import primary_currency
-from ...model import Invoice, Project, RecurringExpense, User
+from ...model import Invoice, OtherIncome, Project, RecurringExpense, User
 from ...tax import (
     all_operating_countries,
     get_tax_system,
@@ -70,6 +70,7 @@ class TaxIntent(SQLModelDataSourceMixin, Intent):
                 time_data=time_data,
                 contracted=self._contracted_this_year(year, invoices, projects, time_data, currency, left_out),
                 left_out=left_out,
+                other_incomes=self.query(OtherIncome),
             )
             data = {"spending": spending, "currency": currency}
             return IntentResult(was_intent_successful=True, data=data)
@@ -105,22 +106,30 @@ class TaxIntent(SQLModelDataSourceMixin, Intent):
                 projects=projects,
                 time_data=time_data,
                 contracted=self._contracted_this_year(year, invoices, projects, time_data, currency),
+                other_incomes=self.query(OtherIncome),
             )
 
             # tax_base, not taxable_profit: deductible dynamic expenses have already
             # been taken off, and charging them again here would double-count.
             total_income = spending.tax_base
+            other_income = spending.other_income
             no_tax = spending.tax_unavailable_reason
             tax_reserve = None
             bracket_data = []
             if no_tax is None:
-                tax_reserve = compute_income_tax_reserve(total_income, country, year=year, currency=currency)
+                tax_reserve = compute_income_tax_reserve(
+                    total_income, country, year=year, currency=currency, other_income=other_income
+                )
                 ref_date = datetime.date(year, 7, 1) if year else today
-                bracket_data = self._compute_bracket_data(get_tax_system(country, date=ref_date), total_income)
+                # The bracket the freelance income reaches is set by both incomes together.
+                bracket_data = self._compute_bracket_data(
+                    get_tax_system(country, date=ref_date), total_income + max(other_income, Decimal(0))
+                )
 
             data = {
                 "tax_reserve": tax_reserve,
                 "income_basis": total_income,
+                "other_income": other_income,
                 "received_net": spending.received_net,
                 "outstanding_net": spending.outstanding_net,
                 "planned_revenue": spending.planned_revenue,

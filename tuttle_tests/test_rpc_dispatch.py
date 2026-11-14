@@ -856,6 +856,81 @@ class TestFinancialGoals:
         assert all(e["goal"]["id"] != saved["id"] for e in self._goals())
 
 
+class TestOtherIncome:
+    """Income from outside Tuttle raises the tax estimate, not the revenue (issue #645)."""
+
+    @pytest.fixture(autouse=True)
+    def _demo_db(self, rpc_env):
+        assert_ok(dispatch("users.switch", {"db_file": "harry-tuttle.db"}))
+
+    @pytest.fixture
+    def job(self):
+        """A part-time job, removed again so the other tests see the demo data unchanged."""
+        saved = assert_ok(
+            dispatch(
+                "salary.save_other_income",
+                {"title": "Part-time job", "amount": 3000, "currency": "EUR", "period": "monthly", "kind": "employment"},
+            )
+        )["data"]
+        yield saved
+        dispatch("salary.delete_other_income", {"income_id": saved["id"]})
+
+    def _incomes(self) -> list:
+        return assert_ok(dispatch("salary.get_other_incomes", {}))["data"]
+
+    def test_save_and_list(self, job):
+        assert job["id"] is not None
+        assert job["kind"] == "employment"
+        assert any(i["id"] == job["id"] for i in self._incomes())
+
+    def test_update_in_place(self, job):
+        before = len(self._incomes())
+        updated = assert_ok(dispatch("salary.save_other_income", {**job, "amount": 2500}))["data"]
+        assert updated["id"] == job["id"]
+        assert float(updated["amount"]) == 2500
+        assert len(self._incomes()) == before
+
+    def test_unknown_kind_is_rejected(self, rpc_env):
+        result = dispatch(
+            "salary.save_other_income",
+            {"title": "Lottery", "amount": 10, "currency": "EUR", "period": "yearly", "kind": "luck"},
+        )
+        assert result["ok"] is False
+        assert "kind" in result["error"]
+
+    def test_delete(self, rpc_env):
+        saved = assert_ok(
+            dispatch(
+                "salary.save_other_income",
+                {"title": "Pension", "amount": 500, "currency": "EUR", "period": "monthly", "kind": "pension"},
+            )
+        )["data"]
+        assert_ok(dispatch("salary.delete_other_income", {"income_id": saved["id"]}))
+        assert all(i["id"] != saved["id"] for i in self._incomes())
+
+    def test_tax_estimate_rises_but_revenue_does_not(self, rpc_env):
+        def estimate():
+            return assert_ok(dispatch("tax.get_income_tax_estimate", {}))["data"]
+
+        before = estimate()
+        if before["tax_reserve"] is None:
+            pytest.skip("no tax rules for the demo user's country this year")
+        saved = assert_ok(
+            dispatch(
+                "salary.save_other_income",
+                {"title": "Part-time job", "amount": 3000, "currency": "EUR", "period": "monthly", "kind": "employment"},
+            )
+        )["data"]
+        try:
+            after = estimate()
+        finally:
+            dispatch("salary.delete_other_income", {"income_id": saved["id"]})
+
+        assert after["income_basis"] == before["income_basis"]
+        assert float(after["other_income"]) == 36000
+        assert float(after["tax_reserve"]["total_annual_reserve"]) > float(before["tax_reserve"]["total_annual_reserve"])
+
+
 # ---------------------------------------------------------------------------
 # 5. Domain packaging integrity
 #
