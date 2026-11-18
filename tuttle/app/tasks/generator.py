@@ -59,6 +59,11 @@ TUTORIAL_RULES: list[tuple[str, str, str, type]] = [
 # (key, title, description)
 TUTORIAL_MANUAL_RULES: list[tuple[str, str, str]] = [
     (
+        "tutorial:take_tour",
+        "Take the tour",
+        "See the basic workflow and the key settings, on example data.",
+    ),
+    (
         "tutorial:configure_ai",
         "Configure AI assistant",
         "Connect a language model to read documents for you.",

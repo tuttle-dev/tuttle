@@ -19,6 +19,7 @@ import { Section } from "../shared/Section";
 import { DocumentImportPanel } from "../shared/DocumentImportPanel";
 import { useFieldRequirements } from "../../hooks/useFieldRequirements";
 import { useAutoSelect } from "../../hooks/useAutoSelect";
+import { useEditFromNavigation } from "../../hooks/useEditFromNavigation";
 import type { Entity } from "../../api/types";
 import { formatHours } from "../timetracking/format";
 
@@ -201,6 +202,7 @@ export function ProjectsView() {
     preferred: navFilter.projectId != null ? (p) => p.id === navFilter.projectId
       : navFilter.contractId != null ? (p) => num(p, "contract_id") === navFilter.contractId : undefined,
   });
+  useEditFromNavigation(navFilter, navFilter.projectId, selected?.id, () => setMode("edit"));
 
   function moveToColumn(id: number, colId: string) {
     stageStore.setColumn(id, colId);
@@ -487,7 +489,7 @@ function ProjectForm({ project, isDuplicate = false, contracts, onSave, onCancel
         </div>
       </Section>
 
-      <Section title={<>Contract<span className="text-accent ml-0.5">*</span></>}>
+      <Section name="Contract" title={<>Contract<span className="text-accent ml-0.5">*</span></>}>
         <select value={form.contractId ?? ""} onChange={(e) => update("contractId", e.target.value ? Number(e.target.value) : null)}
           className="w-full px-3 py-2 rounded-md text-sm bg-bg-card text-primary border border-border-subtle outline-none focus:border-accent transition-colors">
           <option value="">— Select a contract —</option>
@@ -504,7 +506,7 @@ function FormField({ label, value, onChange, autoFocus, required }: {
   label: string; value: string; onChange: (v: string) => void; autoFocus?: boolean; required?: boolean;
 }) {
   return (
-    <div>
+    <div data-field={label}>
       <label className="block text-xs text-tertiary mb-1">{label}{required && <span className="text-accent ml-0.5">*</span>}</label>
       <input type="text" value={value} onChange={(e) => onChange(e.target.value)} autoFocus={autoFocus} required={required}
         className="w-full px-3 py-2 rounded-md text-sm bg-bg-card text-primary border border-border-subtle outline-none focus:border-accent transition-colors" />

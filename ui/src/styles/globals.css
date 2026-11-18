@@ -107,6 +107,18 @@ html, body {
   -webkit-app-region: no-drag;
 }
 
+/* The tour points at a control: a ring that pulses outward. */
+@keyframes tour-pulse {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-accent) 70%, transparent); }
+  70%, 100% { box-shadow: 0 0 0 12px transparent; }
+}
+.tour-pulse {
+  border-radius: 8px;
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  animation: tour-pulse 1.6s infinite;
+}
+
 /* A select that reads as a word in a sentence (the task rule composer): a small caret, no native chrome. */
 .word-select {
   background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),

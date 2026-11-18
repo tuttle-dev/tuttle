@@ -17,6 +17,7 @@ import { Section } from "../shared/Section";
 import { DocumentImportPanel } from "../shared/DocumentImportPanel";
 import { useFieldRequirements } from "../../hooks/useFieldRequirements";
 import { useAutoSelect } from "../../hooks/useAutoSelect";
+import { useEditFromNavigation } from "../../hooks/useEditFromNavigation";
 import type { Entity } from "../../api/types";
 
 type Mode = "view" | "edit" | "create" | "import";
@@ -238,6 +239,7 @@ export function ContractsView() {
     enabled: mode === "view",
     preferred: navFilter.contractId != null ? (c) => c.id === navFilter.contractId : undefined,
   });
+  useEditFromNavigation(navFilter, navFilter.contractId, selected?.id, () => setMode("edit"));
 
   return (
     <div className="flex flex-col h-full">

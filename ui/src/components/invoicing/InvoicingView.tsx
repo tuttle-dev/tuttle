@@ -262,6 +262,7 @@ export function InvoicingView() {
 
       {createOpen && (
         <CreateInvoiceDialog
+          projectId={navFilter.newInvoice ? navFilter.projectId : undefined}
           onClose={() => setCreateOpen(false)}
           onCreated={async (newId, warning) => {
             setNewlyCreatedId(newId ?? null);
@@ -374,7 +375,12 @@ function makeDefaultItems(project?: Entity | null, charges?: Entity[] | null): L
   return items;
 }
 
-function CreateInvoiceDialog({ onClose, onCreated }: { onClose: () => void; onCreated: (newId?: number, warning?: string | null) => Promise<void> | void }) {
+function CreateInvoiceDialog({ projectId: initialProjectId, onClose, onCreated }: {
+  /** The project to start with; the first active one if not given. */
+  projectId?: number;
+  onClose: () => void;
+  onCreated: (newId?: number, warning?: string | null) => Promise<void> | void;
+}) {
   const [projects, setProjects] = useState<Entity[]>([]);
   const [projectId, setProjectId] = useState<number | null>(null);
   const [invoiceDate, setInvoiceDate] = useState(localDateIso);
@@ -467,9 +473,10 @@ function CreateInvoiceDialog({ onClose, onCreated }: { onClose: () => void; onCr
       if (projRes.ok && projRes.data) {
         const active = projRes.data.filter((p) => !bool(p, "is_completed"));
         setProjects(active);
-        if (active.length > 0) {
-          setProjectId(active[0].id);
-          setLineItems(makeDefaultItems(active[0]));
+        const first = active.find((p) => p.id === initialProjectId) ?? active[0];
+        if (first) {
+          setProjectId(first.id);
+          setLineItems(makeDefaultItems(first));
         }
       }
       if (ttRes.ok && ttRes.data && ttRes.data.total_events > 0) setHasTimeData(true);
@@ -593,7 +600,7 @@ function CreateInvoiceDialog({ onClose, onCreated }: { onClose: () => void; onCr
           <p className="text-xs text-muted"><span className="text-accent">*</span> Required</p>
           {/* Step 1: project, document type and source */}
           {step === 0 && (
-            <div>
+            <div data-tour="invoice-project">
               <label className="block">
                 <span className="text-xs font-semibold text-secondary uppercase tracking-wider">Project<span className="text-accent ml-0.5">*</span></span>
                 <select value={projectId ?? ""} onChange={(e) => handleProjectChange(Number(e.target.value))}
@@ -688,7 +695,7 @@ function CreateInvoiceDialog({ onClose, onCreated }: { onClose: () => void; onCr
 
           {/* Mode toggle (time-based only, not for deposit/final) */}
           {step === 0 && !isFixedPrice && docType === "invoice" && (
-            <div>
+            <div data-tour="invoice-source">
               <span className="text-xs font-semibold text-secondary uppercase tracking-wider">Source</span>
               <div className="flex gap-2 mt-1">
                 <button onClick={() => setMode("timetracking")} disabled={!hasTimeData}

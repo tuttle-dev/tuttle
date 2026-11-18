@@ -57,7 +57,7 @@ export function DashboardView() {
 
   return (
     <PageLayout title="Dashboard" className="space-y-6">
-      <div className="@container">
+      <div className="@container" data-tour="overview">
         <YearOverview kpis={kpis} />
         <UnconvertedNote items={kpis.unconverted as string[] | undefined} className="mt-2" />
       </div>
