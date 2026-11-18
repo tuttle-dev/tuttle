@@ -14,7 +14,7 @@ from pandas import DataFrame
 
 from .fx import convert, default_currency, fx_haircut
 from .fx import rate as fx_rate
-from .model import Invoice, Project, RecurringExpense
+from .model import Invoice, OtherIncome, Project, RecurringExpense
 from .tax import TaxUnavailable, get_tax_system
 from .time import Cycle, TimeUnit
 from .timetracking import drop_completed, drop_invoiced, sum_hours_by_tag
@@ -76,6 +76,7 @@ class SpendableIncome(NamedTuple):
     fixed_expenses_post_tax: Decimal = Decimal(0)  # non-deductible fixed expenses for the year
     tax_unavailable_reason: Optional[str] = None  # why there is no tax estimate, e.g. "No tax model for Norway."
     unconverted: list = []  # amounts left out for lack of an exchange rate, one line each; never mutated
+    other_income: Decimal = Decimal(0)  # the year's income from outside the business; sets the bracket, not revenue
 
 
 def distinct(items: List[str]) -> List[str]:
@@ -249,11 +250,18 @@ def compute_income_tax_reserve(
     deductions: Decimal = Decimal(0),
     year: Optional[int] = None,
     currency: Optional[str] = None,
+    other_income: Decimal = Decimal(0),
 ) -> IncomeTaxReserve:
     """Estimate income tax reserve based on total known income.
 
     *income* is the total expected net income (received + invoiced + planned).
     Tax is computed directly on this amount — no annualization.
+
+    *other_income* is the year's taxable income from outside the business,
+    such as a salary. Income tax is progressive, so the freelance income is
+    taxed at the rate the two reach together: the reserve is the tax both
+    incur less the tax the other income incurs alone, which is withheld or
+    owed on it anyway. The effective rate is that reserve over *income*.
 
     *income* and the returned amounts are in *currency* (default: the tax
     system's). The tariff is written in the tax system's currency, so income
@@ -287,8 +295,16 @@ def compute_income_tax_reserve(
         if to_tax_currency is None:
             raise TaxUnavailable(f"No {currency}/{tax_system.currency} exchange rate for {ref_date:%b %Y}.")
 
-    annual_tax = tax_system.income_tax(taxable_income * to_tax_currency) / to_tax_currency
-    annual_soli = tax_system.solidarity_surcharge(annual_tax * to_tax_currency) / to_tax_currency
+    def taxes(amount: Decimal) -> tuple[Decimal, Decimal]:
+        """(income tax, surcharge) on *amount*, in the tax system's currency."""
+        tax = tax_system.income_tax(amount * to_tax_currency)
+        return tax, tax_system.solidarity_surcharge(tax)
+
+    other_income = max(other_income, Decimal(0))
+    tax_both, soli_both = taxes(taxable_income + other_income)
+    tax_other, soli_other = taxes(other_income) if other_income else (Decimal(0), Decimal(0))
+    annual_tax = (tax_both - tax_other) / to_tax_currency
+    annual_soli = (soli_both - soli_other) / to_tax_currency
     total_annual = annual_tax + annual_soli
     reserve = total_annual.quantize(Decimal("0.01"))
 
@@ -314,6 +330,7 @@ def compute_spendable_income(
     time_data: Optional[DataFrame] = None,
     contracted: Decimal = Decimal(0),
     left_out: Optional[List[str]] = None,
+    other_incomes: Optional[List[OtherIncome]] = None,
 ) -> SpendableIncome:
     """Compute spendable income: what's left after VAT, expenses, and income tax.
 
@@ -347,6 +364,11 @@ def compute_spendable_income(
     Without tax rules for *country* in the year, the figures up to the tax
     base stay, and the income tax, the expenses charged on taxed income and
     Safe to Spend are None, with ``tax_unavailable_reason`` saying why.
+
+    *other_incomes* (a salary, a pension) are not revenue and change none
+    of the figures up to the tax base. They only lift the freelance income
+    into a higher bracket: the income tax is the extra tax it causes on top
+    of them, see ``compute_income_tax_reserve``.
 
     Amounts without an exchange rate are left out, and ``unconverted`` names
     them. *left_out* lists those the caller already left out, such as in
@@ -426,8 +448,12 @@ def compute_spendable_income(
     # the account, so it is subtracted after the tax reserve, not before.
     conversion_fee = (foreign_net * fx_haircut() / 100).quantize(cent)
 
+    other_income = annual_other_income(other_incomes or [], currency, left_out)
+
     try:
-        tax_reserve = compute_income_tax_reserve(tax_base, country, deductions, year=year, currency=currency)
+        tax_reserve = compute_income_tax_reserve(
+            tax_base, country, deductions, year=year, currency=currency, other_income=other_income
+        )
     except TaxUnavailable as e:
         # Without tax rules nothing after the tax is known: no tax, no Safe to
         # Spend, and no expense charged on taxed income.
@@ -476,6 +502,7 @@ def compute_spendable_income(
         fixed_expenses_post_tax=fixed_post_tax,
         tax_unavailable_reason=no_tax,
         unconverted=distinct(left_out),
+        other_income=other_income,
     )
 
 
@@ -556,6 +583,28 @@ def _normalize_to_monthly(
     return monthly.quantize(Decimal("0.01"))
 
 
+def annual_other_income(
+    incomes: List[OtherIncome], currency: Optional[str] = None, left_out: Optional[List[str]] = None
+) -> Decimal:
+    """The year's income from outside the business, in *currency* at this month's rate.
+
+    Each income counts twelve months of its monthly equivalent, as a recurring
+    expense does. One whose exchange rate cannot be resolved is left out, and
+    named in *left_out* if given.
+    """
+    total = Decimal(0)
+    for income in incomes:
+        monthly = income.amount / PERIOD_TO_MONTHS.get(income.period, Decimal(1))
+        if currency and income.currency not in (currency, None):
+            monthly = convert(monthly, income.currency, currency, datetime.date.today())
+            if monthly is None:
+                if left_out is not None:
+                    left_out.append(f"Other income {income.title} ({income.currency})")
+                continue
+        total += monthly * 12
+    return total.quantize(Decimal("0.01"))
+
+
 def _monthly_expenses_total(
     expenses: List[RecurringExpense], currency: Optional[str] = None, left_out: Optional[List[str]] = None
 ) -> Decimal:
@@ -631,6 +680,7 @@ def compute_effective_salary(
     expenses: List[RecurringExpense],
     country: str,
     currency: Optional[str] = None,
+    other_incomes: Optional[List[OtherIncome]] = None,
 ) -> EffectiveSalary:
     """Compute the freelancer's effective monthly salary range.
 
@@ -643,6 +693,10 @@ def compute_effective_salary(
 
     The month in progress is left out: most of its invoices are not written
     yet, so counting it would lower the average every time a month begins.
+
+    *other_incomes* (a salary, a pension) are not part of it, but the
+    income tax reserved is the extra tax the freelance income causes on top
+    of them.
 
     Without tax rules for *country* there is no salary figure: see
     ``EffectiveSalary.tax_unavailable_reason``.
@@ -686,6 +740,7 @@ def compute_effective_salary(
     monthly_exp = _monthly_expenses_total(fixed_expenses, currency, left_out)
     monthly_exp_deductible = _monthly_expenses_total([e for e in fixed_expenses if e.tax_deductible], currency)
     fx_spread = fx_haircut()
+    other_income = annual_other_income(other_incomes or [], currency, left_out)
 
     def scenario(revenue: _Revenue) -> _SalaryScenario:
         """The monthly salary waterfall for a year-to-date revenue basis."""
@@ -699,7 +754,9 @@ def compute_effective_salary(
         try:
             # Tax a year of this monthly profit: progressive tax on the year-to-date
             # sum would treat a few months of income as a whole year's.
-            yearly_tax = compute_income_tax_reserve(tax_base * 12, country, currency=currency).ytd_reserve
+            yearly_tax = compute_income_tax_reserve(
+                tax_base * 12, country, currency=currency, other_income=other_income
+            ).ytd_reserve
         except TaxUnavailable as e:
             # Without a tax estimate there is no salary, and nothing charged on taxed income.
             unknown_lines = _dynamic_lines(dynamic_expenses, None, deductible=False)

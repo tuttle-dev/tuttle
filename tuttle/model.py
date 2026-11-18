@@ -1863,6 +1863,35 @@ class RecurringExpense(SQLModel, table=True):
     )
 
 
+OTHER_INCOME_KINDS = ("employment", "pension", "rental", "capital", "other")
+
+
+class OtherIncome(SQLModel, table=True):
+    """Taxable income from outside the freelance business, such as a part-time job.
+
+    It is not business revenue: it never counts as revenue, profit or the base
+    of an income-dependent expense. It only decides the tax bracket the
+    freelance income falls into: the income tax reserve is the extra tax the
+    freelance income causes on top of it, tax(freelance + other) - tax(other).
+    """
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    title: str = Field(description="Short label, e.g. 'Part-time job'.")
+    amount: Decimal = Field(
+        description="Taxable amount per period in the given currency, before tax.",
+        sa_column=sqlalchemy.Column(sqlalchemy.Numeric(12, 2), nullable=False),
+    )
+    currency: str = Field(default="EUR", description="ISO 4217 currency code.")
+    period: Cycle = Field(
+        sa_column=sqlalchemy.Column(sqlalchemy.Enum(Cycle), nullable=False),
+        description="How often this income is received.",
+    )
+    kind: str = Field(
+        default="employment",
+        description="Kind of income: 'employment', 'pension', 'rental', 'capital', 'other'.",
+    )
+
+
 TASK_RULE_REPEAT_UNITS = ("week", "month")
 TASK_RULE_OFFSET_UNITS = ("day", "week", "month")
 

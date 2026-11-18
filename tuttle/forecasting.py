@@ -9,7 +9,7 @@ import pandas
 from pandas import DataFrame
 
 from .fx import convert, primary_currency, rate
-from .model import Contract, Invoice, Project, RecurringExpense
+from .model import Contract, Invoice, OtherIncome, Project, RecurringExpense
 from .tax_reserves import (
     _dynamic_lines,
     _lines_total,
@@ -757,6 +757,7 @@ def cash_flow_series(
     forecast_months: int = 6,
     country: str = "",
     today: Optional[datetime.date] = None,
+    other_incomes: Optional[List[OtherIncome]] = None,
 ) -> dict:
     """Project monthly cash inflows, expense outflows, and cumulative balance.
 
@@ -910,6 +911,7 @@ def cash_flow_series(
         projects=projects,
         time_data=time_data,
         contracted=contracted_this_year(projects, invoices, time_data, currency=currency, today=today),
+        other_incomes=other_incomes,
     )
     no_tax = spending.tax_unavailable_reason
     if no_tax is None:

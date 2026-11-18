@@ -4,13 +4,13 @@ from typing import List
 
 import sqlmodel
 
-from ...model import RecurringExpense
+from ...model import OtherIncome, RecurringExpense
 from ..core.abstractions import SQLModelDataSourceMixin
 from ..core.intent_result import IntentResult
 
 
 class SalaryDataSource(SQLModelDataSourceMixin):
-    """CRUD operations for RecurringExpense records."""
+    """CRUD operations for RecurringExpense and OtherIncome records."""
 
     def __init__(self):
         super().__init__()
@@ -61,5 +61,51 @@ class SalaryDataSource(SQLModelDataSourceMixin):
                 was_intent_successful=False,
                 error_msg=f"Failed to delete recurring expense: {ex}",
                 log_message=f"SalaryDataSource.delete_expense_by_id: {ex}",
+                exception=ex,
+            )
+
+    def get_all_other_incomes(self) -> IntentResult[List[OtherIncome]]:
+        try:
+            return IntentResult(was_intent_successful=True, data=self.query(OtherIncome))
+        except Exception as ex:
+            return IntentResult(
+                was_intent_successful=False,
+                error_msg=f"Failed to load other income: {ex}",
+                log_message=f"SalaryDataSource.get_all_other_incomes: {ex}",
+                exception=ex,
+            )
+
+    def save_other_income(self, income: OtherIncome) -> IntentResult[OtherIncome]:
+        try:
+            with self.create_session() as session:
+                session.add(income)
+                session.commit()
+                session.refresh(income)
+            return IntentResult(was_intent_successful=True, data=income)
+        except Exception as ex:
+            return IntentResult(
+                was_intent_successful=False,
+                error_msg=f"Failed to save other income: {ex}",
+                log_message=f"SalaryDataSource.save_other_income: {ex}",
+                exception=ex,
+            )
+
+    def delete_other_income_by_id(self, income_id: int) -> IntentResult:
+        try:
+            with self.create_session() as session:
+                income = session.exec(sqlmodel.select(OtherIncome).where(OtherIncome.id == income_id)).one_or_none()
+                if income is None:
+                    return IntentResult(
+                        was_intent_successful=False,
+                        error_msg=f"Other income with id={income_id} not found.",
+                    )
+                session.delete(income)
+                session.commit()
+            return IntentResult(was_intent_successful=True)
+        except Exception as ex:
+            return IntentResult(
+                was_intent_successful=False,
+                error_msg=f"Failed to delete other income: {ex}",
+                log_message=f"SalaryDataSource.delete_other_income_by_id: {ex}",
                 exception=ex,
             )

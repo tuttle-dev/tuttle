@@ -15,7 +15,7 @@ from ...kpi import (
     monthly_spendable_breakdown,
     project_budget_status,
 )
-from ...model import Contract, FinancialGoal, Invoice, Project, RecurringExpense, User
+from ...model import Contract, FinancialGoal, Invoice, OtherIncome, Project, RecurringExpense, User
 from ...tax_reserves import convert_invoice, distinct
 from ..core.abstractions import Intent, SQLModelDataSourceMixin
 from ..core.intent_result import IntentResult
@@ -48,7 +48,15 @@ class DashboardIntent(SQLModelDataSourceMixin, Intent):
             expenses = self.query(RecurringExpense)
             country = self._get_country()
             time_data = self._time_data_source.get_data_frame()
-            kpis = compute_kpis(invoices, contracts, projects, country=country, time_data=time_data, expenses=expenses)
+            kpis = compute_kpis(
+                invoices,
+                contracts,
+                projects,
+                country=country,
+                time_data=time_data,
+                expenses=expenses,
+                other_incomes=self.query(OtherIncome),
+            )
             return IntentResult(was_intent_successful=True, data=kpis)
         except Exception as e:
             return IntentResult(
@@ -81,6 +89,7 @@ class DashboardIntent(SQLModelDataSourceMixin, Intent):
                 invoices,
                 country=country,
                 n_months=n_months,
+                other_incomes=self.query(OtherIncome),
             )
             return IntentResult(was_intent_successful=True, data=data)
         except Exception as e:
@@ -97,7 +106,9 @@ class DashboardIntent(SQLModelDataSourceMixin, Intent):
             invoices = self.query(Invoice)
             country = self._get_country()
             revenue = monthly_revenue_breakdown(invoices, n_months=n_months, country=country)
-            spendable = monthly_spendable_breakdown(invoices, country=country, n_months=n_months)
+            spendable = monthly_spendable_breakdown(
+                invoices, country=country, n_months=n_months, other_incomes=self.query(OtherIncome)
+            )
             return IntentResult(
                 was_intent_successful=True,
                 data={"revenue": revenue, "spendable": spendable},
@@ -171,6 +182,7 @@ class DashboardIntent(SQLModelDataSourceMixin, Intent):
                 time_data=time_data,
                 forecast_months=int(forecast_months),
                 country=country,
+                other_incomes=self.query(OtherIncome),
             )
             return IntentResult(was_intent_successful=True, data=data)
         except Exception as e:

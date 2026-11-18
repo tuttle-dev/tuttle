@@ -8,9 +8,15 @@ from pandas import DataFrame, Timestamp
 
 from .forecasting import contracted_this_year
 from .fx import primary_currency
-from .model import Contract, Invoice, Project, RecurringExpense
+from .model import Contract, Invoice, OtherIncome, Project, RecurringExpense
 from .tax import NoTaxRules, get_tax_system
-from .tax_reserves import compute_planned_revenue, compute_spendable_income, convert_invoice, distinct
+from .tax_reserves import (
+    annual_other_income,
+    compute_planned_revenue,
+    compute_spendable_income,
+    convert_invoice,
+    distinct,
+)
 from .time import TimeUnit
 from .timetracking import sum_hours_by_tag
 
@@ -58,6 +64,7 @@ def compute_kpis(
     country: str = "",
     time_data: Optional[DataFrame] = None,
     expenses: Optional[List[RecurringExpense]] = None,
+    other_incomes: Optional[List[OtherIncome]] = None,
 ) -> KPISummary:
     """Compute business KPIs from invoices, contracts, and calendar data.
 
@@ -143,6 +150,7 @@ def compute_kpis(
         time_data=time_data,
         contracted=contracted_this_year(projects, invoices, time_data, currency=currency, left_out=left_out),
         left_out=left_out,
+        other_incomes=other_incomes,
     )
     # Received, invoiced, planned and contracted, less the income tax and these, leave Spendable Income.
     expenses = None
@@ -227,11 +235,20 @@ def monthly_revenue_breakdown(
     return sorted(months.values(), key=lambda x: x["month"])
 
 
+def _total_tax(tax_system, income: Decimal) -> Decimal:
+    """Income tax and surcharge on *income*."""
+    if income <= 0:
+        return Decimal(0)
+    tax = tax_system.income_tax(income)
+    return tax + tax_system.solidarity_surcharge(tax)
+
+
 def monthly_spendable_breakdown(
     invoices: List[Invoice],
     country: str = "",
     n_months: int = 12,
     deductions: Decimal = Decimal(0),
+    other_incomes: Optional[List[OtherIncome]] = None,
 ) -> list:
     """Estimate monthly spendable income after VAT and income-tax true-up.
 
@@ -241,6 +258,9 @@ def monthly_spendable_breakdown(
     - net_revenue: gross_revenue - vat_due
     - income_tax_true_up: monthly delta in YTD tax reserve estimate
     - spendable: net_revenue - income_tax_true_up
+
+    The income tax is the extra tax the freelance income causes on top of
+    *other_incomes* (a salary, a pension), which are not revenue themselves.
 
     Without tax rules for a month of this year, its true-up and spendable
     figure are None.
@@ -266,6 +286,7 @@ def monthly_spendable_breakdown(
     # Foreign-currency invoices are converted into the primary currency at the
     # ECB monthly average, not dropped.
     currency = primary_currency(country)
+    other_income = annual_other_income(other_incomes or [], currency)
 
     for inv in invoices:
         if inv.cancelled or inv.is_reminder or not inv.paid:
@@ -304,9 +325,9 @@ def monthly_spendable_breakdown(
         taxable = cumulative_net_ytd - deductions
         cumulative_reserve = Decimal(0)
         if taxable > 0:
-            annual_tax = tax_system.income_tax(taxable)
-            annual_soli = tax_system.solidarity_surcharge(annual_tax)
-            cumulative_reserve = (annual_tax + annual_soli).quantize(Decimal("0.01"))
+            cumulative_reserve = (
+                _total_tax(tax_system, taxable + other_income) - _total_tax(tax_system, other_income)
+            ).quantize(Decimal("0.01"))
 
         m["income_tax_true_up"] = cumulative_reserve - previous_reserve
         previous_reserve = cumulative_reserve

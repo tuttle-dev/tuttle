@@ -1,7 +1,9 @@
 """Business logic for the Salary feature."""
 
+from decimal import Decimal
+
 from ...fx import primary_currency, validate_currency_code
-from ...model import Invoice, RecurringExpense, User
+from ...model import OTHER_INCOME_KINDS, Invoice, OtherIncome, RecurringExpense, User
 from ...tax_reserves import compute_effective_salary
 from ..core.abstractions import Intent, SQLModelDataSourceMixin
 from ..core.intent_result import IntentResult
@@ -34,6 +36,8 @@ class SalaryIntent(SQLModelDataSourceMixin, Intent):
             invoices = self.query(Invoice)
             expenses_result = self._data_source.get_all_expenses()
             expenses = expenses_result.data if expenses_result.was_intent_successful else []
+            incomes_result = self._data_source.get_all_other_incomes()
+            other_incomes = incomes_result.data if incomes_result.was_intent_successful else []
 
             country = self._get_country()
             currency = self._get_tax_currency(country)
@@ -43,6 +47,7 @@ class SalaryIntent(SQLModelDataSourceMixin, Intent):
                 expenses=expenses,
                 country=country,
                 currency=currency,
+                other_incomes=other_incomes,
             )
             return IntentResult(
                 was_intent_successful=True,
@@ -95,6 +100,46 @@ class SalaryIntent(SQLModelDataSourceMixin, Intent):
     def delete_expense(self, expense_id: int) -> IntentResult:
         """Remove a recurring expense by id."""
         return self._data_source.delete_expense_by_id(expense_id)
+
+    def get_other_incomes(self) -> IntentResult:
+        """Return all income from outside the business."""
+        return self._data_source.get_all_other_incomes()
+
+    def save_other_income(self, income: OtherIncome) -> IntentResult:
+        """Persist a new or updated other income."""
+        error = None
+        try:
+            income.currency = validate_currency_code(income.currency)
+        except ValueError as e:
+            error = str(e)
+        if error is None and income.kind not in OTHER_INCOME_KINDS:
+            error = f"Unknown kind of income: {income.kind}."
+        if error is None and Decimal(income.amount) < 0:
+            error = "Other income cannot be negative."
+        if error is not None:
+            return IntentResult(
+                was_intent_successful=False,
+                error_msg=error,
+                log_message=f"SalaryIntent.save_other_income: {error}",
+            )
+        return self._data_source.save_other_income(income)
+
+    def save_other_income_from_dict(self, data: dict) -> IntentResult:
+        """Create or update an other income from a plain dict."""
+        clean = {k: v for k, v in data.items() if k != "id" and not k.startswith("_")}
+        income_id = data.get("id")
+        if income_id:
+            result = self.get_other_incomes()
+            existing = next((i for i in (result.data or []) if i.id == income_id), None)
+            if existing:
+                for k, v in clean.items():
+                    setattr(existing, k, v)
+                return self.save_other_income(existing)
+        return self.save_other_income(OtherIncome(**clean))
+
+    def delete_other_income(self, income_id: int) -> IntentResult:
+        """Remove an other income by id."""
+        return self._data_source.delete_other_income_by_id(income_id)
 
     def get_field_requirements(self) -> IntentResult:
         """Return field metadata derived from the RecurringExpense model schema."""

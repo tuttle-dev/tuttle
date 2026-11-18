@@ -13,6 +13,7 @@ import { TimelineView } from "../timeline/TimelineView";
 import { TaxReservesView } from "../tax/TaxReservesView";
 import { SalaryView } from "../salary/SalaryView";
 import { ExpensesView } from "../salary/ExpensesView";
+import { OtherIncomeView } from "../salary/OtherIncomeView";
 import { TimeTrackingView } from "../timetracking/TimeTrackingView";
 import { TimerProvider } from "../timetracking/timer-context";
 import { DocumentImportView } from "../import/DocumentImportView";
@@ -387,6 +388,7 @@ function DetailView({ id }: { id: string }) {
     case "tax": return <TaxReservesView />;
     case "salary": return <SalaryView />;
     case "expenses": return <ExpensesView />;
+    case "other-income": return <OtherIncomeView />;
     case "clients": return <ClientsView />;
     case "contracts": return <ContractsView />;
     case "projects": return <ProjectsView />;
