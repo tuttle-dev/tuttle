@@ -64,35 +64,48 @@ def save_config(config: LLMConfig) -> LLMConfig:
 # ---------------------------------------------------------------------------
 
 
+class ModelListError(RuntimeError):
+    """The provider's models could not be listed; the message says what to do."""
+
+
+def _model_list_error(e: Exception, base_url: str, provider: str) -> ModelListError:
+    if isinstance(e, (httpx.ConnectError, httpx.ConnectTimeout)):
+        if provider == "ollama":
+            return ModelListError(f"Ollama isn't running at {base_url}. Start Ollama, or choose another provider.")
+        return ModelListError(f"Nothing answers at {base_url}. Check the URL and your internet connection.")
+    if isinstance(e, httpx.HTTPStatusError):
+        status = e.response.status_code
+        if status in (401, 403):
+            return ModelListError("The provider refused the API key. Check the key.")
+        if status == 404 and provider != "ollama":
+            return ModelListError(f"{base_url} has no list of models. Check the URL: it usually ends in /v1.")
+        return ModelListError(f"{base_url} answered with error {status}. Check the URL.")
+    return ModelListError(f"The models at {base_url} could not be listed ({e}). Check the URL.")
+
+
 def get_available_models(base_url: str, provider: str = "ollama", api_key: str = "") -> List[str]:
     """Fetch available model names from the configured provider.
 
     For Ollama uses ``/api/tags``; for OpenAI-compatible endpoints uses
     ``/v1/models`` (or ``/models`` if *base_url* already ends with ``/v1``).
+    Raises ModelListError with a message for the user.
     """
-    if provider == "ollama":
-        url = f"{base_url.rstrip('/')}/api/tags"
-        try:
-            resp = httpx.get(url, timeout=10.0)
-            resp.raise_for_status()
-            data = resp.json()
-            models = data.get("models", [])
-            return [m["name"] for m in models if "name" in m]
-        except Exception as e:
-            logger.error(f"Failed to fetch models from {url}: {e}")
-            raise RuntimeError(f"Could not connect to Ollama at {base_url}: {e}")
-
     stripped = base_url.rstrip("/")
-    url = f"{stripped}/models" if stripped.endswith("/v1") else f"{stripped}/v1/models"
-    headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
+    if provider == "ollama":
+        url, headers, key = f"{stripped}/api/tags", {}, "name"
+    else:
+        url = f"{stripped}/models" if stripped.endswith("/v1") else f"{stripped}/v1/models"
+        headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
+        key = "id"
     try:
         resp = httpx.get(url, headers=headers, timeout=10.0)
         resp.raise_for_status()
         data = resp.json()
-        return [m["id"] for m in data.get("data", []) if "id" in m]
     except Exception as e:
-        logger.error(f"Failed to fetch models from {url}: {e}")
-        raise RuntimeError(f"Could not list models at {base_url}: {e}")
+        logger.warning(f"Failed to fetch models from {url}: {e}")
+        raise _model_list_error(e, base_url, provider) from e
+    models = data.get("models" if provider == "ollama" else "data", [])
+    return [m[key] for m in models if key in m]
 
 
 # ---------------------------------------------------------------------------

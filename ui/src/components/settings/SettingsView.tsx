@@ -209,7 +209,9 @@ export function SettingsView() {
     if (!res.ok) setLoadFailed(true);
     if (res.ok && res.data) {
       setConfig(res.data);
-      if (res.data.base_url) await fetchModels(res.data);
+      // Check the connection only once a model is set up: before that, a missing
+      // Ollama is not an error, just a choice still to make.
+      if (res.data.base_url && res.data.model) await fetchModels(res.data);
     }
     setLoading(false);
   }

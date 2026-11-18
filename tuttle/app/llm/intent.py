@@ -23,10 +23,11 @@ class LlmIntent:
         provider: str = "ollama",
         api_key: str = "",
     ) -> IntentResult:
-        return IntentResult(
-            was_intent_successful=True,
-            data=_llm.get_available_models(base_url, provider=provider, api_key=api_key),
-        )
+        try:
+            models = _llm.get_available_models(base_url, provider=provider, api_key=api_key)
+        except _llm.ModelListError as e:
+            return IntentResult(was_intent_successful=False, error_msg=str(e))
+        return IntentResult(was_intent_successful=True, data=models)
 
     def parse_document(
         self,
