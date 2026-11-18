@@ -16,6 +16,7 @@ import { ExpensesView } from "../salary/ExpensesView";
 import { TimeTrackingView } from "../timetracking/TimeTrackingView";
 import { TimerProvider } from "../timetracking/timer-context";
 import { DocumentImportView } from "../import/DocumentImportView";
+import { TourProvider, TOUR_PENDING_KEY } from "../tour/Tour";
 import { PlaceholderView } from "../shared/PlaceholderView";
 import { ViewErrorBoundary } from "../shared/ViewErrorBoundary";
 import { UpdateBanner } from "./UpdateBanner";
@@ -46,6 +47,7 @@ const PHASE: Record<BootPhase, string> = {
 };
 
 const SIDEBAR_COLLAPSED_KEY = "tuttle-sidebar-collapsed";
+const DEMO_DB = "harry-tuttle.db";
 
 function loadSidebarCollapsed(): boolean {
   try { return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1"; } catch { return false; }
@@ -61,10 +63,15 @@ export function Shell() {
   const [activeUser, setActiveUser] = useState<RegisteredUser | null>(null);
   const [allUsers, setAllUsers] = useState<RegisteredUser[]>([]);
   const [regDialogOpen, setRegDialogOpen] = useState(false);
+  const [regFromTour, setRegFromTour] = useState(false);
   const [regLoading, setRegLoading] = useState(false);
   const [bootError, setBootError] = useState<string | null>(null);
   const [bootNotice, setBootNotice] = useState<string | null>(null);
   const [pendingTasks, setPendingTasks] = useState(0);
+  // A tour to start once the demo is active, and the database to return to afterwards.
+  const [tourPending, setTourPending] = useState(false);
+  const [tourReturnTo, setTourReturnTo] = useState<string | null>(null);
+  const takeTourPending = useCallback(() => setTourPending(false), []);
 
   const navigate = useCallback((view: string, filter?: NavigationFilter) => {
     setNavFilter(filter || {});
@@ -133,6 +140,13 @@ export function Shell() {
       sessionStorage.removeItem(MIGRATION_NOTICE_KEY);
       const notice = [stashed, ensured.warning].filter(Boolean).join("\n\n");
       if (notice) setBootNotice(notice);
+      // A tour started from the user's own data switched to the demo and reloaded.
+      const tour = sessionStorage.getItem(TOUR_PENDING_KEY);
+      sessionStorage.removeItem(TOUR_PENDING_KEY);
+      if (tour) {
+        setTourPending(true);
+        try { setTourReturnTo(JSON.parse(tour).returnTo ?? null); } catch { /* start without a way back */ }
+      }
       setBootPhase("users");
       const usersRes = await rpc<RegisteredUser[]>("users.list");
       if (!usersRes.ok) {
@@ -175,7 +189,7 @@ export function Shell() {
     }
     await refreshUsers();
     setBootPhase("switching");
-    const demoSwitch = await rpc("users.switch", { db_file: "harry-tuttle.db" });
+    const demoSwitch = await rpc("users.switch", { db_file: DEMO_DB });
     if (!demoSwitch.ok) {
       console.error("[shell] users.switch failed:", demoSwitch.error);
       setBootState("welcome");
@@ -183,6 +197,22 @@ export function Shell() {
     }
     await refreshActiveUser();
     setBootState("ready");
+    setTourPending(true);
+  }
+
+  /** The tour runs on the demo data: prepare it, switch to it, and start there after the reload. */
+  async function startTourInDemo() {
+    setBootPhase("demo");
+    setBootState("loading");
+    const demo = await rpc("users.ensure_demo");
+    if (!demo.ok) {
+      console.error("[shell] ensure_demo failed:", demo.error);
+      setBootNotice(`The tour runs on example data, which could not be prepared: ${demo.error ?? "unknown error"}. Restart Tuttle and try the tour again.`);
+      setBootState("ready");
+      return;
+    }
+    sessionStorage.setItem(TOUR_PENDING_KEY, JSON.stringify({ returnTo: activeUser?.db_file ?? null }));
+    await handleSwitchUser(DEMO_DB);
   }
 
   async function handleSwitchUser(dbFile: string) {
@@ -296,6 +326,15 @@ export function Shell() {
       <NavigationContext.Provider value={navContext}>
         <StatusBarProvider>
           <TimerProvider>
+          <TourProvider
+            inDemo={!!activeUser?.is_demo}
+            ownDbFile={tourReturnTo ?? allUsers.find((u) => !u.is_demo)?.db_file ?? null}
+            onStartInDemo={startTourInDemo}
+            onSwitchUser={handleSwitchUser}
+            onSetUp={() => { setRegFromTour(true); setRegDialogOpen(true); }}
+            pending={tourPending}
+            onPendingTaken={takeTourPending}
+          >
           <div className="flex h-screen w-screen bg-bg-content text-primary">
             <Sidebar
               selected={selected}
@@ -305,7 +344,7 @@ export function Shell() {
               activeUser={activeUser}
               allUsers={allUsers}
               onSwitchUser={handleSwitchUser}
-              onAddUser={() => setRegDialogOpen(true)}
+              onAddUser={() => { setRegFromTour(false); setRegDialogOpen(true); }}
               onDeleteUser={handleDeleteUser}
               badges={{ tasks: pendingTasks }}
             />
@@ -325,12 +364,14 @@ export function Shell() {
           </div>
           <OnboardingWizard
             open={regDialogOpen}
+            skipWelcome={regFromTour}
             overlay
             onClose={() => setRegDialogOpen(false)}
             onSubmit={handleRegSubmit}
             onDemo={handleWelcomeDemo}
             loading={regLoading}
           />
+          </TourProvider>
           </TimerProvider>
         </StatusBarProvider>
       </NavigationContext.Provider>

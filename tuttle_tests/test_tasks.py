@@ -89,6 +89,7 @@ class TestTutorialTasks:
         generate_tasks(session)
         tasks = session.exec(sqlmodel.select(Task)).all()
         keys = {t.key for t in tasks}
+        assert "tutorial:take_tour" in keys
         assert "tutorial:configure_ai" in keys
         assert "tutorial:import_document" in keys
 

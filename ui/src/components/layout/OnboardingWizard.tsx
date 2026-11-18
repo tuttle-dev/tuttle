@@ -64,6 +64,8 @@ type Props = {
   onDemo: () => void;
   loading?: boolean;
   overlay?: boolean;
+  /** Open at the profile step, past the welcome and its demo offer (after the tour). */
+  skipWelcome?: boolean;
 };
 
 const EMPTY_PROFILE: WizardProfileData = {
@@ -100,7 +102,7 @@ const TOTAL_STEPS = STEP_LABELS.length;
 // Component
 // ---------------------------------------------------------------------------
 
-export function OnboardingWizard({ open, onClose, onSubmit, onDemo, loading, overlay = true }: Props) {
+export function OnboardingWizard({ open, onClose, onSubmit, onDemo, loading, overlay = true, skipWelcome = false }: Props) {
   const [step, setStep] = useState(0);
   const [profile, setProfile] = useState<WizardProfileData>({ ...EMPTY_PROFILE });
   const [invoicing, setInvoicing] = useState<WizardInvoicingData>({ ...DEFAULT_INVOICING });
@@ -124,6 +126,7 @@ export function OnboardingWizard({ open, onClose, onSubmit, onDemo, loading, ove
       setLlm({ ...DEFAULT_LLM });
       return;
     }
+    if (skipWelcome) setStep(1);
     Promise.all([
       rpc<Record<string, string>>("invoicing.available_templates"),
       rpc<Record<string, string>>("invoicing.available_languages"),

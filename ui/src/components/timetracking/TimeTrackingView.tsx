@@ -107,9 +107,11 @@ const inputCls =
 
 export function TimeTrackingView() {
   const [calData, setCalData] = useState<CalendarData | null>(null);
-  const [year, setYear] = useState(new Date().getFullYear());
-  const [month, setMonth] = useState(new Date().getMonth() + 1);
-  const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const { navigate, filter: navFilter } = useNavigation();
+  // A day to open (YYYY-MM-DD) comes with navigation, as from the tour.
+  const [year, setYear] = useState(() => navFilter.day ? Number(navFilter.day.slice(0, 4)) : new Date().getFullYear());
+  const [month, setMonth] = useState(() => navFilter.day ? Number(navFilter.day.slice(5, 7)) : new Date().getMonth() + 1);
+  const [selectedDay, setSelectedDay] = useState<string | null>(navFilter.day ?? null);
   const [filterTag, setFilterTag] = useState<string | null>(null);
   const [monthProjects, setMonthProjects] = useState<ProjectHours[]>([]);
   const [projectTags, setProjectTags] = useState<ProjectTag[]>([]);
@@ -128,7 +130,6 @@ export function TimeTrackingView() {
   const [importError, setImportError] = useState<string | null>(null);
 
   const timer = useTimer();
-  const { navigate } = useNavigation();
   const { showMessage } = useStatusBar();
   const isMac = typeof window !== "undefined" && window.tuttle?.platform === "darwin";
   const closeSourceDialog = () => { setShowSourceDialog(false); setImportError(null); };
@@ -592,7 +593,7 @@ function TimerBar({ projectTags, onCreateProject, onLogged }: {
   const roundBtn = "w-9 h-9 rounded-full flex items-center justify-center text-on-fill transition-opacity shrink-0 disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90";
 
   return (
-    <div className={`mx-5 mt-4 rounded-xl border bg-bg-card shadow-sm transition-colors ${running ? "border-status-success/40" : pending ? "border-accent/40" : "border-border-subtle"}`}>
+    <div data-tour="time-entry" className={`mx-5 mt-4 rounded-xl border bg-bg-card shadow-sm transition-colors ${running ? "border-status-success/40" : pending ? "border-accent/40" : "border-border-subtle"}`}>
       <div className="flex items-center gap-3 px-4 py-2.5">
         {running
           ? <span className="w-2.5 h-2.5 rounded-full bg-status-success animate-pulse shrink-0" />
@@ -1099,7 +1100,7 @@ function DayDetail({
               );
             }
             return (
-              <div key={key} className={`px-3 py-2 flex items-start gap-2.5 group ${ev.is_future ? "opacity-70" : ""}`}>
+              <div key={key} data-tag={ev.tag ?? undefined} className={`px-3 py-2 flex items-start gap-2.5 group ${ev.is_future ? "opacity-70" : ""}`}>
                 <div className="w-2.5 h-2.5 rounded-full mt-1 shrink-0"
                   style={dotStyle(tagColor(ev.tag, allTags), !isManual, ev.is_future)} />
                 <div className="flex-1 min-w-0">

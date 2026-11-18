@@ -11,7 +11,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { Plus, RefreshCw, Save, CheckCircle2, AlertCircle, User, Bot, FileText, RotateCcw, Trash2, AlertTriangle, Monitor, Globe, Info, Image as ImageIcon, X, Sun, Moon, Laptop, Palette, Terminal, Clipboard, Check } from "lucide-react";
+import { Plus, RefreshCw, Save, CheckCircle2, AlertCircle, User, Bot, FileText, RotateCcw, Trash2, AlertTriangle, Monitor, Globe, Info, Image as ImageIcon, X, Sun, Moon, Laptop, Palette, Terminal, Clipboard, Check, MessageCircleQuestion, Bug } from "lucide-react";
 import { useTheme, type ThemeChoice } from "../../hooks/useTheme";
 import { useDismiss } from "../../hooks/useDismiss";
 import { rpc } from "../../api/rpc";
@@ -146,6 +146,11 @@ export function SettingsView() {
   const [tab, setTab] = useState<Tab>(
     () => TABS.find((t) => t.id === navFilter.tab)?.id ?? "profile",
   );
+  // Navigation can switch tabs while Settings is open, as the tour does.
+  useEffect(() => {
+    const wanted = TABS.find((t) => t.id === navFilter.tab)?.id;
+    if (wanted) setTab(wanted);
+  }, [navFilter]);
 
   const [config, setConfig] = useState<LLMConfig>(DEFAULT_CONFIG);
   const [models, setModels] = useState<string[]>([]);
@@ -501,6 +506,7 @@ export function SettingsView() {
         {TABS.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
+            data-settings-tab={id}
             onClick={() => setTab(id)}
             className={`flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm transition-colors ${
               tab === id
@@ -538,7 +544,7 @@ export function SettingsView() {
 
           <p className="text-xs text-muted"><span className="text-accent">*</span> Required</p>
 
-          <fieldset className="border border-border-subtle rounded-lg px-4 pb-3 pt-2">
+          <fieldset data-tour="settings-profile" className="border border-border-subtle rounded-lg px-4 pb-3 pt-2">
             <legend className="text-xs font-medium text-secondary px-1">Contact</legend>
             <div className="space-y-3 mt-1">
               <div className="grid grid-cols-2 gap-3">
@@ -863,7 +869,7 @@ export function SettingsView() {
         <section className="space-y-4">
           {invoicingLoad === "failed" ? <LoadError what="invoicing preferences" onRetry={loadInvoicingPrefs} />
             : invoicingLoad === "loading" ? <LoadingState /> : (<>
-          <div>
+          <div data-tour="settings-invoicing">
             <label className={labelCls}>Invoice template</label>
             <select
               className={inputCls}
@@ -922,7 +928,7 @@ export function SettingsView() {
 
           <p className="mt-1 text-xs text-muted mb-3">When enabled, a scannable payment QR code (Girocode) appears on EUR invoices with a complete bank account set. Not available for other currencies.</p>
 
-          <div>
+          <div data-tour="settings-invoicing">
             <label className={labelCls}>Default document language</label>
             <select
               className={inputCls}
@@ -936,7 +942,7 @@ export function SettingsView() {
             <p className="mt-1 text-xs text-muted">Language of invoices, timesheets and emails, unless a client has its own.</p>
           </div>
 
-          <div>
+          <div data-tour="settings-invoicing">
             <label className={labelCls}>Invoice number scheme</label>
             <select
               className={inputCls}
@@ -1051,7 +1057,7 @@ export function SettingsView() {
 
       {tab === "llm" && (
         <section className="space-y-4">
-          <div>
+          <div data-tour="settings-llm">
             <label className={labelCls}>Provider</label>
             <select
               value={config.provider}
@@ -1074,7 +1080,7 @@ export function SettingsView() {
             )}
           </div>
 
-          <div>
+          <div data-tour="settings-llm">
             <label className={labelCls}>{config.provider === "ollama" ? "Ollama URL" : "API Base URL"}</label>
             <div className="flex gap-2">
               <input
@@ -1096,7 +1102,7 @@ export function SettingsView() {
           </div>
 
           {config.provider !== "ollama" && (
-            <div>
+            <div data-tour="settings-llm">
               <label className={labelCls}>API Key</label>
               <input
                 type="password"
@@ -1111,7 +1117,7 @@ export function SettingsView() {
             </div>
           )}
 
-          <div>
+          <div data-tour="settings-llm">
             <label className={labelCls}>Model</label>
             {models.length > 0 ? (
               <select value={config.model} onChange={(e) => setConfig((c) => ({ ...c, model: e.target.value }))} className={inputCls}>
@@ -1255,7 +1261,7 @@ function RegionTab({ operatingCountry, supportedCountries, onCountryChange, vatN
   return (
     <section className="space-y-4">
 
-      <fieldset className="border border-border-subtle rounded-lg px-4 pb-3 pt-2">
+      <fieldset data-tour="settings-region-tax" className="border border-border-subtle rounded-lg px-4 pb-3 pt-2">
         <legend className="text-xs font-medium text-secondary px-1">Tax jurisdiction</legend>
         <div className="grid grid-cols-2 gap-3 mt-2">
           <div>
@@ -1340,6 +1346,14 @@ function RegionTab({ operatingCountry, supportedCountries, onCountryChange, vatN
   );
 }
 
+const REPO = "https://github.com/tuttle-dev/tuttle";
+const helpBtnCls = "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm text-secondary hover:text-primary border border-border-subtle hover:bg-bg-hover transition-colors";
+
+function openExternal(url: string) {
+  if (window.tuttle?.openExternal) window.tuttle.openExternal(url);
+  else window.open(url, "_blank");
+}
+
 function SystemTab() {
   const { log, showMessage } = useStatusBar();
   const { choice, setChoice } = useTheme();
@@ -1393,6 +1407,14 @@ function SystemTab() {
         <h3 className="text-sm font-semibold">About Tuttle</h3>
         <p className="text-sm text-secondary">Version {__APP_VERSION__}</p>
         <p className="text-xs text-muted">Platform: {window.tuttle.platform}</p>
+        <div className="flex gap-2 pt-2">
+          <button onClick={() => openExternal(`${REPO}/discussions`)} className={helpBtnCls}>
+            <MessageCircleQuestion size={14} /> Ask a question
+          </button>
+          <button onClick={() => openExternal(`${REPO}/issues/new`)} className={helpBtnCls}>
+            <Bug size={14} /> Report an issue
+          </button>
+        </div>
       </div>
 
       <div className="space-y-2">

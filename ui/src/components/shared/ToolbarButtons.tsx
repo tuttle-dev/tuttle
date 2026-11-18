@@ -92,7 +92,7 @@ export function ToolbarButtonPrimary({ icon, label, onClick }: {
   icon: ReactNode; label: string; onClick: () => void;
 }) {
   return (
-    <button onClick={onClick}
+    <button onClick={onClick} data-tour="toolbar-primary"
       className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium whitespace-nowrap bg-accent text-on-fill hover:bg-accent/80 hover:shadow-sm active:scale-[0.97] transition-all">
       {icon}
       <span>{label}</span>

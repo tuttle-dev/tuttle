@@ -120,6 +120,7 @@ export function Sidebar({
                 return (
                   <button
                     key={item.id}
+                    data-nav={item.id}
                     onClick={() => onSelect(item.id)}
                     className={`no-drag relative flex items-center gap-2.5 w-full rounded-md px-2.5 py-1.5 text-sm transition-colors cursor-default
                       ${active ? "bg-bg-selected text-primary" : "text-secondary hover:bg-bg-hover hover:text-primary"}
@@ -142,6 +143,7 @@ export function Sidebar({
       {/* Settings and the sidebar toggle */}
       <div className={`shrink-0 flex gap-0.5 px-2 pb-2 ${collapsed ? "flex-col" : ""}`}>
         <button
+          data-nav={SETTINGS_ITEM.id}
           onClick={() => onSelect(SETTINGS_ITEM.id)}
           className={`no-drag flex items-center gap-2.5 w-full rounded-md px-2.5 py-1.5 text-sm transition-colors cursor-default
             ${selected === SETTINGS_ITEM.id ? "bg-bg-selected text-primary" : "text-secondary hover:bg-bg-hover hover:text-primary"}

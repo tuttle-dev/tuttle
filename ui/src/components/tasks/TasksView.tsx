@@ -5,6 +5,7 @@ import { EmptyStateIntro } from "../shared/EmptyStateIntro";
 import { LoadError, LoadingState } from "../shared/LoadStates";
 import { PageLayout, ToolbarFilterGroup } from "../shared/ToolbarButtons";
 import { useNavigation, type NavigationFilter } from "../shared/NavigationContext";
+import { useTour } from "../tour/Tour";
 import { localDateIso } from "../../api/entity";
 import type { Entity } from "../../api/types";
 import { RuleComposer } from "./RuleComposer";
@@ -16,6 +17,9 @@ type Mode = "tasks" | "rules";
 
 /** Tells the sidebar how many tasks are pending. */
 export const TASKS_CHANGED_EVENT = "tuttle:tasks-changed";
+
+/** The getting-started task that starts the tour instead of opening a view. */
+const TOUR_TASK = "tutorial:take_tour";
 
 // Where each getting-started task gets done, by task key (see tuttle/app/tasks/generator.py).
 const DESTINATIONS: Record<string, Destination> = {
@@ -35,6 +39,7 @@ function destinationOf(task: Entity): Destination | undefined {
 
 export function TasksView() {
   const { navigate } = useNavigation();
+  const tour = useTour();
   const [mode, setMode] = useState<Mode>("tasks");
   const [tasks, setTasks] = useState<Entity[]>([]);
   const [rules, setRules] = useState<TaskRule[]>([]);
@@ -94,8 +99,9 @@ export function TasksView() {
 
   const pending = tasks
     .filter((t) => t.status === "pending")
-    // Getting started first, then by the date each task is about.
-    .sort((a, b) => String(a.due_date ?? "").localeCompare(String(b.due_date ?? "")));
+    // The tour, then the rest of getting started, then by the date each task is about.
+    .sort((a, b) => Number(b.key === TOUR_TASK) - Number(a.key === TOUR_TASK)
+      || String(a.due_date ?? "").localeCompare(String(b.due_date ?? "")));
   const completed = tasks.filter((t) => t.status === "done" || t.status === "dismissed");
   const ruleById = new Map(rules.map((r) => [r.id, r]));
 
@@ -154,7 +160,9 @@ export function TasksView() {
                 task={task}
                 rule={rule}
                 ruleLabel={rule ? ruleSentence(rule, options) : undefined}
-                onOpen={dest ? () => navigate(dest.view, dest.filter) : undefined}
+                onOpen={task.key === TOUR_TASK
+                  ? async () => { await markDone(task.id as number); tour.start(); }
+                  : dest ? () => navigate(dest.view, dest.filter) : undefined}
                 onDone={() => markDone(task.id as number)}
                 onDismiss={() => dismiss(task.id as number)}
                 onEditRule={rule ? () => setComposing(rule) : undefined}

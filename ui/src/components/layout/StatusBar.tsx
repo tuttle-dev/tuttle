@@ -1,10 +1,9 @@
-import { AlertCircle, CheckCircle2, Info, MessageCircleQuestion, Bug, Pause, Square } from "lucide-react";
+import { AlertCircle, CheckCircle2, Info, Compass, Pause, Square } from "lucide-react";
 import { useStatusBar, type MessageType } from "../shared/status-bar-context";
 import { useNavigation } from "../shared/NavigationContext";
 import { useTimer } from "../timetracking/timer-context";
 import { formatElapsed } from "../timetracking/format";
-
-const REPO = "https://github.com/tuttle-dev/tuttle";
+import { useTour } from "../tour/Tour";
 
 const ICONS: Record<MessageType, typeof Info> = {
   info: Info,
@@ -25,20 +24,13 @@ export function StatusBar() {
   const { active, dismiss } = useStatusBar();
   const { navigate } = useNavigation();
   const timer = useTimer();
+  const tour = useTour();
   const { status, elapsed, tag } = timer.state;
 
   function handleClick() {
     if (active?.type === "error") {
       navigate("settings", {});
       dismiss();
-    }
-  }
-
-  function open(url: string) {
-    if (window.tuttle?.openExternal) {
-      window.tuttle.openExternal(url);
-    } else {
-      window.open(url, "_blank");
     }
   }
 
@@ -76,13 +68,9 @@ export function StatusBar() {
 
   const idleContent = (
     <div className="flex items-center gap-3 ml-auto">
-      <button onClick={() => open(`${REPO}/discussions`)} className={linkCls}>
-        <MessageCircleQuestion size={13} />
-        <span>Ask a question</span>
-      </button>
-      <button onClick={() => open(`${REPO}/issues/new`)} className={linkCls}>
-        <Bug size={13} />
-        <span>Report an issue</span>
+      <button onClick={tour.start} data-tour="tour" className={linkCls}>
+        <Compass size={13} />
+        <span>Tour</span>
       </button>
     </div>
   );
