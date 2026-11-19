@@ -8,6 +8,7 @@ import { Toolbar, ToolbarButtonPrimary, ToolbarButtonSecondary, ListDetailLayout
 import { EditableClientContactRole } from "../shared/EditableClientContactRole";
 import { EmptyStateIntro } from "../shared/EmptyStateIntro";
 import { DetailHeader, DetailAction, DetailDeleteAction, DetailSubmit, DETAIL_PANE } from "../shared/DetailHeader";
+import { EmailAddress } from "../shared/EmailAddress";
 import { DetailFields, DetailField } from "../shared/DetailFields";
 import { LoadError, LoadingState } from "../shared/LoadStates";
 import { Section } from "../shared/Section";
@@ -349,7 +350,7 @@ function ClientDetail({ client, contacts, languages, onEdit, onDelete, deleteErr
           <div className="text-xs font-semibold uppercase tracking-wider text-secondary mb-3">Invoicing Contact</div>
           <DetailFields>
             {contactName && <DetailField label="Name">{contactName}</DetailField>}
-            {email && <DetailField label="Email">{email}</DetailField>}
+            {email && <DetailField label="Email" wide><EmailAddress address={email} /></DetailField>}
             {company && <DetailField label="Company">{company}</DetailField>}
             {contactAddrParts.length > 0 && (
               <DetailField label="Address">

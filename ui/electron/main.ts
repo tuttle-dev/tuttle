@@ -142,7 +142,7 @@ app.whenReady().then(async () => {
   ipcMain.handle("get-update-state", () => getUpdateState());
 
   ipcMain.on("open-external", (_event, url: string) => {
-    if (typeof url === "string" && /^https?:\/\//.test(url)) {
+    if (typeof url === "string" && /^(https?:\/\/|mailto:)/.test(url)) {
       shell.openExternal(url);
     }
   });
