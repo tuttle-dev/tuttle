@@ -216,3 +216,20 @@ def test_render_timesheets_renders_every_project(db, setup, monkeypatch):
     result = intent.render_timesheet_for_invoice(_saved_invoice(db).id)
     assert result.was_intent_successful, result.error_msg
     assert rendered == ["#a", "#b"]
+
+
+def test_project_save_stores_rate(db, setup):
+    from tuttle.app.projects.intent import ProjectsIntent
+
+    with Session(db) as session:
+        contract_id = session.get(Project, setup["#a"]).contract_id
+    payload = {"id": setup["#a"], "title": "Project #a", "tag": "#a", "description": "", "start_date": "2026-01-01",
+               "contract_id": contract_id, "rate": 720}
+    result = ProjectsIntent().save_from_dict(payload)
+    assert result.was_intent_successful, result.error_msg
+    with Session(db) as session:
+        assert session.get(Project, setup["#a"]).effective_rate == Decimal("720")
+    payload["rate"] = None
+    ProjectsIntent().save_from_dict(payload)
+    with Session(db) as session:
+        assert session.get(Project, setup["#a"]).rate is None

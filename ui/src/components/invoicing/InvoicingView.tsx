@@ -95,7 +95,7 @@ export function InvoicingView() {
     const q = search.toLowerCase();
     return str(inv, "number").toLowerCase().includes(q)
       || deepStr(inv, "contract.client.name").toLowerCase().includes(q)
-      || deepStr(inv, "project.title").toLowerCase().includes(q);
+      || str(inv, "project_titles").toLowerCase().includes(q);
   }
 
   const filtered = invoices.filter((inv) =>
@@ -262,6 +262,8 @@ interface LineItem {
   quantity: string;
   unit: string;
   unitPrice: string;
+  /** Project the line bills; unset means the invoice's project. */
+  projectId?: number | null;
 }
 
 const UNIT_OPTIONS = ["hour", "day", "piece", "flat"] as const;
@@ -331,7 +333,7 @@ function ContractPreview({ contract }: { contract: Entity }) {
 function makeDefaultItem(project?: Entity | null): LineItem {
   const contract = contractOf(project);
   const unit = contract ? str(contract, "unit") : "";
-  const rate = contract ? num(contract, "rate") : 0;
+  const rate = project && project.effective_rate != null ? num(project, "effective_rate") : contract ? num(contract, "rate") : 0;
   return {
     description: project ? str(project, "title") : "",
     quantity: "",
@@ -394,6 +396,7 @@ function CreateInvoiceDialog({ onClose, onCreated }: { onClose: () => void; onCr
   const [selectedNoteIds, setSelectedNoteIds] = useState<Set<number>>(new Set());
   const [customNoteText, setCustomNoteText] = useState("");
 
+  const [alsoBill, setAlsoBill] = useState<Set<number>>(new Set());
   const [docType, setDocType] = useState<DocumentType>("invoice");
   const [selectedMilestoneId, setSelectedMilestoneId] = useState<number | null>(null);
   const [step, setStep] = useState(0);
@@ -404,6 +407,10 @@ function CreateInvoiceDialog({ onClose, onCreated }: { onClose: () => void; onCr
   const [eligibleCharges, setEligibleCharges] = useState<Entity[] | null>(null);
   const charges = eligibleCharges ?? contractCharges(selectedProject);
   const selectedContract = contractOf(selectedProject);
+  // Other projects of the same contract can go on the same invoice (#666).
+  const siblingProjects = selectedProject
+    ? projects.filter((p) => p.id !== projectId && num(p, "contract_id") === num(selectedProject, "contract_id"))
+    : [];
   const chargeCurrency = (selectedContract ? str(selectedContract, "currency") : "") || "EUR";
 
   const milestones = selectedContract ? entityList(selectedContract, "payment_milestones") : [];
@@ -464,6 +471,21 @@ function CreateInvoiceDialog({ onClose, onCreated }: { onClose: () => void; onCr
     setLineItems(makeDefaultItems(proj));
     setDocType("invoice");
     setSelectedMilestoneId(null);
+    setAlsoBill(new Set());
+  }
+
+  function toggleAlsoBill(id: number) {
+    setAlsoBill((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function setItemProject(idx: number, id: number) {
+    const proj = projects.find((p) => p.id === id) ?? selectedProject;
+    const rate = proj ? num(proj, "effective_rate") : 0;
+    updateItem(idx, { projectId: id, unitPrice: rate ? String(rate) : lineItems[idx].unitPrice });
   }
 
   function updateItem(idx: number, patch: Partial<LineItem>) {
@@ -540,9 +562,11 @@ function CreateInvoiceDialog({ onClose, onCreated }: { onClose: () => void; onCr
         quantity: parseFloat(it.quantity),
         unit: it.unit,
         unit_price: parseFloat(it.unitPrice),
+        project_id: it.projectId ?? undefined,
       }));
     } else {
       params.with_timesheet = withTimesheet;
+      if (alsoBill.size > 0) params.project_ids = [...alsoBill];
     }
     const custom = customNoteText.trim();
     if (custom) await rpc("invoice_notes.create", { text: custom });
@@ -584,6 +608,22 @@ function CreateInvoiceDialog({ onClose, onCreated }: { onClose: () => void; onCr
                 </select>
               </label>
               {selectedContract && <ContractPreview contract={selectedContract} />}
+            </div>
+          )}
+
+          {/* Further projects of the same contract on one invoice (time tracking only) */}
+          {step === 0 && !isFixedPrice && docType === "invoice" && mode === "timetracking" && siblingProjects.length > 0 && (
+            <div>
+              <span className="text-xs font-semibold text-secondary uppercase tracking-wider">Also bill</span>
+              <div className="mt-1 space-y-1">
+                {siblingProjects.map((p) => (
+                  <label key={p.id} className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={alsoBill.has(p.id)} onChange={() => toggleAlsoBill(p.id)} className="accent-accent" />
+                    <span className="text-sm text-primary">{str(p, "title")}</span>
+                  </label>
+                ))}
+              </div>
+              <p className="text-[10px] text-muted mt-1">Projects of the same contract, each billed at its own rate.</p>
             </div>
           )}
 
@@ -746,6 +786,15 @@ function CreateInvoiceDialog({ onClose, onCreated }: { onClose: () => void; onCr
                       <input type="text" placeholder="Description" value={item.description}
                         onChange={(e) => updateItem(idx, { description: e.target.value })}
                         className="w-full px-2 py-1 rounded bg-bg-content border border-border-subtle text-xs text-primary placeholder:text-muted" />
+                      {siblingProjects.length > 0 && (
+                        <select value={item.projectId ?? projectId ?? ""} onChange={(e) => setItemProject(idx, Number(e.target.value))}
+                          aria-label="Project"
+                          className="w-full px-1.5 py-1 rounded bg-bg-content border border-border-subtle text-xs text-primary">
+                          {[selectedProject, ...siblingProjects].filter(Boolean).map((p) => (
+                            <option key={p!.id} value={p!.id}>{str(p!, "title")}</option>
+                          ))}
+                        </select>
+                      )}
                       <div className="flex gap-1.5">
                         <input type="number" min="0" step="0.5" placeholder="Qty" value={item.quantity}
                           onChange={(e) => updateItem(idx, { quantity: e.target.value })}
@@ -933,9 +982,9 @@ function InvoiceRow({ invoice, isSelected, isHighlighted, reminderCount, schedul
       </div>
       <div className="flex items-center gap-1.5 mt-1 flex-wrap text-secondary">
         <span className="text-xs truncate">{deepStr(invoice, "contract.client.name") || "No client"}</span>
-        {deepStr(invoice, "project.title") && (
+        {str(invoice, "project_titles") && (
           <><span className="text-tertiary">·</span>
-          <span className="text-xs text-tertiary truncate">{deepStr(invoice, "project.title")}</span></>
+          <span className="text-xs text-tertiary truncate">{str(invoice, "project_titles")}</span></>
         )}
         {schedule && <MilestoneScheduleBadge schedule={schedule} />}
       </div>
@@ -1059,10 +1108,10 @@ function InvoiceCard({ invoice, reminderCount, depositCount, schedule }: { invoi
           <span className="text-xs truncate">{deepStr(invoice, "contract.client.name")}</span>
         </div>
       )}
-      {deepStr(invoice, "project.title") && (
+      {str(invoice, "project_titles") && (
         <div className="flex items-center gap-1 text-secondary">
           <FolderKanban size={12} className="text-tertiary shrink-0" />
-          <span className="text-xs truncate">{deepStr(invoice, "project.title")}</span>
+          <span className="text-xs truncate">{str(invoice, "project_titles")}</span>
         </div>
       )}
       <div className="flex items-center gap-1 text-tertiary">
@@ -1091,7 +1140,11 @@ function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid, onTog
   const isSent = bool(invoice, "sent");
   const isPaid = bool(invoice, "paid");
   const pdfPath = str(invoice, "pdf_path");
-  const tsPath = str(invoice, "timesheet_pdf_path");
+  // One timesheet per billed project (#666); a picker switches between them.
+  const tsPaths = (invoice.timesheet_pdf_paths as { project: string; path: string }[] | undefined) ?? [];
+  const [tsIndex, setTsIndex] = useState(0);
+  useEffect(() => { setTsIndex(0); }, [invoice.id]);
+  const tsPath = tsPaths[tsIndex]?.path ?? str(invoice, "timesheet_pdf_path");
   const hasTimesheet = bool(invoice, "has_timesheet");
   const isRem = isReminder(invoice);
   const depositLabel = depositMilestoneLabel(invoice);
@@ -1122,6 +1175,27 @@ function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid, onTog
   const [tsRendering, setTsRendering] = useState(false);
   const [tsError, setTsError] = useState("");
   const [reminderDialogOpen, setReminderDialogOpen] = useState(false);
+  const [contractProjects, setContractProjects] = useState<Entity[]>([]);
+  const [itemProjectError, setItemProjectError] = useState("");
+  const contractId = num(invoice, "contract_id");
+
+  useEffect(() => {
+    let cancelled = false;
+    setItemProjectError("");
+    (async () => {
+      const res = await rpc<Entity[]>("projects.get_all");
+      if (!cancelled && res.ok && res.data) setContractProjects(res.data.filter((p) => num(p, "contract_id") === contractId));
+    })();
+    return () => { cancelled = true; };
+  }, [invoice.id, contractId]);
+
+  /** Book a line to a project. Bookkeeping only: the issued PDF stays as it is. */
+  async function setItemProject(itemId: number, projectId: number | null) {
+    setItemProjectError("");
+    const res = await rpc("invoicing.set_item_projects", { invoice_id: invoice.id, item_projects: { [String(itemId)]: projectId } });
+    if (res.ok) onRefresh();
+    else setItemProjectError(res.error || "Could not change the project");
+  }
   const [deleteConfirm, setDeleteConfirm] = useState(false);
 
   useEffect(() => { setDeleteConfirm(false); }, [invoice.id]);
@@ -1298,7 +1372,13 @@ function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid, onTog
           )}
         </div>
       ) : detailTab === "timesheet" ? (
-        <div className="flex-1 min-h-0 px-5 pb-5">
+        <div className="flex-1 min-h-0 px-5 pb-5 flex flex-col gap-2">
+          {tsPaths.length > 1 && (
+            <select value={tsIndex} onChange={(e) => setTsIndex(Number(e.target.value))} aria-label="Timesheet"
+              className="self-start px-2 py-1 rounded-md bg-bg-card border border-border-subtle text-xs text-primary">
+              {tsPaths.map((t, i) => <option key={t.path} value={i}>{t.project}</option>)}
+            </select>
+          )}
           {tsRendering ? (
             <div className="flex flex-col items-center justify-center h-full gap-2 text-secondary">
               <Clock size={24} className="animate-pulse" />
@@ -1324,6 +1404,7 @@ function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid, onTog
         <div className="flex-1 overflow-y-auto px-5 pb-5 space-y-5">
           {items.length > 0 && (
             <Section title="Line Items">
+              {itemProjectError && <p className="text-xs text-status-danger mb-2">{itemProjectError}</p>}
               <div className="space-y-2">
                 {items.map((item, i) => (
                   <div key={i} className="rounded-md p-3 bg-bg-card border border-border-subtle">
@@ -1336,6 +1417,14 @@ function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid, onTog
                       <span>{str(item, "unit_price_formatted")}/{str(item, "unit") || "hour"}</span>
                       <span>{taxTreatment(taxCategory(str(item, "VAT_category")), num(item, "VAT_rate"))}</span>
                     </div>
+                    {contractProjects.length > 0 && !isRem && (
+                      <select value={item.project_id == null ? "" : String(item.project_id)} aria-label="Project"
+                        onChange={(e) => setItemProject(item.id, e.target.value ? Number(e.target.value) : null)}
+                        className="mt-1.5 px-1.5 py-0.5 rounded bg-bg-content border border-border-subtle text-xs text-secondary">
+                        <option value="">No project</option>
+                        {contractProjects.map((p) => <option key={p.id} value={p.id}>{str(p, "title")}</option>)}
+                      </select>
+                    )}
                   </div>
                 ))}
               </div>
@@ -1349,7 +1438,7 @@ function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid, onTog
               {str(invoice, "sent_date") && (
                 <DRow icon={<Send size={14} />} label="Sent" value={formatDate(str(invoice, "sent_date"))} />
               )}
-              <DRow icon={<FolderKanban size={14} />} label="Project" value={deepStr(invoice, "project.title") || "—"} />
+              <DRow icon={<FolderKanban size={14} />} label="Project" value={str(invoice, "project_titles") || "—"} />
               <DRow icon={<FileText size={14} />} label="Contract" value={deepStr(invoice, "contract.title") || "—"} />
               <DRow icon={<Banknote size={14} />} label="Currency" value={str(invoice, "currency") || "EUR"} />
               <DRow icon={<Receipt size={14} />} label="Tax" value={taxTreatment(invoiceTaxCategory, invoiceVatRate)} />
