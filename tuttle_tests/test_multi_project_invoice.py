@@ -52,7 +52,9 @@ def _project(contract, tag, rate=None) -> Project:
 @pytest.fixture
 def setup(db):
     """Projects #a, #b (own rate 650) on one contract, #c on another, #fp fixed-price."""
-    client = Client(name="Central Services", address=Address(street="A", number="1", postal_code="1", city="X", country="Germany"))
+    client = Client(
+        name="Central Services", address=Address(street="A", number="1", postal_code="1", city="X", country="Germany")
+    )
     retainer = _contract("Retainer", client)
     other = _contract("Other", client)
     fixed = _contract("Fixed", client, type=ContractType.fixed_price, fixed_price=Decimal("1000"), rate=None)
@@ -190,7 +192,6 @@ def test_timesheet_paths_list_every_project(db, setup, monkeypatch, tmp_path):
     assert invoice.timesheet_pdf_paths == []  # nothing rendered yet
 
 
-
 def test_email_names_every_project(db, setup, monkeypatch):
     from tuttle import invoicing
 
@@ -199,7 +200,6 @@ def test_email_names_every_project(db, setup, monkeypatch):
     with Session(db) as session:
         invoice = session.get(Invoice, invoice.id)
         _ = invoice.contract.client.invoicing_contact
-        client = invoice.contract.client
     from tuttle.model import Contact, User
 
     invoice.contract.client.invoicing_contact = Contact(first_name="Sam", last_name="Lowry", email="sam@example.com")
@@ -223,8 +223,15 @@ def test_project_save_stores_rate(db, setup):
 
     with Session(db) as session:
         contract_id = session.get(Project, setup["#a"]).contract_id
-    payload = {"id": setup["#a"], "title": "Project #a", "tag": "#a", "description": "", "start_date": "2026-01-01",
-               "contract_id": contract_id, "rate": 720}
+    payload = {
+        "id": setup["#a"],
+        "title": "Project #a",
+        "tag": "#a",
+        "description": "",
+        "start_date": "2026-01-01",
+        "contract_id": contract_id,
+        "rate": 720,
+    }
     result = ProjectsIntent().save_from_dict(payload)
     assert result.was_intent_successful, result.error_msg
     with Session(db) as session:

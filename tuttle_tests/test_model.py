@@ -739,5 +739,7 @@ class TestProjectRate:
 
 def test_invoice_item_carries_a_project():
     project = Project(title="Ducts", description="", tag="#ducts", start_date=datetime.date(2026, 1, 1))
-    item = InvoiceItem(quantity=1, unit="day", unit_price=Decimal("500"), description="x", VAT_rate=Decimal("0.19"), project=project)
+    item = InvoiceItem(
+        quantity=1, unit="day", unit_price=Decimal("500"), description="x", VAT_rate=Decimal("0.19"), project=project
+    )
     assert item.project is project

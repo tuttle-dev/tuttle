@@ -956,7 +956,9 @@ class TestMultiProjectInvoice:
     def test_assign_invoice_project_rules(self):
         a, b = self._two_projects()
         invoice = Invoice(date=datetime.date(2022, 2, 1), number="X", contract=a.contract, project=a)
-        invoice.items = [InvoiceItem(quantity=1, unit="day", unit_price=Decimal("1"), description="", VAT_rate=Decimal("0.19"))]
+        invoice.items = [
+            InvoiceItem(quantity=1, unit="day", unit_price=Decimal("1"), description="", VAT_rate=Decimal("0.19"))
+        ]
         invoicing.assign_invoice_project(invoice)
         assert invoice.project is a  # no line has a project: unchanged
         invoice.items[0].project = b

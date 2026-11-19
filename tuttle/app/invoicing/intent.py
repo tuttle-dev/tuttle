@@ -10,7 +10,7 @@ from ... import einvoice, invoicing, mail, rendering, timetracking
 from ...app_db import AppDatabase
 from ...data_dir import get_data_dir
 from ...i18n import SUPPORTED, use_language
-from ...model import Client, Invoice, InvoiceItem, Project, Timesheet, User, round_quantity
+from ...model import Client, Invoice, InvoiceItem, Project, User, round_quantity
 from ...time import ChargeBasis
 from ..auth.data_source import UserDataSource
 from ..core.abstractions import Intent
@@ -577,10 +577,11 @@ class InvoicingIntent(Intent):
                 error_msg=f"Project “{project.title}” has no contract. Create a contract and assign it to the project before invoicing.",
             )
         extra_projects = extra_projects or []
-        if extra_projects and (
-            contract.is_fixed_price or any(p.contract_id != project.contract_id for p in extra_projects)
-        ):
-            return IntentResult(was_intent_successful=False, error_msg="All projects on one invoice must belong to the same time-based contract.")
+        if extra_projects and (contract.is_fixed_price or any(p.contract_id != project.contract_id for p in extra_projects)):
+            return IntentResult(
+                was_intent_successful=False,
+                error_msg="All projects on one invoice must belong to the same time-based contract.",
+            )
         # Projects a manual line may name: loaded with the invoice's project
         # (see ``_load_projects``), and on its contract.
         line_projects = projects_by_id or {project.id: project}
@@ -668,9 +669,7 @@ class InvoicingIntent(Intent):
                 timetracking_data = self._timetracking_data_source.get_data_frame()
                 for billed in [project, *extra_projects]:
                     try:
-                        timesheets.append(
-                            timetracking.generate_timesheet(timetracking_data, billed, from_date, to_date)
-                        )
+                        timesheets.append(timetracking.generate_timesheet(timetracking_data, billed, from_date, to_date))
                     except ValueError:
                         continue  # no hours for this project in the period
                 if not timesheets:

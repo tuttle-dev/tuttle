@@ -319,7 +319,9 @@ class TestInvoicedFromLines:
     def _manual_invoice(self, invoice_project, line_project, cancelled=False):
         from tuttle.model import Invoice, InvoiceItem
 
-        invoice = Invoice(date=datetime.date(2022, 2, 1), number="M-1", project=invoice_project, cancelled=cancelled, sent=True)
+        invoice = Invoice(
+            date=datetime.date(2022, 2, 1), number="M-1", project=invoice_project, cancelled=cancelled, sent=True
+        )
         invoice.items = [
             InvoiceItem(
                 start_date=datetime.date(2022, 1, 1),
