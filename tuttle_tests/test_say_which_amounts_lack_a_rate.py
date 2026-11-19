@@ -97,6 +97,27 @@ def test_tax_view_leaves_out_an_invoice_and_names_it(offline):
     assert spending.unconverted == [_usd_label(THIS_MONTH)]
 
 
+def test_a_reminder_is_not_named_as_left_out(offline):
+    """A reminder adds no amount, so a month without a rate leaves nothing of it out."""
+    offline(THIS_MONTH)
+    invoice = _invoice(LAST_MONTH, "2000", currency="USD", paid=False)
+    reminder = Invoice(
+        document_type="reminder",
+        number=invoice.number,
+        date=THIS_MONTH,
+        contract=invoice.contract,
+        sent=True,
+        reminder_level=1,
+    )
+    InvoiceItem(
+        invoice=reminder, quantity=1, unit="flat", unit_price=Decimal("2000"), VAT_rate=Decimal("0"), description="Work"
+    )
+
+    spending = compute_spendable_income([invoice, reminder], "Germany", currency="EUR")
+
+    assert spending.unconverted == []
+
+
 def test_tax_view_leaves_out_an_expense_and_names_it(offline):
     offline(THIS_MONTH)
     spending = compute_spendable_income([], "Germany", expenses=[_software()], currency="EUR")

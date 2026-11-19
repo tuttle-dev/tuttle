@@ -84,8 +84,7 @@ def compute_kpis(
     left_out: list = []
 
     for inv in invoices:
-        # A reminder chases an invoice that is already counted; a draft is not invoiced yet.
-        if inv.cancelled or inv.is_reminder or not inv.is_issued:
+        if not inv.is_counted:
             continue
         converted = convert_invoice(inv, currency, left_out)
         if converted is None:
@@ -210,7 +209,7 @@ def monthly_revenue_breakdown(
         current = (current + datetime.timedelta(days=32)).replace(day=1)
 
     for inv in invoices:
-        if inv.cancelled or inv.is_reminder:
+        if not inv.is_counted:
             continue
         key = inv.date.strftime("%Y-%m")
         if key not in months:
@@ -268,7 +267,7 @@ def monthly_spendable_breakdown(
     currency = primary_currency(country)
 
     for inv in invoices:
-        if inv.cancelled or inv.is_reminder or not inv.paid:
+        if not inv.is_counted or not inv.paid:
             continue
         key = inv.date.strftime("%Y-%m")
         if key in months:

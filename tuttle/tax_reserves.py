@@ -225,7 +225,7 @@ def compute_vat_reserves(
     vat_total = Decimal(0)
     count = 0
     for inv in invoices:
-        if inv.cancelled or inv.is_reminder or not inv.is_issued:
+        if not inv.is_counted:
             continue
         if period_start <= inv.date <= period_end:
             converted = convert_invoice(inv, currency, left_out)
@@ -367,7 +367,7 @@ def compute_spendable_income(
     foreign_net = Decimal(0)  # converted net revenue that must be exchanged
 
     for inv in invoices:
-        if inv.cancelled or not inv.is_issued:
+        if not inv.is_counted:
             continue
         if year_start <= inv.date <= year_end:
             converted = convert_invoice(inv, currency, left_out)
@@ -651,8 +651,8 @@ def compute_effective_salary(
 
     currency = currency or default_currency(country)
 
-    # A draft is not invoiced yet, so it is neither revenue nor where the history starts.
-    invoices = [inv for inv in invoices if inv.is_issued and not inv.cancelled]
+    # An invoice that does not count is neither revenue nor where the history starts.
+    invoices = [inv for inv in invoices if inv.is_counted]
     first = min((inv.date for inv in invoices if inv.date <= today), default=None)
     if first is None or first >= this_month:
         # Nothing invoiced before this month: the month so far is all there is.

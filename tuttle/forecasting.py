@@ -302,10 +302,10 @@ def _term_end(contract: Contract, members: List[Project]) -> Optional[datetime.d
 
 
 def _invoiced_net(contract: Contract, invoices: List[Invoice]) -> Decimal:
-    """Net amount invoiced on *contract*. A reminder repeats an invoice and adds nothing; a draft is not invoiced yet."""
+    """Net amount invoiced on *contract*."""
     total = Decimal(0)
     for inv in invoices:
-        if inv.cancelled or inv.is_reminder or not inv.is_issued:
+        if not inv.is_counted:
             continue
         if inv.contract is contract or (contract.id is not None and inv.contract_id == contract.id):
             total += inv.sum
@@ -592,7 +592,7 @@ def _data_extent(
     time_data: Optional[DataFrame],
 ) -> tuple:
     """Earliest and latest date covered by invoices or calendar events."""
-    dates = [inv.date for inv in invoices if not inv.cancelled and inv.is_issued and inv.date]
+    dates = [inv.date for inv in invoices if inv.is_counted and inv.date]
     if time_data is not None and not time_data.empty:
         dates.append(time_data.index.min().date())
         dates.append(time_data.index.max().date())
@@ -683,8 +683,7 @@ def revenue_series(
     }
 
     for inv in invoices:
-        # A reminder chases an invoice that is already counted; a draft is not invoiced yet.
-        if inv.cancelled or inv.is_reminder or not inv.is_issued or not inv.date:
+        if not inv.is_counted or not inv.date:
             continue
         period = pandas.Period(inv.date, freq=freq)
         bucket = buckets.get(period)
@@ -808,7 +807,7 @@ def cash_flow_series(
 
     # 1. Inflows from sent, unpaid invoices
     for inv in invoices:
-        if inv.paid or inv.cancelled or not inv.is_issued:
+        if inv.paid or not inv.is_counted:
             continue
         converted = convert_invoice(inv, currency, left_out)
         if converted is None:

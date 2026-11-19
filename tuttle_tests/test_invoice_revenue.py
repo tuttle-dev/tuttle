@@ -3,6 +3,8 @@
 import datetime
 from decimal import Decimal
 
+import pytest
+
 from tuttle import invoicing
 from tuttle.forecasting import revenue_series
 from tuttle.kpi import compute_kpis
@@ -28,6 +30,20 @@ def _reminder(invoice: Invoice, level: int) -> Invoice:
         for item in invoice.items
     ]
     return reminder
+
+
+@pytest.mark.parametrize(
+    "flags, counted",
+    [
+        pytest.param({}, False, id="draft"),
+        pytest.param({"sent": True}, True, id="sent"),
+        pytest.param({"paid": True}, True, id="paid"),
+        pytest.param({"sent": True, "cancelled": True}, False, id="cancelled"),
+        pytest.param({"sent": True, "paid": True, "document_type": "reminder"}, False, id="reminder"),
+    ],
+)
+def test_figures_count_an_issued_invoice_that_is_neither_cancelled_nor_a_reminder(flags, counted):
+    assert Invoice(number="1", date=datetime.date.today(), **flags).is_counted is counted
 
 
 def test_reminders_add_no_revenue():
