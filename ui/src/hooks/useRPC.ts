@@ -1,6 +1,5 @@
 import { useState, useCallback } from "react";
-import { rpc } from "../api/rpc";
-import type { RPCResult } from "../api/types";
+import { rpc, type RPCResult } from "../api/rpc";
 
 export function useRPC() {
   const [loading, setLoading] = useState(false);
@@ -22,7 +21,7 @@ export function useRPC() {
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         setError(msg);
-        return { ok: false, data: null as T, error: msg };
+        return { ok: false, data: null as T, error: msg, warning: null };
       } finally {
         setLoading(false);
       }

@@ -7,13 +7,7 @@ import { LoadError, LoadingState } from "../shared/LoadStates";
 import { PageLayout } from "../shared/ToolbarButtons";
 import { UnconvertedNote } from "../shared/UnconvertedNote";
 import type { Entity } from "../../api/types";
-import { str, num, maybeNum, bool, type DynamicLine } from "../../api/entity";
-
-function fmt(value: number, currency = "EUR"): string {
-  try {
-    return new Intl.NumberFormat("en-US", { style: "currency", currency, maximumFractionDigits: 0 }).format(value);
-  } catch { return `${currency} ${value.toFixed(0)}`; }
-}
+import { str, num, maybeNum, bool, formatAmount, type DynamicLine } from "../../api/entity";
 
 function fmtPct(value: number): string {
   return `${(value * 100).toFixed(1)}%`;
@@ -181,14 +175,14 @@ export function TaxReservesView() {
                 <div key={i} className="grid grid-cols-3 gap-2 py-1.5 text-sm border-b border-border-subtle/50 last:border-0">
                   <span className="font-semibold">{str(m, "month")}</span>
                   <span className="text-right">{num(m, "invoice_count")}</span>
-                  <span className="text-right font-medium" style={vat > 0 ? { color: "var(--color-status-warning)" } : undefined}>{fmt(vat, currency)}</span>
+                  <span className="text-right font-medium" style={vat > 0 ? { color: "var(--color-status-warning)" } : undefined}>{formatAmount(vat, currency)}</span>
                 </div>
               );
             })}
             <div className="flex justify-between pt-2 mt-1 border-t border-border-subtle font-semibold text-sm">
               <span>Total</span>
               <span style={months.reduce((s, m) => s + num(m, "vat_collected"), 0) > 0 ? { color: "var(--color-status-warning)" } : undefined}>
-                {fmt(months.reduce((s, m) => s + num(m, "vat_collected"), 0), currency)}
+                {formatAmount(months.reduce((s, m) => s + num(m, "vat_collected"), 0), currency)}
               </span>
             </div>
           </div>
@@ -234,23 +228,23 @@ function IncomeTaxSection({ data, currency }: { data: Entity; currency: string }
   const incomeBasis = num(data, "income_basis");
 
   const parts: string[] = [];
-  if (received > 0) parts.push(`${fmt(received, currency)} received`);
-  if (outstanding > 0) parts.push(`${fmt(outstanding, currency)} invoiced`);
-  if (planned > 0) parts.push(`${fmt(planned, currency)} planned`);
-  if (contracted > 0) parts.push(`${fmt(contracted, currency)} contracted`);
-  const breakdown = parts.join(" + ") + (deducted > 0 ? ` − ${fmt(deducted, currency)} deductible expenses` : "");
+  if (received > 0) parts.push(`${formatAmount(received, currency)} received`);
+  if (outstanding > 0) parts.push(`${formatAmount(outstanding, currency)} invoiced`);
+  if (planned > 0) parts.push(`${formatAmount(planned, currency)} planned`);
+  if (contracted > 0) parts.push(`${formatAmount(contracted, currency)} contracted`);
+  const breakdown = parts.join(" + ") + (deducted > 0 ? ` − ${formatAmount(deducted, currency)} deductible expenses` : "");
 
   return (
     <Section title={country ? `Income Tax Estimate (${country})` : "Income Tax Estimate"} icon={<Calculator size={16} />}
       hint="A best-guess estimate from simplified tax rules. Tuttle is not a tax advisor.">
       <div className="space-y-2">
-        <SummaryRow label="Income Basis" value={fmt(incomeBasis, currency)} />
+        <SummaryRow label="Income Basis" value={formatAmount(incomeBasis, currency)} />
         {parts.length > 0 && (
           <div className="text-xs text-muted -mt-1 text-right">
             {breakdown}
           </div>
         )}
-        <SummaryRow label="Estimated Income Tax" value={tr ? fmt(num(tr, "total_annual_reserve"), currency) : "—"} color={tr ? "var(--color-status-warning)" : undefined} bold />
+        <SummaryRow label="Estimated Income Tax" value={tr ? formatAmount(num(tr, "total_annual_reserve"), currency) : "—"} color={tr ? "var(--color-status-warning)" : undefined} bold />
         <SummaryRow label="Effective Tax Rate" value={tr ? fmtPct(num(tr, "effective_rate")) : "—"} />
         {brackets.length > 0 && (
           <div className="mt-4">
@@ -265,7 +259,7 @@ function IncomeTaxSection({ data, currency }: { data: Entity; currency: string }
                   >
                     <span>{str(b, "label")}</span>
                     <span>
-                      {fmt(num(b, "start"), currency)} – {fmt(num(b, "end"), currency)}
+                      {formatAmount(num(b, "start"), currency)} – {formatAmount(num(b, "end"), currency)}
                       {current && <span className="ml-2 text-xs opacity-80">◄ You are here</span>}
                     </span>
                   </div>
@@ -300,7 +294,7 @@ function WaterfallBar({ label, amount, total, color, currency, bold }: {
   label: string; amount: number | null; total: number; color: string; currency: string; bold?: boolean;
 }) {
   const pct = amount === null ? 0 : total > 0 ? Math.max(Math.abs(amount) / total, 0.02) : 0;
-  const shown = amount === null ? "—" : `${amount < 0 ? "−" : ""}${fmt(Math.abs(amount), currency)}`;
+  const shown = amount === null ? "—" : `${amount < 0 ? "−" : ""}${formatAmount(Math.abs(amount), currency)}`;
 
   return (
     <div className="py-1">

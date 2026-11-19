@@ -21,7 +21,7 @@ import platform
 import plistlib
 import subprocess
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 import pandas
 from loguru import logger
@@ -303,17 +303,6 @@ def is_available() -> bool:
     return _IS_DARWIN
 
 
-def authorization_status() -> str:
-    if not _IS_DARWIN:
-        return "not_available"
-    try:
-        data = _run_helper("status")
-        return data.get("auth_status", "unknown")
-    except Exception as ex:
-        logger.warning(f"Could not get auth status: {ex}")
-        return "unknown"
-
-
 def open_calendar_privacy_settings():
     """Open macOS System Settings → Privacy & Security → Calendars."""
     subprocess.Popen(
@@ -322,28 +311,6 @@ def open_calendar_privacy_settings():
             "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_Calendars",
         ]
     )
-
-
-def request_access() -> bool:
-    if not _IS_DARWIN:
-        return False
-    try:
-        data = _run_helper("request-access")
-        return data.get("granted", False)
-    except Exception as ex:
-        logger.warning(f"Could not request access: {ex}")
-        return False
-
-
-def list_calendars() -> List[Dict[str, str]]:
-    if not _IS_DARWIN:
-        return []
-    try:
-        data = _run_helper("list-calendars")
-        return data.get("calendars", [])
-    except Exception as ex:
-        logger.warning(f"Could not list calendars: {ex}")
-        return []
 
 
 def _query_helper(*args: str) -> dict:

@@ -1000,17 +1000,3 @@ def _map_invoices(invoices: list) -> List[Dict[str, Any]]:
         else:
             logger.debug(f"Dropping skeleton invoice: {d}")
     return results
-
-
-# ---------------------------------------------------------------------------
-# Legacy function kept for backward compat (wraps parse_document)
-# ---------------------------------------------------------------------------
-
-
-def parse_contacts_from_document(
-    file_base64: str,
-    file_name: str,
-    config: Optional[LLMConfig] = None,
-) -> List[Dict[str, Any]]:
-    """Parse contact information from a document (legacy wrapper)."""
-    return parse_document(file_base64, file_name, "contact", config)

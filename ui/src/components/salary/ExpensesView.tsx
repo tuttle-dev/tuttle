@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { ReceiptText, Plus, Percent } from "lucide-react";
 import { rpc } from "../../api/rpc";
-import { str, num } from "../../api/entity";
+import { str, num, formatAmount } from "../../api/entity";
 import { Toolbar, ToolbarButtonPrimary, ListDetailLayout, LIST_ROW_PADDING } from "../shared/ToolbarButtons";
 import { EmptyStateIntro } from "../shared/EmptyStateIntro";
 import { DetailHeader, DetailAction, DetailDeleteAction, DetailSubmit, DETAIL_PANE } from "../shared/DetailHeader";
@@ -63,12 +63,6 @@ const PERIOD_TO_MONTHLY_DIVISOR: Record<string, number> = {
 function toMonthly(amount: number, period: string): number {
   const divisor = PERIOD_TO_MONTHLY_DIVISOR[period] ?? 1;
   return amount / divisor;
-}
-
-function fmt(value: number, currency = "EUR"): string {
-  try {
-    return new Intl.NumberFormat("en-US", { style: "currency", currency, maximumFractionDigits: 2 }).format(value);
-  } catch { return `${currency} ${value.toFixed(2)}`; }
 }
 
 export function ExpensesView() {
@@ -212,7 +206,7 @@ export function ExpensesView() {
               {expenses.length > 0 && (
                 <span className="ml-2 text-tertiary">
                   · {[
-                    ...Array.from(monthlyTotals, ([cur, total]) => `${fmt(total, cur)}/mo`),
+                    ...Array.from(monthlyTotals, ([cur, total]) => `${formatAmount(total, cur, 2)}/mo`),
                     ...(dynamicCount > 0 ? [`${dynamicCount} income-dependent`] : []),
                   ].join(" + ")}
                 </span>
@@ -286,7 +280,7 @@ function ExpenseRow({ expense, isSelected, onSelect }: {
       <div className="min-w-0 flex-1">
         <div className="text-sm font-medium truncate">{title}</div>
         <div className="text-xs text-tertiary truncate">
-          {dynamic ? fmtRate(num(expense, "rate")) : `${fmt(amount, currency)} / ${period}`}
+          {dynamic ? fmtRate(num(expense, "rate")) : `${formatAmount(amount, currency, 2)} / ${period}`}
         </div>
       </div>
     </button>
@@ -332,7 +326,7 @@ function ExpenseDetail({ expense, onEdit, onDelete, deleteError }: {
           <DetailField label="Rate">{fmtRate(rate)}</DetailField>
         ) : (
           <>
-            <DetailField label="Amount">{fmt(amount, currency)}</DetailField>
+            <DetailField label="Amount">{formatAmount(amount, currency, 2)}</DetailField>
             <DetailField label="Period">{period.charAt(0).toUpperCase() + period.slice(1)}</DetailField>
           </>
         )}
@@ -340,16 +334,16 @@ function ExpenseDetail({ expense, onEdit, onDelete, deleteError }: {
         <DetailField label={dynamic ? "Monthly Amount" : "Monthly Equivalent"}>
           {dynamic
             ? `${rate}% of ${deductible ? "your taxable profit" : "what is left after tax"}`
-            : `${fmt(monthly, currency)}/mo`}
+            : `${formatAmount(monthly, currency, 2)}/mo`}
           {dynamic && (minBase != null || maxBase != null) && (
             <div className="text-xs text-tertiary mt-1">
-              {minBase != null && `charged on at least ${fmt(minBase, currency)}${basisSuffix(period)}`}
+              {minBase != null && `charged on at least ${formatAmount(minBase, currency, 2)}${basisSuffix(period)}`}
               {minBase != null && maxBase != null && ", "}
               {maxBase != null && (
                 <>
                   {minBase == null && "charged on "}
-                  {`income up to ${fmt(maxBase, currency)}${basisSuffix(period)}`}
-                  {` — at most ${fmt((maxBase * rate) / 100, currency)}${basisSuffix(period)}`}
+                  {`income up to ${formatAmount(maxBase, currency, 2)}${basisSuffix(period)}`}
+                  {` — at most ${formatAmount((maxBase * rate) / 100, currency, 2)}${basisSuffix(period)}`}
                 </>
               )}
             </div>

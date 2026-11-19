@@ -6,17 +6,11 @@ import { LoadError, LoadingState } from "../shared/LoadStates";
 import { PageLayout } from "../shared/ToolbarButtons";
 import { UnconvertedNote } from "../shared/UnconvertedNote";
 import type { Entity } from "../../api/types";
-import { num, maybeNum, str, type DynamicLine } from "../../api/entity";
+import { num, maybeNum, str, formatAmount, type DynamicLine } from "../../api/entity";
 
 function fmtMonth(iso: string): string {
   const [year, month] = iso.split("-").map(Number);
   return new Date(year, month - 1, 1).toLocaleDateString("en-US", { month: "short", year: "numeric" });
-}
-
-function fmt(value: number, currency = "EUR"): string {
-  try {
-    return new Intl.NumberFormat("en-US", { style: "currency", currency, maximumFractionDigits: 0 }).format(value);
-  } catch { return `${currency} ${value.toFixed(0)}`; }
 }
 
 type SalaryData = {
@@ -143,7 +137,7 @@ function SalaryDial({ conservative, optimistic, currency, target, onTargetChange
       </div>
       <div className="bg-surface-overlay rounded-lg px-6 py-8 text-center">
         <div className="text-4xl font-bold mb-1" style={{ color: z.color }}>
-          {fmt(target, currency)}
+          {formatAmount(target, currency)}
         </div>
         <div className="text-sm text-muted mb-6">per month</div>
 
@@ -165,11 +159,11 @@ function SalaryDial({ conservative, optimistic, currency, target, onTargetChange
         {/* Zone color bar (redundant with slider bg but adds clarity) */}
         <div className="flex mt-3 justify-between text-xs text-muted">
           <div>
-            <div className="font-medium text-secondary">{fmt(conservative, currency)}</div>
+            <div className="font-medium text-secondary">{formatAmount(conservative, currency)}</div>
             <div>conservative</div>
           </div>
           <div className="text-right">
-            <div className="font-medium text-secondary">{fmt(optimistic, currency)}</div>
+            <div className="font-medium text-secondary">{formatAmount(optimistic, currency)}</div>
             <div>optimistic</div>
           </div>
         </div>
@@ -218,7 +212,7 @@ function MonthlyBreakdown({ salary }: { salary: SalaryData }) {
       <div className="bg-surface-overlay rounded-lg p-4 space-y-1">
         {items.map((item, i) => {
           const pct = item.amount === null ? 0 : Math.max(Math.abs(item.amount) / gross, 0.02);
-          const shown = item.amount === null ? "—" : `${item.amount < 0 ? "−" : ""}${fmt(Math.abs(item.amount), currency)}`;
+          const shown = item.amount === null ? "—" : `${item.amount < 0 ? "−" : ""}${formatAmount(Math.abs(item.amount), currency)}`;
           return (
             <div key={i} className="py-1">
               <div className="flex justify-between mb-0.5">

@@ -8,13 +8,10 @@ except ImportError:
     pass
 
 from . import (  # noqa: F401
-    banking,
     calendar,
-    dataviz,
     invoicing,
     mail,
     model,
-    os_functions,
     rendering,
     tax,
     time,

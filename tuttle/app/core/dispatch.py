@@ -82,10 +82,14 @@ def _call(fn: Callable, params: dict):
     if not positional:
         return fn()
 
+    # Check the fit before calling: catching TypeError around the call itself
+    # would also catch one raised inside the handler and run the handler again.
     try:
-        return fn(**params)
+        sig.bind(**params)
     except TypeError:
         pass
+    else:
+        return fn(**params)
 
     if len(positional) == 1:
         p = positional[0]

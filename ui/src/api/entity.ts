@@ -135,6 +135,15 @@ export function formatMoney(value: number, currency: string): string {
   }
 }
 
+/** Money rounded to at most `maxDigits` decimals, whole amounts by default ("€3,451"). */
+export function formatAmount(value: number, currency: string, maxDigits = 0): string {
+  try {
+    return new Intl.NumberFormat("en-US", { style: "currency", currency, maximumFractionDigits: maxDigits }).format(value);
+  } catch {
+    return `${currency} ${value.toFixed(maxDigits)}`;
+  }
+}
+
 export function dateRange(e: Entity): string {
   const start = str(e, "start_date");
   const end = str(e, "end_date");

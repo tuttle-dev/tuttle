@@ -4,11 +4,10 @@ from typing import Optional
 from loguru import logger
 
 from ...fx import default_currency
-from ...model import Client, Contract, ContractCharge, PaymentMilestone, User
+from ...model import Contract, ContractCharge, PaymentMilestone, User
 from ...tax import NoTaxRules, get_tax_system
 from ...time import ChargeBasis
 from ..clients.intent import ClientsIntent
-from ..contacts.intent import ContactsIntent
 from ..core.abstractions import CrudIntent
 from ..core.intent_result import IntentResult
 
@@ -72,19 +71,12 @@ class ContractsIntent(CrudIntent):
     def __init__(self):
         super().__init__()
         self._clients_intent = ClientsIntent()
-        self._contacts_intent = ContactsIntent()
         self._incoming_charges = _CHARGES_UNCHANGED
 
     # -- Cross-entity delegates ------------------------------------------------
 
     def get_all_clients_as_map(self):
         return self._clients_intent.get_all_as_map()
-
-    def get_all_contacts_as_map(self):
-        return self._contacts_intent.get_all_as_map()
-
-    def save_client(self, client: Client) -> IntentResult:
-        return self._clients_intent._validated_save(client=client)
 
     def get_default_currency(self) -> IntentResult:
         """Derive default contract currency from the user's operating country."""

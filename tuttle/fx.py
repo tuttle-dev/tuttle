@@ -12,7 +12,6 @@ neither from cache nor from the network yields ``None`` — never zero.
 
 import datetime
 import json
-import logging
 import time
 import urllib.error
 import urllib.request
@@ -22,11 +21,10 @@ from typing import Optional
 
 import pycountry
 from babel.numbers import get_territory_currencies
+from loguru import logger
 
 from .app_db import AppDatabase
 from .tax import NoTaxRules, tax_currency
-
-logger = logging.getLogger(__name__)
 
 # The ECB reference set as published on 2026-07-14; used when the API is
 # unreachable. supported_currencies() prefers the live list.
@@ -78,7 +76,7 @@ def supported_currencies() -> tuple[str, ...]:
         with urllib.request.urlopen(request, timeout=_TIMEOUT) as resp:
             return tuple(sorted(json.load(resp)))
     except (urllib.error.URLError, OSError, ValueError, TimeoutError) as e:
-        logger.warning("Currency list unavailable (%s); using the built-in set.", e)
+        logger.warning("Currency list unavailable ({}); using the built-in set.", e)
         return SUPPORTED_CURRENCIES
 
 
@@ -213,7 +211,7 @@ def _lookup_rate(base: str, quote: str, month_key: str) -> Optional[Decimal]:
         avg = _fetch_monthly_average(base, quote, month)
     except _NoRatesYet:
         if _month_range(month)[1] < datetime.date.today():
-            logger.warning("No %s/%s rates published for %s.", base, quote, month_key)
+            logger.warning("No {}/{} rates published for {}.", base, quote, month_key)
             return None
         # Until the ECB's first fixing of the month (its first business day,
         # ~16:00 CET) the previous month's average is the best estimate.
@@ -222,7 +220,7 @@ def _lookup_rate(base: str, quote: str, month_key: str) -> Optional[Decimal]:
         return _rate(base, quote, f"{previous:%Y-%m}")
     except (urllib.error.URLError, OSError, ValueError, KeyError, TimeoutError) as e:
         logger.warning(
-            "No exchange rate for %s/%s in %s (%s); amounts in %s are left unconverted rather than counted as zero.",
+            "No exchange rate for {}/{} in {} ({}); amounts in {} are left unconverted rather than counted as zero.",
             base,
             quote,
             month_key,

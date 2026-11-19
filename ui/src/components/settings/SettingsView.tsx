@@ -13,7 +13,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Plus, RefreshCw, Save, CheckCircle2, AlertCircle, User, Bot, FileText, RotateCcw, Trash2, AlertTriangle, Monitor, Globe, Info, Image as ImageIcon, X, Sun, Moon, Laptop, Palette, Terminal, Clipboard, Check, MessageCircleQuestion, Bug } from "lucide-react";
 import { useTheme, type ThemeChoice } from "../../hooks/useTheme";
-import { useDismiss } from "../../hooks/useDismiss";
+import { Dialog, DialogBody, DialogFooter } from "../shared/Dialog";
 import { rpc } from "../../api/rpc";
 import type { Entity } from "../../api/types";
 import { str, bool, list as entityList } from "../../api/entity";
@@ -173,7 +173,6 @@ export function SettingsView() {
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deleting, setDeleting] = useState(false);
   const closeDeleteConfirm = () => setDeleteConfirmOpen(false);
-  const deleteBackdrop = useDismiss(closeDeleteConfirm, deleteConfirmOpen && !deleting);
 
   const [invoicing, setInvoicing] = useState<InvoicingPrefs>({ ...DEFAULT_INVOICING });
   const [availableTemplates, setAvailableTemplates] = useState<Record<string, string>>({});
@@ -715,47 +714,45 @@ export function SettingsView() {
 
       {/* Delete confirmation modal */}
       {deleteConfirmOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" {...deleteBackdrop}>
-          <div className="bg-bg-sidebar rounded-xl shadow-2xl w-full max-w-sm mx-4 max-h-[85vh] flex flex-col overflow-hidden">
-            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="flex items-center justify-center w-10 h-10 rounded-full bg-status-danger/10">
-                  <AlertTriangle size={20} className="text-status-danger" />
-                </div>
-                <div>
-                  <h3 className="text-base font-semibold text-primary">Delete user?</h3>
-                  <p className="text-xs text-muted">This will permanently remove all data.</p>
-                </div>
+        <Dialog onClose={closeDeleteConfirm} dismissible={!deleting} width="w-full max-w-sm mx-4" surface="bg-bg-sidebar">
+          <DialogBody className="px-5 py-4 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center w-10 h-10 rounded-full bg-status-danger/10">
+                <AlertTriangle size={20} className="text-status-danger" />
               </div>
-              <p className="text-sm text-secondary">
-                Type <span className="font-mono font-semibold text-primary">{profile.name}</span> to confirm:
-              </p>
-              <input
-                className={inputCls}
-                value={deleteConfirmText}
-                onChange={(e) => setDeleteConfirmText(e.target.value)}
-                placeholder={profile.name}
-                autoFocus
-              />
+              <div>
+                <h3 className="text-base font-semibold text-primary">Delete user?</h3>
+                <p className="text-xs text-muted">This will permanently remove all data.</p>
+              </div>
             </div>
-            <div className="flex justify-end gap-2 px-5 py-3 border-t border-border-subtle shrink-0">
-              <button
-                onClick={closeDeleteConfirm}
-                disabled={deleting}
-                className="px-4 py-1.5 text-sm rounded-md text-secondary hover:bg-bg-hover transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDeleteUser}
-                disabled={deleting || deleteConfirmText !== profile.name}
-                className="px-4 py-1.5 text-sm rounded-md bg-status-danger text-on-fill font-medium hover:bg-status-danger/90 transition-colors disabled:opacity-40"
-              >
-                {deleting ? "Deleting…" : "Delete permanently"}
-              </button>
-            </div>
-          </div>
-        </div>
+            <p className="text-sm text-secondary">
+              Type <span className="font-mono font-semibold text-primary">{profile.name}</span> to confirm:
+            </p>
+            <input
+              className={inputCls}
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              placeholder={profile.name}
+              autoFocus
+            />
+          </DialogBody>
+          <DialogFooter className="flex justify-end gap-2">
+            <button
+              onClick={closeDeleteConfirm}
+              disabled={deleting}
+              className="px-4 py-1.5 text-sm rounded-md text-secondary hover:bg-bg-hover transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleDeleteUser}
+              disabled={deleting || deleteConfirmText !== profile.name}
+              className="px-4 py-1.5 text-sm rounded-md bg-status-danger text-on-fill font-medium hover:bg-status-danger/90 transition-colors disabled:opacity-40"
+            >
+              {deleting ? "Deleting…" : "Delete permanently"}
+            </button>
+          </DialogFooter>
+        </Dialog>
       )}
 
       {tab === "branding" && (

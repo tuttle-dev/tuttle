@@ -7,9 +7,11 @@ from types import SimpleNamespace
 
 import pandas
 import pytest
+from loguru import logger
 
 from tuttle import fx
 from tuttle.app.dashboard.intent import DashboardIntent
+from tuttle.app.system import log_sink
 from tuttle.forecasting import cash_flow_series, contracted_this_year, revenue_series
 from tuttle.kpi import compute_kpis
 from tuttle.model import Address, Client, Contract, Invoice, InvoiceItem, Project, RecurringExpense
@@ -93,6 +95,27 @@ def test_tax_view_leaves_out_an_invoice_and_names_it(offline):
 
     assert spending.net_revenue_ytd == 1000
     assert spending.unconverted == [_usd_label(THIS_MONTH)]
+
+
+def test_a_reminder_is_not_named_as_left_out(offline):
+    """A reminder adds no amount, so a month without a rate leaves nothing of it out."""
+    offline(THIS_MONTH)
+    invoice = _invoice(LAST_MONTH, "2000", currency="USD", paid=False)
+    reminder = Invoice(
+        document_type="reminder",
+        number=invoice.number,
+        date=THIS_MONTH,
+        contract=invoice.contract,
+        sent=True,
+        reminder_level=1,
+    )
+    InvoiceItem(
+        invoice=reminder, quantity=1, unit="flat", unit_price=Decimal("2000"), VAT_rate=Decimal("0"), description="Work"
+    )
+
+    spending = compute_spendable_income([invoice, reminder], "Germany", currency="EUR")
+
+    assert spending.unconverted == []
 
 
 def test_tax_view_leaves_out_an_expense_and_names_it(offline):
@@ -227,3 +250,17 @@ def test_a_failed_lookup_is_not_repeated_for_every_amount(offline, monkeypatch):
     compute_spendable_income(invoices, "Germany", currency="EUR")
 
     assert len(calls) == 1
+
+
+def test_a_missing_rate_shows_in_the_app_log(offline):
+    """The warning reaches the log the app shows, and names the currencies and the month."""
+    offline(LAST_MONTH)
+    log_sink.clear()
+    handler = logger.add(log_sink.sink, level="WARNING")
+    try:
+        assert fx.convert(Decimal("100"), "USD", "EUR", LAST_MONTH) is None
+    finally:
+        logger.remove(handler)
+
+    messages = [entry["message"] for entry in log_sink.get_recent()]
+    assert any(m.startswith(f"No exchange rate for USD/EUR in {LAST_MONTH:%Y-%m} (") for m in messages)

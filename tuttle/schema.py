@@ -5,8 +5,6 @@ from pandera.pandas import (
     Column,
     # SchemaModel,
     DataFrameSchema,
-    DateTime,
-    Decimal,
     String,
     Timedelta,
 )
@@ -22,19 +20,5 @@ time_tracking = DataFrameSchema(
         "description": Column(String, nullable=True),
         "duration": Column(Timedelta),
         "all_day": Column(Bool, nullable=True),
-    },
-)
-
-time_planning = time_tracking  # REVIEW: identical?
-
-
-ledger = DataFrameSchema(
-    columns={
-        "date": Column(DateTime),
-        "name": Column(String),
-        "purpose": Column(String),
-        "account": Column(String),
-        "bank": Column(String),
-        "amount": Column(Decimal),
     },
 )
