@@ -201,13 +201,6 @@ class User(RpcMixin, SQLModel, table=True):
         return next((a for a in self.bank_accounts if a.is_default), None) or next(iter(self.bank_accounts), None)
 
 
-class Bank(SQLModel, table=True):
-    """A bank."""
-
-    id: Optional[int] = Field(default=None, primary_key=True)
-    BLZ: str  # TODO: add type / validator
-
-
 class BankAccount(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
@@ -1690,19 +1683,6 @@ class InvoiceNote(RpcMixin, SQLModel, table=True):
         default_factory=datetime.datetime.now,
         description="When this note was saved.",
     )
-
-
-class TimelineItem(SQLModel, table=True):
-    """An item that appears in the freelancer's timeline."""
-
-    id: Optional[int] = Field(default=None, primary_key=True)
-    time: datetime.datetime = Field(
-        sa_column=sqlalchemy.Column(
-            sqlalchemy.DateTime(timezone=True),
-            nullable=False,
-        )
-    )
-    content: str
 
 
 class FinancialGoal(SQLModel, table=True):
