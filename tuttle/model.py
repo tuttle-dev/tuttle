@@ -969,7 +969,9 @@ class Project(RpcMixin, SQLModel, table=True):
 
     @property
     def effective_rate(self) -> Optional[Decimal]:
-        """The project's own rate, else its contract's."""
+        """The project's own rate, else its contract's. None on a fixed-price contract."""
+        if self.contract is not None and self.contract.is_fixed_price:
+            return None  # a rate left over from a time-based contract must not price hours
         if self.rate is not None:
             return Decimal(str(self.rate))
         if self.contract is not None and self.contract.rate is not None:

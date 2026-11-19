@@ -520,6 +520,18 @@ class InvoicingIntent(Intent):
             invoice = session.get(Invoice, int(invoice_id))
             if invoice is None:
                 return IntentResult(was_intent_successful=False, error_msg="Invoice not found")
+            # Deposits and final invoices are matched to each other by project;
+            # moving one would let a deposit go undeducted.
+            if invoice.document_type in ("deposit", "final"):
+                return IntentResult(
+                    was_intent_successful=False, error_msg="Deposit and final invoices stay with their project."
+                )
+            # Lines from before #666 have no project and count for the invoice's.
+            # Pin that before any line moves, or the rest would follow it.
+            if invoice.project is not None:
+                for item in invoice.items:
+                    if item.project_id is None:
+                        item.project, item.project_id = invoice.project, invoice.project_id
             for item in invoice.items:
                 if str(item.id) not in item_projects:
                     continue
@@ -841,6 +853,7 @@ class InvoicingIntent(Intent):
                     description=item.description,
                     VAT_rate=item.VAT_rate,
                     VAT_category=item.VAT_category,
+                    project_id=item.project_id,
                 )
                 for item in root.items
             ]

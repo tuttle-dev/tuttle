@@ -1417,8 +1417,9 @@ function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid, onTog
                       <span>{str(item, "unit_price_formatted")}/{str(item, "unit") || "hour"}</span>
                       <span>{taxTreatment(taxCategory(str(item, "VAT_category")), num(item, "VAT_rate"))}</span>
                     </div>
-                    {contractProjects.length > 0 && !isRem && (
-                      <select value={item.project_id == null ? "" : String(item.project_id)} aria-label="Project"
+                    {contractProjects.length > 0 && !isRem && !isDeposit(invoice) && !isFinalInvoice(invoice) && (
+                      // A line without its own project counts for the invoice's.
+                      <select value={String(item.project_id ?? invoice.project_id ?? "")} aria-label="Project"
                         onChange={(e) => setItemProject(item.id, e.target.value ? Number(e.target.value) : null)}
                         className="mt-1.5 px-1.5 py-0.5 rounded bg-bg-content border border-border-subtle text-xs text-secondary">
                         <option value="">No project</option>

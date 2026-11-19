@@ -251,3 +251,59 @@ def test_every_timesheet_keeps_its_project_with_prior_invoices(db, setup, monkey
     assert sorted(r[0] for r in rows) == sorted([setup["#a"], setup["#b"]])
     assert sorted(r[0] for r in old) == sorted([setup["#a"], setup["#b"]])
     assert contract_id is not None
+
+
+# -- final review fixes ---------------------------------------------------------
+
+
+def _sql(db, statement, **params):
+    from sqlalchemy import text
+
+    with Session(db) as session:
+        session.exec(text(statement).bindparams(**params))
+        session.commit()
+
+
+def test_booking_one_old_line_keeps_the_others_on_the_invoice_project(db, setup, monkeypatch):
+    """Old invoice: lines without a project belong to the invoice's. Booking one must not move the rest."""
+    intent = _intent(monkeypatch)
+    items = [
+        {"description": "A work", "quantity": 1, "unit": "day", "unit_price": 500},
+        {"description": "B work typed by hand", "quantity": 1, "unit": "day", "unit_price": 500},
+    ]
+    invoice_id = _create(intent, setup, "#a", manual_items=items).data.id
+    _sql(db, "update invoiceitem set project_id = null")  # as before #666
+    second = _saved_invoice(db).items[1]
+    result = intent.set_item_projects(invoice_id, {str(second.id): setup["#b"]})
+    assert result.was_intent_successful, result.error_msg
+    invoice = _saved_invoice(db)
+    assert [i.project_id for i in invoice.items] == [setup["#a"], setup["#b"]]
+    assert invoice.project_id is None
+
+
+@pytest.mark.parametrize("document_type", ["deposit", "final"])
+def test_deposit_and_final_lines_stay_with_their_project(db, setup, monkeypatch, document_type):
+    intent = _intent(monkeypatch)
+    invoice_id = _create(intent, setup, "#a", manual_quantity=1).data.id
+    _sql(db, "update invoice set document_type = :t", t=document_type)
+    item_id = _saved_invoice(db).items[0].id
+    result = intent.set_item_projects(invoice_id, {str(item_id): setup["#b"]})
+    assert not result.was_intent_successful
+    assert result.error_msg == "Deposit and final invoices stay with their project."
+    assert _saved_invoice(db).items[0].project_id == setup["#a"]
+
+
+def test_reminder_of_combined_invoice_names_its_projects(db, setup, monkeypatch):
+    intent = _intent(monkeypatch)
+    invoice_id = _create(intent, setup, "#a", ["#b"]).data.id
+    monkeypatch.setattr("tuttle.rendering.render_invoice", lambda **kw: None)
+    result = intent.create_reminder(invoice_id, "2026-05-01", "2026-05-15")
+    assert result.was_intent_successful, result.error_msg
+    assert result.data.project_titles == "Project #a, Project #b"
+
+
+def test_fixed_price_project_ignores_a_leftover_rate(db, setup):
+    with Session(db) as session:
+        project = session.get(Project, setup["#fp"])
+        project.rate = Decimal("640")  # kept from a time-based contract it was moved off
+        assert project.effective_rate is None

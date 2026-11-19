@@ -119,7 +119,8 @@ export function ProjectsView() {
       start_date: data.startDate,
       end_date: data.endDate || null,
       contract_id: data.contractId,
-      rate: data.rate.trim() ? Number(data.rate) : null,
+      // The field is hidden on fixed-price contracts; never send a leftover rate.
+      rate: data.rate.trim() && !bool(contractsMap[String(data.contractId)] ?? {}, "is_fixed_price") ? Number(data.rate) : null,
     };
     if (mode === "edit" && selected) project.id = selected.id;
     const res = await rpc<Entity>("projects.save", { project });
