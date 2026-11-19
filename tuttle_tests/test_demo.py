@@ -7,6 +7,7 @@ from tuttle import demo
 from tuttle.calendar import ICSCalendar
 from tuttle.model import Client, Contact, Contract, Project
 from tuttle.time import ChargeBasis
+from tuttle.timetracking import invoiced_ranges_by_tag, manual_billing_period
 
 
 @pytest.fixture
@@ -117,6 +118,17 @@ class TestHarryTuttle:
                     assert (item.tag, item.begin) not in billed
                     billed.add((item.tag, item.begin))
         assert billed
+
+    def test_an_invoice_typed_in_by_hand_settles_its_period(self, demo_data):
+        _, invoices = demo_data
+        by_hand = [
+            i
+            for i in invoices
+            if i.is_issued and not i.cancelled and i.project.board_stage() != "Completed" and manual_billing_period(i)
+        ]
+        assert by_hand, "an invoice typed in by hand on a running project"
+        for invoice in by_hand:
+            assert manual_billing_period(invoice) in invoiced_ranges_by_tag(invoices)[invoice.project.tag]
 
     def test_the_one_time_charge_is_billed_once(self, demo_data):
         _, invoices = demo_data

@@ -155,12 +155,12 @@ def compute_planned_revenue(
 ) -> Decimal:
     """Net revenue from this year's calendar work, past and future, not yet invoiced.
 
-    Hours in a timesheet of a non-cancelled invoice are left out, and so are
-    completed projects, which are invoiced and paid in full. Converts
-    hours to revenue via each project's contract rate, and contracts in a
-    foreign currency into *currency* at the current month's rate (uninvoiced
-    work has no invoice date to pin a rate to). Work without a rate is left
-    out, and named in *left_out* if given.
+    Hours in a timesheet of an issued invoice, or in the billing period of one
+    typed in by hand, are left out, and so are completed projects, which are
+    invoiced and paid in full. Converts hours to revenue via each project's
+    contract rate, and contracts in a foreign currency into *currency* at the
+    current month's rate (uninvoiced work has no invoice date to pin a rate
+    to). Work without a rate is left out, and named in *left_out* if given.
 
     With *tracked_only*, only work before today counts: what is ready to invoice.
     """

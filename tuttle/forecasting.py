@@ -176,7 +176,8 @@ def revenue_from_calendar(
     otherwise work billed in a later month than it was performed would
     show up twice: once as "planned" for the month it was done, and again
     as "invoiced" for the month the invoice was actually raised. A draft's
-    hours stay planned until it is sent.
+    hours stay planned until it is sent. An invoice typed in by hand has no
+    timesheet: its billing period counts instead.
 
     Completed projects are left out: they are invoiced and paid in full.
 
