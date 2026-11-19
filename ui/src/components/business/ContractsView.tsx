@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import {
-  FileText, Plus, Trash2, Save, X, Calendar, FileUp, Sparkles, Check, CheckCircle2, FolderKanban, ReceiptText, ArrowRight, ChevronDown, ChevronRight, XCircle, Milestone, Copy,
+  FileText, Plus, Save, X, Calendar, FileUp, CheckCircle2, FolderKanban, ReceiptText, ArrowRight, ChevronDown, ChevronRight, XCircle, Milestone, Copy,
 } from "lucide-react";
 import { rpc } from "../../api/rpc";
 import { str, num, bool, entity as subEntity, list as entityList, displayName, formatDate, formatMoney } from "../../api/entity";
@@ -15,6 +15,7 @@ import { DetailHeader, DetailAction, DetailDeleteAction, DetailSubmit, DETAIL_PA
 import { DetailFields, DetailField } from "../shared/DetailFields";
 import { Section } from "../shared/Section";
 import { DocumentImportPanel } from "../shared/DocumentImportPanel";
+import { ParsedCard, AiField } from "../shared/ParsedCard";
 import { useFieldRequirements } from "../../hooks/useFieldRequirements";
 import { useAutoSelect } from "../../hooks/useAutoSelect";
 import { useEditFromNavigation } from "../../hooks/useEditFromNavigation";
@@ -1132,24 +1133,7 @@ function ParsedContractCard({ contract, clients, onAccept, onDiscard, onUpdate }
   onAccept: () => void; onDiscard: () => void; onUpdate: (c: ParsedContract) => void;
 }) {
   return (
-    <div className="rounded-xl border-2 border-status-purple/40 bg-status-purple/5 p-4 space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Sparkles size={14} className="text-status-purple" />
-          <span className="text-sm font-semibold">{contract.title || "Untitled"}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <button onClick={onDiscard}
-            className="flex items-center gap-1 px-2 py-1 rounded text-xs text-secondary hover:text-status-danger hover:bg-status-danger/10 transition-colors">
-            <Trash2 size={12} /> Discard
-          </button>
-          <button onClick={onAccept}
-            className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium text-status-purple hover:bg-status-purple/10 border border-status-purple/30 transition-colors">
-            <Check size={12} /> Accept
-          </button>
-        </div>
-      </div>
-
+    <ParsedCard title={contract.title || "Untitled"} onAccept={onAccept} onDiscard={onDiscard}>
       <div className="grid grid-cols-3 gap-2">
         <AiField label="Title" value={contract.title} onChange={(v) => onUpdate({ ...contract, title: v })} />
         <AiField label="Rate" value={String(contract.rate ?? "")} onChange={(v) => onUpdate({ ...contract, rate: parseFloat(v) || null })} />
@@ -1181,16 +1165,6 @@ function ParsedContractCard({ contract, clients, onAccept, onDiscard, onUpdate }
           {clients.map((c) => <option key={c.id} value={c.id}>{str(c, "name")}</option>)}
         </select>
       </div>
-    </div>
-  );
-}
-
-function AiField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
-  return (
-    <div>
-      <label className="block text-xs text-status-purple/70 mb-0.5">{label}</label>
-      <input type="text" value={value} onChange={(e) => onChange(e.target.value)}
-        className="w-full px-2.5 py-1.5 rounded-md text-sm bg-bg-card text-primary border border-status-purple/30 outline-none focus:border-status-purple transition-colors" />
-    </div>
+    </ParsedCard>
   );
 }
