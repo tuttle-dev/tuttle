@@ -916,7 +916,7 @@ class Project(RpcMixin, SQLModel, table=True):
     """A project is a group of contract work for a client."""
 
     __rpc_relationships__ = ("contract",)
-    __rpc_computed__ = ("is_fixed_price",)
+    __rpc_computed__ = ("is_fixed_price", "effective_rate")
 
     id: Optional[int] = Field(default=None, primary_key=True)
     title: str = Field(
@@ -937,6 +937,10 @@ class Project(RpcMixin, SQLModel, table=True):
         default=None,
         description="Explicit pipeline stage override: Lead, Offer, Upcoming, Active, or Completed. "
         "When set, takes precedence over the date-derived status.",
+    )
+    rate: Optional[condecimal(decimal_places=2)] = Field(
+        default=None,
+        description="Rate for this project, in the contract's unit and currency. Empty uses the contract rate.",
     )
     # Project n:1 Contract
     contract_id: int = Field(foreign_key="contract.id", ondelete="RESTRICT")
@@ -962,6 +966,15 @@ class Project(RpcMixin, SQLModel, table=True):
     @property
     def is_fixed_price(self) -> bool:
         return self.contract is not None and self.contract.is_fixed_price
+
+    @property
+    def effective_rate(self) -> Optional[Decimal]:
+        """The project's own rate, else its contract's."""
+        if self.rate is not None:
+            return Decimal(str(self.rate))
+        if self.contract is not None and self.contract.rate is not None:
+            return Decimal(str(self.contract.rate))
+        return None
 
     @property
     def client(self) -> Optional[Client]:
@@ -1601,6 +1614,17 @@ class InvoiceItem(RpcMixin, VatCategoryMixin, SQLModel, table=True):
     # Assigning the object rather than the raw id lets the FK resolve on flush,
     # which matters when the charge itself is not yet persisted.
     contract_charge: Optional[ContractCharge] = Relationship(
+        sa_relationship_kwargs={"lazy": "subquery"},
+    )
+    # The project this line bills. Null on lines older than #666; readers fall
+    # back to the invoice's project.
+    project_id: Optional[int] = Field(
+        default=None,
+        foreign_key="project.id",
+        ondelete="SET NULL",
+        description="The project this line bills, if any.",
+    )
+    project: Optional[Project] = Relationship(
         sa_relationship_kwargs={"lazy": "subquery"},
     )
     # invoice
