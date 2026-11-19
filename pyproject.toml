@@ -22,7 +22,6 @@ classifiers = [
 dependencies = [
     "pytest",
     "pandas",
-    "altair",
     "pydantic",
     "sqlmodel>=0.0.50",
     "ics",
