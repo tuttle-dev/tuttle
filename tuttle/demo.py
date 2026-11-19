@@ -645,8 +645,8 @@ def create_demo_business(user: User, today: date) -> tuple[Dict[str, Project], L
     )
 
     # Finished and paid. Its invoice was written outside Tuttle and has no
-    # timesheet, so only the completed mark keeps its calendar time out of
-    # Planned revenue.
+    # timesheet: its billing period and the completed mark keep its calendar
+    # time out of Planned revenue.
     inspection_start = today - timedelta(days=85)
     inspection_end = today - timedelta(days=30)
     projects.append(
@@ -989,6 +989,44 @@ def _bill_tracked_time(
     return invoice
 
 
+def _bill_by_hand(
+    time_data: DataFrame,
+    project: Project,
+    start: date,
+    end: date,
+    invoice_date: date,
+    number: Callable[[date], str],
+) -> Optional[Invoice]:
+    """Invoice *project* from *start* to *end* by a typed quantity, without a timesheet, as a manual invoice does.
+
+    Harry bills the tracked hours rounded down to full ten.
+    """
+    days = time_data.index.date
+    tracked = time_data[(time_data["tag"] == project.tag) & (days >= start) & (days <= end)]
+    hours = timetracking.total_event_hours(tracked) // 10 * 10
+    if not hours:
+        return None
+    contract = project.contract
+    return Invoice(
+        number=number(invoice_date),
+        date=invoice_date,
+        contract=contract,
+        project=project,
+        items=[
+            InvoiceItem(
+                start_date=start,
+                end_date=end,
+                quantity=hours,
+                unit=contract.unit.value,
+                unit_price=contract.rate,
+                description=project.title,
+                VAT_rate=contract.VAT_rate,
+                VAT_category=contract.VAT_category,
+            )
+        ],
+    )
+
+
 def _copy_items(invoice: Invoice, extra: float = 0) -> List[InvoiceItem]:
     """New items like those of *invoice*, each with *extra* added to its quantity."""
     return [
@@ -1039,14 +1077,19 @@ def create_demo_invoices(projects: Dict[str, Project], time_data: DataFrame, tod
     Invoices are paid once they are due, except those that show the rest of
     the workflow: an overdue invoice with a payment reminder, an overdue one
     still waiting for its reminder, a cancelled invoice and its correction, a
-    draft, deposits and a final invoice.
+    draft, an invoice typed in by hand, deposits and a final invoice.
     """
     number = _invoice_numbers()
     invoices: List[Invoice] = []
 
+    # The latest quarter is typed in by hand, for fewer hours than tracked. It
+    # has no timesheet: its billing period keeps the quarter's calendar time
+    # out of Planned revenue.
     maintenance = projects["#heatingengineering"]
-    for start, end, on in _billing_periods(maintenance.start_date, 3, today, workdays_after=2):
-        if invoice := _bill_tracked_time(time_data, maintenance, start, end, on, number):
+    periods = list(_billing_periods(maintenance.start_date, 3, today, workdays_after=2))
+    for k, (start, end, on) in enumerate(periods):
+        bill = _bill_by_hand if k == len(periods) - 1 else _bill_tracked_time
+        if invoice := bill(time_data, maintenance, start, end, on, number):
             invoices.append(_send(invoice, today))
 
     # Shangri-La Towers' invoices close with a saved note. The invoice of two

@@ -37,13 +37,32 @@ def total_event_hours(df: DataFrame, tag_to_workday: dict | None = None) -> floa
     return round(sum(sum_hours_by_tag(df, tag_to_workday).values()), 2)
 
 
+def manual_billing_period(invoice: Invoice) -> tuple | None:
+    """First and last day billed by an invoice typed in by hand on a time-based contract.
+
+    Such an invoice has no timesheet, only the billing period on its items.
+    None for any other invoice: one with a timesheet, a reminder, a deposit
+    or final invoice, a fixed price, or items that carry no dates.
+    """
+    if invoice.timesheets or invoice.document_type != "invoice":
+        return None
+    if invoice.contract is None or invoice.contract.is_fixed_price:
+        return None
+    dated = [item for item in invoice.items if item.start_date and item.end_date]
+    if not dated:
+        return None
+    return min(item.start_date for item in dated), max(item.end_date for item in dated)
+
+
 def invoiced_ranges_by_tag(invoices: List[Invoice]) -> dict:
     """Map project tag -> list of (period_start, period_end) already invoiced.
 
     A timesheet's period is the exact slice of calendar hours that were
     pulled into an invoice, regardless of the invoice's own date (an
-    invoice raised in August can cover a timesheet for July). Cancelled
-    invoices and drafts don't count: their hours are still un-invoiced.
+    invoice raised in August can cover a timesheet for July). An invoice
+    typed in by hand settles its billing period the same way, whatever
+    quantity it bills. Cancelled invoices and drafts don't count: their
+    hours are still un-invoiced.
     """
     ranges: dict = {}
     for inv in invoices:
@@ -54,11 +73,14 @@ def invoiced_ranges_by_tag(invoices: List[Invoice]) -> dict:
             if not tag:
                 continue
             ranges.setdefault(tag, []).append((ts.period_start, ts.period_end))
+        period = manual_billing_period(inv)
+        if period and inv.project and inv.project.tag:
+            ranges.setdefault(inv.project.tag, []).append(period)
     return ranges
 
 
 def drop_invoiced(time_data: DataFrame, invoices: List[Invoice]) -> DataFrame:
-    """Calendar rows that no timesheet of an issued, non-cancelled invoice covers yet."""
+    """Calendar rows that no issued, non-cancelled invoice covers yet, by timesheet or billing period."""
     invoiced_ranges = invoiced_ranges_by_tag(invoices)
     if not invoiced_ranges:
         return time_data
