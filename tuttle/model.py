@@ -29,7 +29,7 @@ from typing import List, Literal, NamedTuple, Optional, Type
 
 import pandas
 import sqlalchemy
-from pydantic import BaseModel, condecimal, validator
+from pydantic import BaseModel, NaiveDatetime, condecimal, validator
 from sqlalchemy.orm.attributes import set_committed_value
 from sqlmodel import Field, Relationship, SQLModel
 
@@ -1061,8 +1061,8 @@ class TimeTrackingItem(SQLModel, table=True):
     timesheet_id: Optional[int] = Field(default=None, foreign_key="timesheet.id", ondelete="CASCADE")
     timesheet: Optional["Timesheet"] = Relationship(back_populates="items")
     #
-    begin: datetime.datetime = Field(description="Start time of the time interval.")
-    end: datetime.datetime = Field(description="End time of the time interval.")
+    begin: NaiveDatetime = Field(description="Start time of the time interval.")
+    end: NaiveDatetime = Field(description="End time of the time interval.")
     duration: datetime.timedelta = Field(description="Duration of the time interval.")
     title: str = Field(description="A short description of the time interval.")
     tag: str = Field(description="A short tag to identify the project the time interval belongs to.")
@@ -1087,7 +1087,7 @@ class TimeTrackingSettings(SQLModel, table=True):
     )
     calendar_id: Optional[str] = Field(default=None, description="Identifier of the connected system calendar.")
     calendar_name: Optional[str] = Field(default=None, description="Display name of the connected calendar or file.")
-    timer_start: Optional[datetime.datetime] = Field(
+    timer_start: Optional[NaiveDatetime] = Field(
         default=None,
         description="When the running timer was started, in UTC; None when no timer is running.",
     )
@@ -1766,7 +1766,7 @@ class InvoiceNote(RpcMixin, SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     text: str = Field(description="The note text content.")
-    created_at: datetime.datetime = Field(
+    created_at: NaiveDatetime = Field(
         default_factory=datetime.datetime.now,
         description="When this note was saved.",
     )
@@ -1906,7 +1906,7 @@ class TaskRule(RpcMixin, SQLModel, table=True):
         description="Only for this client's contracts, projects and invoices. None means every client.",
     )
     paused: bool = Field(default=False)
-    created_at: datetime.datetime = Field(
+    created_at: NaiveDatetime = Field(
         default_factory=datetime.datetime.now,
         description="Contract and project dates before this day are left alone, and so are dates the rule has passed.",
     )
@@ -1962,7 +1962,7 @@ class Task(RpcMixin, SQLModel, table=True):
         default="pending",
         description="pending | done | dismissed",
     )
-    created_at: datetime.datetime = Field(default_factory=datetime.datetime.now)
+    created_at: NaiveDatetime = Field(default_factory=datetime.datetime.now)
     rule_id: Optional[int] = Field(
         default=None,
         foreign_key="taskrule.id",

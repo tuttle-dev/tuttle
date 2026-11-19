@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from loguru import logger
+from pydantic import NaiveDatetime
 from sqlalchemy import event
 from sqlmodel import Field, Session, SQLModel, create_engine, select
 
@@ -35,10 +36,10 @@ class RegisteredUser(SQLModel, table=True):
     subtitle: str = ""
     db_file: str = Field(sa_column_kwargs={"unique": True})
     is_demo: bool = False
-    created_at: datetime.datetime = Field(
+    created_at: NaiveDatetime = Field(
         default_factory=datetime.datetime.now,
     )
-    last_active_at: Optional[datetime.datetime] = None
+    last_active_at: Optional[NaiveDatetime] = None
 
 
 class AppSetting(SQLModel, table=True):

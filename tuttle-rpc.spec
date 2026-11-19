@@ -103,7 +103,6 @@ hiddenimports = collect_submodules("tuttle.app") + [
     "ics",
     "loguru",
     "pandera",
-    "PyPDF2",
     "fitz",  # pymupdf
 ]
 
