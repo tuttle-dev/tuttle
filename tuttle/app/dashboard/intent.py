@@ -208,7 +208,7 @@ class DashboardIntent(SQLModelDataSourceMixin, Intent):
         totals: dict = {}
         left_out: dict = {}
         for inv in invoices:
-            if inv.cancelled or not inv.paid or inv.date > today:
+            if not inv.is_counted or not inv.paid or inv.date > today:
                 continue
             year = inv.date.year
             converted = convert_invoice(inv, currency, left_out.setdefault(year, []))

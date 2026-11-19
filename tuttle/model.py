@@ -1484,6 +1484,15 @@ class Invoice(RpcMixin, SQLModel, table=True):
         return bool(self.sent or self.paid)
 
     @property
+    def is_counted(self) -> bool:
+        """Whether revenue, tax and cash figures count the invoice.
+
+        They count an issued invoice that is not cancelled. A reminder is
+        left out: it repeats the invoice it chases, which is counted already.
+        """
+        return self.is_issued and not self.cancelled and not self.is_reminder
+
+    @property
     def reminder_chain_head_id(self) -> Optional[int]:
         """Walk reminder_for up to the root invoice and return its id.
 

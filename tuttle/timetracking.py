@@ -53,7 +53,7 @@ def invoiced_ranges_by_tag(invoices: List[Invoice]) -> dict:
     """
     ranges: dict = {}
     for inv in invoices:
-        if inv.cancelled or not inv.is_issued:
+        if not inv.is_counted:
             continue
         for ts in inv.timesheets:
             tag = ts.project.tag if ts.project else None
