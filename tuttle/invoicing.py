@@ -371,7 +371,7 @@ def generate_invoice_email(
     values = {
         "name": contact.name if contact.name else client.name,
         "number": invoice.number,
-        "project": invoice.project.title if invoice.project else "",
+        "project": invoice.project_titles,
         "sender": user.name,
     }
     if not invoice.is_reminder:

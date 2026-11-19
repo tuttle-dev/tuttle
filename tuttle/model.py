@@ -1188,6 +1188,8 @@ class Invoice(RpcMixin, SQLModel, table=True):
         "deposit_chain_head_id",
         "has_timesheet",
         "timesheet_pdf_path",
+        "timesheet_pdf_paths",
+        "project_titles",
         "remaining_balance",
         "remaining_balance_formatted",
         "deposits_deducted_formatted",
@@ -1558,15 +1560,28 @@ class Invoice(RpcMixin, SQLModel, table=True):
         return bool(self.timesheets)
 
     @property
+    def timesheet_pdf_paths(self) -> List[dict]:
+        """Rendered timesheet PDFs, one per billed project: ``{"project", "path"}``."""
+        paths = []
+        for ts in self.timesheets:
+            p = get_data_dir() / "Timesheets" / f"{ts.prefix}.pdf"
+            if ts.rendered and p.exists():
+                paths.append({"project": ts.project.title if ts.project else "", "path": str(p)})
+        return paths
+
+    @property
     def timesheet_pdf_path(self) -> Optional[str]:
-        """Filesystem path of the timesheet PDF, if it has been rendered."""
-        if not self.timesheets:
-            return None
-        ts = self.timesheets[0]
-        if not ts.rendered:
-            return None
-        p = get_data_dir() / "Timesheets" / f"{ts.prefix}.pdf"
-        return str(p) if p.exists() else None
+        """Filesystem path of the first timesheet PDF, if it has been rendered."""
+        paths = self.timesheet_pdf_paths
+        return paths[0]["path"] if paths else None
+
+    @property
+    def project_titles(self) -> str:
+        """The invoice's project, or the projects its lines bill, comma-separated."""
+        if self.project is not None:
+            return self.project.title
+        titles = dict.fromkeys(item.project.title for item in self.items if item.project is not None)
+        return ", ".join(titles)
 
 
 class InvoiceItem(RpcMixin, VatCategoryMixin, SQLModel, table=True):
