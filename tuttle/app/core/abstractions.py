@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import datetime
 import functools
-from abc import ABC, abstractmethod
+from abc import ABC
 from pathlib import Path
 from typing import Any, List, Mapping, Optional, Type
 
@@ -46,79 +46,6 @@ def _validation_error_message(exc: ValidationError) -> str:
             msg = msg.removeprefix("Value error, ")
         parts.append(f"{label}: {msg}")
     return "; ".join(parts) or "Validation failed."
-
-
-class DatabaseStorage(ABC):
-    """Abstract class for database storage"""
-
-    def __init__(
-        self,
-    ):
-        super().__init__()
-
-    @abstractmethod
-    def create_model(self):
-        """Creates database model"""
-        pass
-
-    @abstractmethod
-    def ensure_database(self):
-        """
-        Ensure that the database exists and is up to date.
-        """
-        pass
-
-    @abstractmethod
-    def reset_database(self):
-        """
-        Delete the database and rebuild database model.
-        """
-        pass
-
-    @abstractmethod
-    def install_demo_data(
-        self,
-    ):
-        """Install demo data into the database."""
-
-    @abstractmethod
-    def ensure_app_dir(self) -> Path:
-        """Ensures that the user directory exists"""
-        pass
-
-
-class ClientStorage(ABC):
-    """Abstract class for client storage"""
-
-    def __init__(
-        self,
-    ):
-        super().__init__()
-        self.keys_prefix = "tuttle_app_"
-
-    @abstractmethod
-    def set_value(self, key: str, value: any):
-        """appends an identifier prefix to the key and stores the key-value pair
-        value can be a string, number, boolean or list
-        """
-        pass
-
-    @abstractmethod
-    def get_value(self, key: str) -> Optional[any]:
-        """appends an identifier prefix to the key and gets the value if exists"""
-        pass
-
-    @abstractmethod
-    def remove_value(self, key: str):
-        """appends an identifier prefix to the key and removes associated key-value pair if exists"""
-        pass
-
-    @abstractmethod
-    def clear_preferences(
-        self,
-    ):
-        """Deletes all of preferences permanently"""
-        pass
 
 
 # ---------------------------------------------------------------------------
@@ -403,17 +330,6 @@ class CrudIntent(SQLModelDataSourceMixin, Intent):
                 log_message=f"{self.__class__.__name__}.delete({entity_id}): {e}",
                 exception=e,
             )
-
-    # -- Filtered views (require is_completed / is_active / is_upcoming) -------
-
-    def get_completed_as_map(self) -> Mapping[int, Any]:
-        return {k: v for k, v in self.get_all_as_map().items() if v.is_completed}
-
-    def get_active_as_map(self) -> Mapping[int, Any]:
-        return {k: v for k, v in self.get_all_as_map().items() if v.is_active()}
-
-    def get_upcoming_as_map(self) -> Mapping[int, Any]:
-        return {k: v for k, v in self.get_all_as_map().items() if v.is_upcoming()}
 
     # -- Toggle helpers --------------------------------------------------------
 

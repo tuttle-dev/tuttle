@@ -104,7 +104,7 @@ It is called when:
 
 - A user is switched (`tuttle/app/users/intent.py::_switch_to_user_db`)
 - A user is registered (same module, `create`)
-- The DB storage layer initialises (`app/core/database_storage_impl.py`)
+- The demo data is installed (`tuttle/demo.py::install_demo_data`)
 
 `ensure_schema` does, in order:
 

@@ -60,10 +60,6 @@ def use_language(language: str):
         _current.reset(token)
 
 
-def current_language() -> str:
-    return _current.get()
-
-
 def babel_locale() -> str:
     """Babel locale for formatting numbers, dates and money in the current language."""
     language = _current.get()

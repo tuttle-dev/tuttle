@@ -1,11 +1,9 @@
 import datetime as _dt
 from datetime import date
 from decimal import Decimal
-from pathlib import Path
-from typing import Mapping, Optional
+from typing import Optional
 
 from loguru import logger
-from pandas import DataFrame
 
 from ... import einvoice, invoicing, mail, rendering, timetracking
 from ...app_db import AppDatabase
@@ -14,7 +12,6 @@ from ...i18n import SUPPORTED, use_language
 from ...model import Client, Invoice, InvoiceItem, Project, Timesheet, User, round_quantity
 from ...time import ChargeBasis
 from ..auth.data_source import UserDataSource
-from ..auth.intent import AuthIntent
 from ..core.abstractions import Intent
 from ..core.intent_result import IntentResult
 from ..preferences.intent import PreferencesIntent
@@ -30,7 +27,6 @@ from ..preferences.model import (
 )
 from ..projects.intent import ProjectsIntent
 from ..timetracking.data_source import TimeTrackingDataFrameSource
-from ..timetracking.intent import TimeTrackingIntent
 from .data_source import InvoicingDataSource
 
 
@@ -80,14 +76,12 @@ def _document_language(client: Optional[Client]) -> str:
 class InvoicingIntent(Intent):
     """Invoicing CRUD, creation orchestration, and status toggles."""
 
-    def __init__(self, client_storage=None):
+    def __init__(self):
         self._projects_intent = ProjectsIntent()
         self._invoicing_data_source = InvoicingDataSource()
         self._timetracking_data_source = TimeTrackingDataFrameSource()
         self._user_data_source = UserDataSource()
-        self._auth_intent = AuthIntent()
         self._preferences_intent = PreferencesIntent()
-        self._timetracking_intent = TimeTrackingIntent()
 
     # -- RPC-facing CRUD -------------------------------------------------------
 
@@ -436,23 +430,6 @@ class InvoicingIntent(Intent):
 
     def available_e_invoice_profiles(self) -> IntentResult:
         return IntentResult(was_intent_successful=True, data=E_INVOICE_PROFILES)
-
-    def get_user(self) -> IntentResult[User]:
-        user = self._user_data_source.get_user()
-        return IntentResult(was_intent_successful=True, data=user)
-
-    def get_active_projects_as_map(self) -> Mapping[int, Project]:
-        return self._projects_intent.get_active_as_map()
-
-    def get_all_invoices_as_map(self) -> Mapping[int, Invoice]:
-        result = self._invoicing_data_source.get_all_invoices()
-        if result.was_intent_successful:
-            invoices = result.data
-            invoices_map = {invoice.id: invoice for invoice in invoices}
-            return invoices_map
-        else:
-            result.log_message_if_any()
-            return {}
 
     def delete_invoice_by_id(self, invoice_id) -> IntentResult[None]:
         """Delete an invoice by id (cascades to timesheets and invoice items)."""
@@ -923,15 +900,6 @@ class InvoicingIntent(Intent):
                 error_msg=f"Failed to send the reminder by mail: {ex}",
             )
 
-    def update_invoice(
-        self,
-        invoice: Invoice,
-    ) -> IntentResult:
-        result: IntentResult = self._invoicing_data_source.save_invoice(invoice)
-        if not result.was_intent_successful:
-            result.log_message_if_any()
-        return result
-
     def send_invoice_by_mail(self, invoice: Invoice) -> IntentResult[None]:
         """attempts to trigger the mail client to send the intent as attachment"""
         invoice_path = get_data_dir() / "Invoices" / invoice.file_name
@@ -977,10 +945,6 @@ class InvoicingIntent(Intent):
                 was_intent_successful=False,
                 error_msg=f"Failed to send the invoice by mail: {ex}",
             )
-
-    def generate_invoice_doc(self, invoice: Invoice) -> IntentResult:
-        """TODO Attempts to generate the invoice as a pdf and open the location"""
-        return IntentResult(was_intent_successful=False, error_msg="Not implemented")
 
     def toggle_invoice_sent_status(self, invoice: Invoice) -> IntentResult[Invoice]:
         """
@@ -1114,58 +1078,6 @@ class InvoicingIntent(Intent):
                 ),
             )
 
-    def view_invoice(self, invoice: Invoice) -> IntentResult[Path]:
-        """Resolve the PDF path for an invoice."""
-        if not invoice.rendered:
-            return IntentResult(
-                was_intent_successful=False,
-                error_msg="The invoice has not been rendered.",
-            )
-        try:
-            pdf_path = get_data_dir() / "Invoices" / invoice.file_name
-            if not pdf_path.exists():
-                return IntentResult(
-                    was_intent_successful=False,
-                    error_msg=f"Invoice file not found: {pdf_path.name}",
-                )
-            return IntentResult(was_intent_successful=True, data=pdf_path)
-        except Exception as ex:
-            error_message = f"Failed to open the invoice: {ex.__class__.__name__}"
-            logger.error(error_message)
-            logger.exception(ex)
-            return IntentResult(
-                was_intent_successful=False,
-                error_msg=error_message,
-            )
-
-    def view_timesheet_for_invoice(self, id) -> IntentResult[Path]:
-        """Resolve the PDF path for the timesheet belonging to an invoice."""
-        result = self._invoicing_data_source.get_invoice_by_id(int(id))
-        if not result.was_intent_successful or not result.data:
-            return IntentResult(was_intent_successful=False, error_msg="Invoice not found")
-        invoice = result.data
-        try:
-            timesheet = self._invoicing_data_source.get_timesheet_for_invoice(invoice)
-            timesheet_path = get_data_dir() / "Timesheets" / f"{timesheet.prefix}.pdf"
-            if not timesheet_path.exists():
-                return IntentResult(
-                    was_intent_successful=False,
-                    error_msg=f"Timesheet file not found: {timesheet_path.name}",
-                )
-            return IntentResult(was_intent_successful=True, data=timesheet_path)
-        except ValueError as ve:
-            logger.error(f"Error getting timesheet for invoice: {ve}")
-            logger.exception(ve)
-            return IntentResult(was_intent_successful=False, error_msg=str(ve))
-        except Exception as ex:
-            error_message = f"Failed to open the timesheet: {ex.__class__.__name__}"
-            logger.error(error_message)
-            logger.exception(ex)
-            return IntentResult(
-                was_intent_successful=False,
-                error_msg=error_message,
-            )
-
     def render_timesheet_for_invoice(self, id) -> IntentResult[Invoice]:
         """Post-hoc render of the timesheet PDF for an existing invoice.
 
@@ -1212,14 +1124,3 @@ class InvoicingIntent(Intent):
                 was_intent_successful=False,
                 error_msg=_pdf_failure("Timesheet", ex),
             )
-
-    def check_rendering(self) -> IntentResult:
-        """Verify that the PDF rendering engine is loadable."""
-        unavailable = rendering.pdf_engine_unavailable_message()
-        if unavailable:
-            return IntentResult(was_intent_successful=False, error_msg=unavailable)
-        return IntentResult(was_intent_successful=True)
-
-    def get_time_tracking_data_as_dataframe(self) -> Optional[DataFrame]:
-        result = self._timetracking_intent.get_timetracking_data()
-        return result.data
