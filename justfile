@@ -185,6 +185,17 @@ deps-node:
 # Install all dependencies
 deps-all: deps deps-node
 
+# Nothing else moves the lockfiles: `uv sync`, `uv lock` and `npm ci` all keep
+# the locked versions. This rewrites uv.lock and ui/package-lock.json and
+# installs the result; run `just test` before committing. The "Upgrade
+# Dependencies" workflow does the same once a week and opens a pull request.
+#
+# Upgrade every dependency to the newest version its declared range allows
+upgrade:
+    uv lock --upgrade
+    uv sync
+    cd "{{electron}}" && npm update
+
 # Install the pre-commit hooks (run once after cloning)
 precommit:
     uv run --no-sync pre-commit install

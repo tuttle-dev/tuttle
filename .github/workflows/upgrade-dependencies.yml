@@ -1,0 +1,149 @@
+name: Upgrade Dependencies
+# Nothing else moves the lockfiles: `uv sync`, `uv lock` and `npm ci` all keep
+# the locked versions, so without this they go stale and security alerts pile
+# up. Once a week this upgrades both lockfiles to the newest versions the
+# declared ranges allow (the same as `just upgrade`) and opens one pull request,
+# or refreshes the one still open. The usual checks then test the result.
+#
+# Needs the repository secret DEPENDENCY_UPGRADE_TOKEN: a fine-grained personal
+# access token for this repository with "Contents" and "Pull requests" set to
+# "Read and write". The default GITHUB_TOKEN will not do: a pull request opened
+# with it does not start other workflows, so the required checks never run.
+
+on:
+  schedule:
+    - cron: "0 5 * * 1" # Mondays, 05:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: upgrade-dependencies
+
+jobs:
+  # Resolves the new versions. Resolving can run code from the packages being
+  # upgraded (source builds), so this job gets no secret and no write access;
+  # it only hands the two lockfiles to the next job.
+  upgrade:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.summary.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "latest"
+      - name: Set up Python
+        run: uv python install 3.14
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Upgrade uv.lock
+        run: uv lock --upgrade 2>&1 | tee "$RUNNER_TEMP/uv-upgrade.log"
+      # Lockfile only: nothing is installed, so no package script runs.
+      - name: Upgrade ui/package-lock.json
+        working-directory: ui
+        run: |
+          cp package-lock.json "$RUNNER_TEMP/package-lock.before.json"
+          npm update --package-lock-only --ignore-scripts
+
+      - name: Summarize the changes
+        id: summary
+        run: |
+          if git diff --quiet -- uv.lock ui/package-lock.json; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Both lockfiles are up to date." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+          python_changes=$(grep -E '^(Updated|Added|Removed) ' "$RUNNER_TEMP/uv-upgrade.log" | sed 's/^/- /' || true)
+          ui_changes=$(
+            jq -r '(.dependencies // {}) + (.devDependencies // {}) | keys[]' ui/package.json |
+              while read -r name; do
+                before=$(jq -r --arg key "node_modules/$name" '.packages[$key].version // "none"' "$RUNNER_TEMP/package-lock.before.json")
+                after=$(jq -r --arg key "node_modules/$name" '.packages[$key].version // "none"' ui/package-lock.json)
+                if [ "$before" != "$after" ]; then echo "- $name $before → $after"; fi
+              done
+          )
+          if git diff --quiet -- ui/package-lock.json; then
+            ui_changes="No changes."
+          elif [ -z "$ui_changes" ]; then
+            ui_changes="Only transitive dependencies changed."
+          fi
+
+          {
+            echo "Weekly upgrade of both lockfiles to the newest versions the declared ranges allow (\`just upgrade\`)."
+            echo
+            echo "The checks on this pull request test the result. Packaging is not built here: the core smoke test runs in the merge queue, and Pack Electron App runs on \`main\`."
+            echo
+            echo "**Python** (\`uv.lock\`)"
+            echo
+            echo "${python_changes:-No changes.}"
+            echo
+            echo "**UI** (\`ui/package-lock.json\`), direct dependencies"
+            echo
+            echo "$ui_changes"
+          } > upgrade-summary.md
+          cat upgrade-summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v7
+        if: steps.summary.outputs.changed == 'true'
+        with:
+          name: upgraded-lockfiles
+          retention-days: 7
+          path: |
+            uv.lock
+            ui/package-lock.json
+            upgrade-summary.md
+
+  # Commits the lockfiles to the branch `upgrade-dependencies` and opens the
+  # pull request. The branch is rebuilt from main on every run, so a pull
+  # request left open is brought up to date instead of a second one appearing.
+  open-pull-request:
+    needs: upgrade
+    if: needs.upgrade.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    env:
+      BRANCH: upgrade-dependencies
+    steps:
+      - name: Require the token
+        env:
+          TOKEN: ${{ secrets.DEPENDENCY_UPGRADE_TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "::error::The secret DEPENDENCY_UPGRADE_TOKEN is not set. Create a fine-grained personal access token for this repository with Contents and Pull requests set to Read and write, then save it under Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v7
+        with:
+          name: upgraded-lockfiles
+          path: ${{ runner.temp }}/upgrade
+      - name: Push the branch and open or refresh the pull request
+        env:
+          GH_TOKEN: ${{ secrets.DEPENDENCY_UPGRADE_TOKEN }}
+        run: |
+          cp "$RUNNER_TEMP/upgrade/uv.lock" uv.lock
+          cp "$RUNNER_TEMP/upgrade/ui/package-lock.json" ui/package-lock.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B "$BRANCH"
+          git commit -m "Upgrade dependencies" -- uv.lock ui/package-lock.json
+          git push --force "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "$BRANCH"
+
+          open=$(gh pr list --repo "$GITHUB_REPOSITORY" --head "$BRANCH" --state open --json number --jq '.[0].number // empty')
+          if [ -n "$open" ]; then
+            gh pr edit "$open" --repo "$GITHUB_REPOSITORY" --body-file "$RUNNER_TEMP/upgrade/upgrade-summary.md"
+          else
+            gh pr create --repo "$GITHUB_REPOSITORY" --base main --head "$BRANCH" \
+              --title "Upgrade dependencies" --body-file "$RUNNER_TEMP/upgrade/upgrade-summary.md"
+          fi
