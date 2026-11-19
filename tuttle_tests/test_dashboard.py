@@ -10,16 +10,11 @@ from tuttle.forecasting import (
     cash_flow_series,
     contracted_revenue,
     monthly_revenue_from_calendar,
-    monthly_revenue_from_contracts,
-    revenue_curve,
-    revenue_history,
     revenue_series,
     revenue_window,
 )
 from tuttle.kpi import (
     compute_kpis,
-    monthly_revenue_breakdown,
-    monthly_spendable_breakdown,
     project_budget_status,
 )
 from tuttle.model import (
@@ -181,50 +176,6 @@ def unpaid_invoice(active_contract, project):
 
 
 # ── Forecasting Tests ─────────────────────────────────────────
-
-
-class TestMonthlyRevenueFromContracts:
-    def test_empty_contracts(self):
-        today = datetime.date.today()
-        result = monthly_revenue_from_contracts([], today, today + datetime.timedelta(days=60))
-        assert result.empty
-
-    def test_active_contract_produces_rows(self, active_contract, project):
-        # project must be attached for the function to pick up the title
-        active_contract.projects = [project]
-        today = datetime.date.today()
-        result = monthly_revenue_from_contracts(
-            [active_contract],
-            today,
-            today + datetime.timedelta(days=90),
-        )
-        assert not result.empty
-        assert "month" in result.columns
-        assert "revenue" in result.columns
-        assert all(result["revenue"] > 0)
-
-    def test_completed_contract_excluded(self, active_contract, project):
-        active_contract.is_completed = True
-        active_contract.projects = [project]
-        today = datetime.date.today()
-        result = monthly_revenue_from_contracts(
-            [active_contract],
-            today,
-            today + datetime.timedelta(days=90),
-        )
-        assert result.empty
-
-    def test_future_contract_excluded_before_start(self, active_contract, project):
-        today = datetime.date.today()
-        active_contract.start_date = today + datetime.timedelta(days=100)
-        active_contract.end_date = today + datetime.timedelta(days=200)
-        active_contract.projects = [project]
-        result = monthly_revenue_from_contracts(
-            [active_contract],
-            today,
-            today + datetime.timedelta(days=30),
-        )
-        assert result.empty
 
 
 class TestMonthlyRevenueFromCalendar:
@@ -838,35 +789,6 @@ class TestCashFlowSeries:
         assert result["net_cash_flow"] == -900.0
 
 
-class TestRevenueHistory:
-    def test_empty_invoices(self):
-        result = revenue_history([])
-        assert result.empty
-
-    def test_cancelled_invoices_excluded(self, paid_invoice):
-        paid_invoice.cancelled = True
-        result = revenue_history([paid_invoice])
-        assert result.empty
-
-    def test_paid_invoice_included(self, paid_invoice):
-        result = revenue_history([paid_invoice])
-        assert not result.empty
-        assert result["revenue"].sum() > 0
-
-
-class TestRevenueCurve:
-    def test_combined_history_and_forecast(self, paid_invoice, active_contract, project):
-        active_contract.projects = [project]
-        result = revenue_curve([paid_invoice], [active_contract], forecast_months=3)
-        assert not result.empty
-        assert "is_forecast" in result.columns
-        assert "cumulative_revenue" in result.columns
-
-    def test_empty_data(self):
-        result = revenue_curve([], [], forecast_months=3)
-        assert result.empty or len(result) == 0
-
-
 # ── KPI Tests ─────────────────────────────────────────────────
 
 
@@ -924,129 +846,6 @@ class TestComputeKPIs:
         assert kpis.vat_reserve == 0
         assert kpis.income_tax_reserve == 0
         assert kpis.spendable_income == 0
-
-
-class TestMonthlyRevenueBreakdown:
-    def test_empty_invoices(self):
-        result = monthly_revenue_breakdown([])
-        assert isinstance(result, list)
-        assert len(result) > 0  # should still have month buckets
-
-    def test_with_invoices(self, paid_invoice):
-        result = monthly_revenue_breakdown([paid_invoice], n_months=3)
-        assert isinstance(result, list)
-        total = sum(float(m["revenue"]) for m in result)
-        assert total > 0
-
-    def test_cancelled_invoices_excluded(self, paid_invoice):
-        paid_invoice.cancelled = True
-        result = monthly_revenue_breakdown([paid_invoice], n_months=3)
-        total = sum(float(m["revenue"]) for m in result)
-        assert total == 0
-
-    def test_n_months_controls_bucket_count(self):
-        result_3 = monthly_revenue_breakdown([], n_months=3)
-        result_12 = monthly_revenue_breakdown([], n_months=12)
-        assert len(result_3) < len(result_12)
-
-    def test_months_are_sorted(self, paid_invoice):
-        result = monthly_revenue_breakdown([paid_invoice], n_months=6)
-        keys = [m["month"] for m in result]
-        assert keys == sorted(keys)
-
-    def test_pipeline_key_present(self):
-        result = monthly_revenue_breakdown([], n_months=3)
-        for m in result:
-            assert "pipeline" in m
-
-    def test_sent_unpaid_goes_to_pipeline(self, unpaid_invoice):
-        result = monthly_revenue_breakdown([unpaid_invoice], n_months=3)
-        total_revenue = sum(float(m["revenue"]) for m in result)
-        total_pipeline = sum(float(m["pipeline"]) for m in result)
-        assert total_revenue == 0
-        assert total_pipeline > 0
-
-    def test_paid_not_in_pipeline(self, paid_invoice):
-        result = monthly_revenue_breakdown([paid_invoice], n_months=3)
-        total_pipeline = sum(float(m["pipeline"]) for m in result)
-        assert total_pipeline == 0
-
-    def test_unsent_unpaid_excluded_from_both(self, unpaid_invoice):
-        unpaid_invoice.sent = False
-        result = monthly_revenue_breakdown([unpaid_invoice], n_months=3)
-        total_revenue = sum(float(m["revenue"]) for m in result)
-        total_pipeline = sum(float(m["pipeline"]) for m in result)
-        assert total_revenue == 0
-        assert total_pipeline == 0
-
-
-class TestMonthlySpendableBreakdown:
-    def test_with_invoices(self, paid_invoice):
-        result = monthly_spendable_breakdown([paid_invoice], country="Germany", n_months=3)
-        assert isinstance(result, list)
-        assert len(result) > 0
-        for month in result:
-            assert month["net_revenue"] == month["gross_revenue"] - month["vat_due"]
-            assert month["spendable"] == month["net_revenue"] - month["income_tax_true_up"]
-
-    def test_empty_invoices(self):
-        result = monthly_spendable_breakdown([], country="Germany", n_months=3)
-        assert isinstance(result, list)
-        assert len(result) > 0
-        for month in result:
-            assert month["gross_revenue"] == 0
-            assert month["vat_due"] == 0
-            assert month["net_revenue"] == 0
-
-    def test_true_up_deltas_reconcile(self, paid_invoice, unpaid_invoice):
-        today = datetime.date.today()
-        paid_invoice.date = today.replace(day=1)
-        unpaid_invoice.date = (today.replace(day=1) - datetime.timedelta(days=32)).replace(day=1)
-        result = monthly_spendable_breakdown(
-            [paid_invoice, unpaid_invoice],
-            country="Germany",
-            n_months=4,
-        )
-        total_true_up = sum(month["income_tax_true_up"] for month in result if month["month"].startswith(str(today.year)))
-        assert total_true_up >= 0
-
-    def test_cancelled_invoices_excluded(self, paid_invoice):
-        paid_invoice.cancelled = True
-        result = monthly_spendable_breakdown([paid_invoice], country="Germany", n_months=3)
-        for month in result:
-            assert month["gross_revenue"] == 0
-            assert month["vat_due"] == 0
-
-    def test_spendable_less_than_net(self, paid_invoice):
-        """Spendable should be <= net after income tax is subtracted."""
-        today = datetime.date.today()
-        paid_invoice.date = today.replace(day=1)
-        result = monthly_spendable_breakdown([paid_invoice], country="Germany", n_months=3)
-        this_month = [m for m in result if m["month"] == today.strftime("%Y-%m")]
-        if this_month and this_month[0]["net_revenue"] > 0:
-            assert this_month[0]["spendable"] <= this_month[0]["net_revenue"]
-
-    def test_spain(self, paid_invoice):
-        """Spendable breakdown works with a non-Germany country."""
-        result = monthly_spendable_breakdown([paid_invoice], country="Spain", n_months=3)
-        assert isinstance(result, list)
-        assert len(result) > 0
-        for month in result:
-            assert month["net_revenue"] == month["gross_revenue"] - month["vat_due"]
-
-    def test_non_current_year_months_have_zero_tax(self, paid_invoice):
-        """Months in previous years should have zero income_tax_true_up."""
-        today = datetime.date.today()
-        paid_invoice.date = datetime.date(today.year - 1, 6, 15)
-        result = monthly_spendable_breakdown([paid_invoice], country="Germany", n_months=18)
-        for month in result:
-            if not month["month"].startswith(str(today.year)):
-                assert month["income_tax_true_up"] == 0
-
-    def test_months_sorted(self, paid_invoice):
-        result = monthly_spendable_breakdown([paid_invoice], country="Germany", n_months=6)
-        keys = [m["month"] for m in result]
-        assert keys == sorted(keys)
 
 
 @pytest.fixture

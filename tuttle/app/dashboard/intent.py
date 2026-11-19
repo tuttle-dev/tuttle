@@ -5,14 +5,11 @@ from decimal import Decimal
 
 from ...forecasting import (
     cash_flow_series,
-    revenue_curve_with_calendar,
     revenue_series,
 )
 from ...fx import primary_currency
 from ...kpi import (
     compute_kpis,
-    monthly_revenue_breakdown,
-    monthly_spendable_breakdown,
     project_budget_status,
 )
 from ...model import Contract, FinancialGoal, Invoice, Project, RecurringExpense
@@ -42,38 +39,6 @@ class DashboardIntent(OperatingCountryMixin, SQLModelDataSourceMixin, Intent):
         kpis = compute_kpis(invoices, contracts, projects, country=country, time_data=time_data, expenses=expenses)
         return IntentResult(was_intent_successful=True, data=kpis)
 
-    @fails_with("Failed to load monthly revenue", append_exception=True)
-    def get_monthly_revenue(self, n_months: int = 12) -> IntentResult:
-        """Get monthly revenue breakdown for the last n months."""
-        invoices = self.query(Invoice)
-        data = monthly_revenue_breakdown(invoices, n_months=n_months, country=self._get_country())
-        return IntentResult(was_intent_successful=True, data=data)
-
-    @fails_with("Failed to load monthly spendable income", append_exception=True)
-    def get_monthly_spendable_income(self, n_months: int = 12) -> IntentResult:
-        """Get monthly spendable income breakdown for the last n months."""
-        invoices = self.query(Invoice)
-        country = self._get_country()
-        data = monthly_spendable_breakdown(
-            invoices,
-            country=country,
-            n_months=n_months,
-        )
-        return IntentResult(was_intent_successful=True, data=data)
-
-    @fails_with("Failed to load chart data", append_exception=True)
-    def get_monthly_chart_data(self, n_months: int = 12) -> IntentResult:
-        """Revenue + spendable in one query (avoids duplicate invoice loads)."""
-        invoices = self.query(Invoice)
-        country = self._get_country()
-        revenue = monthly_revenue_breakdown(invoices, n_months=n_months, country=country)
-        spendable = monthly_spendable_breakdown(invoices, country=country, n_months=n_months)
-        return IntentResult(
-            was_intent_successful=True,
-            data={"revenue": revenue, "spendable": spendable},
-        )
-
-    @fails_with("Failed to load revenue series", append_exception=True)
     def get_revenue_series(self, granularity: str = "month", offset: int = 0) -> IntentResult:
         """Revenue per week/month/year bucket for one window of the revenue chart."""
         data = revenue_series(
@@ -86,23 +51,6 @@ class DashboardIntent(OperatingCountryMixin, SQLModelDataSourceMixin, Intent):
         )
         return IntentResult(was_intent_successful=True, data=data)
 
-    @fails_with("Failed to generate revenue forecast", append_exception=True)
-    def get_revenue_curve(self, forecast_months: int = 6) -> IntentResult:
-        """Get combined historical + calendar-based + contract-fallback revenue curve."""
-        invoices = self.query(Invoice)
-        contracts = self.query(Contract)
-        projects = self.query(Project)
-        time_data = self._time_data_source.get_data_frame()
-        data = revenue_curve_with_calendar(
-            invoices,
-            contracts,
-            projects,
-            time_data,
-            forecast_months=forecast_months,
-        )
-        return IntentResult(was_intent_successful=True, data=data)
-
-    @fails_with("Failed to generate cash flow projection", append_exception=True)
     def get_cash_flow(self, forecast_months: int = 6) -> IntentResult:
         """Get cash flow projection based on invoices, expenses, and calendar allocations."""
         invoices = self.query(Invoice)

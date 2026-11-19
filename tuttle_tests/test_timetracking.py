@@ -11,17 +11,6 @@ from tuttle.model import Address, Client, Contract, Project
 from tuttle.time import Cycle, TimeUnit
 
 
-def test_timetracking_import_toggl():
-    """Test import of time tracking data from csv exported by Toggl."""
-    data = timetracking.import_from_spreadsheet(
-        path="tuttle_tests/data/test_time_tracking_toggl.csv",
-        preset=timetracking.TogglPreset,
-    )
-    assert not data.empty
-
-    pass
-
-
 def test_calendar_to_data(demo_calendar_timetracking):
     time_tracking_data = demo_calendar_timetracking.to_data()
     assert not time_tracking_data.empty

@@ -34,7 +34,6 @@ APP_MODULES = [
     "tuttle.app.core.formatting",
     "tuttle.app.core.intent_result",
     "tuttle.app.core.rpc_utils",
-    "tuttle.app.auth.intent",
     "tuttle.app.auth.data_source",
     "tuttle.app.clients.intent",
     "tuttle.app.contacts.intent",

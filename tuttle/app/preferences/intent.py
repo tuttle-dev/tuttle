@@ -151,13 +151,6 @@ class PreferencesIntent:
 
     # -- Internal API (used by other intents) ----------------------------------
 
-    def get_preference_by_key(self, key) -> IntentResult:
-        k = key.value if hasattr(key, "value") else key
-        return IntentResult(
-            was_intent_successful=True,
-            data=self._app_db.get_setting(k),
-        )
-
     def get_preferred_invoice_template(self) -> IntentResult:
         tmpl = invoice_template_or_default(
             self._app_db.get_setting(

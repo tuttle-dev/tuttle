@@ -331,17 +331,6 @@ class CrudIntent(SQLModelDataSourceMixin, Intent):
                 exception=e,
             )
 
-    # -- Filtered views (require is_completed / is_active / is_upcoming) -------
-
-    def get_completed_as_map(self) -> Mapping[int, Any]:
-        return {k: v for k, v in self.get_all_as_map().items() if v.is_completed}
-
-    def get_active_as_map(self) -> Mapping[int, Any]:
-        return {k: v for k, v in self.get_all_as_map().items() if v.is_active()}
-
-    def get_upcoming_as_map(self) -> Mapping[int, Any]:
-        return {k: v for k, v in self.get_all_as_map().items() if v.is_upcoming()}
-
     # -- Toggle helpers --------------------------------------------------------
 
     def toggle_completed(self, entity=None, *, id=None) -> IntentResult:

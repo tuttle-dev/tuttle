@@ -85,22 +85,6 @@ class InvoicingDataSource(SQLModelDataSourceMixin):
         """Creates or updates a timesheet"""
         self.store(timesheet)
 
-    def get_timesheet_for_invoice(self, invoice: Invoice) -> Timesheet:
-        """Get the timesheet associated with an invoice
-
-        Args:
-            invoice (Invoice): the invoice to get the timesheet for
-
-        Returns:
-            Optional[Timesheet]: the timesheet associated with the invoice
-        """
-        if not len(invoice.timesheets) > 0:
-            raise ValueError(f"invoice {invoice.id} has no timesheets associated with it")
-        if len(invoice.timesheets) > 1:
-            raise ValueError(f"invoice {invoice.id} has more than one timesheet associated with it: {invoice.timesheets}")
-        timesheet = invoice.timesheets[0]
-        return timesheet
-
     def get_reminder_chain(self, invoice_id: int) -> IntentResult[List[Invoice]]:
         """Return the full reminder chain for an invoice (root + all reminders), sorted by level."""
         try:
@@ -240,11 +224,6 @@ class InvoicingDataSource(SQLModelDataSourceMixin):
         ]
         deposits.sort(key=lambda inv: (inv.date, inv.id or 0))
         return IntentResult(was_intent_successful=True, data=deposits)
-
-    def get_all_reminders_for_invoice(self, invoice_id: int) -> List[Invoice]:
-        """Return only the reminders (not the root) for a given root invoice id."""
-        with self.create_session() as session:
-            return list(session.exec(sqlmodel.select(Invoice).where(Invoice.reminder_for_id == invoice_id)).all())
 
     def generate_invoice_number(self, date: datetime.date, scheme: str = "daily") -> str:
         """Generate a sequential invoice number using the given scheme.
