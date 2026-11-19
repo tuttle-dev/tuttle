@@ -10,10 +10,10 @@ import sqlalchemy
 import sqlmodel
 from loguru import logger
 from pydantic import ValidationError
-from sqlmodel import pool
 
 from ...data_dir import get_data_dir
 from .intent_result import IntentResult
+from .user_db import create_user_db_engine
 
 
 def _coerce_dates(data: dict) -> dict:
@@ -148,17 +148,8 @@ class SQLModelDataSourceMixin:
     ):
         db_path = f"sqlite:///{_active_db_path}"
         logger.debug(f"Creating {self.__class__.__name__} with db_path: {db_path}")
-        self.db_engine = sqlmodel.create_engine(
-            db_path,
-            echo=False,
-            connect_args={"check_same_thread": False},
-            poolclass=pool.StaticPool,
-        )
-        sqlalchemy.event.listen(
-            self.db_engine,
-            "connect",
-            lambda dbapi_conn, _: dbapi_conn.execute("PRAGMA foreign_keys = ON"),
-        )
+        # An engine of its own: a shared one would put every data source on one connection.
+        self.db_engine = create_user_db_engine(_active_db_path)
 
     def create_session(self):
         return sqlmodel.Session(

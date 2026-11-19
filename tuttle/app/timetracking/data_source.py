@@ -14,6 +14,7 @@ from ...dev import singleton
 from ...model import TimeTrackingItem, TimeTrackingSettings
 from ..core.abstractions import SQLModelDataSourceMixin, get_active_db
 from ..core.rpc_utils import register_reset
+from ..core.user_db import user_db_session
 from .aggregation import merge_dataframes
 
 TZ = "CET"
@@ -65,15 +66,11 @@ class TimeTrackingSettingsSource:
     """
 
     def __init__(self, db_path: Optional[Path] = None):
-        self._db_url = f"sqlite:///{db_path or get_active_db()}"
+        self._db_path = db_path or get_active_db()
 
     def _run(self, fn):
-        engine = sqlmodel.create_engine(self._db_url)
-        try:
-            with sqlmodel.Session(engine, expire_on_commit=False) as session:
-                return fn(session)
-        finally:
-            engine.dispose()
+        with user_db_session(self._db_path) as session:
+            return fn(session)
 
     def get(self) -> TimeTrackingSettings:
         row = self._run(lambda session: session.exec(sqlmodel.select(TimeTrackingSettings)).first())
