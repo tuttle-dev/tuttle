@@ -13,7 +13,6 @@ from ...tax import (
     supported_countries,
 )
 from ...tax_reserves import (
-    compute_income_tax_reserve,
     compute_spendable_income,
     distinct,
     monthly_vat_breakdown,
@@ -111,10 +110,10 @@ class TaxIntent(SQLModelDataSourceMixin, Intent):
             # been taken off, and charging them again here would double-count.
             total_income = spending.tax_base
             no_tax = spending.tax_unavailable_reason
-            tax_reserve = None
+            # The same estimate Safe to Spend is computed with, not a second one.
+            tax_reserve = spending.income_tax_estimate
             bracket_data = []
             if no_tax is None:
-                tax_reserve = compute_income_tax_reserve(total_income, country, year=year, currency=currency)
                 ref_date = datetime.date(year, 7, 1) if year else today
                 bracket_data = self._compute_bracket_data(get_tax_system(country, date=ref_date), total_income)
 

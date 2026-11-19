@@ -73,6 +73,7 @@ def test_tax_view_keeps_pre_tax_figures_and_shows_nothing_after_tax():
     assert spending.business_expenses == 12000
     assert spending.tax_base == spending.taxable_profit - spending.dynamic_expenses_deductible
     assert spending.income_tax_reserve is None
+    assert spending.income_tax_estimate is None
     assert spending.dynamic_expenses_post_tax is None
     assert spending.spendable is None
     assert spending.tax_unavailable_reason == "No tax model for Norway."
@@ -84,6 +85,7 @@ def test_tax_view_keeps_pre_tax_figures_and_shows_nothing_after_tax():
 def test_a_country_with_a_tax_model_still_gets_an_estimate():
     spending = compute_spendable_income([_invoice(TODAY.replace(day=1), "50000")], "Germany", currency="EUR")
     assert spending.income_tax_reserve > 0
+    assert spending.income_tax_estimate.ytd_reserve == spending.income_tax_reserve
     assert spending.spendable is not None
     assert spending.tax_unavailable_reason is None
 
