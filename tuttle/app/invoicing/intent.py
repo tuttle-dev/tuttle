@@ -6,6 +6,7 @@ from typing import Mapping, Optional
 
 from loguru import logger
 from pandas import DataFrame
+from sqlmodel import select
 
 from ... import invoicing, mail, rendering, timetracking
 from ...app_db import AppDatabase
@@ -106,17 +107,15 @@ class InvoicingIntent(Intent):
             return IntentResult(was_intent_successful=False, error_msg=str(ex))
         if to_date < from_date:
             return IntentResult(was_intent_successful=False, error_msg="The billing period ends before it starts.")
-        proj_result = self._projects_intent.get_by_id(project_id)
-        if not proj_result.was_intent_successful:
-            return proj_result
-        extra_projects = []
-        for pid in dict.fromkeys(int(p) for p in project_ids or []):
-            if pid == int(project_id):
-                continue
-            extra = self._projects_intent.get_by_id(pid)
-            if not extra.was_intent_successful:
-                return extra
-            extra_projects.append(extra.data)
+        line_ids = [it["project_id"] for it in manual_items or [] if it.get("project_id") not in (None, "")]
+        projects_by_id = self._load_projects([project_id, *(project_ids or []), *line_ids])
+        if int(project_id) not in projects_by_id:
+            return IntentResult(was_intent_successful=False, error_msg="Failed to load project.")
+        extra_projects = [
+            projects_by_id[pid]
+            for pid in dict.fromkeys(int(p) for p in project_ids or [])
+            if pid != int(project_id) and pid in projects_by_id
+        ]
         app_db = AppDatabase()
         template_name = invoice_template_or_default(app_db.get_setting(PreferencesStorageKeys.invoice_template_key.value))
         number_scheme = (
@@ -126,7 +125,7 @@ class InvoicingIntent(Intent):
 
         return self.create_invoice(
             invoice_date=invoice_date,
-            project=proj_result.data,
+            project=projects_by_id[int(project_id)],
             from_date=from_date,
             to_date=to_date,
             render=render,
@@ -138,7 +137,22 @@ class InvoicingIntent(Intent):
             e_invoice_profile=e_invoice_profile or None,
             notes=notes,
             extra_projects=extra_projects,
+            projects_by_id=projects_by_id,
         )
+
+    def _load_projects(self, ids) -> dict:
+        """Load projects in one session, by id.
+
+        Saving an invoice merges its whole object graph. Projects loaded in
+        separate sessions each bring their own copies of shared objects (the
+        contract, earlier invoices, sibling projects), and a stale copy can win
+        the merge and unlink rows. One session gives one copy of each.
+        """
+        ids = list(dict.fromkeys(int(i) for i in ids))
+        with self._invoicing_data_source.create_session() as session:
+            projects = session.exec(select(Project).where(Project.id.in_(ids))).all()
+            self._invoicing_data_source._hydrate(list(projects))
+        return {p.id: p for p in projects}
 
     # -- Status toggles (accept id, fetch internally) --------------------------
 
@@ -500,19 +514,6 @@ class InvoicingIntent(Intent):
         billed = self._invoicing_data_source.get_billed_charge_ids(contract.id)
         return [c for c in active if c.basis != ChargeBasis.once or c.id not in billed]
 
-    def _line_projects(self, manual_items, project: Project) -> Optional[dict]:
-        """Projects named by manual lines, by id; None if one is not on the invoice's contract."""
-        found = {project.id: project}
-        for it in manual_items:
-            pid = it.get("project_id")
-            if pid in (None, "") or int(pid) in found:
-                continue
-            proj = self._projects_intent.get_by_id(int(pid))
-            if not proj.was_intent_successful or proj.data.contract_id != project.contract_id:
-                return None
-            found[proj.data.id] = proj.data
-        return found
-
     def set_item_projects(self, invoice_id, item_projects: Mapping[str, Optional[int]]) -> IntentResult[Invoice]:
         """Book invoice lines to projects. Bookkeeping only: the issued document is unchanged."""
         with self._invoicing_data_source.create_session() as session:
@@ -551,6 +552,7 @@ class InvoicingIntent(Intent):
         e_invoice_profile: Optional[str] = None,
         notes: Optional[str] = None,
         extra_projects: Optional[list] = None,
+        projects_by_id: Optional[dict] = None,
     ) -> IntentResult[Invoice]:
         """Create a new invoice.
 
@@ -577,18 +579,18 @@ class InvoicingIntent(Intent):
             contract.is_fixed_price or any(p.contract_id != project.contract_id for p in extra_projects)
         ):
             return IntentResult(was_intent_successful=False, error_msg="All projects on one invoice must belong to the same time-based contract.")
-        line_projects = self._line_projects(manual_items or [], project)
-        if line_projects is None:
-            return IntentResult(
-                was_intent_successful=False, error_msg="Project does not belong to this invoice's contract."
-            )
-        # Each project was loaded in its own session and carries its own copy
-        # of the contract. Saving the invoice merges them all, and a copy whose
-        # ``invoices`` list lacks this invoice would unlink it from the
-        # contract. One shared contract object keeps the merge consistent.
-        for other in [*extra_projects, *line_projects.values()]:
-            if other is not project:
-                other.contract = contract
+        # Projects a manual line may name: loaded with the invoice's project
+        # (see ``_load_projects``), and on its contract.
+        line_projects = projects_by_id or {project.id: project}
+        for it in manual_items or []:
+            pid = it.get("project_id")
+            if pid in (None, ""):
+                continue
+            named = line_projects.get(int(pid))
+            if named is None or named.contract_id != project.contract_id:
+                return IntentResult(
+                    was_intent_successful=False, error_msg="Project does not belong to this invoice's contract."
+                )
         language = language or _document_language(contract.client)
         user = self._user_data_source.get_user()
         try:

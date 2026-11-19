@@ -822,6 +822,19 @@ def create_heating_data(
             contract=onsite_contract,
         )
     )
+    # A second project on the same contract at its own day rate, left unbilled
+    # so it can go on one invoice together with the retrofit (#666).
+    commissioning_project = Project(
+        title="Boiler Commissioning",
+        tag="#commissioning",
+        description="Commissioning and handover of the retrofitted boilers, at a higher day rate",
+        is_completed=False,
+        start_date=onsite_contract.start_date,
+        end_date=datetime.date.today() + datetime.timedelta(days=180),
+        contract=onsite_contract,
+        rate=Decimal("720"),
+    )
+    projects.append(commissioning_project)
 
     # -- a fixed-price contract still working through its schedule -------------
     modernisation_contract, modernisation_project, modernisation_invoices = create_modernisation_milestone_data(
@@ -850,7 +863,7 @@ def create_heating_data(
         if project.contract is sam_lowry_contract:
             sam_lowry_project = project
             continue
-        if project is modernisation_project:
+        if project is modernisation_project or project is commissioning_project:
             continue
         if i < 2:
             inv_date = today - timedelta(days=random.randint(30, 60))

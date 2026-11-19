@@ -233,3 +233,21 @@ def test_project_save_stores_rate(db, setup):
     ProjectsIntent().save_from_dict(payload)
     with Session(db) as session:
         assert session.get(Project, setup["#a"]).rate is None
+
+
+def test_every_timesheet_keeps_its_project_with_prior_invoices(db, setup, monkeypatch):
+    """Earlier invoices put stale copies of the projects in the object graph; none may win."""
+    intent = _intent(monkeypatch)
+    assert _create(intent, setup, "#a").was_intent_successful
+    assert _create(intent, setup, "#b").was_intent_successful
+    result = _create(intent, setup, "#a", ["#b"])
+    assert result.was_intent_successful, result.error_msg
+    from sqlalchemy import text
+
+    with Session(db) as session:
+        rows = session.exec(text(f"select project_id from timesheet where invoice_id = {result.data.id}")).all()
+        old = session.exec(text("select project_id from timesheet where invoice_id != :i").bindparams(i=result.data.id)).all()
+        contract_id = session.get(Invoice, result.data.id).contract_id
+    assert sorted(r[0] for r in rows) == sorted([setup["#a"], setup["#b"]])
+    assert sorted(r[0] for r in old) == sorted([setup["#a"], setup["#b"]])
+    assert contract_id is not None

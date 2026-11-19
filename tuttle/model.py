@@ -1564,9 +1564,11 @@ class Invoice(RpcMixin, SQLModel, table=True):
         """Rendered timesheet PDFs, one per billed project: ``{"project", "path"}``."""
         paths = []
         for ts in self.timesheets:
+            if not ts.rendered or ts.project is None:
+                continue
             p = get_data_dir() / "Timesheets" / f"{ts.prefix}.pdf"
-            if ts.rendered and p.exists():
-                paths.append({"project": ts.project.title if ts.project else "", "path": str(p)})
+            if p.exists():
+                paths.append({"project": ts.project.title, "path": str(p)})
         return paths
 
     @property
