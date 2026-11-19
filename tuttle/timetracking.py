@@ -60,6 +60,15 @@ def invoiced_ranges_by_tag(invoices: List[Invoice]) -> dict:
             if not tag:
                 continue
             ranges.setdefault(tag, []).append((ts.period_start, ts.period_end))
+        # Manual lines bill time too: a line with a project and dates covers
+        # that project's hours in the range (#638). Old lines have no project
+        # of their own and belong to the invoice's.
+        if inv.is_reminder:
+            continue
+        for item in inv.items:
+            project = item.project or inv.project
+            if project and project.tag and item.start_date and item.end_date:
+                ranges.setdefault(project.tag, []).append((item.start_date, item.end_date))
     return ranges
 
 
