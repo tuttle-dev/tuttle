@@ -8,6 +8,7 @@ import { Toolbar, ToolbarButtonPrimary, ToolbarButtonSecondary, ListDetailLayout
 import { EditableClientContactRole } from "../shared/EditableClientContactRole";
 import { EmptyStateIntro } from "../shared/EmptyStateIntro";
 import { DetailHeader, DetailAction, DetailDeleteAction, DetailSubmit, DETAIL_PANE } from "../shared/DetailHeader";
+import { EmailAddress } from "../shared/EmailAddress";
 import { DetailFields, DetailField } from "../shared/DetailFields";
 import { LoadError, LoadingState } from "../shared/LoadStates";
 import { Section } from "../shared/Section";
@@ -271,24 +272,24 @@ function ContactRow({ contact, isSelected, onSelect }: {
   const email = str(contact, "email");
   const company = str(contact, "company");
   const ini = initials(contact);
-  const subtitle = company || email;
 
   return (
-    <button onClick={onSelect}
-      className={`w-full text-left ${LIST_ROW_PADDING} border-b border-border-subtle transition-colors flex items-center gap-3
+    <div role="button" tabIndex={0} onClick={onSelect}
+      onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onSelect(); } }}
+      className={`w-full text-left ${LIST_ROW_PADDING} border-b border-border-subtle transition-colors flex items-center gap-3 cursor-pointer
         ${isSelected ? "bg-bg-selected" : "hover:bg-bg-hover"}`}>
       <div className="w-9 h-9 rounded-full bg-bg-card flex items-center justify-center text-sm font-semibold text-secondary shrink-0">
         {ini}
       </div>
       <div className="min-w-0">
         <div className="text-sm font-medium truncate">{name}</div>
-        {subtitle && (
-          <div className="flex items-center gap-1.5 text-xs text-tertiary truncate">
-            <span>{subtitle}</span>
-          </div>
+        {company ? (
+          <div className="text-xs text-tertiary truncate">{company}</div>
+        ) : email && (
+          <div className="flex text-xs text-tertiary"><EmailAddress address={email} compact /></div>
         )}
       </div>
-    </button>
+    </div>
   );
 }
 
@@ -351,7 +352,7 @@ function ContactDetail({ contact, clients, onEdit, onDelete }: {
 
       {(email || addrParts.length > 0) && (
         <DetailFields>
-          {email && <DetailField label="Email">{email}</DetailField>}
+          {email && <DetailField label="Email" wide><EmailAddress address={email} /></DetailField>}
           {addrParts.length > 0 && (
             <DetailField label="Address">
               {addrParts.map((line, i) => <div key={i}>{line}</div>)}

@@ -15,6 +15,7 @@ import { Plus, RefreshCw, Save, CheckCircle2, AlertCircle, User, Bot, FileText, 
 import { useTheme, type ThemeChoice } from "../../hooks/useTheme";
 import { Dialog, DialogBody, DialogFooter } from "../shared/Dialog";
 import { rpc } from "../../api/rpc";
+import { openExternal } from "../../api/external";
 import type { Entity } from "../../api/types";
 import { str, bool, list as entityList } from "../../api/entity";
 import { useStatusBar, type StatusMessage, type MessageType } from "../shared/status-bar-context";
@@ -1347,11 +1348,6 @@ function RegionTab({ operatingCountry, supportedCountries, onCountryChange, vatN
 
 const REPO = "https://github.com/tuttle-dev/tuttle";
 const helpBtnCls = "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm text-secondary hover:text-primary border border-border-subtle hover:bg-bg-hover transition-colors";
-
-function openExternal(url: string) {
-  if (window.tuttle?.openExternal) window.tuttle.openExternal(url);
-  else window.open(url, "_blank");
-}
 
 function SystemTab() {
   const { log, showMessage } = useStatusBar();
