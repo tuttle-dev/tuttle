@@ -138,7 +138,7 @@ def _project_tag_maps(projects) -> tuple[dict, dict]:
 class TimeTrackingIntent(Intent):
     """Time-tracking data access, import, aggregation."""
 
-    def __init__(self, client_storage=None):
+    def __init__(self):
         self._file_calendar_source = TimeTrackingFileCalendarSource()
         self._spreadsheet_source = TimeTrackingSpreadsheetSource()
         self._timetracking_data_frame_source = TimeTrackingDataFrameSource()

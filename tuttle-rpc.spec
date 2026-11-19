@@ -60,7 +60,6 @@ if _drafthorse_spec and _drafthorse_spec.submodule_search_locations:
 # 'imports' domain regression).
 hiddenimports = collect_submodules("tuttle.app") + [
     # Supporting modules
-    "tuttle.app.core.database_storage_impl",
     "tuttle.app.core.formatting",
     "tuttle.model",
     "tuttle.demo",

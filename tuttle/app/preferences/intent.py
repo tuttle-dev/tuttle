@@ -1,8 +1,7 @@
 """Preferences backed by the app-level database.
 
-Replaces the legacy ClientStorage-based implementation.  Both the
-RPC-facing methods (``get`` / ``save``) and the internal API used by
-other intents (``get_preference_by_key``, ``get_preferred_invoice_template``)
+Both the RPC-facing methods (``get`` / ``save``) and the internal API used
+by other intents (``get_preferred_invoice_template``, ``get_include_logo``, …)
 read from the same ``AppDatabase`` backend.
 """
 
@@ -22,7 +21,7 @@ from .model import (
 
 
 class PreferencesIntent:
-    def __init__(self, client_storage=None):
+    def __init__(self):
         self._app_db = AppDatabase()
 
     # -- RPC-facing ------------------------------------------------------------

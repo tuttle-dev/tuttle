@@ -80,7 +80,7 @@ def _document_language(client: Optional[Client]) -> str:
 class InvoicingIntent(Intent):
     """Invoicing CRUD, creation orchestration, and status toggles."""
 
-    def __init__(self, client_storage=None):
+    def __init__(self):
         self._projects_intent = ProjectsIntent()
         self._invoicing_data_source = InvoicingDataSource()
         self._timetracking_data_source = TimeTrackingDataFrameSource()
