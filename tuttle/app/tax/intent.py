@@ -5,7 +5,7 @@ from decimal import Decimal
 
 from ...forecasting import contracted_this_year
 from ...fx import primary_currency
-from ...model import Invoice, Project, RecurringExpense, User
+from ...model import Invoice, Project, RecurringExpense
 from ...tax import (
     all_operating_countries,
     get_tax_system,
@@ -20,25 +20,16 @@ from ...tax_reserves import (
 )
 from ..core.abstractions import Intent, SQLModelDataSourceMixin
 from ..core.intent_result import IntentResult, fails_with
+from ..core.operating_country import OperatingCountryMixin
 from ..timetracking.data_source import TimeTrackingDataFrameSource
 
 
-class TaxIntent(SQLModelDataSourceMixin, Intent):
+class TaxIntent(OperatingCountryMixin, SQLModelDataSourceMixin, Intent):
     """Gathers tax-related data for the freelance tax planning view."""
 
     def __init__(self):
         SQLModelDataSourceMixin.__init__(self)
         self._time_data_source = TimeTrackingDataFrameSource()
-
-    def _get_country(self) -> str:
-        """Determine the user's operating country for tax purposes."""
-        try:
-            users = self.query(User)
-            if users and users[0].operating_country:
-                return users[0].operating_country
-        except Exception:
-            pass
-        return ""
 
     def _get_tax_currency(self, country: str) -> str:
         """The currency aggregates are shown in (settings, default: tax system)."""

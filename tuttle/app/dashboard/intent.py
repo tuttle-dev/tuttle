@@ -15,29 +15,20 @@ from ...kpi import (
     monthly_spendable_breakdown,
     project_budget_status,
 )
-from ...model import Contract, FinancialGoal, Invoice, Project, RecurringExpense, User
+from ...model import Contract, FinancialGoal, Invoice, Project, RecurringExpense
 from ...tax_reserves import convert_invoice, distinct
 from ..core.abstractions import Intent, SQLModelDataSourceMixin
 from ..core.intent_result import IntentResult, fails_with
+from ..core.operating_country import OperatingCountryMixin
 from ..timetracking.data_source import TimeTrackingDataFrameSource
 
 
-class DashboardIntent(SQLModelDataSourceMixin, Intent):
+class DashboardIntent(OperatingCountryMixin, SQLModelDataSourceMixin, Intent):
     """Gathers data for the freelance business dashboard."""
 
     def __init__(self):
         SQLModelDataSourceMixin.__init__(self)
         self._time_data_source = TimeTrackingDataFrameSource()
-
-    def _get_country(self) -> str:
-        """Determine the user's operating country for tax purposes."""
-        try:
-            users = self.query(User)
-            if users and users[0].operating_country:
-                return users[0].operating_country
-        except Exception:
-            pass
-        return ""
 
     @fails_with("Failed to compute KPIs", append_exception=True)
     def get_kpis(self) -> IntentResult:
