@@ -6,10 +6,10 @@ VAT payments and estimated income tax, yielding the actual spendable income.
 
 import calendar
 import datetime
-import logging
 from decimal import Decimal
 from typing import List, NamedTuple, Optional
 
+from loguru import logger
 from pandas import DataFrame
 
 from .fx import convert, default_currency, fx_haircut
@@ -18,8 +18,6 @@ from .model import Invoice, Project, RecurringExpense
 from .tax import TaxUnavailable, get_tax_system
 from .time import Cycle, TimeUnit
 from .timetracking import drop_completed, drop_invoiced, sum_hours_by_tag
-
-logger = logging.getLogger(__name__)
 
 
 class VATReserve(NamedTuple):
@@ -129,7 +127,7 @@ def convert_invoice(
         # carries VAT in a foreign currency. Converting it needs rounding rules
         # we deliberately do not have — warn instead of guessing.
         logger.warning(
-            "Invoice %s is in %s and carries VAT (%s). VAT on foreign-currency "
+            "Invoice {} is in {} and carries VAT ({}). VAT on foreign-currency "
             "invoices is not supported; the converted VAT figure is an estimate.",
             inv.number or inv.id,
             inv_currency,

@@ -7,9 +7,11 @@ from types import SimpleNamespace
 
 import pandas
 import pytest
+from loguru import logger
 
 from tuttle import fx
 from tuttle.app.dashboard.intent import DashboardIntent
+from tuttle.app.system import log_sink
 from tuttle.forecasting import cash_flow_series, contracted_this_year, revenue_series
 from tuttle.kpi import compute_kpis
 from tuttle.model import Address, Client, Contract, Invoice, InvoiceItem, Project, RecurringExpense
@@ -227,3 +229,17 @@ def test_a_failed_lookup_is_not_repeated_for_every_amount(offline, monkeypatch):
     compute_spendable_income(invoices, "Germany", currency="EUR")
 
     assert len(calls) == 1
+
+
+def test_a_missing_rate_shows_in_the_app_log(offline):
+    """The warning reaches the log the app shows, and names the currencies and the month."""
+    offline(LAST_MONTH)
+    log_sink.clear()
+    handler = logger.add(log_sink.sink, level="WARNING")
+    try:
+        assert fx.convert(Decimal("100"), "USD", "EUR", LAST_MONTH) is None
+    finally:
+        logger.remove(handler)
+
+    messages = [entry["message"] for entry in log_sink.get_recent()]
+    assert any(m.startswith(f"No exchange rate for USD/EUR in {LAST_MONTH:%Y-%m} (") for m in messages)
