@@ -9,9 +9,3 @@ export interface Entity {
   id: number;
   [key: string]: unknown;
 }
-
-export interface RPCResult<T = unknown> {
-  ok: boolean;
-  data: T;
-  error: string | null;
-}

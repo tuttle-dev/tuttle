@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import {
-  Users, Plus, Trash2, X, Building2, FileUp, Sparkles, Check, UserPlus, Save,
+  Users, Plus, X, Building2, FileUp, UserPlus, Save,
 } from "lucide-react";
 import { rpc } from "../../api/rpc";
 import { str, num, entity as subEntity, fullName, initials, displayName } from "../../api/entity";
@@ -12,6 +12,8 @@ import { DetailFields, DetailField } from "../shared/DetailFields";
 import { LoadError, LoadingState } from "../shared/LoadStates";
 import { Section } from "../shared/Section";
 import { DocumentImportPanel } from "../shared/DocumentImportPanel";
+import { FormField } from "../shared/FormField";
+import { ParsedCard, AiField } from "../shared/ParsedCard";
 import { useFieldRequirements } from "../../hooks/useFieldRequirements";
 import { useAutoSelect } from "../../hooks/useAutoSelect";
 import type { Entity } from "../../api/types";
@@ -596,19 +598,6 @@ function ContactForm({ contact, clients, onSave, onCancel, error }: {
   );
 }
 
-function FormField({ label, value, onChange, type = "text", autoFocus, required }: {
-  label: string; value: string; onChange: (v: string) => void; type?: string; autoFocus?: boolean; required?: boolean;
-}) {
-  return (
-    <div>
-      <label className="block text-xs text-tertiary mb-1">{label}{required && <span className="text-accent ml-0.5">*</span>}</label>
-      <input type={type} value={value} onChange={(e) => onChange(e.target.value)} autoFocus={autoFocus} required={required}
-        className="w-full px-3 py-2 rounded-md text-sm bg-bg-card text-primary border border-border-subtle outline-none
-          focus:border-accent transition-colors placeholder:text-muted" />
-    </div>
-  );
-}
-
 /* ---------- AI Document Import ---------- */
 
 interface ParsedContact {
@@ -655,31 +644,8 @@ function ParsedContactCard({ contact, onAccept, onDiscard, onUpdate }: {
   const name = [contact.first_name, contact.last_name].filter(Boolean).join(" ") || contact.company || "(unnamed)";
 
   return (
-    <div className="rounded-xl border-2 border-status-purple/40 bg-status-purple/5 p-4 space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Sparkles size={14} className="text-status-purple" />
-          <span className="text-sm font-semibold">{name}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <button onClick={onDiscard}
-            className="flex items-center gap-1 px-2 py-1 rounded text-xs text-secondary hover:text-status-danger hover:bg-status-danger/10 transition-colors"
-            title="Discard">
-            <Trash2 size={12} /> Discard
-          </button>
-          <button onClick={valid ? onAccept : undefined}
-            disabled={!valid}
-            className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium border transition-colors ${
-              valid
-                ? "text-status-purple hover:bg-status-purple/10 border-status-purple/30"
-                : "text-muted border-border-subtle cursor-not-allowed opacity-50"
-            }`}
-            title={valid ? "Accept and save" : `Missing: ${missing.join(", ")}`}>
-            <Check size={12} /> Accept
-          </button>
-        </div>
-      </div>
-
+    <ParsedCard title={name} onAccept={onAccept} onDiscard={onDiscard} canAccept={valid}
+      acceptTitle={valid ? "Accept and save" : `Missing: ${missing.join(", ")}`} discardTitle="Discard">
       {!valid && (
         <p className="text-xs text-status-warning">
           Required: {missing.join(", ")}
@@ -700,30 +666,11 @@ function ParsedContactCard({ contact, onAccept, onDiscard, onUpdate }: {
         <AiField label="Postal Code" value={contact.address.postal_code} onChange={(v) => updateAddr("postal_code", v)} addressRequired={!contactHasAddress(contact)} />
         <AiField label="Country" value={contact.address.country} onChange={(v) => updateAddr("country", v)} addressRequired={!contactHasAddress(contact)} />
       </div>
-    </div>
+    </ParsedCard>
   );
 }
 
 function contactHasAddress(c: ParsedContact): boolean {
   const a = c.address;
   return !!(a.street || a.number || a.city || a.postal_code || a.country);
-}
-
-function AiField({ label, value, onChange, required, missing, addressRequired }: {
-  label: string; value: string; onChange: (v: string) => void;
-  required?: boolean; missing?: boolean; addressRequired?: boolean;
-}) {
-  const showWarning = (required && missing) || addressRequired;
-  return (
-    <div>
-      <label className="block text-xs text-status-purple/70 mb-0.5">
-        {label}{required && <span className="text-status-warning ml-0.5">*</span>}
-      </label>
-      <input type="text" value={value} onChange={(e) => onChange(e.target.value)}
-        className={`w-full px-2.5 py-1.5 rounded-md text-sm bg-bg-card text-primary outline-none
-          focus:border-status-purple transition-colors placeholder:text-muted border ${
-          showWarning ? "border-status-warning/60" : "border-status-purple/30"
-        }`} />
-    </div>
-  );
 }
