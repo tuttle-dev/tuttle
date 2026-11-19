@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import {
-  Building2, Plus, Trash2, X, Users, FileUp, Sparkles, Check, UserPlus, Save,
+  Building2, Plus, X, Users, FileUp, UserPlus, Save,
 } from "lucide-react";
 import { rpc } from "../../api/rpc";
 import { str, num, entity as subEntity, displayName, fullName, initials } from "../../api/entity";
@@ -12,13 +12,18 @@ import { DetailFields, DetailField } from "../shared/DetailFields";
 import { LoadError, LoadingState } from "../shared/LoadStates";
 import { Section } from "../shared/Section";
 import { DocumentImportPanel } from "../shared/DocumentImportPanel";
+import { FormField } from "../shared/FormField";
+import { ParsedCard, AiField } from "../shared/ParsedCard";
 import { useFieldRequirements } from "../../hooks/useFieldRequirements";
 import { useAutoSelect } from "../../hooks/useAutoSelect";
+import { useEditFromNavigation } from "../../hooks/useEditFromNavigation";
+import { useNavigation } from "../shared/NavigationContext";
 import type { Entity } from "../../api/types";
 
 type Mode = "view" | "edit" | "create" | "import";
 
 export function ClientsView() {
+  const { filter: navFilter } = useNavigation();
   const [clients, setClients] = useState<Entity[]>([]);
   const [contacts, setContacts] = useState<Record<string, Entity>>({});
   const [selected, setSelected] = useState<Entity | null>(null);
@@ -166,7 +171,11 @@ export function ClientsView() {
     return name.includes(q) || contactName.includes(q);
   });
 
-  useAutoSelect(clients, filtered, selected, setSelected, { enabled: mode === "view" });
+  useAutoSelect(clients, filtered, selected, setSelected, {
+    enabled: mode === "view",
+    preferred: navFilter.clientId != null ? (c) => c.id === navFilter.clientId : undefined,
+  });
+  useEditFromNavigation(navFilter, navFilter.clientId, selected?.id, () => setMode("edit"));
 
   return (
     <div className="flex flex-col h-full">
@@ -522,21 +531,6 @@ function ClientForm({ client, contacts, languages, onSave, onCancel, error }: {
   );
 }
 
-/* ---------- Shared UI ---------- */
-
-function FormField({ label, value, onChange, type = "text", autoFocus, required, placeholder }: {
-  label: string; value: string; onChange: (v: string) => void; type?: string; autoFocus?: boolean; required?: boolean; placeholder?: string;
-}) {
-  return (
-    <div>
-      <label className="block text-xs text-tertiary mb-1">{label}{required && <span className="text-accent ml-0.5">*</span>}</label>
-      <input type={type} value={value} onChange={(e) => onChange(e.target.value)} autoFocus={autoFocus} required={required} placeholder={placeholder}
-        className="w-full px-3 py-2 rounded-md text-sm bg-bg-card text-primary border border-border-subtle outline-none
-          focus:border-accent transition-colors placeholder:text-muted" />
-    </div>
-  );
-}
-
 /* ---------- AI Import ---------- */
 
 interface ParsedClient {
@@ -553,30 +547,9 @@ function ParsedClientCard({ client, contacts, onAccept, onDiscard, onUpdate }: {
   onUpdate: (c: ParsedClient) => void;
 }) {
   return (
-    <div className="rounded-xl border-2 border-status-purple/40 bg-status-purple/5 p-4 space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Sparkles size={14} className="text-status-purple" />
-          <span className="text-sm font-semibold">{client.name || "Unnamed"}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <button onClick={onDiscard}
-            className="flex items-center gap-1 px-2 py-1 rounded text-xs text-secondary hover:text-status-danger hover:bg-status-danger/10 transition-colors">
-            <Trash2 size={12} /> Discard
-          </button>
-          <button onClick={onAccept}
-            className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium text-status-purple hover:bg-status-purple/10 border border-status-purple/30 transition-colors">
-            <Check size={12} /> Accept
-          </button>
-        </div>
-      </div>
-
+    <ParsedCard title={client.name || "Unnamed"} onAccept={onAccept} onDiscard={onDiscard}>
       <div className="grid grid-cols-2 gap-2">
-        <div>
-          <label className="block text-xs text-status-purple/70 mb-0.5">Client Name</label>
-          <input type="text" value={client.name} onChange={(e) => onUpdate({ ...client, name: e.target.value })}
-            className="w-full px-2.5 py-1.5 rounded-md text-sm bg-bg-card text-primary border border-status-purple/30 outline-none focus:border-status-purple transition-colors" />
-        </div>
+        <AiField label="Client Name" value={client.name} onChange={(v) => onUpdate({ ...client, name: v })} />
         <div>
           <label className="block text-xs text-status-purple/70 mb-0.5">
             Invoicing Contact {client.contact_name_hint && <span className="text-status-purple/60">(hint: {client.contact_name_hint})</span>}
@@ -588,6 +561,6 @@ function ParsedClientCard({ client, contacts, onAccept, onDiscard, onUpdate }: {
           </select>
         </div>
       </div>
-    </div>
+    </ParsedCard>
   );
 }

@@ -64,35 +64,48 @@ def save_config(config: LLMConfig) -> LLMConfig:
 # ---------------------------------------------------------------------------
 
 
+class ModelListError(RuntimeError):
+    """The provider's models could not be listed; the message says what to do."""
+
+
+def _model_list_error(e: Exception, base_url: str, provider: str) -> ModelListError:
+    if isinstance(e, (httpx.ConnectError, httpx.ConnectTimeout)):
+        if provider == "ollama":
+            return ModelListError(f"Ollama isn't running at {base_url}. Start Ollama, or choose another provider.")
+        return ModelListError(f"Nothing answers at {base_url}. Check the URL and your internet connection.")
+    if isinstance(e, httpx.HTTPStatusError):
+        status = e.response.status_code
+        if status in (401, 403):
+            return ModelListError("The provider refused the API key. Check the key.")
+        if status == 404 and provider != "ollama":
+            return ModelListError(f"{base_url} has no list of models. Check the URL: it usually ends in /v1.")
+        return ModelListError(f"{base_url} answered with error {status}. Check the URL.")
+    return ModelListError(f"The models at {base_url} could not be listed ({e}). Check the URL.")
+
+
 def get_available_models(base_url: str, provider: str = "ollama", api_key: str = "") -> List[str]:
     """Fetch available model names from the configured provider.
 
     For Ollama uses ``/api/tags``; for OpenAI-compatible endpoints uses
     ``/v1/models`` (or ``/models`` if *base_url* already ends with ``/v1``).
+    Raises ModelListError with a message for the user.
     """
-    if provider == "ollama":
-        url = f"{base_url.rstrip('/')}/api/tags"
-        try:
-            resp = httpx.get(url, timeout=10.0)
-            resp.raise_for_status()
-            data = resp.json()
-            models = data.get("models", [])
-            return [m["name"] for m in models if "name" in m]
-        except Exception as e:
-            logger.error(f"Failed to fetch models from {url}: {e}")
-            raise RuntimeError(f"Could not connect to Ollama at {base_url}: {e}")
-
     stripped = base_url.rstrip("/")
-    url = f"{stripped}/models" if stripped.endswith("/v1") else f"{stripped}/v1/models"
-    headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
+    if provider == "ollama":
+        url, headers, key = f"{stripped}/api/tags", {}, "name"
+    else:
+        url = f"{stripped}/models" if stripped.endswith("/v1") else f"{stripped}/v1/models"
+        headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
+        key = "id"
     try:
         resp = httpx.get(url, headers=headers, timeout=10.0)
         resp.raise_for_status()
         data = resp.json()
-        return [m["id"] for m in data.get("data", []) if "id" in m]
     except Exception as e:
-        logger.error(f"Failed to fetch models from {url}: {e}")
-        raise RuntimeError(f"Could not list models at {base_url}: {e}")
+        logger.warning(f"Failed to fetch models from {url}: {e}")
+        raise _model_list_error(e, base_url, provider) from e
+    models = data.get("models" if provider == "ollama" else "data", [])
+    return [m[key] for m in models if key in m]
 
 
 # ---------------------------------------------------------------------------
@@ -904,6 +917,24 @@ def _dump_extracted(items: list) -> List[Dict[str, Any]]:
     return results
 
 
+def _with_fraction_vat_rates(contracts: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Turn the VAT rates of extracted contracts into fractions, as the review and the database hold them.
+
+    A document's "19" is 19%, so the review shows it as such and the commit
+    stores 0.19, not 19 (1900%). A rate that is no percentage at all is left
+    as extracted: the review shows it, and the commit refuses it by name.
+    """
+    for contract in contracts:
+        vat = contract.get("VAT_rate")
+        if vat is None:
+            continue
+        try:
+            contract["VAT_rate"] = float(normalize_vat_rate(vat))
+        except ValueError as e:
+            logger.warning(f"LLM extraction returned invalid contract VAT rate {vat!r}: {e}")
+    return contracts
+
+
 def _map_document_extraction(
     result: DocumentExtractionResult,
 ) -> Dict[str, Any]:
@@ -911,7 +942,7 @@ def _map_document_extraction(
     mapped = {
         "contacts": _dump_extracted(result.contacts),
         "clients": _dump_extracted(result.clients),
-        "contracts": _dump_extracted(result.contracts),
+        "contracts": _with_fraction_vat_rates(_dump_extracted(result.contracts)),
         "projects": _dump_extracted(result.projects),
         "invoices": _map_invoices(result.invoices),
     }
@@ -969,17 +1000,3 @@ def _map_invoices(invoices: list) -> List[Dict[str, Any]]:
         else:
             logger.debug(f"Dropping skeleton invoice: {d}")
     return results
-
-
-# ---------------------------------------------------------------------------
-# Legacy function kept for backward compat (wraps parse_document)
-# ---------------------------------------------------------------------------
-
-
-def parse_contacts_from_document(
-    file_base64: str,
-    file_name: str,
-    config: Optional[LLMConfig] = None,
-) -> List[Dict[str, Any]]:
-    """Parse contact information from a document (legacy wrapper)."""
-    return parse_document(file_base64, file_name, "contact", config)

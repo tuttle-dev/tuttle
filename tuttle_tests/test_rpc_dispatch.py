@@ -29,6 +29,7 @@ from tuttle.app.projects.intent import ProjectsIntent
 from tuttle.app.timetracking.aggregation import merge_dataframes
 from tuttle.app.timetracking.data_source import TimeTrackingDataFrameSource
 from tuttle.app.timetracking.intent import TimeTrackingIntent
+from tuttle.data_dir import get_data_dir
 from tuttle.model import (
     Client,
     Contact,
@@ -319,7 +320,6 @@ def test_read_route_resolves(rpc_env, method):
 
 DASHBOARD_ROUTES = [
     ("dashboard.get_kpis", {}),
-    ("dashboard.get_monthly_chart_data", {"n_months": 12}),
     ("dashboard.get_revenue_series", {"granularity": "week", "offset": 0}),
     ("dashboard.get_revenue_series", {"granularity": "month", "offset": -1}),
     ("dashboard.get_revenue_series", {"granularity": "year", "offset": 0}),
@@ -600,7 +600,7 @@ class TestFieldRequirements:
             ("contacts", set()),
             ("clients", {"name"}),
             ("projects", {"title", "description", "tag", "start_date"}),
-            ("contracts", {"title", "start_date", "currency"}),
+            ("contracts", {"title", "start_date", "currency", "VAT_rate"}),
         ],
     )
     def test_required_fields_match_model(self, rpc_env, domain, required_fields):
@@ -1375,3 +1375,25 @@ class TestManualTimeTracking:
             assert {item.title: item.duration_only for item in sheet.items} == {"Workshop": False, "Follow-up": True}
         finally:
             assert_ok(dispatch("timetracking.clear", {}))
+
+
+def test_sending_an_invoice_reaches_the_invoicing_contact(rpc_env, monkeypatch):
+    """Central Services' invoicing contact is its accountant: Send opens the email to her."""
+    from tuttle import mail
+
+    dispatch("users.switch", {"db_file": "harry-tuttle.db"})
+    composed = []
+    monkeypatch.setattr(mail, "compose_email", lambda **kw: composed.append(kw))
+    invoices = assert_ok(dispatch("invoicing.get_all", {}))["data"]
+    invoice = next(
+        i for i in invoices if i["contract"] and i["contract"]["client"]["name"] == "Central Services" and not i["is_reminder"]
+    )
+
+    # Earlier tests may have reinstalled the demo elsewhere; the email needs only the file to attach.
+    pdf = get_data_dir() / "Invoices" / invoice["file_name"]
+    pdf.parent.mkdir(parents=True, exist_ok=True)
+    pdf.write_bytes(b"%PDF-1.4")
+
+    assert_ok(dispatch("invoicing.send_mail", {"id": invoice["id"]}))
+
+    assert [c["to"] for c in composed] == ["layton@centralservices.com"]

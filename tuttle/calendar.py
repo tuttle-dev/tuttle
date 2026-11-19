@@ -59,15 +59,6 @@ class ICSCalendar(Calendar):
         else:
             raise ValueError("Either a path to or the content of an .ics file must be passed.")
 
-    def to_raw_data(self) -> DataFrame:
-        """Convert .ics calendar events to DataFrame"""
-        events = [event for event in self.ical.events]
-        event_data_raw = pandas.DataFrame(
-            [tuple(event.__dict__.values()) for event in events],
-            columns=list(events[0].__dict__.keys()),
-        )
-        return event_data_raw
-
     @check_io(out=schema.time_tracking)
     def to_data(self) -> DataFrame:
         """Convert ics.Calendar to pandas.DataFrame"""
@@ -76,7 +67,8 @@ class ICSCalendar(Calendar):
             begin = pandas.to_datetime(event.begin.datetime).tz_convert("CET")
             end = pandas.to_datetime(event.end.datetime).tz_convert("CET")
             is_all_day = event.all_day
-            title = event.name
+            # An event without a title has no project tag; it still counts as time.
+            title = event.name or ""
             description = event.description
 
             if is_all_day and (end - begin).days > 1:

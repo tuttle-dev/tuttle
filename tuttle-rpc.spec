@@ -60,7 +60,6 @@ if _drafthorse_spec and _drafthorse_spec.submodule_search_locations:
 # 'imports' domain regression).
 hiddenimports = collect_submodules("tuttle.app") + [
     # Supporting modules
-    "tuttle.app.core.database_storage_impl",
     "tuttle.app.core.formatting",
     "tuttle.model",
     "tuttle.demo",
@@ -91,6 +90,10 @@ hiddenimports = collect_submodules("tuttle.app") + [
     "mako.template",
     # PDF rendering (C++ engine with prebuilt binaries, no system dependencies)
     "plutoprint",
+    # Time zones: zoneinfo falls back to the tzdata package for a zone the
+    # system database lacks, but PyInstaller bundles tzdata only on Windows.
+    # Ubuntu 26.04 has no "CET", so without this the core failed at startup.
+    "tzdata",
     # Other potentially dynamic imports
     "pycountry",
     "pycountry.databases",
@@ -99,7 +102,6 @@ hiddenimports = collect_submodules("tuttle.app") + [
     "ics",
     "loguru",
     "pandera",
-    "PyPDF2",
     "fitz",  # pymupdf
 ]
 

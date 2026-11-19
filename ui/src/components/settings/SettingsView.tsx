@@ -11,9 +11,9 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { Plus, RefreshCw, Save, CheckCircle2, AlertCircle, User, Bot, FileText, RotateCcw, Trash2, AlertTriangle, Monitor, Globe, Info, Image as ImageIcon, X, Sun, Moon, Laptop, Palette, Terminal, Clipboard, Check } from "lucide-react";
+import { Plus, RefreshCw, Save, CheckCircle2, AlertCircle, User, Bot, FileText, RotateCcw, Trash2, AlertTriangle, Monitor, Globe, Info, Image as ImageIcon, X, Sun, Moon, Laptop, Palette, Terminal, Clipboard, Check, MessageCircleQuestion, Bug } from "lucide-react";
 import { useTheme, type ThemeChoice } from "../../hooks/useTheme";
-import { useDismiss } from "../../hooks/useDismiss";
+import { Dialog, DialogBody, DialogFooter } from "../shared/Dialog";
 import { rpc } from "../../api/rpc";
 import type { Entity } from "../../api/types";
 import { str, bool, list as entityList } from "../../api/entity";
@@ -146,6 +146,11 @@ export function SettingsView() {
   const [tab, setTab] = useState<Tab>(
     () => TABS.find((t) => t.id === navFilter.tab)?.id ?? "profile",
   );
+  // Navigation can switch tabs while Settings is open, as the tour does.
+  useEffect(() => {
+    const wanted = TABS.find((t) => t.id === navFilter.tab)?.id;
+    if (wanted) setTab(wanted);
+  }, [navFilter]);
 
   const [config, setConfig] = useState<LLMConfig>(DEFAULT_CONFIG);
   const [models, setModels] = useState<string[]>([]);
@@ -168,7 +173,6 @@ export function SettingsView() {
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deleting, setDeleting] = useState(false);
   const closeDeleteConfirm = () => setDeleteConfirmOpen(false);
-  const deleteBackdrop = useDismiss(closeDeleteConfirm, deleteConfirmOpen && !deleting);
 
   const [invoicing, setInvoicing] = useState<InvoicingPrefs>({ ...DEFAULT_INVOICING });
   const [availableTemplates, setAvailableTemplates] = useState<Record<string, string>>({});
@@ -177,6 +181,7 @@ export function SettingsView() {
   const [availableEInvoiceProfiles, setAvailableEInvoiceProfiles] = useState<Record<string, string>>({});
   const [invoicingSaving, setInvoicingSaving] = useState(false);
   const [invoicingStatus, setInvoicingStatus] = useState<{ type: "success" | "error"; msg: string } | null>(null);
+  const [invoicingLoad, setInvoicingLoad] = useState<"loading" | "ok" | "failed">("loading");
 
   const [savedNotes, setSavedNotes] = useState<Entity[]>([]);
   const [newNoteText, setNewNoteText] = useState("");
@@ -203,7 +208,9 @@ export function SettingsView() {
     if (!res.ok) setLoadFailed(true);
     if (res.ok && res.data) {
       setConfig(res.data);
-      if (res.data.base_url) await fetchModels(res.data);
+      // Check the connection only once a model is set up: before that, a missing
+      // Ollama is not an error, just a choice still to make.
+      if (res.data.base_url && res.data.model) await fetchModels(res.data);
     }
     setLoading(false);
   }
@@ -419,6 +426,9 @@ export function SettingsView() {
       rpc<Record<string, string>>("invoicing.available_e_invoice_profiles"),
     ]);
     if (loadId !== invoicingLoadRef.current) return;
+    // Defaults shown after a failed load would be saved over the real preferences.
+    const loaded = prefsRes.ok && !!prefsRes.data && tmplRes.ok && langRes.ok && schemeRes.ok && eInvRes.ok;
+    setInvoicingLoad(loaded ? "ok" : "failed");
     if (prefsRes.ok && prefsRes.data) {
       setInvoicing({ ...DEFAULT_INVOICING, ...prefsRes.data });
     }
@@ -497,6 +507,7 @@ export function SettingsView() {
         {TABS.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
+            data-settings-tab={id}
             onClick={() => setTab(id)}
             className={`flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm transition-colors ${
               tab === id
@@ -534,7 +545,7 @@ export function SettingsView() {
 
           <p className="text-xs text-muted"><span className="text-accent">*</span> Required</p>
 
-          <fieldset className="border border-border-subtle rounded-lg px-4 pb-3 pt-2">
+          <fieldset data-tour="settings-profile" className="border border-border-subtle rounded-lg px-4 pb-3 pt-2">
             <legend className="text-xs font-medium text-secondary px-1">Contact</legend>
             <div className="space-y-3 mt-1">
               <div className="grid grid-cols-2 gap-3">
@@ -703,47 +714,45 @@ export function SettingsView() {
 
       {/* Delete confirmation modal */}
       {deleteConfirmOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" {...deleteBackdrop}>
-          <div className="bg-bg-sidebar rounded-xl shadow-2xl w-full max-w-sm mx-4 max-h-[85vh] flex flex-col overflow-hidden">
-            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="flex items-center justify-center w-10 h-10 rounded-full bg-status-danger/10">
-                  <AlertTriangle size={20} className="text-status-danger" />
-                </div>
-                <div>
-                  <h3 className="text-base font-semibold text-primary">Delete user?</h3>
-                  <p className="text-xs text-muted">This will permanently remove all data.</p>
-                </div>
+        <Dialog onClose={closeDeleteConfirm} dismissible={!deleting} width="w-full max-w-sm mx-4" surface="bg-bg-sidebar">
+          <DialogBody className="px-5 py-4 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center w-10 h-10 rounded-full bg-status-danger/10">
+                <AlertTriangle size={20} className="text-status-danger" />
               </div>
-              <p className="text-sm text-secondary">
-                Type <span className="font-mono font-semibold text-primary">{profile.name}</span> to confirm:
-              </p>
-              <input
-                className={inputCls}
-                value={deleteConfirmText}
-                onChange={(e) => setDeleteConfirmText(e.target.value)}
-                placeholder={profile.name}
-                autoFocus
-              />
+              <div>
+                <h3 className="text-base font-semibold text-primary">Delete user?</h3>
+                <p className="text-xs text-muted">This will permanently remove all data.</p>
+              </div>
             </div>
-            <div className="flex justify-end gap-2 px-5 py-3 border-t border-border-subtle shrink-0">
-              <button
-                onClick={closeDeleteConfirm}
-                disabled={deleting}
-                className="px-4 py-1.5 text-sm rounded-md text-secondary hover:bg-bg-hover transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDeleteUser}
-                disabled={deleting || deleteConfirmText !== profile.name}
-                className="px-4 py-1.5 text-sm rounded-md bg-status-danger text-on-fill font-medium hover:bg-status-danger/90 transition-colors disabled:opacity-40"
-              >
-                {deleting ? "Deleting…" : "Delete permanently"}
-              </button>
-            </div>
-          </div>
-        </div>
+            <p className="text-sm text-secondary">
+              Type <span className="font-mono font-semibold text-primary">{profile.name}</span> to confirm:
+            </p>
+            <input
+              className={inputCls}
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              placeholder={profile.name}
+              autoFocus
+            />
+          </DialogBody>
+          <DialogFooter className="flex justify-end gap-2">
+            <button
+              onClick={closeDeleteConfirm}
+              disabled={deleting}
+              className="px-4 py-1.5 text-sm rounded-md text-secondary hover:bg-bg-hover transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleDeleteUser}
+              disabled={deleting || deleteConfirmText !== profile.name}
+              className="px-4 py-1.5 text-sm rounded-md bg-status-danger text-on-fill font-medium hover:bg-status-danger/90 transition-colors disabled:opacity-40"
+            >
+              {deleting ? "Deleting…" : "Delete permanently"}
+            </button>
+          </DialogFooter>
+        </Dialog>
       )}
 
       {tab === "branding" && (
@@ -857,7 +866,9 @@ export function SettingsView() {
 
       {tab === "invoicing" && (
         <section className="space-y-4">
-          <div>
+          {invoicingLoad === "failed" ? <LoadError what="invoicing preferences" onRetry={loadInvoicingPrefs} />
+            : invoicingLoad === "loading" ? <LoadingState /> : (<>
+          <div data-tour="settings-invoicing">
             <label className={labelCls}>Invoice template</label>
             <select
               className={inputCls}
@@ -916,7 +927,7 @@ export function SettingsView() {
 
           <p className="mt-1 text-xs text-muted mb-3">When enabled, a scannable payment QR code (Girocode) appears on EUR invoices with a complete bank account set. Not available for other currencies.</p>
 
-          <div>
+          <div data-tour="settings-invoicing">
             <label className={labelCls}>Default document language</label>
             <select
               className={inputCls}
@@ -930,7 +941,7 @@ export function SettingsView() {
             <p className="mt-1 text-xs text-muted">Language of invoices, timesheets and emails, unless a client has its own.</p>
           </div>
 
-          <div>
+          <div data-tour="settings-invoicing">
             <label className={labelCls}>Invoice number scheme</label>
             <select
               className={inputCls}
@@ -977,6 +988,7 @@ export function SettingsView() {
             <Save size={14} />
             {invoicingSaving ? "Saving…" : "Save Invoicing Preferences"}
           </button>
+          </>)}
 
           <div className="pt-4 border-t border-border-subtle">
             <label className={labelCls}>Saved Invoice Notes</label>
@@ -1044,7 +1056,7 @@ export function SettingsView() {
 
       {tab === "llm" && (
         <section className="space-y-4">
-          <div>
+          <div data-tour="settings-llm">
             <label className={labelCls}>Provider</label>
             <select
               value={config.provider}
@@ -1067,7 +1079,7 @@ export function SettingsView() {
             )}
           </div>
 
-          <div>
+          <div data-tour="settings-llm">
             <label className={labelCls}>{config.provider === "ollama" ? "Ollama URL" : "API Base URL"}</label>
             <div className="flex gap-2">
               <input
@@ -1089,7 +1101,7 @@ export function SettingsView() {
           </div>
 
           {config.provider !== "ollama" && (
-            <div>
+            <div data-tour="settings-llm">
               <label className={labelCls}>API Key</label>
               <input
                 type="password"
@@ -1104,7 +1116,7 @@ export function SettingsView() {
             </div>
           )}
 
-          <div>
+          <div data-tour="settings-llm">
             <label className={labelCls}>Model</label>
             {models.length > 0 ? (
               <select value={config.model} onChange={(e) => setConfig((c) => ({ ...c, model: e.target.value }))} className={inputCls}>
@@ -1205,12 +1217,20 @@ function RegionTab({ operatingCountry, supportedCountries, onCountryChange, vatN
 }) {
   const { showMessage } = useStatusBar();
   const [currency, setCurrency] = useState<CurrencySettings>({ ...DEFAULT_CURRENCY });
+  const [currencyLoad, setCurrencyLoad] = useState<"loading" | "ok" | "failed">("loading");
 
-  useEffect(() => {
+  // Defaults shown after a failed load would be saved over the real settings.
+  function loadCurrency() {
     rpc<CurrencySettings>("settings.get_currency").then((res) => {
-      if (res.ok && res.data) setCurrency({ ...DEFAULT_CURRENCY, ...res.data });
+      if (res.ok && res.data) {
+        setCurrency({ ...DEFAULT_CURRENCY, ...res.data });
+        setCurrencyLoad("ok");
+      } else {
+        setCurrencyLoad("failed");
+      }
     });
-  }, []);
+  }
+  useEffect(loadCurrency, []);
 
   const [saving, setSaving] = useState(false);
 
@@ -1240,7 +1260,7 @@ function RegionTab({ operatingCountry, supportedCountries, onCountryChange, vatN
   return (
     <section className="space-y-4">
 
-      <fieldset className="border border-border-subtle rounded-lg px-4 pb-3 pt-2">
+      <fieldset data-tour="settings-region-tax" className="border border-border-subtle rounded-lg px-4 pb-3 pt-2">
         <legend className="text-xs font-medium text-secondary px-1">Tax jurisdiction</legend>
         <div className="grid grid-cols-2 gap-3 mt-2">
           <div>
@@ -1283,6 +1303,8 @@ function RegionTab({ operatingCountry, supportedCountries, onCountryChange, vatN
           Only matters if you invoice in a currency other than the one you're taxed in.
           Amounts are converted at the ECB monthly average for dashboards, tax, and salary estimates.
         </p>
+        {currencyLoad === "failed" ? <LoadError what="currency settings" onRetry={loadCurrency} />
+          : currencyLoad === "loading" ? <LoadingState /> : (
         <div className="grid grid-cols-2 gap-3 mt-3">
           <div>
             <label className={labelCls}>Primary currency</label>
@@ -1308,11 +1330,12 @@ function RegionTab({ operatingCountry, supportedCountries, onCountryChange, vatN
             <p className="text-xs text-secondary mt-1">Bank/exchange spread on foreign-currency revenue. Lowers what you can spend, not your taxable revenue.</p>
           </div>
         </div>
+        )}
       </fieldset>
 
       <button
         onClick={handleSaveAll}
-        disabled={saving}
+        disabled={saving || currencyLoad !== "ok"}
         className="flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium bg-accent/10 text-primary hover:bg-accent/20 border border-accent/30 transition-colors disabled:opacity-40"
       >
         <Save size={14} />
@@ -1320,6 +1343,14 @@ function RegionTab({ operatingCountry, supportedCountries, onCountryChange, vatN
       </button>
     </section>
   );
+}
+
+const REPO = "https://github.com/tuttle-dev/tuttle";
+const helpBtnCls = "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm text-secondary hover:text-primary border border-border-subtle hover:bg-bg-hover transition-colors";
+
+function openExternal(url: string) {
+  if (window.tuttle?.openExternal) window.tuttle.openExternal(url);
+  else window.open(url, "_blank");
 }
 
 function SystemTab() {
@@ -1375,6 +1406,14 @@ function SystemTab() {
         <h3 className="text-sm font-semibold">About Tuttle</h3>
         <p className="text-sm text-secondary">Version {__APP_VERSION__}</p>
         <p className="text-xs text-muted">Platform: {window.tuttle.platform}</p>
+        <div className="flex gap-2 pt-2">
+          <button onClick={() => openExternal(`${REPO}/discussions`)} className={helpBtnCls}>
+            <MessageCircleQuestion size={14} /> Ask a question
+          </button>
+          <button onClick={() => openExternal(`${REPO}/issues/new`)} className={helpBtnCls}>
+            <Bug size={14} /> Report an issue
+          </button>
+        </div>
       </div>
 
       <div className="space-y-2">

@@ -3,12 +3,17 @@
     "country_aliases": ["España", "Espana"],
     "year": 2024,
     "formula_type": "marginal_brackets",
-    "source": "IRPF 2024 — Ley del IRPF (state + general autonomous community rates)",
+    "source": "IRPF 2024: Ley 35/2006 del IRPF, state scale (art. 63) plus an equal general autonomous scale; mínimo personal of €5,550 (art. 57) as a 0% band",
     "currency": "EUR",
 
     "income_tax": {
-        "basic_allowance": 5550,
+        "basic_allowance": 0,
         "zones": [
+            {
+                "label": "0%",
+                "up_to": 5550,
+                "rate": 0.0
+            },
             {
                 "label": "19%",
                 "up_to": 12450,

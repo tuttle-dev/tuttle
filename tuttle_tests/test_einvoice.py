@@ -36,6 +36,7 @@ def _make_user() -> User:
         subtitle="Heating Engineer",
         email="mail@tuttle.example",
         VAT_number="DE123456789",
+        operating_country="Germany",
         address=Address(
             street="Hauptstraße",
             number="42",
@@ -124,11 +125,11 @@ class TestCountryToISO:
         assert country_to_iso("DE") == "DE"
         assert country_to_iso("fr") == "FR"
 
-    def test_fuzzy(self):
+    def test_english_name(self):
         assert country_to_iso("United States") == "US"
 
-    def test_empty_default(self):
-        assert country_to_iso("") == "DE"
+    def test_empty_is_no_country(self):
+        assert country_to_iso("") is None
 
 
 class TestUnitToUNECE:
@@ -410,7 +411,7 @@ class TestOutsideScopeOfTax:
         """Net 7200 with nothing added, against 8568 on the standard invoice."""
         xml_str = self._xml()
         assert '<ram:TaxTotalAmount currencyID="EUR">0.00</ram:TaxTotalAmount>' in xml_str
-        assert "<ram:GrandTotalAmount>7200.000</ram:GrandTotalAmount>" in xml_str
+        assert "<ram:GrandTotalAmount>7200.00</ram:GrandTotalAmount>" in xml_str
         assert "8568" not in xml_str
 
     @pytest.mark.parametrize("profile", ["EN16931", "EXTENDED", "BASIC", "MINIMUM"])

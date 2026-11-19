@@ -5,11 +5,12 @@ import {
   Trash2, Unplug, Upload, X,
 } from "lucide-react";
 import { rpc } from "../../api/rpc";
+import { localDateIso, parseLocalDate } from "../../api/entity";
 import { Toolbar, ToolbarButtonSecondary } from "../shared/ToolbarButtons";
 import { LoadError, LoadingState } from "../shared/LoadStates";
 import { useStatusBar } from "../shared/status-bar-context";
 import { useNavigation } from "../shared/NavigationContext";
-import { useDismiss } from "../../hooks/useDismiss";
+import { Dialog, DialogHeader, DialogBody } from "../shared/Dialog";
 import { useTimer } from "./timer-context";
 import { formatElapsed, formatHours, parseDuration } from "./format";
 
@@ -58,6 +59,8 @@ type SystemCalendarResult = {
   auth_status: string;
 };
 
+type ImportResult = { imported_count: number };
+
 type ProjectTag = { tag: string; title: string; id: number };
 
 type EntryValues = { tag: string; title: string; start: string; end: string; duration: string };
@@ -104,9 +107,11 @@ const inputCls =
 
 export function TimeTrackingView() {
   const [calData, setCalData] = useState<CalendarData | null>(null);
-  const [year, setYear] = useState(new Date().getFullYear());
-  const [month, setMonth] = useState(new Date().getMonth() + 1);
-  const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const { navigate, filter: navFilter } = useNavigation();
+  // A day to open (YYYY-MM-DD) comes with navigation, as from the tour.
+  const [year, setYear] = useState(() => navFilter.day ? Number(navFilter.day.slice(0, 4)) : new Date().getFullYear());
+  const [month, setMonth] = useState(() => navFilter.day ? Number(navFilter.day.slice(5, 7)) : new Date().getMonth() + 1);
+  const [selectedDay, setSelectedDay] = useState<string | null>(navFilter.day ?? null);
   const [filterTag, setFilterTag] = useState<string | null>(null);
   const [monthProjects, setMonthProjects] = useState<ProjectHours[]>([]);
   const [projectTags, setProjectTags] = useState<ProjectTag[]>([]);
@@ -122,12 +127,12 @@ export function TimeTrackingView() {
   const [systemCals, setSystemCals] = useState<SystemCalendar[] | null>(null);
   const [sysCalAuthStatus, setSysCalAuthStatus] = useState<string | null>(null);
   const [sysCalLoading, setSysCalLoading] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
 
   const timer = useTimer();
-  const { navigate } = useNavigation();
+  const { showMessage } = useStatusBar();
   const isMac = typeof window !== "undefined" && window.tuttle?.platform === "darwin";
-  const closeSourceDialog = () => setShowSourceDialog(false);
-  const sourceBackdrop = useDismiss(closeSourceDialog, showSourceDialog);
+  const closeSourceDialog = () => { setShowSourceDialog(false); setImportError(null); };
 
   const loadData = useCallback(async () => {
     // While filtered, the projects panel still lists every project of the month.
@@ -188,37 +193,63 @@ export function TimeTrackingView() {
 
   // ── Calendar import ─────────────────────────────────────────────────────
 
+  // A problem with an import shows in the import dialog while it is open.
+  function reportImportProblem(text: string) {
+    if (showSourceDialog) setImportError(text);
+    else showMessage(text, { type: "error" });
+  }
+
   async function handleDrop(e: React.DragEvent) {
     e.preventDefault();
     setDragOver(false);
     const files = e.dataTransfer.files;
     if (!files.length) return;
     setImporting(true);
+    setImportError(null);
+    let imported = 0;
+    const problems: string[] = [];
     for (const file of Array.from(files)) {
-      if (!file.name.endsWith(".ics")) continue;
+      if (!file.name.endsWith(".ics")) {
+        problems.push(`${file.name} is not an .ics calendar file.`);
+        continue;
+      }
       const buffer = await file.arrayBuffer();
       const bytes = new Uint8Array(buffer);
       let binary = "";
       for (let i = 0; i < bytes.length; i += 8192) {
         binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
       }
-      await rpc("timetracking.import_ics", { content: btoa(binary), name: file.name });
+      const res = await rpc<ImportResult>("timetracking.import_ics", { content: btoa(binary), name: file.name });
+      if (!res.ok) problems.push(res.error || `${file.name} could not be imported.`);
+      else if (!res.data?.imported_count) problems.push(`${file.name} has no events to import.`);
+      else {
+        imported += res.data.imported_count;
+        if (res.warning) problems.push(res.warning);
+      }
     }
     setImporting(false);
+    const problem = problems.join(" ");
+    if (!imported) {
+      if (problem) reportImportProblem(problem);
+      return;
+    }
     setCalendarSource("ics");
     setConnectionLost(false);
     setShowSourceDialog(false);
+    if (problem) showMessage(problem, { type: "error" });
     loadData();
   }
 
   async function loadSystemCalendars() {
     setSysCalLoading(true);
+    setImportError(null);
     const res = await rpc<SystemCalendarResult>("timetracking.list_system_calendars");
     if (res.ok && res.data) {
       setSystemCals(res.data.calendars);
       setSysCalAuthStatus(res.data.auth_status);
     } else {
-      setSystemCals([]);
+      setSystemCals(null);
+      setImportError(res.error || "Your calendars could not be listed.");
     }
     setSysCalLoading(false);
   }
@@ -229,18 +260,26 @@ export function TimeTrackingView() {
 
   async function importSystemCalendar(calId: string) {
     setImporting(true);
-    await rpc("timetracking.import_system_calendar", { calendar_id: calId });
+    setImportError(null);
+    const res = await rpc<ImportResult>("timetracking.import_system_calendar", { calendar_id: calId });
     setImporting(false);
+    if (!res.ok || !res.data?.imported_count) {
+      setImportError(res.ok ? "This calendar has no events to import." : res.error || "The calendar could not be imported.");
+      return;
+    }
     setSystemCals(null);
     setCalendarSource("system");
     setConnectionLost(false);
     setShowSourceDialog(false);
+    if (res.warning) showMessage(res.warning, { type: "error" });
     loadData();
   }
 
   async function syncCalendar() {
     setSyncing(true);
-    await rpc("timetracking.sync");
+    const res = await rpc("timetracking.sync");
+    const problem = res.ok ? res.warning : res.error || "The calendar could not be synced.";
+    if (problem) showMessage(problem, { type: "error" });
     await loadData();
     setSyncing(false);
   }
@@ -256,12 +295,20 @@ export function TimeTrackingView() {
 
   // ── Derived data ────────────────────────────────────────────────────────
 
+  const knownTagSet = useMemo(() => new Set(projectTags.map((p) => p.tag)), [projectTags]);
+
+  const unmatchedEvents = useMemo(() => {
+    if (!calData) return [];
+    return calData.events.filter((ev) => !ev.tag || !knownTagSet.has(ev.tag));
+  }, [calData, knownTagSet]);
+
   // Keep the filtered project listed even in a month without its entries, so it can be cleared.
   const panelProjects = useMemo(() => {
-    if (!filterTag || monthProjects.some((p) => p.tag === filterTag)) return monthProjects;
+    const matched = monthProjects.filter((p) => p.tag && knownTagSet.has(p.tag));
+    if (!filterTag || matched.some((p) => p.tag === filterTag)) return matched;
     const title = projectTags.find((p) => p.tag === filterTag)?.title ?? filterTag;
-    return [...monthProjects, { tag: filterTag, title, hours: 0, event_count: 0 }];
-  }, [monthProjects, filterTag, projectTags]);
+    return [...matched, { tag: filterTag, title, hours: 0, event_count: 0 }];
+  }, [monthProjects, filterTag, projectTags, knownTagSet]);
 
   const allTags = useMemo(() => panelProjects.map((p) => p.tag), [panelProjects]);
 
@@ -390,6 +437,31 @@ export function TimeTrackingView() {
               </div>
             </div>
 
+            {unmatchedEvents.length > 0 && (
+              <div className="border-t border-border-subtle pt-3">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <AlertTriangle size={11} className="text-status-warning" />
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-status-warning">Needs attention</div>
+                </div>
+                <div className="-mx-2 space-y-0.5 max-h-60 overflow-y-auto">
+                  {unmatchedEvents.map((ev, i) => (
+                    <button key={`${ev.begin}-${i}`} onClick={() => setSelectedDay(ev.date)}
+                      className={`block w-full text-left rounded-lg px-2 py-1.5 transition-colors ${ev.date === selectedDay ? "bg-bg-selected" : "hover:bg-bg-hover"}`}>
+                      <div className="text-[12px] font-medium truncate text-primary">{ev.title || "No title"}</div>
+                      <div className="flex items-center gap-1.5 mt-0.5 text-[11px] flex-wrap">
+                        <span className="text-secondary tabular-nums">{formatShortDateTime(ev.begin, ev.all_day)}</span>
+                        <span className="text-muted">·</span>
+                        <span className="text-secondary tabular-nums">{formatHours(ev.duration_hours)}</span>
+                        <span className={`px-1 rounded-sm ${ev.tag ? "bg-status-warning/15 text-status-warning font-medium" : "text-muted italic"}`}>
+                          {ev.tag || "no tag"}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="border-t border-border-subtle pt-3">
               <div className="text-[11px] font-bold uppercase tracking-wider text-primary mb-1">Total</div>
               <div className="text-xl font-bold tabular-nums text-primary">{formatHours(calData.summary.total_hours)}</div>
@@ -406,33 +478,32 @@ export function TimeTrackingView() {
       </>)}
 
       {showSourceDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" {...sourceBackdrop}>
-          <div className="bg-bg-content rounded-xl border border-border-subtle shadow-2xl w-[680px] max-h-[85vh] flex flex-col overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-border-subtle shrink-0">
-              <h2 className="text-base font-semibold text-primary">Import from calendar</h2>
-              <button onClick={closeSourceDialog} className="p-1 rounded text-muted hover:text-primary hover:bg-bg-hover transition-colors">
-                <X size={16} />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto px-5 py-5">
-              <SourceChooser
-                dragOver={dragOver}
-                importing={importing}
-                isMac={isMac}
-                systemCals={systemCals}
-                sysCalAuthStatus={sysCalAuthStatus}
-                sysCalLoading={sysCalLoading}
-                connectionLost={connectionLost}
-                onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-                onDragLeave={() => setDragOver(false)}
-                onDrop={handleDrop}
-                onLoadSystemCals={loadSystemCalendars}
-                onImportSystemCal={importSystemCalendar}
-                onOpenSettings={openCalendarSettings}
-              />
-            </div>
-          </div>
-        </div>
+        <Dialog onClose={closeSourceDialog} width="w-[680px]">
+          <DialogHeader className="flex items-center justify-between">
+            <h2 className="text-base font-semibold text-primary">Import from calendar</h2>
+            <button onClick={closeSourceDialog} className="p-1 rounded text-muted hover:text-primary hover:bg-bg-hover transition-colors">
+              <X size={16} />
+            </button>
+          </DialogHeader>
+          <DialogBody className="px-5 py-5">
+            <SourceChooser
+              dragOver={dragOver}
+              importing={importing}
+              isMac={isMac}
+              systemCals={systemCals}
+              sysCalAuthStatus={sysCalAuthStatus}
+              sysCalLoading={sysCalLoading}
+              connectionLost={connectionLost}
+              importError={importError}
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={handleDrop}
+              onLoadSystemCals={loadSystemCalendars}
+              onImportSystemCal={importSystemCalendar}
+              onOpenSettings={openCalendarSettings}
+            />
+          </DialogBody>
+        </Dialog>
       )}
     </div>
   );
@@ -519,7 +590,7 @@ function TimerBar({ projectTags, onCreateProject, onLogged }: {
   const roundBtn = "w-9 h-9 rounded-full flex items-center justify-center text-on-fill transition-opacity shrink-0 disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90";
 
   return (
-    <div className={`mx-5 mt-4 rounded-xl border bg-bg-card shadow-sm transition-colors ${running ? "border-status-success/40" : pending ? "border-accent/40" : "border-border-subtle"}`}>
+    <div data-tour="time-entry" className={`mx-5 mt-4 rounded-xl border bg-bg-card shadow-sm transition-colors ${running ? "border-status-success/40" : pending ? "border-accent/40" : "border-border-subtle"}`}>
       <div className="flex items-center gap-3 px-4 py-2.5">
         {running
           ? <span className="w-2.5 h-2.5 rounded-full bg-status-success animate-pulse shrink-0" />
@@ -644,13 +715,14 @@ function TimerBar({ projectTags, onCreateProject, onLogged }: {
 
 function SourceChooser({
   dragOver, importing, isMac, systemCals, sysCalAuthStatus, sysCalLoading,
-  connectionLost,
+  connectionLost, importError,
   onDragOver, onDragLeave, onDrop, onLoadSystemCals, onImportSystemCal, onOpenSettings,
 }: {
   dragOver: boolean; importing: boolean; isMac: boolean;
   systemCals: SystemCalendar[] | null; sysCalAuthStatus: string | null;
   sysCalLoading: boolean;
   connectionLost: boolean;
+  importError: string | null;
   onDragOver: (e: React.DragEvent) => void;
   onDragLeave: () => void;
   onDrop: (e: React.DragEvent) => void;
@@ -664,9 +736,9 @@ function SourceChooser({
 
   return (
     <div className="flex flex-col items-center gap-5">
-      {connectionLost && (
+      {(importError || connectionLost) && (
         <div className="px-4 py-2.5 rounded-lg bg-status-warning/10 border border-status-warning/30 text-xs text-status-warning max-w-sm text-center leading-relaxed">
-          Your calendar connection could not be restored. Please reconnect below.
+          {importError ?? "Your calendar connection could not be restored. Please reconnect below."}
         </div>
       )}
       <p className="max-w-md text-center text-xs text-tertiary leading-relaxed">
@@ -781,7 +853,7 @@ function MonthGrid({
   selectedDay: string | null; onSelectDay: (d: string) => void;
 }) {
   const { year, month, first_weekday, days_in_month, days } = calData;
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = localDateIso();
 
   const markerOrder = (mk: DayMarker) => allTags.indexOf(mk.tag) * 2 + (mk.source === "manual" ? 0 : 1);
   const hasLogged = calData.events.some((ev) => ev.source === "manual");
@@ -1025,7 +1097,7 @@ function DayDetail({
               );
             }
             return (
-              <div key={key} className={`px-3 py-2 flex items-start gap-2.5 group ${ev.is_future ? "opacity-70" : ""}`}>
+              <div key={key} data-tag={ev.tag ?? undefined} className={`px-3 py-2 flex items-start gap-2.5 group ${ev.is_future ? "opacity-70" : ""}`}>
                 <div className="w-2.5 h-2.5 rounded-full mt-1 shrink-0"
                   style={dotStyle(tagColor(ev.tag, allTags), !isManual, ev.is_future)} />
                 <div className="flex-1 min-w-0">
@@ -1104,6 +1176,15 @@ function DayDetail({
 // Helpers
 // ---------------------------------------------------------------------------
 
+function formatShortDateTime(iso: string, allDay: boolean): string {
+  try {
+    const d = parseLocalDate(iso);
+    const date = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    if (allDay) return date;
+    return `${date} ${formatTime(iso)}`;
+  } catch { return ""; }
+}
+
 function formatTime(iso: string): string {
   try {
     const d = new Date(iso);
@@ -1115,10 +1196,6 @@ function toTimeInput(iso: string): string {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return "";
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-}
-
-function localDateIso(d: Date = new Date()): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 function slotMinutes(start: string, end: string): number | null {

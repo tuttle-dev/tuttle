@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import {
-  FolderKanban, Building2, FileSignature, Calendar, Plus, Trash2, FileUp, Sparkles, Check, CheckCircle2, Save, AlertTriangle, Copy,
+  FolderKanban, Building2, FileSignature, Calendar, Plus, FileUp, CheckCircle2, Save, AlertTriangle, Copy,
 } from "lucide-react";
 import { rpc } from "../../api/rpc";
 import { str, int, num, bool, entity, dateRange, projectStatus } from "../../api/entity";
@@ -17,8 +17,11 @@ import { DetailFields, DetailField } from "../shared/DetailFields";
 import { LoadError, LoadingState } from "../shared/LoadStates";
 import { Section } from "../shared/Section";
 import { DocumentImportPanel } from "../shared/DocumentImportPanel";
+import { FormField } from "../shared/FormField";
+import { ParsedCard, AiField } from "../shared/ParsedCard";
 import { useFieldRequirements } from "../../hooks/useFieldRequirements";
 import { useAutoSelect } from "../../hooks/useAutoSelect";
+import { useEditFromNavigation } from "../../hooks/useEditFromNavigation";
 import type { Entity } from "../../api/types";
 import { formatHours } from "../timetracking/format";
 
@@ -200,8 +203,10 @@ export function ProjectsView() {
 
   useAutoSelect(projects, filtered, selected, setSelected, {
     enabled: mode === "view",
-    preferred: navFilter.contractId != null ? (p) => num(p, "contract_id") === navFilter.contractId : undefined,
+    preferred: navFilter.projectId != null ? (p) => p.id === navFilter.projectId
+      : navFilter.contractId != null ? (p) => num(p, "contract_id") === navFilter.contractId : undefined,
   });
+  useEditFromNavigation(navFilter, navFilter.projectId, selected?.id, () => setMode("edit"));
 
   function moveToColumn(id: number, colId: string) {
     stageStore.setColumn(id, colId);
@@ -492,7 +497,7 @@ function ProjectForm({ project, isDuplicate = false, contracts, onSave, onCancel
         </div>
       </Section>
 
-      <Section title={<>Contract<span className="text-accent ml-0.5">*</span></>}>
+      <Section name="Contract" title={<>Contract<span className="text-accent ml-0.5">*</span></>}>
         <select value={form.contractId ?? ""} onChange={(e) => update("contractId", e.target.value ? Number(e.target.value) : null)}
           className="w-full px-3 py-2 rounded-md text-sm bg-bg-card text-primary border border-border-subtle outline-none focus:border-accent transition-colors">
           <option value="">— Select a contract —</option>
@@ -508,20 +513,6 @@ function ProjectForm({ project, isDuplicate = false, contracts, onSave, onCancel
         )}
       </Section>
     </form>
-  );
-}
-
-/* ---------- Shared UI ---------- */
-
-function FormField({ label, value, onChange, autoFocus, required }: {
-  label: string; value: string; onChange: (v: string) => void; autoFocus?: boolean; required?: boolean;
-}) {
-  return (
-    <div>
-      <label className="block text-xs text-tertiary mb-1">{label}{required && <span className="text-accent ml-0.5">*</span>}</label>
-      <input type="text" value={value} onChange={(e) => onChange(e.target.value)} autoFocus={autoFocus} required={required}
-        className="w-full px-3 py-2 rounded-md text-sm bg-bg-card text-primary border border-border-subtle outline-none focus:border-accent transition-colors" />
-    </div>
   );
 }
 
@@ -542,24 +533,7 @@ function ParsedProjectCard({ project, contracts, onAccept, onDiscard, onUpdate }
   onAccept: () => void; onDiscard: () => void; onUpdate: (p: ParsedProject) => void;
 }) {
   return (
-    <div className="rounded-xl border-2 border-status-purple/40 bg-status-purple/5 p-4 space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Sparkles size={14} className="text-status-purple" />
-          <span className="text-sm font-semibold">{project.title || "Untitled"}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <button onClick={onDiscard}
-            className="flex items-center gap-1 px-2 py-1 rounded text-xs text-secondary hover:text-status-danger hover:bg-status-danger/10 transition-colors">
-            <Trash2 size={12} /> Discard
-          </button>
-          <button onClick={onAccept}
-            className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium text-status-purple hover:bg-status-purple/10 border border-status-purple/30 transition-colors">
-            <Check size={12} /> Accept
-          </button>
-        </div>
-      </div>
-
+    <ParsedCard title={project.title || "Untitled"} onAccept={onAccept} onDiscard={onDiscard}>
       <div className="grid grid-cols-2 gap-2">
         <AiField label="Title" value={project.title} onChange={(v) => onUpdate({ ...project, title: v })} />
         <AiField label="Tag" value={project.tag} onChange={(v) => onUpdate({ ...project, tag: v })} />
@@ -581,16 +555,6 @@ function ParsedProjectCard({ project, contracts, onAccept, onDiscard, onUpdate }
           {contracts.map((c) => <option key={c.id} value={c.id}>{str(c, "title")}</option>)}
         </select>
       </div>
-    </div>
-  );
-}
-
-function AiField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
-  return (
-    <div>
-      <label className="block text-xs text-status-purple/70 mb-0.5">{label}</label>
-      <input type="text" value={value} onChange={(e) => onChange(e.target.value)}
-        className="w-full px-2.5 py-1.5 rounded-md text-sm bg-bg-card text-primary border border-status-purple/30 outline-none focus:border-status-purple transition-colors" />
-    </div>
+    </ParsedCard>
   );
 }

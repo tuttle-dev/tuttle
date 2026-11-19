@@ -23,18 +23,17 @@ for the full rationale.
 import datetime
 import enum
 import re
-import textwrap
-from decimal import Decimal
-from typing import List, Literal, Optional, Type
+from decimal import ROUND_HALF_UP, Decimal
+from typing import List, Literal, NamedTuple, Optional, Type
 
 import pandas
 import sqlalchemy
-from pydantic import BaseModel, condecimal, validator
+from pydantic import BaseModel, NaiveDatetime, condecimal, validator
+from sqlalchemy.orm.attributes import set_committed_value
 from sqlmodel import Field, Relationship, SQLModel
 
-from .app.core.formatting import fmt_currency
+from .app.core.formatting import fmt_currency, fmt_quantity
 from .data_dir import get_data_dir
-from .dev import deprecated
 from .fx import convert, primary_currency, rate
 from .i18n import SUPPORTED
 from .time import ChargeBasis, ContractType, Cycle, TimeUnit
@@ -84,13 +83,6 @@ def _project(obj, projection, depth: int):
     return obj
 
 
-def help(model_class: Type[BaseModel]):
-    return pandas.DataFrame(
-        ((field_name, field.field_info.description) for field_name, field in Contract.__fields__.items()),
-        columns=["field name", "field description"],
-    )
-
-
 def to_dataframe(items: List[Type[BaseModel]]) -> pandas.DataFrame:
     """Convert list of pydantic model items to DataFrame.
 
@@ -101,14 +93,6 @@ def to_dataframe(items: List[Type[BaseModel]]) -> pandas.DataFrame:
         pandas.DataFrame: [description]
     """
     return pandas.DataFrame.from_records([item.dict() for item in items])
-
-
-def OneToOneRelationship(back_populates):
-    """Define a relationship as one-to-one."""
-    return Relationship(
-        back_populates=back_populates,
-        sa_relationship_kwargs={"uselist": False, "lazy": "subquery"},
-    )
 
 
 class Address(RpcMixin, SQLModel, table=True):
@@ -216,11 +200,6 @@ class User(RpcMixin, SQLModel, table=True):
         """
         return next((a for a in self.bank_accounts if a.is_default), None) or next(iter(self.bank_accounts), None)
 
-    @property
-    def bank_account_not_set(self) -> bool:
-        """True if no bank account is fully filled in."""
-        return not any(a.BIC and a.IBAN and a.name for a in self.bank_accounts)
-
 
 class Bank(SQLModel, table=True):
     """A bank."""
@@ -298,29 +277,6 @@ class Contact(RpcMixin, SQLModel, table=True):
             return self.company
         else:
             return None
-
-    def print_address(self, address_only: bool = False):
-        """Print address in common format."""
-        if self.address is None:
-            return ""
-
-        if address_only:
-            return textwrap.dedent(
-                f"""
-                {self.address.street} {self.address.number}
-                {self.address.postal_code} {self.address.city}
-                {self.address.country}"""
-            )
-
-        return textwrap.dedent(
-            f"""
-        {self.name}
-        {self.company}
-        {self.address.street} {self.address.number}
-        {self.address.postal_code} {self.address.city}
-        {self.address.country}
-        """
-        )
 
 
 class ClientContact(SQLModel, table=True):
@@ -406,17 +362,15 @@ class Client(RpcMixin, SQLModel, table=True):
 
     @property
     def invoice_recipient_contact(self) -> Optional[Contact]:
-        """Contact to use for invoice delivery.
+        """Contact invoices go to: the invoicing contact the user chose. Any contact can be it, whatever its role."""
+        return self.invoicing_contact
 
-        Prefer the legacy direct invoicing contact, but also support the
-        many-to-many contact association used by the current contact UI.
-        """
+    def missing_invoice_email(self) -> str:
+        """What to do so invoices to this client can be emailed."""
         if self.invoicing_contact:
-            return self.invoicing_contact
-        for association in self.client_contacts:
-            if (association.role or "").strip().casefold() == "invoicing":
-                return association.contact
-        return None
+            name = self.invoicing_contact.name or "the invoicing contact"
+            return f"Add an email address to {name}, the invoicing contact of {self.name}."
+        return f"Choose an invoicing contact for {self.name}."
 
     @property
     def invoice_recipient_name(self) -> str:
@@ -433,9 +387,6 @@ class Client(RpcMixin, SQLModel, table=True):
         if contact and contact.address:
             return contact.address
         return self.address
-
-
-CONTRACT_DEFAULT_VAT_RATE = 0.19
 
 
 class TaxCategory(enum.Enum):
@@ -591,9 +542,10 @@ class Contract(RpcMixin, VatCategoryMixin, SQLModel, table=True):
     )
     is_completed: bool = Field(default=False, description="flag marking if contract has been completed")
     currency: str = Field(description="Currency code, e.g. EUR or USD")
+    # No default: the rate depends on where the user operates, so every write
+    # path states it (0 for a category other than standard).
     VAT_rate: Decimal = Field(
-        description="VAT rate applied to the contractual rate.",
-        default=CONTRACT_DEFAULT_VAT_RATE,  # TODO: configure by country?
+        description="VAT rate applied to the contractual rate, as a fraction (0.19 is 19%).",
     )
     VAT_category: TaxCategory = Field(
         description="Tax category of the supply. Determines the EN16931 category "
@@ -625,9 +577,11 @@ class Contract(RpcMixin, VatCategoryMixin, SQLModel, table=True):
         description="Units of work (hours or days) expected per week: the pace at which a "
         "time-based contract is forecast to be billed. None when there is no expected pace.",
     )
+    # No default of 31 days: a column default would also replace an explicit
+    # None on insert, so a contract without a payment term could not be saved.
     term_of_payment: Optional[int] = Field(
-        description="How many days after receipt of invoice this invoice is due.",
-        default=31,
+        description="How many days after receipt of invoice this invoice is due. None when no term is agreed.",
+        default=None,
     )
     billing_cycle: Cycle = Field(
         default=Cycle.monthly,
@@ -679,12 +633,6 @@ class Contract(RpcMixin, VatCategoryMixin, SQLModel, table=True):
         if self.is_fixed_price and self.rate is None:
             return ""
         return self.unit.abbrev
-
-    @property
-    def volume_as_time(self):
-        if self.volume is None:
-            return None
-        return self.volume * self.unit.to_timedelta()
 
     @property
     def agreed_value(self) -> Optional[Decimal]:
@@ -748,20 +696,18 @@ class Contract(RpcMixin, VatCategoryMixin, SQLModel, table=True):
         """Whether the contract is agreed and running."""
         return self.status == "Active"
 
-    def is_upcoming(self) -> bool:
-        """Whether the contract is agreed and starts later."""
-        return self.status == "Upcoming"
+    def billable_vat_rate(self) -> Decimal:
+        """The VAT rate to invoice, as a fraction (0.19 is 19%).
 
-    def get_status(self, default: str = "All") -> str:
-        if self.is_active():
-            return "Active"
-        elif self.is_upcoming():
-            return "Upcoming"
-        elif self.is_completed:
-            return "Completed"
-        else:
-            # default
-            return default
+        Every write path stores the rate as a fraction (``validate_vat``), so a
+        stored rate outside 0–1 is bad data. It is refused rather than rescaled:
+        guessing which percentage was meant would bill the wrong tax.
+        """
+        rate = Decimal(str(self.VAT_rate))
+        if not Decimal("0") <= rate <= Decimal("1"):
+            percent = f"{(rate * 100).normalize():f}"
+            raise ValueError(f"The VAT rate of contract “{self.title}” is {percent}%. Correct it, then create the invoice.")
+        return rate
 
     def validate_currency(self) -> None:
         """Normalise the currency code in place and reject an unsupported one.
@@ -916,7 +862,7 @@ class Project(RpcMixin, SQLModel, table=True):
     """A project is a group of contract work for a client."""
 
     __rpc_relationships__ = ("contract",)
-    __rpc_computed__ = ("is_fixed_price", "effective_rate")
+    __rpc_computed__ = ("is_fixed_price", "is_settled", "effective_rate")
 
     id: Optional[int] = Field(default=None, primary_key=True)
     title: str = Field(
@@ -979,6 +925,19 @@ class Project(RpcMixin, SQLModel, table=True):
         return None
 
     @property
+    def final_invoice(self) -> Optional["Invoice"]:
+        """The final invoice that settles this project, if any.
+
+        A cancelled final invoice settles nothing, so it does not count.
+        """
+        return next((inv for inv in self.invoices if inv.is_final_invoice and not inv.cancelled), None)
+
+    @property
+    def is_settled(self) -> bool:
+        """Whether a final invoice settles the project. Only one may, or the contract is billed twice."""
+        return self.final_invoice is not None
+
+    @property
     def client(self) -> Optional[Client]:
         if self.contract:
             return self.contract.client
@@ -992,35 +951,16 @@ class Project(RpcMixin, SQLModel, table=True):
             raise ValueError("Tag must start with a # symbol and not contain any punctuation or whitespace.")
         return v
 
-    @deprecated
-    def get_brief_description(self):
-        if len(self.description) <= 108:
-            return self.description
-        else:
-            return f"{self.description[0:108]}..."
-
     def is_active(self) -> bool:
         """Whether the project is in the Active column of the project board."""
         return self.board_stage() == "Active"
 
-    def is_upcoming(self) -> bool:
-        """Whether the project is in the Upcoming column of the project board."""
-        return self.board_stage() == "Upcoming"
-
-    # FIXME: replace string literals with enum
-    def get_status(self, default: str = "") -> str:
-        if self.is_active():
-            return "Active"
-        elif self.is_upcoming():
-            return "Upcoming"
-        elif self.is_completed:
-            return "Completed"
-        else:
-            # default
-            return default
-
     def board_stage(self, today: Optional[datetime.date] = None) -> str:
         """The project's column on the project board: the stage set by hand, else one read off its dates.
+
+        Only the user completes a project, once nothing is left to do: the work
+        is invoiced and paid in full. A project past its end date stays Active
+        until then.
 
         Mirrors ``projectStatus`` in the UI.
         """
@@ -1031,9 +971,7 @@ class Project(RpcMixin, SQLModel, table=True):
             return "Completed"
         if self.start_date > today:
             return "Upcoming"
-        if self.end_date is None or self.end_date >= today:
-            return "Active"
-        return "Completed"
+        return "Active"
 
     def is_committed(self, today: Optional[datetime.date] = None) -> bool:
         """Whether the client has agreed to the work and it is still to be done.
@@ -1049,8 +987,8 @@ class TimeTrackingItem(SQLModel, table=True):
     timesheet_id: Optional[int] = Field(default=None, foreign_key="timesheet.id", ondelete="CASCADE")
     timesheet: Optional["Timesheet"] = Relationship(back_populates="items")
     #
-    begin: datetime.datetime = Field(description="Start time of the time interval.")
-    end: datetime.datetime = Field(description="End time of the time interval.")
+    begin: NaiveDatetime = Field(description="Start time of the time interval.")
+    end: NaiveDatetime = Field(description="End time of the time interval.")
     duration: datetime.timedelta = Field(description="Duration of the time interval.")
     title: str = Field(description="A short description of the time interval.")
     tag: str = Field(description="A short tag to identify the project the time interval belongs to.")
@@ -1075,7 +1013,7 @@ class TimeTrackingSettings(SQLModel, table=True):
     )
     calendar_id: Optional[str] = Field(default=None, description="Identifier of the connected system calendar.")
     calendar_name: Optional[str] = Field(default=None, description="Display name of the connected calendar or file.")
-    timer_start: Optional[datetime.datetime] = Field(
+    timer_start: Optional[NaiveDatetime] = Field(
         default=None,
         description="When the running timer was started, in UTC; None when no timer is running.",
     )
@@ -1147,6 +1085,33 @@ class Timesheet(SQLModel, table=True):
         return len(self.items) == 0
 
 
+# Invoices round half-up (commercial rounding): money to the cent, billed
+# quantities to two decimals. Every amount the model hands out is already
+# rounded, so the lines of a document add up to its totals, and the PDF, the
+# app and the e-invoice XML all show the same figures.
+
+CENT = Decimal("0.01")
+
+
+def round_money(value) -> Decimal:
+    """``value`` rounded half-up to the cent: 3.125 becomes 3.13."""
+    return Decimal(str(value)).quantize(CENT, rounding=ROUND_HALF_UP)
+
+
+def round_quantity(value) -> Decimal:
+    """A billed quantity rounded half-up to two decimals: 1.3333… hours become 1.33."""
+    return Decimal(str(value)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+
+class VatBreakdown(NamedTuple):
+    """The VAT of the invoice lines that share a tax category and rate (EN16931 BG-23)."""
+
+    category: TaxCategory
+    rate: Decimal  # a fraction, e.g. 0.19
+    taxable_amount: Decimal  # the sum of the line subtotals
+    tax_amount: Decimal  # taxable_amount × rate, rounded to the cent
+
+
 class Invoice(RpcMixin, SQLModel, table=True):
     """An invoice, payment reminder, deposit invoice, or final invoice.
 
@@ -1162,7 +1127,9 @@ class Invoice(RpcMixin, SQLModel, table=True):
 
     __rpc_relationships__ = {
         "contract": None,
-        "project": None,
+        # Only what the invoice list shows: a full dump would compute whether the
+        # project is settled from its invoices, which are not loaded with an invoice.
+        "project": ("id", "title"),
         "items": None,
         "milestone": ("id", "title"),
         "deposits": None,
@@ -1338,6 +1305,14 @@ class Invoice(RpcMixin, SQLModel, table=True):
     def __repr__(self):
         return f"Invoice(id={self.id}, number={self.number}, date={self.date}, type={self.document_type})"
 
+    def to_rpc_dict(self, _depth: int = 2) -> dict:
+        # Each line formats its amounts in this invoice's currency. Lines loaded
+        # through this invoice leave their reference back to it unloaded, and a
+        # line can't load it once the session is closed, so set it here.
+        for item in self.items:
+            set_committed_value(item, "invoice", self)
+        return super().to_rpc_dict(_depth)
+
     # -- Computed properties -----------------------------------------------
 
     @property
@@ -1354,15 +1329,29 @@ class Invoice(RpcMixin, SQLModel, table=True):
 
     @property
     def sum(self) -> Decimal:
-        """Sum over all invoice items."""
-        s = sum([item.subtotal for item in self.items])
-        return Decimal(s)
+        """Net amount: the sum of the line subtotals, each rounded to the cent."""
+        return sum((item.subtotal for item in self.items), Decimal("0.00"))
+
+    @property
+    def vat_breakdown(self) -> List[VatBreakdown]:
+        """VAT per tax category and rate, calculated on the summed line subtotals.
+
+        This is the EN16931 calculation (BR-CO-17): VAT is rounded once per
+        category and rate, not once per line.
+        """
+        taxable_amounts: dict[tuple[TaxCategory, Decimal], Decimal] = {}
+        for item in self.items:
+            key = (normalize_tax_category(item.VAT_category), Decimal(str(item.VAT_rate)))
+            taxable_amounts[key] = taxable_amounts.get(key, Decimal("0.00")) + item.subtotal
+        return [
+            VatBreakdown(category, rate, taxable_amount, round_money(taxable_amount * rate))
+            for (category, rate), taxable_amount in taxable_amounts.items()
+        ]
 
     @property
     def VAT_total(self) -> Decimal:
-        """Sum of VAT over all invoice items."""
-        s = sum(item.VAT for item in self.items)
-        return Decimal(round(s, 2))
+        """VAT of the invoice: the sum of its VAT breakdown."""
+        return sum((entry.tax_amount for entry in self.vat_breakdown), Decimal("0.00"))
 
     @property
     def is_outside_scope(self) -> bool:
@@ -1375,16 +1364,20 @@ class Invoice(RpcMixin, SQLModel, table=True):
 
     @property
     def total(self) -> Decimal:
-        """Total invoiced amount, including reminder fee if present."""
-        t = self.sum + self.VAT_total
+        """Total invoiced amount: net sum plus VAT, plus the reminder fee if present."""
+        total = self.sum + self.VAT_total
         if self.reminder_fee:
-            t += self.reminder_fee
-        return Decimal(t)
+            total += round_money(self.reminder_fee)
+        return total
 
     @property
     def due_date(self) -> Optional[datetime.date]:
-        """Original due date derived from contract payment terms."""
-        if self.contract and self.contract.term_of_payment:
+        """Original due date derived from contract payment terms.
+
+        A term of 0 days makes the invoice due on its date; a contract without
+        a term gives no due date.
+        """
+        if self.contract and self.contract.term_of_payment is not None:
             return self.date + datetime.timedelta(days=self.contract.term_of_payment)
         return None
 
@@ -1408,6 +1401,24 @@ class Invoice(RpcMixin, SQLModel, table=True):
                 return "overdue"
             return "sent"
         return "draft"
+
+    @property
+    def is_issued(self) -> bool:
+        """Whether the client has the invoice: it was sent, or it is paid.
+
+        A draft is not invoiced yet. No revenue, tax or cash figure counts it,
+        and the tracked time in its timesheet stays planned.
+        """
+        return bool(self.sent or self.paid)
+
+    @property
+    def is_counted(self) -> bool:
+        """Whether revenue, tax and cash figures count the invoice.
+
+        They count an issued invoice that is not cancelled. A reminder is
+        left out: it repeats the invoice it chases, which is counted already.
+        """
+        return self.is_issued and not self.cancelled and not self.is_reminder
 
     @property
     def reminder_chain_head_id(self) -> Optional[int]:
@@ -1441,12 +1452,36 @@ class Invoice(RpcMixin, SQLModel, table=True):
         return None
 
     @property
+    def reminder_chain_head(self) -> "Invoice":
+        """The invoice a reminder chases, at the start of its chain; any other document is its own head.
+
+        Needs the chain loaded: ``InvoicingDataSource`` loads it with every reminder.
+        """
+        node = self
+        visited: set[int] = set()
+        while node.is_reminder and node.reminder_for is not None and id(node) not in visited:
+            visited.add(id(node))
+            node = node.reminder_for
+        return node
+
+    @property
+    def settlement(self) -> Optional["Invoice"]:
+        """The final invoice whose settlement this document states, if any.
+
+        That is a final invoice itself, and a reminder for one: the reminder
+        restates the final's deductions and asks for its remaining balance.
+        """
+        head = self.reminder_chain_head
+        return head if head.is_final_invoice else None
+
+    @property
     def deposit_deductions(self) -> list:
-        """For a final invoice, return list of deposit deduction dicts for rendering."""
-        if not self.is_final_invoice:
+        """The deposits a final invoice, or a reminder for one, deducts, as dicts for rendering."""
+        settlement = self.settlement
+        if settlement is None:
             return []
         deductions = []
-        for dep in self.deposits:
+        for dep in settlement.deposits:
             deductions.append(
                 {
                     "invoice_number": dep.number,
@@ -1459,9 +1494,10 @@ class Invoice(RpcMixin, SQLModel, table=True):
 
     @property
     def remaining_balance(self) -> Decimal:
-        """For a final invoice: total minus sum of deposit gross amounts."""
-        if not self.is_final_invoice:
-            return self.total
+        """What the client still owes on this document: its total less the deposits it deducts.
+
+        For a reminder of a final invoice that is the final's remaining balance plus the reminder fee.
+        """
         deposit_gross = sum(d["gross"] for d in self.deposit_deductions)
         return Decimal(self.total - deposit_gross)
 
@@ -1472,8 +1508,8 @@ class Invoice(RpcMixin, SQLModel, table=True):
 
     @property
     def deposits_deducted_formatted(self) -> str:
-        """For a final invoice: formatted sum of the gross amounts it deducts."""
-        if not self.is_final_invoice:
+        """For a final invoice, or a reminder for one: formatted sum of the gross amounts it deducts."""
+        if self.settlement is None:
             return ""
         currency = self.contract.currency if self.contract else "EUR"
         deducted = sum(d["gross"] for d in self.deposit_deductions)
@@ -1589,7 +1625,7 @@ class Invoice(RpcMixin, SQLModel, table=True):
 
 
 class InvoiceItem(RpcMixin, VatCategoryMixin, SQLModel, table=True):
-    __rpc_computed__ = ("subtotal", "subtotal_formatted", "unit_price_formatted")
+    __rpc_computed__ = ("subtotal", "subtotal_formatted", "unit_price_formatted", "quantity_formatted")
 
     id: Optional[int] = Field(default=None, primary_key=True)
     # date and time
@@ -1655,20 +1691,32 @@ class InvoiceItem(RpcMixin, VatCategoryMixin, SQLModel, table=True):
 
     @property
     def subtotal(self) -> Decimal:
-        return Decimal(str(self.quantity)) * self.unit_price
+        """Net amount of the line: quantity × unit price, rounded half-up to the cent."""
+        return round_money(Decimal(str(self.quantity)) * Decimal(str(self.unit_price)))
+
+    @property
+    def currency(self) -> str:
+        """The currency of the invoice this line is on; EUR for a line on none."""
+        return self.invoice.currency if self.invoice is not None else "EUR"
 
     @property
     def subtotal_formatted(self) -> str:
-        return fmt_currency(self.subtotal)
+        return fmt_currency(self.subtotal, self.currency)
 
     @property
     def unit_price_formatted(self) -> str:
-        return fmt_currency(self.unit_price)
+        return fmt_currency(self.unit_price, self.currency)
+
+    @property
+    def quantity_formatted(self) -> str:
+        """The quantity as invoices show it, with up to two decimals: "8", "0.5", "1.33"."""
+        return fmt_quantity(round_quantity(self.quantity))
 
     @property
     def VAT(self) -> Decimal:
-        """VAT for the invoice item."""
-        return self.subtotal * self.VAT_rate
+        """This line's share of the VAT, not rounded: the invoice rounds VAT once
+        per tax category and rate (see ``Invoice.vat_breakdown``)."""
+        return self.subtotal * Decimal(str(self.VAT_rate))
 
 
 # class Payment(SQLModel, table=True):
@@ -1681,7 +1729,7 @@ class InvoiceNote(RpcMixin, SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     text: str = Field(description="The note text content.")
-    created_at: datetime.datetime = Field(
+    created_at: NaiveDatetime = Field(
         default_factory=datetime.datetime.now,
         description="When this note was saved.",
     )
@@ -1778,6 +1826,91 @@ class RecurringExpense(SQLModel, table=True):
     )
 
 
+TASK_RULE_REPEAT_UNITS = ("week", "month")
+TASK_RULE_OFFSET_UNITS = ("day", "week", "month")
+
+
+class TaskRule(RpcMixin, SQLModel, table=True):
+    """A rule the user composed that creates tasks.
+
+    Either on a date, once or repeating ("every month from Nov 1"), or around
+    something that happens to a contract, project, invoice or financial goal
+    ("30 days before a contract ends", "when a project becomes an offer").
+    """
+
+    __rpc_computed__ = ("follows_state",)
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    title: str = Field(
+        description="Title of the tasks it creates. May name placeholders such as {contract}, {date} or {period}.",
+    )
+    note: Optional[str] = Field(default=None, description="Shown under each task it creates.")
+    kind: str = Field(default="date", description="date | event")
+    # On a date
+    start_date: Optional[datetime.date] = Field(
+        default=None,
+        description="The day of the first task; repeats count from it.",
+    )
+    every: int = Field(default=1, description="Repeat every this many units: every 3 months is quarterly.")
+    unit: Optional[str] = Field(default=None, description="week | month, or None for a one-off task.")
+    # When something happens
+    event: Optional[str] = Field(
+        default=None,
+        description="A date on a record, such as 'contract.end', or a status it enters, such as 'project=Offer'. "
+        "The events are listed in tuttle/app/tasks/rules.py.",
+    )
+    offset: int = Field(default=0, description="How long before or after the event, in offset units.")
+    offset_unit: str = Field(default="day", description="day | week | month")
+    before: bool = Field(default=False, description="Whether the task comes before the event rather than after it.")
+    client_id: Optional[int] = Field(
+        default=None,
+        foreign_key="client.id",
+        ondelete="CASCADE",
+        description="Only for this client's contracts, projects and invoices. None means every client.",
+    )
+    paused: bool = Field(default=False)
+    created_at: NaiveDatetime = Field(
+        default_factory=datetime.datetime.now,
+        description="Contract and project dates before this day are left alone, and so are dates the rule has passed.",
+    )
+
+    @property
+    def follows_state(self) -> bool:
+        """Whether the rule follows a status change (a project becoming an offer) rather than a date."""
+        return self.kind == "event" and "=" in (self.event or "")
+
+    def validate_rule(self) -> None:
+        """Reject a rule that cannot create tasks. Raises ``ValueError`` with a message for the user."""
+        self.title = (self.title or "").strip()
+        self.note = (self.note or "").strip() or None
+        if not self.title:
+            raise ValueError("Give the task a title.")
+        if self.kind == "date":
+            if self.start_date is None:
+                raise ValueError("Choose the date of the task.")
+            if self.unit is not None and self.unit not in TASK_RULE_REPEAT_UNITS:
+                raise ValueError("Choose how often the task repeats.")
+            if self.every < 1:
+                raise ValueError("Repeat the task at least once per period.")
+            self.event = None
+            self.client_id = None
+        elif self.kind == "event":
+            if not self.event:
+                raise ValueError("Choose what the task follows, such as a contract ending.")
+            if self.offset_unit not in TASK_RULE_OFFSET_UNITS:
+                raise ValueError("Choose days, weeks or months.")
+            if self.offset < 0:
+                raise ValueError(f"Enter how many {self.offset_unit}s before or after, as 0 or more.")
+            if self.offset == 0:
+                self.before = False
+            if self.before and self.follows_state:
+                raise ValueError("Tuttle learns of this only once it has happened. Choose a time after it.")
+            self.start_date = None
+            self.unit = None
+        else:
+            raise ValueError("Choose whether the task comes on a date or when something happens.")
+
+
 class Task(RpcMixin, SQLModel, table=True):
     """A user-facing action item (tutorial step or business task)."""
 
@@ -1792,4 +1925,34 @@ class Task(RpcMixin, SQLModel, table=True):
         default="pending",
         description="pending | done | dismissed",
     )
-    created_at: datetime.datetime = Field(default_factory=datetime.datetime.now)
+    created_at: NaiveDatetime = Field(default_factory=datetime.datetime.now)
+    rule_id: Optional[int] = Field(
+        default=None,
+        foreign_key="taskrule.id",
+        ondelete="CASCADE",
+        description="The rule that created this task, if any.",
+    )
+    due_date: Optional[datetime.date] = Field(
+        default=None,
+        description="The date the task is about: the event's date, or the day a scheduled task falls on.",
+    )
+    subject_type: Optional[str] = Field(default=None, description="contract | project | invoice | goal")
+    subject_id: Optional[int] = Field(default=None, description="Id of the contract, project, invoice or goal.")
+
+
+class TaskRuleNotice(SQLModel, table=True):
+    """The day a task rule first saw a state hold, such as a project becoming an offer.
+
+    State changes carry no date of their own, so the rule counts from this day.
+    """
+
+    __table_args__ = (sqlalchemy.UniqueConstraint("rule_id", "subject_id"),)
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    rule_id: int = Field(foreign_key="taskrule.id", ondelete="CASCADE")
+    subject_id: int = Field(description="Id of the contract, project or invoice.")
+    noticed_on: datetime.date
+    already: bool = Field(
+        default=False,
+        description="The state already held when the rule was made or resumed, so it gets no task.",
+    )

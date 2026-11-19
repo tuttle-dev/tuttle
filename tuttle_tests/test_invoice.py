@@ -67,11 +67,7 @@ def test_invoice():
     assert the_invoice.total == Decimal(1800)
 
 
-def test_generate_invoice_email_uses_invoicing_role_contact():
-    """Clients with many-to-many invoicing contacts can still send invoices."""
-    contact = Contact(first_name="Jill", last_name="Invoice", email="billing@example.com")
-    client = Client(name="Client Corp")
-    client.client_contacts.append(ClientContact(client=client, contact=contact, role=" invoicing "))
+def _invoice_to(client):
     contract = Contract(
         title="Retainer",
         client=client,
@@ -82,14 +78,36 @@ def test_generate_invoice_email_uses_invoicing_role_contact():
         term_of_payment=14,
         billing_cycle=Cycle.monthly,
     )
-    invoice = Invoice(number="INV-1", date=datetime.date(2026, 7, 29), contract=contract)
-    user = User(first_name="Harry", last_name="Tuttle")
+    return Invoice(number="INV-1", date=datetime.date(2026, 7, 29), contract=contract)
 
-    email = invoicing.generate_invoice_email(invoice, user)
 
-    assert email is not None
-    assert email["recipient"] == "billing@example.com"
-    assert "Dear Jill" in email["body"]
+def test_invoice_email_goes_to_the_invoicing_contact_whatever_its_role():
+    jill = Contact(first_name="Jill", last_name="Layton", email="layton@example.com")
+    client = Client(name="Central Services", invoicing_contact=jill)
+    ClientContact(client=client, contact=jill, role="accountant")
+
+    email = invoicing.generate_invoice_email(_invoice_to(client), User(first_name="Harry", last_name="Tuttle"))
+
+    assert email["recipient"] == "layton@example.com"
+    assert "Dear Jill Layton" in email["body"]
+
+
+def test_a_role_does_not_make_a_contact_the_invoicing_contact():
+    """The user chooses the invoicing contact; no role stands in for it."""
+    client = Client(name="Central Services")
+    ClientContact(
+        client=client, contact=Contact(first_name="Jill", last_name="Layton", email="l@example.com"), role="invoicing"
+    )
+
+    assert invoicing.generate_invoice_email(_invoice_to(client), User(first_name="Harry", last_name="Tuttle")) is None
+    assert client.missing_invoice_email() == "Choose an invoicing contact for Central Services."
+
+
+def test_an_invoicing_contact_without_email_says_what_to_add():
+    client = Client(name="Central Services", invoicing_contact=Contact(first_name="Sam", last_name="Lowry"))
+
+    assert invoicing.generate_invoice_email(_invoice_to(client), User(first_name="Harry", last_name="Tuttle")) is None
+    assert client.missing_invoice_email() == "Add an email address to Sam Lowry, the invoicing contact of Central Services."
 
 
 def test_generate_invoice(

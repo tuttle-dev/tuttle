@@ -1,6 +1,16 @@
 # Dialog / Modal Scroll Safety
 
-Every dialog or modal MUST be viewport-safe:
+Every dialog or modal MUST be viewport-safe. Build it from the shared `Dialog` (`ui/src/components/shared/Dialog.tsx`), which is:
+
+```tsx
+<Dialog onClose={onClose} width="w-[560px]">
+  <DialogHeader>{/* title */}</DialogHeader>
+  <DialogBody className="px-5 py-4 space-y-4">{/* scrolls */}</DialogBody>
+  <DialogFooter className="flex justify-end gap-2">{/* buttons */}</DialogFooter>
+</Dialog>
+```
+
+A panel that can't use it follows the same rules:
 
 1. Outer container: `max-h-[85vh] flex flex-col overflow-hidden`
 2. Header / footer: add `shrink-0` so they never collapse

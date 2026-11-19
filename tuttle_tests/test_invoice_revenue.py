@@ -3,6 +3,8 @@
 import datetime
 from decimal import Decimal
 
+import pytest
+
 from tuttle import invoicing
 from tuttle.forecasting import revenue_series
 from tuttle.kpi import compute_kpis
@@ -30,6 +32,20 @@ def _reminder(invoice: Invoice, level: int) -> Invoice:
     return reminder
 
 
+@pytest.mark.parametrize(
+    "flags, counted",
+    [
+        pytest.param({}, False, id="draft"),
+        pytest.param({"sent": True}, True, id="sent"),
+        pytest.param({"paid": True}, True, id="paid"),
+        pytest.param({"sent": True, "cancelled": True}, False, id="cancelled"),
+        pytest.param({"sent": True, "paid": True, "document_type": "reminder"}, False, id="reminder"),
+    ],
+)
+def test_figures_count_an_issued_invoice_that_is_neither_cancelled_nor_a_reminder(flags, counted):
+    assert Invoice(number="1", date=datetime.date.today(), **flags).is_counted is counted
+
+
 def test_reminders_add_no_revenue():
     today = datetime.date.today()
     invoice = _make_invoice(today, [(10, 100, 0.19)], vat_rate=0.19)
@@ -38,7 +54,7 @@ def test_reminders_add_no_revenue():
 
     assert compute_spendable_income(chain, "Germany") == compute_spendable_income([invoice], "Germany")
     assert compute_effective_salary(chain, [], "Germany") == compute_effective_salary([invoice], [], "Germany")
-    assert compute_kpis(chain, [], [], country="Germany").total_revenue == Decimal("1190")
+    assert compute_kpis(chain, [], [], country="Germany").total_revenue == Decimal("1000")
     vat = compute_vat_reserves(chain, today, today)
     assert (vat.vat_collected, vat.invoice_count) == (Decimal("190"), 1)
 
@@ -50,6 +66,7 @@ def test_final_invoice_adds_only_what_the_deposits_left():
     deposit = invoicing.generate_deposit_invoice(project.contract, project, milestone, number="1", date=today)
     deposit.paid = True
     final = invoicing.generate_final_invoice(project.contract, project, [deposit], number="2", date=today)
+    final.sent = True
 
     spending = compute_spendable_income([deposit, final], "Germany")
 

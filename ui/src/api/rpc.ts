@@ -19,6 +19,10 @@ declare global {
       checkForUpdate: () => void;
       openExternal: (url: string) => void;
       quitAndInstall: () => void;
+      /** Theme for native UI: menus, dialogs, window buttons. */
+      setThemeSource: (source: "light" | "dark" | "system") => void;
+      /** Colours of the window buttons drawn over the toolbar (Windows, Linux). */
+      setTitleBarColors: (colors: { color: string; symbolColor: string }) => void;
     };
   }
 }
@@ -49,6 +53,12 @@ export async function rpc<T = unknown>(
     return result;
   } catch (err) {
     console.error(`[rpc] error in ${method}:`, err);
-    return { ok: false, data: null as T, error: String(err), warning: null };
+    return { ok: false, data: null as T, error: errorMessage(err), warning: null };
   }
+}
+
+/** The core's own message, without the wrapper Electron puts around an error thrown across IPC. */
+export function errorMessage(err: unknown): string {
+  const text = err instanceof Error ? err.message : String(err);
+  return text.replace(/^Error invoking remote method '[^']*': /, "").replace(/^Error: /, "");
 }

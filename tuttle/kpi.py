@@ -6,11 +6,10 @@ from typing import List, NamedTuple, Optional
 
 from pandas import DataFrame, Timestamp
 
-from .app.core.formatting import fmt_currency
+from .forecasting import contracted_this_year
 from .fx import primary_currency
 from .model import Contract, Invoice, Project, RecurringExpense
-from .tax import get_tax_system, has_tax_model
-from .tax_reserves import compute_spendable_income, convert_invoice
+from .tax_reserves import compute_planned_revenue, compute_spendable_income, convert_invoice, distinct
 from .time import TimeUnit
 from .timetracking import sum_hours_by_tag
 
@@ -30,26 +29,25 @@ class KPISummary(NamedTuple):
     overdue_invoices: int
     # Tax reserves
     vat_reserve: Decimal
-    income_tax_reserve: Decimal
-    spendable_income: Decimal
+    income_tax_reserve: Optional[Decimal]  # None without tax rules
+    spendable_income: Optional[Decimal]  # None without tax rules
+    # The year's income, net of VAT, by how certain it is; together the income basis of Spendable Income
+    received_net: Decimal = Decimal(0)
+    invoiced_net: Decimal = Decimal(0)  # issued, not yet paid
+    planned_revenue: Decimal = Decimal(0)  # tracked or scheduled work, not yet invoiced
+    contracted_revenue: Decimal = Decimal(0)
+    # Everything taken off that income besides the income tax; None without tax rules
+    expenses: Optional[Decimal] = None
+    ready_to_invoice: Decimal = Decimal(0)  # the tracked part of planned_revenue
     tax_currency: str = "EUR"
-    country_supported: bool = True
+    country_supported: bool = True  # whether there are tax rules to estimate income tax with
     country: str = ""
+    tax_unavailable_reason: Optional[str] = None
+    unconverted: list = []  # amounts left out for lack of an exchange rate, one line each; never mutated
 
     def to_rpc_dict(self) -> dict:
-        d = self._asdict()
-        tc = self.tax_currency or "EUR"
-        d["total_revenue_ytd_formatted"] = fmt_currency(self.total_revenue_ytd, tc)
-        d["outstanding_amount_formatted"] = fmt_currency(self.outstanding_amount, tc)
-        d["overdue_amount_formatted"] = fmt_currency(self.overdue_amount, tc)
-        d["vat_reserve_formatted"] = fmt_currency(self.vat_reserve, tc)
-        d["income_tax_reserve_formatted"] = fmt_currency(self.income_tax_reserve, tc)
-        d["spendable_income_formatted"] = fmt_currency(self.spendable_income, tc)
-        d["effective_hourly_rate_formatted"] = (
-            fmt_currency(self.effective_hourly_rate, tc) if self.effective_hourly_rate is not None else "—"
-        )
-        d["utilization_rate_formatted"] = f"{self.utilization_rate * 100:.0f}%" if self.utilization_rate is not None else "—"
-        return d
+        # The dashboard formats the amounts itself.
+        return self._asdict()
 
 
 def compute_kpis(
@@ -64,7 +62,10 @@ def compute_kpis(
 
     *time_data* (the calendar DataFrame) is the source of truth for hours
     worked.  It drives ``effective_hourly_rate`` and ``utilization_rate``.
-    Revenue metrics come from invoices, converted into the primary currency.
+    Revenue metrics come from invoices, converted into the primary currency:
+    revenue is net of VAT, while the outstanding and overdue amounts are what
+    clients still owe, VAT included. Amounts without an exchange rate are left
+    out of every figure, and ``unconverted`` names them.
     """
     today = datetime.date.today()
     year_start = today.replace(month=1, day=1)
@@ -79,21 +80,22 @@ def compute_kpis(
     unpaid_invoices = 0
     overdue_invoices = 0
     paid_revenue = Decimal(0)
+    left_out: list = []
 
     for inv in invoices:
-        # A reminder chases an invoice that is already counted.
-        if inv.cancelled or inv.is_reminder:
+        if not inv.is_counted:
             continue
-        converted = convert_invoice(inv, currency)
+        converted = convert_invoice(inv, currency, left_out)
         if converted is None:
             continue
-        inv_total = converted[0]
+        inv_total, inv_vat = converted
 
         if inv.paid:
-            total_revenue += inv_total
+            revenue = inv_total - inv_vat
+            total_revenue += revenue
             if inv.date >= year_start:
-                total_revenue_ytd += inv_total
-            paid_revenue += inv_total
+                total_revenue_ytd += revenue
+            paid_revenue += revenue
         else:
             outstanding_amount += inv_total
             unpaid_invoices += 1
@@ -130,14 +132,27 @@ def compute_kpis(
             utilization_rate = float(total_hours / available_hours)
 
     # The same inputs as the Tax page, so Spendable Income equals its Safe to Spend.
-    country_supported = has_tax_model(country)
     spending = compute_spendable_income(
-        invoices, country, expenses=expenses, currency=currency, projects=projects, time_data=time_data
+        invoices,
+        country,
+        expenses=expenses,
+        currency=currency,
+        projects=projects,
+        time_data=time_data,
+        contracted=contracted_this_year(projects, invoices, time_data, currency=currency, left_out=left_out),
+        left_out=left_out,
     )
-    vat_reserve = spending.vat_reserve
-    income_tax_reserve = spending.income_tax_reserve
-    spendable_income = spending.spendable
-
+    # Received, invoiced, planned and contracted, less the income tax and these, leave Spendable Income.
+    expenses = None
+    if spending.dynamic_expenses_post_tax is not None:
+        expenses = (
+            spending.business_expenses
+            + spending.dynamic_expenses_deductible
+            + spending.fixed_expenses_post_tax
+            + spending.dynamic_expenses_post_tax
+            + spending.conversion_fee
+        )
+    ready_to_invoice = compute_planned_revenue(projects, time_data, currency=currency, invoices=invoices, tracked_only=True)
     return KPISummary(
         total_revenue=total_revenue,
         total_revenue_ytd=total_revenue_ytd,
@@ -149,141 +164,21 @@ def compute_kpis(
         active_contracts=active_contracts,
         unpaid_invoices=unpaid_invoices,
         overdue_invoices=overdue_invoices,
-        vat_reserve=vat_reserve,
-        income_tax_reserve=income_tax_reserve,
-        spendable_income=spendable_income,
+        vat_reserve=spending.vat_reserve,
+        income_tax_reserve=spending.income_tax_reserve,
+        spendable_income=spending.spendable,
+        received_net=spending.received_net,
+        invoiced_net=spending.outstanding_net,
+        planned_revenue=spending.planned_revenue,
+        contracted_revenue=spending.contracted_revenue,
+        expenses=expenses,
+        ready_to_invoice=ready_to_invoice,
         tax_currency=currency,
-        country_supported=country_supported,
+        country_supported=spending.tax_unavailable_reason is None,
         country=country,
+        tax_unavailable_reason=spending.tax_unavailable_reason,
+        unconverted=distinct(left_out),
     )
-
-
-def monthly_revenue_breakdown(
-    invoices: List[Invoice],
-    n_months: int = 12,
-    country: str = "",
-) -> list:
-    """Revenue breakdown by month for the last n_months, in the primary currency.
-
-    Returns a list of dicts with keys: month, revenue, pipeline, invoice_count.
-    ``revenue`` is paid invoices; ``pipeline`` is sent-but-unpaid invoices.
-    """
-    today = datetime.date.today()
-    currency = primary_currency(country)
-    start = (today - datetime.timedelta(days=30 * n_months)).replace(day=1)
-
-    months = {}
-    current = start
-    while current <= today:
-        key = current.strftime("%Y-%m")
-        months[key] = {
-            "month": key,
-            "revenue": Decimal(0),
-            "pipeline": Decimal(0),
-            "invoice_count": 0,
-        }
-        current = (current + datetime.timedelta(days=32)).replace(day=1)
-
-    for inv in invoices:
-        if inv.cancelled or inv.is_reminder:
-            continue
-        key = inv.date.strftime("%Y-%m")
-        if key not in months:
-            continue
-        converted = convert_invoice(inv, currency)
-        if converted is None:
-            continue
-        if inv.paid:
-            months[key]["revenue"] += converted[0]
-            months[key]["invoice_count"] += 1
-        elif inv.sent:
-            months[key]["pipeline"] += converted[0]
-
-    return sorted(months.values(), key=lambda x: x["month"])
-
-
-def monthly_spendable_breakdown(
-    invoices: List[Invoice],
-    country: str = "",
-    n_months: int = 12,
-    deductions: Decimal = Decimal(0),
-) -> list:
-    """Estimate monthly spendable income after VAT and income-tax true-up.
-
-    For each month bucket this returns:
-    - gross_revenue: invoiced amount including VAT
-    - vat_due: VAT to reserve for that month
-    - net_revenue: gross_revenue - vat_due
-    - income_tax_true_up: monthly delta in YTD tax reserve estimate
-    - spendable: net_revenue - income_tax_true_up
-    """
-    today = datetime.date.today()
-    start = (today - datetime.timedelta(days=30 * n_months)).replace(day=1)
-
-    months = {}
-    current = start
-    while current <= today:
-        key = current.strftime("%Y-%m")
-        months[key] = {
-            "month": key,
-            "gross_revenue": Decimal(0),
-            "vat_due": Decimal(0),
-            "net_revenue": Decimal(0),
-            "income_tax_true_up": Decimal(0),
-            "spendable": Decimal(0),
-            "invoice_count": 0,
-        }
-        current = (current + datetime.timedelta(days=32)).replace(day=1)
-
-    # Foreign-currency invoices are converted into the primary currency at the
-    # ECB monthly average, not dropped.
-    currency = primary_currency(country)
-
-    for inv in invoices:
-        if inv.cancelled or inv.is_reminder or not inv.paid:
-            continue
-        key = inv.date.strftime("%Y-%m")
-        if key in months:
-            converted = convert_invoice(inv, currency)
-            if converted is None:
-                continue
-            months[key]["gross_revenue"] += converted[0]
-            months[key]["vat_due"] += converted[1]
-            months[key]["invoice_count"] += 1
-
-    sorted_keys = sorted(months.keys())
-    cumulative_net_ytd = Decimal(0)
-    previous_reserve = Decimal(0)
-
-    for key in sorted_keys:
-        m = months[key]
-        m["net_revenue"] = m["gross_revenue"] - m["vat_due"]
-        year_str, month_str = key.split("-")
-        month_start = datetime.date(int(year_str), int(month_str), 1)
-        if month_start.year == today.year:
-            cumulative_net_ytd += m["net_revenue"]
-            taxable = cumulative_net_ytd - deductions
-            if taxable <= 0:
-                cumulative_reserve = Decimal(0)
-            else:
-                try:
-                    month_end = (month_start + datetime.timedelta(days=32)).replace(day=1) - datetime.timedelta(days=1)
-                    as_of = min(month_end, today)
-                    tax_system = get_tax_system(country, date=as_of)
-                    annual_tax = tax_system.income_tax(taxable)
-                    annual_soli = tax_system.solidarity_surcharge(annual_tax)
-                    cumulative_reserve = (annual_tax + annual_soli).quantize(Decimal("0.01"))
-                except NotImplementedError:
-                    cumulative_reserve = Decimal(0)
-
-            m["income_tax_true_up"] = cumulative_reserve - previous_reserve
-            previous_reserve = cumulative_reserve
-        else:
-            m["income_tax_true_up"] = Decimal(0)
-
-        m["spendable"] = m["net_revenue"] - m["income_tax_true_up"]
-
-    return [months[k] for k in sorted_keys]
 
 
 def project_budget_status(

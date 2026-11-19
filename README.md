@@ -92,7 +92,7 @@ What you can safely pay yourself each month, after taxes and recurring expenses.
 
 ### Timeline & Tasks
 
-Key events in chronological order, and a to-do list of what needs your attention.
+Key events in chronological order, and a to-do list that fills itself from rules you set, such as "30 days before a contract ends" or "every quarter".
 
 ### AI Document Import
 

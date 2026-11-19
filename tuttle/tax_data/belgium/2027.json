@@ -1,0 +1,49 @@
+{
+    "country": "Belgium",
+    "country_aliases": ["België", "Belgique", "Belgien"],
+    "year": 2027,
+    "formula_type": "marginal_brackets",
+    "source": "WIB 92, income year 2027 = assessment year 2028: Law of 15 July 2026 raises the tax-free sum (base 4,990, credited at 25%) and adds the ondernemersaftrek (10% of profit, at most about 620, as basic_allowance); AJ 2027 indexation used for all amounts, brackets as for AJ 2027; average municipal surcharge of 7% folded in (enacted; AJ 2028 indexation not yet published)",
+    "currency": "EUR",
+
+    "income_tax": {
+        "basic_allowance": 620,
+        "zones": [
+            {
+                "label": "0%",
+                "up_to": 11660,
+                "rate": 0.0
+            },
+            {
+                "label": "26.8%",
+                "up_to": 16720,
+                "rate": 0.2675
+            },
+            {
+                "label": "42.8%",
+                "up_to": 29510,
+                "rate": 0.428
+            },
+            {
+                "label": "48.2%",
+                "up_to": 51070,
+                "rate": 0.4815
+            },
+            {
+                "label": "53.5%",
+                "up_to": null,
+                "rate": 0.535
+            }
+        ]
+    },
+
+    "solidarity_surcharge": {
+        "rate": 0.0,
+        "comment": "No solidarity surcharge in Belgium"
+    },
+
+    "vat": {
+        "standard_rate": 0.21,
+        "reduced_rate": 0.06
+    }
+}

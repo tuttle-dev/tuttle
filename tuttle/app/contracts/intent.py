@@ -1,11 +1,13 @@
 from decimal import Decimal, InvalidOperation
 from typing import Optional
 
+from loguru import logger
+
 from ...fx import default_currency
-from ...model import Client, Contract, ContractCharge, PaymentMilestone, User
+from ...model import Contract, ContractCharge, PaymentMilestone, User
+from ...tax import NoTaxRules, get_tax_system
 from ...time import ChargeBasis
 from ..clients.intent import ClientsIntent
-from ..contacts.intent import ContactsIntent
 from ..core.abstractions import CrudIntent
 from ..core.intent_result import IntentResult
 
@@ -24,7 +26,7 @@ def _parse_amount(value) -> Decimal:
     """
     try:
         return Decimal(str(value))
-    except (InvalidOperation, TypeError, ValueError):
+    except InvalidOperation, TypeError, ValueError:
         raise ValueError(f"Additional charge amount must be a number, got {value!r}")
 
 
@@ -32,7 +34,7 @@ def _parse_milestone_number(value, field: str) -> Decimal:
     """Coerce a milestone percentage or amount from JSON into a Decimal."""
     try:
         parsed = Decimal(str(value))
-    except (InvalidOperation, TypeError, ValueError):
+    except InvalidOperation, TypeError, ValueError:
         raise ValueError(f"Milestone {field} must be a number, got {value!r}")
     if parsed <= 0:
         raise ValueError(f"Milestone {field} must be greater than zero, got {value!r}")
@@ -69,19 +71,12 @@ class ContractsIntent(CrudIntent):
     def __init__(self):
         super().__init__()
         self._clients_intent = ClientsIntent()
-        self._contacts_intent = ContactsIntent()
         self._incoming_charges = _CHARGES_UNCHANGED
 
     # -- Cross-entity delegates ------------------------------------------------
 
     def get_all_clients_as_map(self):
         return self._clients_intent.get_all_as_map()
-
-    def get_all_contacts_as_map(self):
-        return self._contacts_intent.get_all_as_map()
-
-    def save_client(self, client: Client) -> IntentResult:
-        return self._clients_intent._validated_save(client=client)
 
     def get_default_currency(self) -> IntentResult:
         """Derive default contract currency from the user's operating country."""
@@ -91,6 +86,29 @@ class ContractsIntent(CrudIntent):
             return IntentResult(was_intent_successful=True, data=default_currency(country))
         except Exception:
             return IntentResult(was_intent_successful=True, data="EUR")
+
+    def get_default_vat_rate(self) -> IntentResult:
+        """The standard VAT rate of the user's operating country, to preset on a new contract.
+
+        None when Tuttle has no tax rules for the country this year, or they
+        state no positive standard rate: the user then enters the rate
+        themselves rather than getting another country's or another year's.
+        """
+        try:
+            users = self.query(User)
+            country = users[0].operating_country if users else ""
+            if not country:
+                return IntentResult(was_intent_successful=True, data=None)
+            rate = get_tax_system(country).vat_rate_standard()
+        except NoTaxRules:
+            return IntentResult(was_intent_successful=True, data=None)
+        except Exception as ex:
+            logger.exception(ex)
+            return IntentResult(
+                was_intent_successful=False,
+                error_msg="The standard VAT rate could not be looked up. Details are in the application log.",
+            )
+        return IntentResult(was_intent_successful=True, data=rate if rate > 0 else None)
 
     # -- Contract-specific logic -----------------------------------------------
 

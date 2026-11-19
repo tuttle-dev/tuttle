@@ -2,28 +2,37 @@
     "country": "Estonia",
     "country_aliases": ["Eesti"],
     "year": 2024,
-    "formula_type": "flat_rate",
-    "source": "Tulumaksuseadus (Income Tax Act) 2024",
+    "formula_type": "marginal_brackets",
+    "source": "Tulumaksuseadus 2024: income tax 20%; basic exemption 7,848 EUR, reduced linearly to 0 between 14,400 and 25,200 EUR of income (the 'tax hump', encoded as a higher marginal rate in that band)",
     "currency": "EUR",
 
     "income_tax": {
-        "basic_allowance": 7848,
+        "basic_allowance": 0,
         "zones": [
             {
-                "label": "22%",
+                "label": "0%",
+                "up_to": 7848,
+                "rate": 0.0
+            },
+            {
+                "label": "20%",
+                "up_to": 14400,
+                "rate": 0.2
+            },
+            {
+                "label": "34.5%",
+                "up_to": 25200,
+                "rate": 0.34533
+            },
+            {
+                "label": "20%",
                 "up_to": null,
-                "rate": 0.22
+                "rate": 0.2
             }
         ]
     },
 
-    "solidarity_surcharge": {
-        "rate": 0.0,
-        "comment": "No solidarity surcharge in Estonia"
-    },
+    "solidarity_surcharge": {"rate": 0.0},
 
-    "vat": {
-        "standard_rate": 0.22,
-        "reduced_rate": 0.09
-    }
+    "vat": {"standard_rate": 0.22, "reduced_rate": 0.09}
 }

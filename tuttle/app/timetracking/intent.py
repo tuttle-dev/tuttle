@@ -1,6 +1,5 @@
 import base64
 import datetime
-from pathlib import Path
 from typing import Optional
 
 import pandas
@@ -9,12 +8,13 @@ from pandas import DataFrame
 
 from ...calendar import ICSCalendar
 from ...eventkit_bridge import (
+    CalendarAccessError,
+    CalendarNotFoundError,
     fetch_events,
     is_available,
     list_calendars_with_status,
     open_calendar_privacy_settings,
 )
-from ...timetracking import get_planning_summary
 from ..core.abstractions import Intent
 from ..core.intent_result import IntentResult
 from ..projects.intent import ProjectsIntent
@@ -28,12 +28,19 @@ from .aggregation import (
 from .data_source import (
     ManualEntriesDataSource,
     TimeTrackingDataFrameSource,
-    TimeTrackingFileCalendarSource,
-    TimeTrackingSpreadsheetSource,
     to_cet,
 )
 
 _MISSING_ENTRY = "This entry no longer exists. Reload the calendar and try again."
+_NO_CALENDAR_ACCESS = "Tuttle has no access to your calendars. Allow it in System Settings, then try again."
+_CALENDAR_UNREADABLE = "The calendar could not be read. Details are in the application log."
+_CALENDAR_GONE = "This calendar no longer exists. Disconnect it and import another one."
+_ICS_UNREADABLE = "{name} could not be read as a calendar. Export the calendar again as an .ics file and import that."
+_CACHE_NOT_SAVED = (
+    "The calendar events could not be saved on this computer and will be missing after a restart. "
+    "Details are in the application log."
+)
+_KEPT_EVENTS = "Until a sync succeeds, Tuttle shows the events it had before."
 _MAX_DAY_MINUTES = 24 * 60
 
 
@@ -53,7 +60,7 @@ def _validate_entry(tag: str, date: str, start_time, end_time, duration_minutes=
         return (*_validate_amount(date, duration_minutes), True)
     try:
         begin, end = _parse_local(date, start_time), _parse_local(date, end_time)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         raise _EntryError("Enter the date as YYYY-MM-DD and the times as HH:MM.")
     if end <= begin:
         raise _EntryError("The end time must be after the start time.")
@@ -63,11 +70,11 @@ def _validate_entry(tag: str, date: str, start_time, end_time, duration_minutes=
 def _validate_amount(date: str, duration_minutes):
     try:
         begin = _parse_local(date, "00:00")
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         raise _EntryError("Enter the date as YYYY-MM-DD.")
     try:
         minutes = round(float(duration_minutes))
-    except (TypeError, ValueError, OverflowError):
+    except TypeError, ValueError, OverflowError:
         minutes = 0
     if not 0 < minutes <= _MAX_DAY_MINUTES:
         raise _EntryError("Enter a duration between 1 minute and 24 hours, for example 1h 30m.")
@@ -93,10 +100,23 @@ def _manual_entry_starts_at(df: Optional[DataFrame], begin, exclude_id: Optional
     return bool(mask.any())
 
 
+def _fetch_system_calendar(calendar_id, from_date, to_date) -> tuple[Optional[DataFrame], str]:
+    """The calendar's events, or None and a message saying why they could not be read."""
+    try:
+        return fetch_events(calendar_id, from_date, to_date), ""
+    except CalendarAccessError:
+        return None, _NO_CALENDAR_ACCESS
+    except CalendarNotFoundError:
+        return None, _CALENDAR_GONE
+    except Exception as ex:
+        logger.exception(ex)
+        return None, _CALENDAR_UNREADABLE
+
+
 def _coerce_id(value) -> Optional[int]:
     try:
         return int(value)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
 
 
@@ -114,9 +134,7 @@ def _project_tag_maps(projects) -> tuple[dict, dict]:
 class TimeTrackingIntent(Intent):
     """Time-tracking data access, import, aggregation."""
 
-    def __init__(self, client_storage=None):
-        self._file_calendar_source = TimeTrackingFileCalendarSource()
-        self._spreadsheet_source = TimeTrackingSpreadsheetSource()
+    def __init__(self):
         self._timetracking_data_frame_source = TimeTrackingDataFrameSource()
 
     @staticmethod
@@ -124,11 +142,20 @@ class TimeTrackingIntent(Intent):
         # Built per call so it is always bound to the active user's database.
         return ManualEntriesDataSource()
 
-    def _replace_calendar_rows(self, new_df: DataFrame):
-        """Swap in freshly fetched calendar rows; manual entries live in the database."""
+    def _replace_calendar_rows(self, new_df: DataFrame) -> bool:
+        """Swap in freshly fetched calendar rows; manual entries live in the database.
+
+        Returns False if the rows could not be written to the on-disk cache.
+        """
         ds = self._timetracking_data_frame_source
         ds.store_data_frame(_ensure_source_column(new_df, "calendar"))
-        ds.save_to_cache()
+        return ds.save_to_cache()
+
+    def _add_calendar_rows(self, new_df: DataFrame) -> bool:
+        """Merge freshly imported calendar rows; False if they could not be cached."""
+        ds = self._timetracking_data_frame_source
+        ds.store_data_frame(merge_dataframes(ds.calendar_rows(), _ensure_source_column(new_df, "calendar")))
+        return ds.save_to_cache()
 
     def _entry_record(self, entry_id: int) -> Optional[dict]:
         df = self._timetracking_data_frame_source.get_data_frame()
@@ -164,17 +191,22 @@ class TimeTrackingIntent(Intent):
         )
 
     def import_ics(self, content: str, name: str = "imported.ics") -> IntentResult:
-        raw = base64.b64decode(content)
-        cal = ICSCalendar(name=name, content=raw)
-        new_df = _ensure_source_column(cal.to_data(), "calendar")
-        ds = self._timetracking_data_frame_source
-        ds.store_data_frame(merge_dataframes(ds.calendar_rows(), new_df))
-        ds.save_to_cache()
-        ds.save_source_config("ics", calendar_name=name)
+        """Add the events of an .ics file. A file without events imports nothing and connects nothing."""
+        try:
+            cal = ICSCalendar(name=name, content=base64.b64decode(content))
+            new_df = cal.to_data() if cal.ical.events else None
+        except Exception as ex:
+            logger.exception(ex)
+            return IntentResult(was_intent_successful=False, error_msg=_ICS_UNREADABLE.format(name=name))
+        if new_df is None or new_df.empty:
+            return IntentResult(was_intent_successful=True, data={"imported_count": 0, "events": []})
+        saved = self._add_calendar_rows(new_df)
+        self._timetracking_data_frame_source.save_source_config("ics", calendar_name=name)
         records = df_to_records(new_df)
         return IntentResult(
             was_intent_successful=True,
             data={"imported_count": len(records), "events": records},
+            warning="" if saved else _CACHE_NOT_SAVED,
         )
 
     def clear(self) -> IntentResult:
@@ -213,7 +245,7 @@ class TimeTrackingIntent(Intent):
             return IntentResult(
                 was_intent_successful=False,
                 data={"calendars": [], "auth_status": "unknown"},
-                error_msg=str(ex),
+                error_msg=_CALENDAR_UNREADABLE,
             )
 
     def import_system_calendar(
@@ -235,35 +267,20 @@ class TimeTrackingIntent(Intent):
             to_date = datetime.date.max
         elif isinstance(to_date, str):
             to_date = datetime.date.fromisoformat(to_date)
-        try:
-            new_df = fetch_events(calendar_id, from_date, to_date)
-            if new_df.empty:
-                return IntentResult(
-                    was_intent_successful=True,
-                    data={
-                        "imported_count": 0,
-                        "events": [],
-                    },
-                )
-            new_df = _ensure_source_column(new_df, "calendar")
-            ds = self._timetracking_data_frame_source
-            ds.store_data_frame(merge_dataframes(ds.calendar_rows(), new_df))
-            ds.save_to_cache()
-            ds.save_source_config("system", calendar_id=str(calendar_id))
-            records = df_to_records(new_df)
-            return IntentResult(
-                was_intent_successful=True,
-                data={
-                    "imported_count": len(records),
-                    "events": records,
-                },
-            )
-        except Exception as ex:
-            logger.exception(ex)
-            return IntentResult(
-                was_intent_successful=False,
-                error_msg=str(ex),
-            )
+        new_df, error = _fetch_system_calendar(calendar_id, from_date, to_date)
+        if error:
+            return IntentResult(was_intent_successful=False, error_msg=error)
+        if new_df.empty:
+            # Nothing to import, so the calendar is not connected either.
+            return IntentResult(was_intent_successful=True, data={"imported_count": 0, "events": []})
+        saved = self._add_calendar_rows(new_df)
+        self._timetracking_data_frame_source.save_source_config("system", calendar_id=str(calendar_id))
+        records = df_to_records(new_df)
+        return IntentResult(
+            was_intent_successful=True,
+            data={"imported_count": len(records), "events": records},
+            warning="" if saved else _CACHE_NOT_SAVED,
+        )
 
     def get_source_config(self) -> IntentResult:
         config = self._timetracking_data_frame_source.get_source_config()
@@ -274,12 +291,16 @@ class TimeTrackingIntent(Intent):
         """Bring a connected system calendar up to date (called on startup).
 
         Cached rows of every source load on the first read; this only
-        re-fetches a system calendar. If that fails, the cached rows stay.
+        re-fetches a system calendar. If that fails, the cached rows stay
+        and the result says so.
         """
-        self.sync()
+        synced = self.sync()
+        if not synced.was_intent_successful:
+            return synced
         return IntentResult(
             was_intent_successful=True,
             data={"has_data": self._timetracking_data_frame_source.has_calendar_rows()},
+            warning=synced.warning,
         )
 
     def sync(self) -> IntentResult:
@@ -295,40 +316,27 @@ class TimeTrackingIntent(Intent):
         if source_type == "system" and is_available():
             calendar_id = config.get("calendar_id", "")
             if calendar_id:
-                try:
-                    from_date = datetime.date.today() - datetime.timedelta(days=365)
-                    to_date = datetime.date.max
-                    new_df = fetch_events(calendar_id, from_date, to_date)
-                    if not new_df.empty:
-                        self._replace_calendar_rows(new_df)
-                        return IntentResult(
-                            was_intent_successful=True,
-                            data={"synced": True, "count": len(new_df)},
-                        )
-                except Exception as ex:
-                    logger.warning(f"Failed to sync from system calendar: {ex}")
-                    return IntentResult(
-                        was_intent_successful=False,
-                        error_msg=f"Calendar sync failed: {ex}",
-                    )
+                from_date = datetime.date.today() - datetime.timedelta(days=365)
+                new_df, error = _fetch_system_calendar(calendar_id, from_date, datetime.date.max)
+                if error:
+                    if ds.has_calendar_rows():
+                        error = f"{error} {_KEPT_EVENTS}"
+                    return IntentResult(was_intent_successful=False, error_msg=error)
+                if new_df.empty:
+                    # The cached rows stay until the calendar returns events again.
+                    return IntentResult(was_intent_successful=True, data={"synced": False, "reason": "no_events"})
+                saved = self._replace_calendar_rows(new_df)
+                return IntentResult(
+                    was_intent_successful=True,
+                    data={"synced": True, "count": len(new_df)},
+                    warning="" if saved else _CACHE_NOT_SAVED,
+                )
         return IntentResult(
             was_intent_successful=True,
             data={
                 "synced": False,
                 "reason": f"source_type '{source_type}' not syncable",
             },
-        )
-
-    def get_planning_summary(self) -> IntentResult:
-        """Per-project summary of planned (future) hours and revenue."""
-        df = self._timetracking_data_frame_source.get_data_frame()
-        if df is None or df.empty:
-            return IntentResult(was_intent_successful=True, data=[])
-        proj_result = ProjectsIntent().get_all()
-        projects = proj_result.data if proj_result.was_intent_successful and proj_result.data else []
-        return IntentResult(
-            was_intent_successful=True,
-            data=get_planning_summary(df, projects),
         )
 
     def get_summary(self, project_tag: Optional[str] = None) -> IntentResult:
@@ -397,7 +405,7 @@ class TimeTrackingIntent(Intent):
         begin = to_cet(state["start_time"])
         try:
             end = to_cet(end_time) if end_time else to_cet(datetime.datetime.now(tz=datetime.timezone.utc))
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             return IntentResult(
                 was_intent_successful=False,
                 error_msg="The end time could not be read. Stop the timer again.",
@@ -501,34 +509,6 @@ class TimeTrackingIntent(Intent):
 
     # -- Legacy internal methods -----------------------------------------------
 
-    def process_timetracking_file(self, file_path: Path) -> IntentResult[DataFrame]:
-        """processes a time tracking spreadsheet or ics file in the uploads folder
-
-        Returns
-        -------
-            IntentResult
-                data : time tracking data as a pandas DataFrame if intent successful else None
-                error_msg  : text to display to the user if an error occurs else is empty
-        """
-        # check the file extension. file_path is a Path object
-        is_calendar = file_path.suffix == ".ics"
-        if is_calendar:
-            timetracking_data: DataFrame = self._file_calendar_source.load_data(
-                ics_file_path=file_path,
-            )
-            return IntentResult(
-                was_intent_successful=True,
-                data=timetracking_data,
-            )
-        else:
-            timetracking_data: DataFrame = self._spreadsheet_source.load_data(
-                file_path=file_path,
-            )
-            return IntentResult(
-                was_intent_successful=True,
-                data=timetracking_data,
-            )
-
     def get_timetracking_data(self) -> IntentResult[Optional[DataFrame]]:
         try:
             data = self._timetracking_data_frame_source.get_data_frame()
@@ -540,23 +520,6 @@ class TimeTrackingIntent(Intent):
             return IntentResult(
                 was_intent_successful=False,
                 error_msg=f"Failed to load time tracking data: {ex}",
-                exception=ex,
-                data=None,
-            )
-
-    def set_timetracking_data(self, data: DataFrame) -> IntentResult[None]:
-        try:
-            self._timetracking_data_frame_source.store_data_frame(data=data)
-            return IntentResult(
-                was_intent_successful=True,
-            )
-        except Exception as ex:
-            error_msg = f"Failed to store time tracking data: {ex}"
-            logger.error(error_msg)
-            logger.exception(ex)
-            return IntentResult(
-                was_intent_successful=False,
-                error_msg=error_msg,
                 exception=ex,
                 data=None,
             )

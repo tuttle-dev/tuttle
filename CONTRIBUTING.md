@@ -29,6 +29,11 @@ Look through the GitHub issues for features. Anything tagged with
 "enhancement" and "help wanted" is open to whoever wants to
 implement it.
 
+Before you start, check that the issue describes the design: where
+data is entered and what the UI shows. If it doesn't, settle that in
+the issue first. Open the PR with the template; the PR Template Check
+fails without its Checklist section.
+
 ## Claiming Issues
 
 When you're assigned to an issue, please open a draft PR within **7 days** to show progress. If no draft or open PR is submitted within that window, you will be un-assigned automatically so the issue is available for others. You can always request re-assignment if you need more time.
@@ -168,6 +173,8 @@ Run `just --list` to see all available tasks. Here are the most important ones:
 | `just dev` | Start the Electron app in dev mode (hot reload) |
 | `just test` | Run the full test suite (Python + TypeScript type-check) |
 | `just deps-all` | Install/sync all dependencies (Python + Node) |
+| `just upgrade` | Upgrade both lockfiles locally and install the result |
+| `just upgrade-pr` | Open a pull request that upgrades both lockfiles (`just release` does this after each release) |
 | `just precommit` | Install the pre-commit hooks |
 | `just build` | Full production build (PyInstaller + Electron) |
 | `just migrate "<msg>"` | Generate an Alembic migration from model changes |

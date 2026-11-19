@@ -1,0 +1,59 @@
+{
+    "country": "United States",
+    "country_aliases": ["US", "USA", "United States of America"],
+    "year": 2027,
+    "formula_type": "marginal_brackets",
+    "source": "IRS Rev. Proc. 2026-35, 5 Nov 2026 (federal brackets and standard deduction, single filer) (enacted). Federal income tax only: no self-employment or state tax",
+    "currency": "USD",
+
+    "income_tax": {
+        "basic_allowance": 16600,
+        "zones": [
+            {
+                "label": "10%",
+                "up_to": 12800,
+                "rate": 0.10
+            },
+            {
+                "label": "12%",
+                "up_to": 52025,
+                "rate": 0.12
+            },
+            {
+                "label": "22%",
+                "up_to": 109125,
+                "rate": 0.22
+            },
+            {
+                "label": "24%",
+                "up_to": 208325,
+                "rate": 0.24
+            },
+            {
+                "label": "32%",
+                "up_to": 264550,
+                "rate": 0.32
+            },
+            {
+                "label": "35%",
+                "up_to": 661375,
+                "rate": 0.35
+            },
+            {
+                "label": "37%",
+                "up_to": null,
+                "rate": 0.37
+            }
+        ]
+    },
+
+    "solidarity_surcharge": {
+        "rate": 0.0
+    },
+
+    "vat": {
+        "standard_rate": 0.0,
+        "reduced_rate": 0.0,
+        "comment": "US has no federal VAT; sales tax varies by state"
+    }
+}

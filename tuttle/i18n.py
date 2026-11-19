@@ -60,10 +60,6 @@ def use_language(language: str):
         _current.reset(token)
 
 
-def current_language() -> str:
-    return _current.get()
-
-
 def babel_locale() -> str:
     """Babel locale for formatting numbers, dates and money in the current language."""
     language = _current.get()
@@ -75,7 +71,7 @@ def _fill(text: str, source: str, values: dict) -> str:
         return text
     try:
         return text.format(**values)
-    except (KeyError, IndexError, ValueError):
+    except KeyError, IndexError, ValueError:
         # A translation with a broken placeholder must not break the document.
         return source.format(**values)
 

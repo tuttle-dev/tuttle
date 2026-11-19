@@ -59,11 +59,13 @@ type Props = {
   onSwitchUser: (dbFile: string) => void;
   onAddUser: () => void;
   onDeleteUser: (dbFile: string) => void;
+  /** A count to show next to a view, such as pending tasks. */
+  badges?: Partial<Record<string, number>>;
 };
 
 export function Sidebar({
   selected, onSelect, collapsed, onToggleCollapse,
-  activeUser, allUsers, onSwitchUser, onAddUser, onDeleteUser,
+  activeUser, allUsers, onSwitchUser, onAddUser, onDeleteUser, badges = {},
 }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -96,8 +98,12 @@ export function Sidebar({
     : "?";
 
   return (
-    <aside className={`flex flex-col bg-bg-sidebar border-r border-border-subtle transition-all duration-200 ${collapsed ? "w-24" : "w-52"}`}>
-      <div className="drag-region h-13 shrink-0" />
+    <aside className={`flex flex-col bg-bg-sidebar border-r border-border-subtle transition-all duration-200 min-w-[var(--title-bar-inset-start)] ${collapsed ? "w-24" : "w-52"}`}>
+      {/* The window buttons sit here on macOS and on Linux desktops that put
+          them at the start. Elsewhere it shows the app name, like a title bar. */}
+      <div className="drag-region h-13 shrink-0 flex items-center pl-[var(--title-bar-inset-start)]">
+        {!isMac && !collapsed && <span className="px-4 text-xs text-secondary truncate">Tuttle</span>}
+      </div>
 
       <nav className="flex-1 overflow-y-auto py-2 px-2 space-y-4">
         {SECTIONS.map((section) => (
@@ -110,17 +116,22 @@ export function Sidebar({
             <div className="space-y-0.5">
               {section.items.map((item) => {
                 const active = selected === item.id;
+                const badge = badges[item.id] ?? 0;
                 return (
                   <button
                     key={item.id}
+                    data-nav={item.id}
                     onClick={() => onSelect(item.id)}
-                    className={`no-drag flex items-center gap-2.5 w-full rounded-md px-2.5 py-1.5 text-sm transition-colors cursor-default
+                    className={`no-drag relative flex items-center gap-2.5 w-full rounded-md px-2.5 py-1.5 text-sm transition-colors cursor-default
                       ${active ? "bg-bg-selected text-primary" : "text-secondary hover:bg-bg-hover hover:text-primary"}
                       ${collapsed ? "justify-center" : ""}`}
-                    title={collapsed ? item.label : undefined}
+                    title={collapsed ? (badge > 0 ? `${item.label} (${badge})` : item.label) : undefined}
                   >
                     <item.icon size={16} strokeWidth={1.8} className="shrink-0" />
                     {!collapsed && <span className="truncate">{item.label}</span>}
+                    {badge > 0 && (collapsed
+                      ? <span className="absolute top-1 right-[calc(50%-14px)] w-1.5 h-1.5 rounded-full bg-accent" />
+                      : <span className="ml-auto min-w-[18px] px-1.5 rounded-full bg-accent text-on-fill text-[11px] font-semibold leading-[18px] text-center tabular-nums">{badge}</span>)}
                   </button>
                 );
               })}
@@ -132,6 +143,7 @@ export function Sidebar({
       {/* Settings and the sidebar toggle */}
       <div className={`shrink-0 flex gap-0.5 px-2 pb-2 ${collapsed ? "flex-col" : ""}`}>
         <button
+          data-nav={SETTINGS_ITEM.id}
           onClick={() => onSelect(SETTINGS_ITEM.id)}
           className={`no-drag flex items-center gap-2.5 w-full rounded-md px-2.5 py-1.5 text-sm transition-colors cursor-default
             ${selected === SETTINGS_ITEM.id ? "bg-bg-selected text-primary" : "text-secondary hover:bg-bg-hover hover:text-primary"}

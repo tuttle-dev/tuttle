@@ -8,7 +8,6 @@ import pytest
 
 from tuttle import tax
 from tuttle.app.tax.intent import TaxIntent
-from tuttle.kpi import monthly_spendable_breakdown
 from tuttle.model import (
     Address,
     Client,
@@ -19,7 +18,7 @@ from tuttle.model import (
     RecurringExpense,
     Timesheet,
 )
-from tuttle.tax import TaxSystem, available_years, get_tax_system, supported_countries
+from tuttle.tax import NoTaxRules, TaxSystem, available_years, get_tax_system, supported_countries
 from tuttle.tax_reserves import (
     _normalize_to_monthly,
     compute_income_tax_reserve,
@@ -65,9 +64,19 @@ def _tax_system(country: str | None = None):
     return get_tax_system(country or _sample_country())
 
 
+def _tax_free_income(tax_system) -> Decimal:
+    """Income on which no tax is due: the basic allowance, plus a leading 0% bracket."""
+    params = tax_system.params
+    tax_free = Decimal(str(params.basic_allowance))
+    first = params.zones[0]
+    if params.formula_type == "marginal_brackets" and first["rate"] == 0:
+        tax_free += Decimal(str(first["up_to"]))
+    return tax_free
+
+
 def _income_below_allowance(tax_system) -> Decimal:
-    """Net income safely below the configured basic allowance."""
-    allowance = Decimal(str(tax_system.params.basic_allowance))
+    """Net income safely below the tax-free income."""
+    allowance = _tax_free_income(tax_system)
     if allowance <= 0:
         return Decimal("1000")
     margin = min(Decimal("500"), allowance / 2)
@@ -75,9 +84,8 @@ def _income_below_allowance(tax_system) -> Decimal:
 
 
 def _income_above_allowance(tax_system) -> Decimal:
-    """Net income safely above the configured basic allowance."""
-    allowance = Decimal(str(tax_system.params.basic_allowance))
-    return (allowance + Decimal("10000")).quantize(Decimal("0.01"))
+    """Net income safely above the tax-free income."""
+    return (_tax_free_income(tax_system) + Decimal("10000")).quantize(Decimal("0.01"))
 
 
 def _invoice_items_for_net(net: Decimal, unit_price: int = 100) -> list:
@@ -127,7 +135,7 @@ def _make_invoice(date, items_data, cancelled=False, vat_rate=None):
         term_of_payment=30,
         VAT_rate=Decimal(str(vat_rate)),
     )
-    project = Project(title="Test Project", tag="test", contract=contract)
+    project = Project(title="Test Project", tag="test", start_date=date, contract=contract)
     invoice = Invoice(
         number=f"INV-{date.isoformat()}",
         date=date,
@@ -155,11 +163,10 @@ def _make_invoice(date, items_data, cancelled=False, vat_rate=None):
 
 
 class TestTaxSystemFramework:
-    def test_years_before_the_data_use_the_earliest_rules(self):
+    def test_years_before_the_data_have_no_rules(self):
         earliest = available_years("Germany")[0]
-        older = get_tax_system("Germany", date=datetime.date(earliest - 3, 6, 1))
-        first = get_tax_system("Germany", date=datetime.date(earliest, 6, 1))
-        assert older.income_tax(Decimal(50000)) == first.income_tax(Decimal(50000))
+        with pytest.raises(NoTaxRules, match=f"No tax rules for Germany in {earliest - 3}."):
+            get_tax_system("Germany", date=datetime.date(earliest - 3, 6, 1))
 
     def test_get_tax_system_germany(self):
         system = get_tax_system("Germany")
@@ -172,7 +179,7 @@ class TestTaxSystemFramework:
         assert system.country == "Germany"
 
     def test_get_tax_system_unsupported(self):
-        with pytest.raises(NotImplementedError, match="not yet implemented"):
+        with pytest.raises(NoTaxRules, match="No tax model for Narnia."):
             get_tax_system("Narnia")
 
     def test_supported_countries(self):
@@ -194,11 +201,10 @@ class TestTaxSystemFramework:
         # Basic allowance increased 2024 → 2026
         assert sys_2024.params.basic_allowance < sys_2026.params.basic_allowance
 
-    def test_year_fallback(self):
-        """Year without data falls back to nearest available."""
-        sys = get_tax_system("Germany", date=datetime.date(2030, 1, 1))
-        # Should get the latest available year
-        assert sys.year == max(available_years("Germany"))
+    def test_years_after_the_data_have_no_rules(self):
+        """No other year's rules stand in for a year without its own."""
+        with pytest.raises(NoTaxRules, match="No tax rules for Germany in 2030."):
+            get_tax_system("Germany", date=datetime.date(2030, 1, 1))
 
 
 # ── German income tax ────────────────────────────────────────
@@ -217,10 +223,13 @@ class TestGermanIncomeTax:
             (2026, 12348, 0),
             (2026, 50000, 10548),
             (2026, 300000, 115529),
+            (2027, 12564, 0),
+            (2027, 40000, 7156),
+            (2027, 300000, 116658),
         ],
     )
     def test_official_tariff(self, year, income, tax):
-        """§32a EStG, single filer, rounded down to full euros."""
+        """§32a EStG, single filer, rounded down to full euros. 2027: the Einkommensteuerreformgesetz 2027 bill."""
         german = get_tax_system("Germany", date=datetime.date(year, 6, 1))
         assert german.income_tax(Decimal(income)) == tax
 
@@ -523,19 +532,6 @@ class TestSpendableIncome:
         result = compute_spendable_income(invoices, country)
         assert result.gross_revenue_ytd == invoices[1].total
 
-    def test_monthly_spendable_breakdown_includes_vat_subtraction(self):
-        country = _sample_country()
-        today = datetime.date.today()
-        invoices = [
-            _make_invoice(today.replace(day=1), [(20, 100, 0)]),
-        ]
-        monthly = monthly_spendable_breakdown(invoices, country=country, n_months=2)
-        this_month = [m for m in monthly if m["month"] == today.strftime("%Y-%m")][0]
-        assert this_month["gross_revenue"] > 0
-        assert this_month["vat_due"] > 0
-        assert this_month["net_revenue"] == this_month["gross_revenue"] - this_month["vat_due"]
-        assert this_month["spendable"] == this_month["net_revenue"] - this_month["income_tax_true_up"]
-
     def test_spendable_with_expenses(self):
         """Business expenses reduce taxable profit and therefore tax."""
         today = datetime.date.today()
@@ -578,11 +574,11 @@ class TestSpendableIncome:
         assert result.business_expenses == 0
         assert result.taxable_profit == plain.taxable_profit
         assert result.income_tax_reserve == plain.income_tax_reserve
-        assert result.fixed_expenses_post_tax == Decimal(500) * today.month
+        assert result.fixed_expenses_post_tax == Decimal(500) * 12
         assert result.spendable == plain.spendable - result.fixed_expenses_post_tax
 
     def test_spendable_with_yearly_expense(self):
-        """Yearly expenses are normalized to monthly before YTD proration."""
+        """Yearly expenses are normalized to monthly before they are counted for the year."""
         today = datetime.date.today()
         invoices = [
             _make_invoice(today.replace(day=1), [(100, 100, 0.19)]),
@@ -650,7 +646,7 @@ class TestSpendableIncome:
         worked = datetime.date(today.year, 1, 1)  # in the past, except on Jan 1
         inv = _make_invoice(worked, [(8, 100, 0)])
         invoiced = inv.project
-        uninvoiced = Project(title="Other Project", tag="other", contract=inv.contract)
+        uninvoiced = Project(title="Other Project", tag="other", start_date=worked, contract=inv.contract)
         Timesheet(
             title="January",
             date=worked,
@@ -676,6 +672,11 @@ class TestSpendableIncome:
         result = compute_spendable_income([inv], _sample_country(), projects=[invoiced, uninvoiced], time_data=time_data)
         # 8 h at €100 for the uninvoiced project only.
         assert result.planned_revenue == Decimal("800.00")
+
+        # Once completed, the project is paid in full: nothing of it is planned.
+        uninvoiced.is_completed = True
+        result = compute_spendable_income([inv], _sample_country(), projects=[invoiced, uninvoiced], time_data=time_data)
+        assert result.planned_revenue == Decimal(0)
 
 
 # ── Monthly VAT breakdown ─────────────────────────────────────
@@ -746,33 +747,21 @@ class TestSpanishIncomeTax:
         assert spanish_tax.income_tax(Decimal("5550")) == 0
 
     def test_first_bracket(self, spanish_tax):
-        """Income in first bracket (19% on income above 5,550€ up to 12,450+5,550)."""
-        # 10,000€ income → 4,450€ taxable at 19% = 845.50 → rounds to 846
-        tax_amount = spanish_tax.income_tax(Decimal("10000"))
-        assert tax_amount > 0
-        assert tax_amount < 1000
+        """10,000€: 19% of the 4,450€ above the mínimo personal = 845.50."""
+        assert spanish_tax.income_tax(Decimal("10000")) == 846
 
     def test_manual_calculation_20000(self, spanish_tax):
-        """Manual check: 20,000€ income, personal allowance 5,550€.
-        Taxable = 14,450€
-        First 12,450€ at 19% = 2,365.50
-        Next 2,000€ at 24% = 480.00
-        Total = 2,845.50 → 2846
+        """The scale applies to the whole income; the mínimo personal is then taken off at the lowest rate.
+        Scale: 12,450€ at 19% = 2,365.50, next 7,550€ at 24% = 1,812.00 → 4,177.50
+        Less 5,550€ at 19% = 1,054.50 → 3,123.00
         """
-        tax_amount = spanish_tax.income_tax(Decimal("20000"))
-        assert 2800 < tax_amount < 2900
+        assert spanish_tax.income_tax(Decimal("20000")) == 3123
 
     def test_manual_calculation_50000(self, spanish_tax):
-        """Manual check: 50,000€ income, personal allowance 5,550€.
-        Taxable = 44,450€
-        First 12,450€ at 19% = 2,365.50
-        Next 7,750€ (20,200-12,450) at 24% = 1,860.00
-        Next 15,000€ (35,200-20,200) at 30% = 4,500.00
-        Next 9,250€ (44,450-35,200) at 37% = 3,422.50
-        Total = 12,148.00 → 12148
+        """Scale: 2,365.50 + 7,750€ at 24% (1,860.00) + 15,000€ at 30% (4,500.00)
+        + 14,800€ at 37% (5,476.00) = 14,201.50; less 1,054.50 → 13,147.00
         """
-        tax_amount = spanish_tax.income_tax(Decimal("50000"))
-        assert 12100 < tax_amount < 12200
+        assert spanish_tax.income_tax(Decimal("50000")) == 13147
 
     def test_top_bracket(self, spanish_tax):
         """Very high income hits the 47% top marginal rate."""

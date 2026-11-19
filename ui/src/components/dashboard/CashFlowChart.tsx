@@ -11,6 +11,8 @@ import {
   YAxis,
 } from "recharts";
 import { rpc } from "../../api/rpc";
+import { UnconvertedNote } from "../shared/UnconvertedNote";
+import { INCOME, OUTFLOW, incomeFill, translucent, type IncomeSeries } from "../shared/income";
 
 export interface CashFlowBucket {
   month: string;
@@ -34,61 +36,41 @@ export interface CashFlowSeries {
   total_inflow: number;
   total_outflow: number;
   net_cash_flow: number;
+  /** False without tax rules: outflows then hold no income tax, nor what is charged on taxed income. */
+  tax_included: boolean;
+  tax_unavailable_reason: string | null;
+  left_out_with_tax: string[];
+  /** Amounts left out for lack of an exchange rate, one line each. */
+  unconverted: string[];
 }
 
-type SeriesKey = "inflow_invoiced" | "inflow_planned" | "inflow_contracted" | "outflow" | "balance";
-
-interface SeriesDef {
-  key: SeriesKey;
-  name: string;
-  color: string;
-  opacity: number;
-  hint: string;
+/** "Income tax and Pension not included: no tax model for Norway." — or "" when tax is included. */
+function taxNote(data: CashFlowSeries | null): string {
+  if (!data || data.tax_included !== false) return "";
+  const items = ["Income tax", ...(data.left_out_with_tax ?? [])];
+  const list = items.length > 1 ? `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}` : items[0];
+  const reason = data.tax_unavailable_reason ?? "";
+  return `${list} not included: ${reason.charAt(0).toLowerCase()}${reason.slice(1)}`;
 }
 
-const SERIES: SeriesDef[] = [
-  {
-    key: "inflow_invoiced",
-    name: "Invoiced",
-    color: "var(--color-status-warning)",
-    opacity: 1,
-    hint: "Unpaid invoices placed by due date",
-  },
-  {
-    key: "inflow_planned",
-    name: "Planned",
-    color: "var(--color-status-info)",
-    opacity: 0.5,
-    hint: "Scheduled calendar work shifted by payment terms",
-  },
-  {
-    key: "inflow_contracted",
-    name: "Contracted",
-    color: "var(--color-status-info)",
-    opacity: 0.15,
-    hint: "Agreed contract work not yet in the calendar, shifted by payment terms",
-  },
-  {
-    key: "outflow",
-    name: "Outflows",
-    color: "var(--color-status-danger)",
-    opacity: 0.85,
-    hint: "Recurring expenses, dynamic contributions, and tax reserves",
-  },
-  {
-    key: "balance",
-    name: "Running Balance",
-    color: "var(--color-accent)",
-    opacity: 1,
-    hint: "Cumulative cash balance projection",
-  },
+type InflowKey = "inflow_invoiced" | "inflow_planned" | "inflow_contracted";
+type SeriesKey = InflowKey | "outflow" | "balance";
+
+/** Inflows look like the same kinds of income on the revenue chart. */
+const INFLOWS: { key: InflowKey; income: IncomeSeries; hint: string }[] = [
+  { key: "inflow_invoiced", income: INCOME.invoiced, hint: "Sent, unpaid invoices, in the month they are due" },
+  { key: "inflow_planned", income: INCOME.planned, hint: "Scheduled work, in the month it should be paid" },
+  { key: "inflow_contracted", income: INCOME.contracted, hint: "Agreed contract work not yet scheduled, in the month it should be paid" },
 ];
 
-// Contracted inflow is the least certain: a faint fill with a dashed outline.
-const CONTRACTED_SWATCH = {
-  background: "color-mix(in srgb, var(--color-status-info) 15%, transparent)",
-  border: "1px dashed var(--color-status-info)",
-};
+const OUTFLOW_FILL = translucent(OUTFLOW, 0.85);
+const BALANCE_COLOR = "var(--color-accent)";
+
+const SERIES: { key: SeriesKey; name: string; swatch: React.CSSProperties; hint: string }[] = [
+  ...INFLOWS.map((f) => ({ key: f.key, name: f.income.name, swatch: incomeFill(f.income), hint: f.hint })),
+  { key: "outflow", name: "Outflows", swatch: { background: OUTFLOW_FILL }, hint: "Recurring expenses, contributions and tax reserves" },
+  { key: "balance", name: "Running Balance", swatch: { background: BALANCE_COLOR, height: 2 }, hint: "What the months so far add up to" },
+];
 
 const HORIZONS: { months: number; name: string }[] = [
   { months: 3, name: "3 Months" },
@@ -158,11 +140,13 @@ export function CashFlowChart() {
   );
 
   const buckets = data?.buckets ?? [];
-  // The highest visible inflow series carries the rounded top of the stack.
-  const inflowTop = (["inflow_contracted", "inflow_planned", "inflow_invoiced"] as SeriesKey[]).find((k) =>
-    visible.includes(k),
-  );
+  // One column a month: inflows stack up from zero, outflows hang below it.
+  const rows = useMemo(() => buckets.map((b) => ({ ...b, outflow_down: -b.outflow })), [buckets]);
+  const shownInflows = INFLOWS.filter((f) => visible.includes(f.key));
+  // The highest visible inflow carries the rounded top of the column.
+  const inflowTop = shownInflows[shownInflows.length - 1]?.key;
   const netCashFlow = data?.net_cash_flow ?? 0;
+  const note = taxNote(data);
   const isPositive = netCashFlow >= 0;
 
   const windowLabel = useMemo(() => {
@@ -209,21 +193,6 @@ export function CashFlowChart() {
               )}
             </span>
             {data && <span className="text-[11px] text-tertiary">{windowLabel}</span>}
-            {data && (
-              <span
-                className="text-[11px] px-1.5 py-0.5 rounded font-medium"
-                style={{
-                  backgroundColor: isPositive
-                    ? "color-mix(in srgb, var(--color-status-success) 14%, transparent)"
-                    : "color-mix(in srgb, var(--color-status-danger) 14%, transparent)",
-                  color: isPositive
-                    ? "var(--color-status-success)"
-                    : "var(--color-status-danger)",
-                }}
-              >
-                {isPositive ? "Net Positive" : "Net Deficit"}
-              </span>
-            )}
           </div>
         </div>
 
@@ -270,7 +239,8 @@ export function CashFlowChart() {
         <div className="relative h-full z-10">
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart
-              data={buckets}
+              data={rows}
+              stackOffset="sign"
               margin={{ top: 22, right: RIGHT_MARGIN, left: 0, bottom: 0 }}
             >
               <CartesianGrid vertical={false} stroke="var(--color-border-subtle)" />
@@ -297,69 +267,41 @@ export function CashFlowChart() {
                 content={(props) => <CashFlowTooltip {...props} fmt={fmtFull} />}
               />
 
-              {visible.includes("inflow_invoiced") && (
+              {shownInflows.map((f) => (
                 <Bar
-                  dataKey="inflow_invoiced"
-                  name="Invoiced"
-                  stackId="inflow"
-                  fill="var(--color-status-warning)"
-                  radius={inflowTop === "inflow_invoiced" ? [3, 3, 0, 0] : [0, 0, 0, 0]}
-                  maxBarSize={36}
+                  key={f.key}
+                  dataKey={f.key}
+                  name={f.income.name}
+                  stackId="flow"
+                  fill={f.income.color}
+                  fillOpacity={f.income.opacity}
+                  stroke={f.income.dashed ? f.income.color : undefined}
+                  strokeDasharray={f.income.dashed ? "3 2" : undefined}
+                  radius={f.key === inflowTop ? [3, 3, 0, 0] : [0, 0, 0, 0]}
+                  maxBarSize={48}
                   isAnimationActive={false}
                 />
-              )}
-              {visible.includes("inflow_planned") && (
-                <Bar
-                  dataKey="inflow_planned"
-                  name="Planned"
-                  stackId="inflow"
-                  fill="var(--color-status-info)"
-                  fillOpacity={0.5}
-                  radius={inflowTop === "inflow_planned" ? [3, 3, 0, 0] : [0, 0, 0, 0]}
-                  maxBarSize={36}
-                  isAnimationActive={false}
-                />
-              )}
-              {visible.includes("inflow_contracted") && (
-                <Bar
-                  dataKey="inflow_contracted"
-                  name="Contracted"
-                  stackId="inflow"
-                  fill="var(--color-status-info)"
-                  fillOpacity={0.15}
-                  stroke="var(--color-status-info)"
-                  strokeDasharray="3 2"
-                  radius={[3, 3, 0, 0]}
-                  maxBarSize={36}
-                  isAnimationActive={false}
-                />
-              )}
+              ))}
               {visible.includes("outflow") && (
                 <Bar
-                  dataKey="outflow"
+                  dataKey="outflow_down"
                   name="Outflows"
-                  stackId="outflow"
-                  fill="var(--color-status-danger)"
-                  fillOpacity={0.85}
-                  radius={[3, 3, 0, 0]}
-                  maxBarSize={36}
+                  stackId="flow"
+                  fill={OUTFLOW_FILL}
+                  radius={[0, 0, 3, 3]}
+                  maxBarSize={48}
                   isAnimationActive={false}
                 />
               )}
               {visible.includes("balance") && (
                 <Line
-                  type="monotone"
+                  type="linear"
                   dataKey="balance"
                   name="Running Balance"
-                  stroke="var(--color-accent)"
+                  stroke={BALANCE_COLOR}
                   strokeWidth={2}
-                  dot={{
-                    r: 3,
-                    fill: "var(--color-accent)",
-                    stroke: "var(--color-bg-card)",
-                    strokeWidth: 1.5,
-                  }}
-                  activeDot={{ r: 5, fill: "var(--color-accent)" }}
+                  dot={{ r: 3, fill: BALANCE_COLOR, stroke: "var(--color-bg-card)", strokeWidth: 1.5 }}
+                  activeDot={{ r: 5, fill: BALANCE_COLOR }}
                   isAnimationActive={false}
                 />
               )}
@@ -404,14 +346,7 @@ export function CashFlowChart() {
                   : "border-transparent text-muted hover:text-tertiary"
               }`}
             >
-              <span
-                className="w-2.5 h-2.5 rounded-sm shrink-0"
-                style={
-                  on && s.key === "inflow_contracted"
-                    ? CONTRACTED_SWATCH
-                    : { background: s.color, opacity: on ? s.opacity : 0.2 }
-                }
-              />
+              <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={on ? s.swatch : { ...s.swatch, opacity: 0.25 }} />
               {s.name}
               <span className="tabular-nums text-tertiary">
                 {s.key === "balance" && subtotal !== 0 && (subtotal > 0 ? "+" : "−")}
@@ -421,6 +356,9 @@ export function CashFlowChart() {
           );
         })}
       </div>
+
+      {note && <p className="text-[11px] text-muted text-center mt-2">{note}</p>}
+      <UnconvertedNote items={data?.unconverted} className="justify-center mt-2" />
     </div>
   );
 }
@@ -458,94 +396,34 @@ interface TooltipProps {
 function CashFlowTooltip({ active, payload, fmt }: TooltipProps) {
   const row = payload?.[0]?.payload as CashFlowBucket | undefined;
   if (!active || !row) return null;
+  const signed = (v: number) => `${v < 0 ? "−" : "+"}${fmt(Math.abs(v))}`;
 
   return (
-    <div className="rounded-lg border border-border bg-bg-card px-3 py-2 text-xs shadow-lg space-y-1.5 min-w-[200px]">
-      <div className="flex items-center justify-between text-[11px] text-tertiary pb-1 border-b border-border-subtle">
-        <span className="font-medium text-secondary">
-          {row.label} {row.year}
-        </span>
-        {row.is_current && (
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-overlay font-medium text-primary">
-            Current Month
-          </span>
-        )}
+    <div className="rounded-lg border border-border bg-bg-card px-3 py-2 text-xs shadow-lg min-w-[180px]">
+      <div className="text-[11px] text-tertiary mb-1">
+        {row.label} {row.year}{row.is_current && " · this month"}
       </div>
-
-      <div className="space-y-1 pt-0.5">
-        <div className="flex items-center justify-between gap-4">
-          <span className="flex items-center gap-1.5 text-secondary">
-            <span
-              className="w-2 h-2 rounded-sm shrink-0"
-              style={{ background: "var(--color-status-warning)" }}
-            />
-            Invoiced Inflow
-          </span>
-          <span className="tabular-nums font-mono text-secondary">+{fmt(row.inflow_invoiced)}</span>
-        </div>
-
-        <div className="flex items-center justify-between gap-4">
-          <span className="flex items-center gap-1.5 text-secondary">
-            <span
-              className="w-2 h-2 rounded-sm shrink-0"
-              style={{ background: "var(--color-status-info)", opacity: 0.6 }}
-            />
-            Planned Inflow
-          </span>
-          <span className="tabular-nums font-mono text-secondary">+{fmt(row.inflow_planned)}</span>
-        </div>
-
-        <div className="flex items-center justify-between gap-4">
-          <span className="flex items-center gap-1.5 text-secondary">
-            <span className="w-2 h-2 rounded-sm shrink-0" style={CONTRACTED_SWATCH} />
-            Contracted Inflow
-          </span>
-          <span className="tabular-nums font-mono text-secondary">+{fmt(row.inflow_contracted)}</span>
-        </div>
-
-        <div className="flex items-center justify-between gap-4">
-          <span className="flex items-center gap-1.5 text-secondary">
-            <span
-              className="w-2 h-2 rounded-sm shrink-0"
-              style={{ background: "var(--color-status-danger)", opacity: 0.85 }}
-            />
-            Outflows
-          </span>
-          <span className="tabular-nums font-mono" style={{ color: "var(--color-status-danger)" }}>
-            {row.outflow > 0 ? "−" : ""}
-            {fmt(row.outflow)}
-          </span>
-        </div>
+      {INFLOWS.map((f) => (
+        <TooltipRow key={f.key} swatch={incomeFill(f.income)} label={f.income.name} value={`+${fmt(row[f.key])}`} />
+      ))}
+      <TooltipRow swatch={{ background: OUTFLOW_FILL }} label="Outflows" value={signed(-row.outflow)} />
+      <div className="mt-1 pt-1 border-t border-border-subtle font-medium">
+        <TooltipRow label="Net" value={signed(row.net)}
+          color={row.net >= 0 ? "var(--color-status-success)" : "var(--color-status-danger)"} />
+        <TooltipRow swatch={{ background: BALANCE_COLOR, height: 2 }} label="Running Balance" value={signed(row.balance)} color={BALANCE_COLOR} />
       </div>
+    </div>
+  );
+}
 
-      <div className="pt-1.5 border-t border-border-subtle space-y-1">
-        <div className="flex items-center justify-between gap-4 font-medium">
-          <span className="text-secondary">Monthly Net</span>
-          <span
-            className="tabular-nums font-mono"
-            style={{
-              color: row.net >= 0 ? "var(--color-status-success)" : "var(--color-status-danger)",
-            }}
-          >
-            {row.net >= 0 ? "+" : "−"}
-            {fmt(Math.abs(row.net))}
-          </span>
-        </div>
-
-        <div className="flex items-center justify-between gap-4 font-medium">
-          <span className="flex items-center gap-1.5 text-secondary">
-            <span className="w-2 h-0.5 rounded-full shrink-0" style={{ background: "var(--color-accent)" }} />
-            Running Balance
-          </span>
-          <span
-            className="tabular-nums font-mono font-semibold"
-            style={{ color: "var(--color-accent)" }}
-          >
-            {row.balance < 0 ? "−" : ""}
-            {fmt(Math.abs(row.balance))}
-          </span>
-        </div>
-      </div>
+function TooltipRow({ swatch, label, value, color }: { swatch?: React.CSSProperties; label: string; value: string; color?: string }) {
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <span className="flex items-center gap-1.5 text-secondary">
+        {swatch && <span className="w-2 h-2 rounded-sm shrink-0" style={swatch} />}
+        {label}
+      </span>
+      <span className="tabular-nums" style={color ? { color } : undefined}>{value}</span>
     </div>
   );
 }

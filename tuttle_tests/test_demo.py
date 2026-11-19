@@ -1,12 +1,12 @@
-import datetime
-from decimal import Decimal
+from datetime import date
 
 import faker
 import pytest
 
 from tuttle import demo
-from tuttle.model import Client, Contact, Contract, ContractCharge, Invoice, Project
-from tuttle.time import ChargeBasis, TimeUnit
+from tuttle.calendar import ICSCalendar
+from tuttle.model import Client, Contact, Contract, Project
+from tuttle.time import ChargeBasis
 
 
 @pytest.fixture
@@ -76,44 +76,55 @@ def test_create_fake_project(fake):
     assert project.contract is not None
 
 
-class TestOneTimeChargePlacement:
-    """Demo invoices are built out of order, so the setup fee is placed last."""
+class TestHarryTuttle:
+    """The demo user shows every feature, on whatever day the demo is installed."""
 
-    def _contract(self) -> Contract:
-        return Contract(
-            title="Retrofit",
-            client=Client(name="Central Services"),
-            start_date=datetime.date(2026, 1, 1),
-            rate=Decimal("640"),
-            currency="EUR",
-            VAT_rate=Decimal("0.19"),
-            unit=TimeUnit.day,
-            charges=[
-                ContractCharge(description="Allowance", amount=Decimal("85")),
-                ContractCharge(description="Setup fee", amount=Decimal("450"), basis=ChargeBasis.once),
-            ],
+    # A weekday, the turn of the year, a Sunday, and New Year's Eve.
+    @pytest.fixture(params=[date(2026, 10, 23), date(2026, 1, 2), date(2026, 3, 1), date(2026, 12, 31)], ids=str)
+    def today(self, request) -> date:
+        return request.param
+
+    @pytest.fixture
+    def demo_data(self, today):
+        projects, _ = demo.create_demo_business(demo.create_demo_user(), today)
+        calendar = ICSCalendar(name="Demo calendar", ics_calendar=demo.create_fake_calendar(list(projects.values()), today))
+        return projects, demo.create_demo_invoices(projects, calendar.to_data(), today)
+
+    def test_every_stage_of_the_project_board_has_a_project(self, demo_data, today):
+        projects, _ = demo_data
+        assert {p.board_stage(today) for p in projects.values()} == {"Lead", "Offer", "Upcoming", "Active", "Completed"}
+
+    def test_every_kind_of_invoice_is_there(self, demo_data, today):
+        _, invoices = demo_data
+        assert {i.document_type for i in invoices} == {"invoice", "reminder", "deposit", "final"}
+        assert any(i.cancelled for i in invoices)
+        assert any(not i.sent for i in invoices), "a draft"
+        assert any(i.reminders for i in invoices), "an invoice with a payment reminder"
+        assert any(i.sent and not i.paid and i.due_date < today and not i.reminders and not i.is_reminder for i in invoices), (
+            "an overdue invoice waiting for its reminder"
         )
+        assert any(i.currency == "USD" for i in invoices)
+        assert all(i.date <= today for i in invoices)
 
-    def _invoices(self, contract: Contract, *dates: datetime.date) -> list:
-        return [Invoice(number=str(d), date=d, contract=contract) for d in dates]
+    def test_tracked_time_is_billed_once(self, demo_data):
+        _, invoices = demo_data
+        billed = set()
+        for invoice in invoices:
+            if invoice.cancelled:
+                continue
+            for timesheet in invoice.timesheets:
+                for item in timesheet.items:
+                    assert (item.tag, item.begin) not in billed
+                    billed.add((item.tag, item.begin))
+        assert billed
 
-    def test_lands_on_the_earliest_invoice_only(self):
-        contract = self._contract()
-        invoices = self._invoices(
-            contract,
-            datetime.date(2026, 5, 1),
-            datetime.date(2026, 1, 1),
-            datetime.date(2026, 3, 1),
-        )
-
-        created = demo.apply_one_time_charges(invoices)
-
-        assert [i.description for i in created] == ["Setup fee"]
-        billed = [inv for inv in invoices if any(it.contract_charge is not None for it in inv.items)]
-        assert [inv.date for inv in billed] == [datetime.date(2026, 1, 1)]
-
-    def test_contracts_without_one_time_charges_are_untouched(self):
-        contract = self._contract()
-        contract.charges = [ContractCharge(description="Allowance", amount=Decimal("85"))]
-
-        assert demo.apply_one_time_charges(self._invoices(contract, datetime.date(2026, 1, 1))) == []
+    def test_the_one_time_charge_is_billed_once(self, demo_data):
+        _, invoices = demo_data
+        one_time = [
+            item
+            for invoice in invoices
+            if not invoice.cancelled
+            for item in invoice.items
+            if item.contract_charge is not None and item.contract_charge.basis == ChargeBasis.once
+        ]
+        assert len(one_time) == 1

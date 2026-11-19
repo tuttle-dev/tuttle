@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { Target, Plus, Pencil, Trash2, Save, X, Trophy } from "lucide-react";
 import { rpc } from "../../api/rpc";
-import { str, num, bool, formatDate } from "../../api/entity";
+import { str, num, bool, formatDate, formatAmount } from "../../api/entity";
 import { ProgressBar } from "../shared/ProgressBar";
+import { UnconvertedNote } from "../shared/UnconvertedNote";
 import type { Entity } from "../../api/types";
 
 interface GoalEntry {
@@ -10,6 +11,8 @@ interface GoalEntry {
   progress: number;
   ytd_revenue: number;
   currency: string;
+  /** Paid invoices of the goal's year left out for lack of an exchange rate. */
+  unconverted: string[];
 }
 
 interface GoalFormData {
@@ -17,18 +20,6 @@ interface GoalFormData {
   title: string;
   target_amount: number;
   target_date: string;
-}
-
-function fmt(value: number, currency = "EUR"): string {
-  try {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency,
-      maximumFractionDigits: 0,
-    }).format(value);
-  } catch {
-    return `${currency} ${value.toFixed(0)}`;
-  }
 }
 
 export function FinancialGoalsCard() {
@@ -136,7 +127,7 @@ function GoalRow({ entry, onEdit, onDelete }: {
   entry: GoalEntry; onEdit: () => void; onDelete: () => void;
 }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const { goal, progress, ytd_revenue, currency } = entry;
+  const { goal, progress, ytd_revenue, currency, unconverted } = entry;
 
   useEffect(() => { setConfirmDelete(false); }, [goal.id]);
 
@@ -157,7 +148,7 @@ function GoalRow({ entry, onEdit, onDelete }: {
 
         <div className="flex items-center gap-2 shrink-0">
           <span className="text-xs text-secondary tabular-nums">
-            {fmt(ytd_revenue, currency)} / {fmt(target, currency)}
+            {formatAmount(ytd_revenue, currency)} / {formatAmount(target, currency)}
           </span>
           {!confirmDelete ? (
             <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -187,6 +178,7 @@ function GoalRow({ entry, onEdit, onDelete }: {
       </div>
 
       <ProgressBar progress={progress} tone={reached ? "success" : "neutral"} />
+      <UnconvertedNote items={unconverted} />
     </div>
   );
 }

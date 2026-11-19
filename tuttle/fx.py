@@ -12,7 +12,7 @@ neither from cache nor from the network yields ``None`` — never zero.
 
 import datetime
 import json
-import logging
+import time
 import urllib.error
 import urllib.request
 from decimal import Decimal
@@ -21,11 +21,10 @@ from typing import Optional
 
 import pycountry
 from babel.numbers import get_territory_currencies
+from loguru import logger
 
 from .app_db import AppDatabase
-from .tax import get_tax_system
-
-logger = logging.getLogger(__name__)
+from .tax import NoTaxRules, tax_currency
 
 # The ECB reference set as published on 2026-07-14; used when the API is
 # unreachable. supported_currencies() prefers the live list.
@@ -77,7 +76,7 @@ def supported_currencies() -> tuple[str, ...]:
         with urllib.request.urlopen(request, timeout=_TIMEOUT) as resp:
             return tuple(sorted(json.load(resp)))
     except (urllib.error.URLError, OSError, ValueError, TimeoutError) as e:
-        logger.warning("Currency list unavailable (%s); using the built-in set.", e)
+        logger.warning("Currency list unavailable ({}); using the built-in set.", e)
         return SUPPORTED_CURRENCIES
 
 
@@ -94,8 +93,8 @@ def default_currency(country: str) -> str:
     otherwise); else EUR.
     """
     try:
-        return get_tax_system(country).currency
-    except NotImplementedError:
+        return tax_currency(country)
+    except NoTaxRules:
         pass
     code = _COUNTRY_ALIASES.get(country)
     if code is None:
@@ -139,7 +138,7 @@ def fx_haircut() -> Decimal:
     raw = AppDatabase().get_setting("currency.fx_haircut")
     try:
         return Decimal(raw) if raw else Decimal("1.0")
-    except (ArithmeticError, ValueError):
+    except ArithmeticError, ValueError:
         return Decimal("1.0")
 
 
@@ -174,10 +173,32 @@ class _NoRatesYet(ValueError):
     """The ECB has not fixed a rate in this month yet."""
 
 
-# ponytail: a failed lookup stays cached for the session; restart (or call
-# clear_cache) after coming back online. Retry-on-reconnect if that annoys anyone.
-@lru_cache(maxsize=256)
+# Rates found this session, by (base, quote, month). A lookup that failed, say
+# offline, is not kept: it is tried again once _RETRY_AFTER seconds have passed,
+# so one page does not wait on the network for every amount, and the next page
+# after the network is back finds the rate.
+_session_rates: dict[tuple[str, str, str], Decimal] = {}
+_failed_at: dict[tuple[str, str, str], float] = {}
+_RETRY_AFTER = 60.0
+
+
 def _rate(base: str, quote: str, month_key: str) -> Optional[Decimal]:
+    key = (base, quote, month_key)
+    if key in _session_rates:
+        return _session_rates[key]
+    failed = _failed_at.get(key)
+    if failed is not None and time.monotonic() - failed < _RETRY_AFTER:
+        return None
+    found = _lookup_rate(base, quote, month_key)
+    if found is None:
+        _failed_at[key] = time.monotonic()
+        return None
+    _failed_at.pop(key, None)
+    _session_rates[key] = found
+    return found
+
+
+def _lookup_rate(base: str, quote: str, month_key: str) -> Optional[Decimal]:
     month = datetime.date.fromisoformat(f"{month_key}-01")
     db = AppDatabase()
     cache_key = f"fx.rate.{base}.{quote}.{month_key}"
@@ -190,7 +211,7 @@ def _rate(base: str, quote: str, month_key: str) -> Optional[Decimal]:
         avg = _fetch_monthly_average(base, quote, month)
     except _NoRatesYet:
         if _month_range(month)[1] < datetime.date.today():
-            logger.warning("No %s/%s rates published for %s.", base, quote, month_key)
+            logger.warning("No {}/{} rates published for {}.", base, quote, month_key)
             return None
         # Until the ECB's first fixing of the month (its first business day,
         # ~16:00 CET) the previous month's average is the best estimate.
@@ -199,7 +220,7 @@ def _rate(base: str, quote: str, month_key: str) -> Optional[Decimal]:
         return _rate(base, quote, f"{previous:%Y-%m}")
     except (urllib.error.URLError, OSError, ValueError, KeyError, TimeoutError) as e:
         logger.warning(
-            "No exchange rate for %s/%s in %s (%s); amounts in %s are left unconverted rather than counted as zero.",
+            "No exchange rate for {}/{} in {} ({}); amounts in {} are left unconverted rather than counted as zero.",
             base,
             quote,
             month_key,
@@ -237,5 +258,6 @@ def convert(amount: Decimal, base: str, quote: str, on: datetime.date) -> Option
 
 def clear_cache() -> None:
     """Drop the in-process caches (tests, and after a settings change)."""
-    _rate.cache_clear()
+    _session_rates.clear()
+    _failed_at.clear()
     supported_currencies.cache_clear()

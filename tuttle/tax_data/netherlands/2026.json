@@ -1,0 +1,44 @@
+{
+    "country": "Netherlands",
+    "country_aliases": ["Nederland", "The Netherlands", "Holland"],
+    "year": 2026,
+    "formula_type": "marginal_brackets",
+    "source": "Wet IB 2001 box 1, 2026 (Belastingplan 2026; Belastingdienst tarieven en heffingskortingen 2026). Rates include premies volksverzekeringen. Algemene heffingskorting + arbeidskorting at the CPB modal wage (EUR 48,000) = EUR 7,475, as a 0% zone",
+    "currency": "EUR",
+
+    "income_tax": {
+        "basic_allowance": 0,
+        "zones": [
+            {
+                "label": "0%",
+                "up_to": 20909,
+                "rate": 0.0
+            },
+            {
+                "label": "35.8%",
+                "up_to": 38883,
+                "rate": 0.3575
+            },
+            {
+                "label": "37.6%",
+                "up_to": 78426,
+                "rate": 0.3756
+            },
+            {
+                "label": "49.5%",
+                "up_to": null,
+                "rate": 0.495
+            }
+        ]
+    },
+
+    "solidarity_surcharge": {
+        "rate": 0.0,
+        "comment": "No solidarity surcharge in the Netherlands"
+    },
+
+    "vat": {
+        "standard_rate": 0.21,
+        "reduced_rate": 0.09
+    }
+}

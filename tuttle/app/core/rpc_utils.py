@@ -9,8 +9,6 @@ from typing import Any, Callable, Dict
 
 import pandas
 
-from tuttle.app_db import AppDatabase
-
 
 def dump(obj: Any) -> Any:
     """Recursively convert a Python value to JSON-safe primitives.
@@ -100,12 +98,3 @@ def reset_all() -> None:
     """Invoke every registered reset callback (cross-domain cache flush)."""
     for fn in _reset_fns:
         fn()
-
-
-# ---------------------------------------------------------------------------
-# App-level DB accessor
-# ---------------------------------------------------------------------------
-
-
-def get_app_db():
-    return AppDatabase()

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import datetime
 import functools
-from abc import ABC, abstractmethod
+from abc import ABC
 from pathlib import Path
 from typing import Any, List, Mapping, Optional, Type
 
@@ -10,10 +10,10 @@ import sqlalchemy
 import sqlmodel
 from loguru import logger
 from pydantic import ValidationError
-from sqlmodel import pool
 
 from ...data_dir import get_data_dir
 from .intent_result import IntentResult
+from .user_db import create_user_db_engine
 
 
 def _coerce_dates(data: dict) -> dict:
@@ -36,7 +36,8 @@ def _validation_error_message(exc: ValidationError) -> str:
     for err in exc.errors():
         loc = err.get("loc") or ()
         field = str(loc[0]) if loc else "field"
-        label = field.removesuffix("_id").replace("_", " ").capitalize()
+        label = field.removesuffix("_id").replace("_", " ")
+        label = label[:1].upper() + label[1:]  # keeps "VAT rate" from becoming "Vat rate"
         if err.get("type") == "missing" or err.get("input", ...) is None:
             parts.append(f"{label} is required.")
             continue
@@ -45,79 +46,6 @@ def _validation_error_message(exc: ValidationError) -> str:
             msg = msg.removeprefix("Value error, ")
         parts.append(f"{label}: {msg}")
     return "; ".join(parts) or "Validation failed."
-
-
-class DatabaseStorage(ABC):
-    """Abstract class for database storage"""
-
-    def __init__(
-        self,
-    ):
-        super().__init__()
-
-    @abstractmethod
-    def create_model(self):
-        """Creates database model"""
-        pass
-
-    @abstractmethod
-    def ensure_database(self):
-        """
-        Ensure that the database exists and is up to date.
-        """
-        pass
-
-    @abstractmethod
-    def reset_database(self):
-        """
-        Delete the database and rebuild database model.
-        """
-        pass
-
-    @abstractmethod
-    def install_demo_data(
-        self,
-    ):
-        """Install demo data into the database."""
-
-    @abstractmethod
-    def ensure_app_dir(self) -> Path:
-        """Ensures that the user directory exists"""
-        pass
-
-
-class ClientStorage(ABC):
-    """Abstract class for client storage"""
-
-    def __init__(
-        self,
-    ):
-        super().__init__()
-        self.keys_prefix = "tuttle_app_"
-
-    @abstractmethod
-    def set_value(self, key: str, value: any):
-        """appends an identifier prefix to the key and stores the key-value pair
-        value can be a string, number, boolean or list
-        """
-        pass
-
-    @abstractmethod
-    def get_value(self, key: str) -> Optional[any]:
-        """appends an identifier prefix to the key and gets the value if exists"""
-        pass
-
-    @abstractmethod
-    def remove_value(self, key: str):
-        """appends an identifier prefix to the key and removes associated key-value pair if exists"""
-        pass
-
-    @abstractmethod
-    def clear_preferences(
-        self,
-    ):
-        """Deletes all of preferences permanently"""
-        pass
 
 
 # ---------------------------------------------------------------------------
@@ -147,17 +75,8 @@ class SQLModelDataSourceMixin:
     ):
         db_path = f"sqlite:///{_active_db_path}"
         logger.debug(f"Creating {self.__class__.__name__} with db_path: {db_path}")
-        self.db_engine = sqlmodel.create_engine(
-            db_path,
-            echo=False,
-            connect_args={"check_same_thread": False},
-            poolclass=pool.StaticPool,
-        )
-        sqlalchemy.event.listen(
-            self.db_engine,
-            "connect",
-            lambda dbapi_conn, _: dbapi_conn.execute("PRAGMA foreign_keys = ON"),
-        )
+        # An engine of its own: a shared one would put every data source on one connection.
+        self.db_engine = create_user_db_engine(_active_db_path)
 
     def create_session(self):
         return sqlmodel.Session(
@@ -411,17 +330,6 @@ class CrudIntent(SQLModelDataSourceMixin, Intent):
                 log_message=f"{self.__class__.__name__}.delete({entity_id}): {e}",
                 exception=e,
             )
-
-    # -- Filtered views (require is_completed / is_active / is_upcoming) -------
-
-    def get_completed_as_map(self) -> Mapping[int, Any]:
-        return {k: v for k, v in self.get_all_as_map().items() if v.is_completed}
-
-    def get_active_as_map(self) -> Mapping[int, Any]:
-        return {k: v for k, v in self.get_all_as_map().items() if v.is_active()}
-
-    def get_upcoming_as_map(self) -> Mapping[int, Any]:
-        return {k: v for k, v in self.get_all_as_map().items() if v.is_upcoming()}
 
     # -- Toggle helpers --------------------------------------------------------
 

@@ -3,11 +3,11 @@
     "country_aliases": ["US", "USA", "United States of America"],
     "year": 2025,
     "formula_type": "marginal_brackets",
-    "source": "IRS Revenue Procedure 2024-40 — 2025 federal income tax brackets (single filer)",
+    "source": "IRS Rev. Proc. 2024-40 (federal brackets, single filer); standard deduction $15,750 per the One Big Beautiful Bill Act (P.L. 119-21). Federal income tax only: no self-employment or state tax",
     "currency": "USD",
 
     "income_tax": {
-        "basic_allowance": 15000,
+        "basic_allowance": 15750,
         "zones": [
             {
                 "label": "10%",
@@ -48,8 +48,7 @@
     },
 
     "solidarity_surcharge": {
-        "rate": 0.0,
-        "comment": "No federal solidarity surcharge; state taxes vary"
+        "rate": 0.0
     },
 
     "vat": {

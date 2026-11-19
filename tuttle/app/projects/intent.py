@@ -1,7 +1,6 @@
 from typing import Optional
 
 from ...model import Project
-from ..clients.intent import ClientsIntent
 from ..contracts.intent import ContractsIntent
 from ..core.abstractions import CrudIntent
 from ..core.intent_result import IntentResult
@@ -19,13 +18,9 @@ class ProjectsIntent(CrudIntent):
 
     def __init__(self):
         super().__init__()
-        self._clients_intent = ClientsIntent()
         self._contracts_intent = ContractsIntent()
 
     # -- Cross-entity delegates ------------------------------------------------
-
-    def get_all_clients_as_map(self):
-        return self._clients_intent.get_all_as_map()
 
     def get_all_contracts_as_map(self):
         return self._contracts_intent.get_all_as_map()

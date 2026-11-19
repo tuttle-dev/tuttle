@@ -14,7 +14,7 @@ from typing import List, Optional
 from ...model import Contract, FinancialGoal, Invoice, Project
 from ..core.abstractions import Intent, SQLModelDataSourceMixin
 from ..core.formatting import fmt_currency
-from ..core.intent_result import IntentResult
+from ..core.intent_result import IntentResult, fails_with
 from ..res import colors
 
 # ── Category constants ────────────────────────────────────────
@@ -75,6 +75,7 @@ class TimelineIntent(SQLModelDataSourceMixin, Intent):
 
     # ── Public API ────────────────────────────────────────────
 
+    @fails_with("Failed to load timeline events", append_exception=True)
     def get_events(
         self,
         category_filter: Optional[str] = None,
@@ -84,27 +85,19 @@ class TimelineIntent(SQLModelDataSourceMixin, Intent):
         If *category_filter* is set, only events of that category are
         included.
         """
-        try:
-            events: List[TimelineEvent] = []
-            today = datetime.date.today()
+        events: List[TimelineEvent] = []
+        today = datetime.date.today()
 
-            events.extend(self._events_from_invoices(today))
-            events.extend(self._events_from_contracts(today))
-            events.extend(self._events_from_projects(today))
-            events.extend(self._events_from_goals(today))
+        events.extend(self._events_from_invoices(today))
+        events.extend(self._events_from_contracts(today))
+        events.extend(self._events_from_projects(today))
+        events.extend(self._events_from_goals(today))
 
-            if category_filter:
-                events = [e for e in events if e.category == category_filter]
+        if category_filter:
+            events = [e for e in events if e.category == category_filter]
 
-            events.sort(key=lambda e: e.date, reverse=True)
-            return IntentResult(was_intent_successful=True, data=events)
-        except Exception as e:
-            return IntentResult(
-                was_intent_successful=False,
-                error_msg=f"Failed to load timeline events: {e}",
-                log_message=f"TimelineIntent.get_events: {e}",
-                exception=e,
-            )
+        events.sort(key=lambda e: e.date, reverse=True)
+        return IntentResult(was_intent_successful=True, data=events)
 
     # ── Invoice events ────────────────────────────────────────
     # One event per invoice showing the most significant state,
@@ -204,7 +197,8 @@ class TimelineIntent(SQLModelDataSourceMixin, Intent):
                     )
                 )
 
-            due = inv.effective_due_date
+            # A draft is not invoiced yet, so nothing is due on it.
+            due = inv.effective_due_date if inv.is_issued or inv.is_reminder else None
             if due:
                 is_overdue = due < today
                 events.append(

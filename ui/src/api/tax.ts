@@ -19,6 +19,5 @@ export function taxCategory(value: unknown): TaxCategory {
  */
 export function taxTreatment(category: TaxCategory, vatRate: number): string {
   if (category !== "S") return `${TAX_CATEGORY_LABELS[category]} (${category})`;
-  const fraction = vatRate > 1 ? vatRate / 100 : vatRate;
-  return `Standard ${(fraction * 100).toFixed(0)}%`;
+  return `Standard ${(vatRate * 100).toFixed(0)}%`;
 }

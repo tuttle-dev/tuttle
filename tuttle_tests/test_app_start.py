@@ -24,21 +24,16 @@ CORE_MODULES = [
     "tuttle.timetracking",
     "tuttle.rendering",
     "tuttle.tax",
-    "tuttle.banking",
     "tuttle.time",
-    "tuttle.dataviz",
-    "tuttle.os_functions",
     "tuttle.mail",
 ]
 
 APP_MODULES = [
     "tuttle.app.core.abstractions",
-    "tuttle.app.core.database_storage_impl",
     "tuttle.app.core.dispatch",
     "tuttle.app.core.formatting",
     "tuttle.app.core.intent_result",
     "tuttle.app.core.rpc_utils",
-    "tuttle.app.auth.intent",
     "tuttle.app.auth.data_source",
     "tuttle.app.clients.intent",
     "tuttle.app.contacts.intent",
@@ -72,76 +67,6 @@ def test_import_app_module(module_name):
     """Every application module must be importable without error."""
     mod = importlib.import_module(module_name)
     assert mod is not None
-
-
-# ---------------------------------------------------------------------------
-# 1b. Resource-module attribute smoke tests
-# ---------------------------------------------------------------------------
-
-_RES_ATTRS = [
-    (
-        "tuttle.app.res.fonts",
-        [
-            "DEFAULT_FONT",
-            "HEADLINE_FONT",
-            "APP_FONTS",
-            "HEADLINE_0_SIZE",
-            "HEADLING_1_SIZE",
-            "HEADLINE_2_SIZE",
-            "HEADLINE_3_SIZE",
-            "HEADLINE_4_SIZE",
-            "BODY_1_SIZE",
-            "BODY_2_SIZE",
-            "SUBTITLE_1_SIZE",
-            "SUBTITLE_2_SIZE",
-            "BUTTON_SIZE",
-            "OVERLINE_SIZE",
-            "CAPTION_SIZE",
-            "STATUS_BAR_SIZE",
-            "BOLD_FONT",
-            "BOLDER_FONT",
-        ],
-    ),
-    (
-        "tuttle.app.res.colors",
-        [
-            "bg",
-            "bg_surface",
-            "bg_surface_hovered",
-            "text_primary",
-            "text_secondary",
-            "text_muted",
-            "accent",
-            "accent_muted",
-            "border",
-            "status_active",
-            "status_upcoming",
-            "status_completed",
-        ],
-    ),
-    (
-        "tuttle.app.res.dimens",
-        [
-            "SPACE_XS",
-            "SPACE_SM",
-            "SPACE_MD",
-            "SPACE_LG",
-            "RADIUS_PILL",
-            "RADIUS_XL",
-        ],
-    ),
-]
-
-
-@pytest.mark.parametrize(
-    "module_name,attr",
-    [(mod, attr) for mod, attrs in _RES_ATTRS for attr in attrs],
-    ids=lambda val: val if isinstance(val, str) else "",
-)
-def test_res_module_attribute_exists(module_name, attr):
-    """Every resource constant used by the UI must actually be defined."""
-    mod = importlib.import_module(module_name)
-    assert hasattr(mod, attr), f"module {module_name!r} has no attribute {attr!r}"
 
 
 # ---------------------------------------------------------------------------

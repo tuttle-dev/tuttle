@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import {
-  FileText, Plus, Trash2, Save, X, Calendar, FileUp, Sparkles, Check, CheckCircle2, FolderKanban, ReceiptText, ArrowRight, ChevronDown, ChevronRight, XCircle, Milestone, Copy,
+  FileText, Plus, Save, X, Calendar, FileUp, CheckCircle2, FolderKanban, ReceiptText, ArrowRight, ChevronDown, ChevronRight, XCircle, Milestone, Copy,
 } from "lucide-react";
 import { rpc } from "../../api/rpc";
 import { str, num, bool, entity as subEntity, list as entityList, displayName, formatDate, formatMoney } from "../../api/entity";
@@ -15,8 +15,10 @@ import { DetailHeader, DetailAction, DetailDeleteAction, DetailSubmit, DETAIL_PA
 import { DetailFields, DetailField } from "../shared/DetailFields";
 import { Section } from "../shared/Section";
 import { DocumentImportPanel } from "../shared/DocumentImportPanel";
+import { ParsedCard, AiField } from "../shared/ParsedCard";
 import { useFieldRequirements } from "../../hooks/useFieldRequirements";
 import { useAutoSelect } from "../../hooks/useAutoSelect";
+import { useEditFromNavigation } from "../../hooks/useEditFromNavigation";
 import type { Entity } from "../../api/types";
 
 type Mode = "view" | "edit" | "create" | "import";
@@ -28,6 +30,7 @@ function contractStatus(c: Entity): string {
 }
 
 export function ContractsView() {
+  const { filter: navFilter } = useNavigation();
   const [contracts, setContracts] = useState<Entity[]>([]);
   const [clients, setClients] = useState<Record<string, Entity>>({});
   const [selected, setSelected] = useState<Entity | null>(null);
@@ -39,6 +42,7 @@ export function ContractsView() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [defaultCurrency, setDefaultCurrency] = useState("EUR");
+  const [defaultVatRate, setDefaultVatRate] = useState<number | null>(null);
   const [currencies, setCurrencies] = useState<string[]>(["EUR", "USD", "GBP", "CHF"]);
   const [parsedContracts, setParsedContracts] = useState<ParsedContract[]>([]);
   const [parsing, setParsing] = useState(false);
@@ -53,12 +57,13 @@ export function ContractsView() {
   async function load(selectId?: number) {
     setLoading(true);
     setLoadFailed(false);
-    const [res, clRes, curRes, supRes, accRes] = await Promise.all([
+    const [res, clRes, curRes, supRes, accRes, vatRes] = await Promise.all([
       rpc<Entity[]>("contracts.get_all"),
       rpc<Record<string, Entity>>("contracts.get_all_clients"),
       rpc<string>("contracts.get_default_currency"),
       rpc<{ supported: string[] }>("settings.get_currency"),
       rpc<Entity>("users.get_active"),
+      rpc<number | null>("contracts.get_default_vat_rate"),
     ]);
     setLoadFailed([res, clRes, curRes, supRes, accRes].some((r) => !r.ok));
     if (res.ok && res.data) {
@@ -71,6 +76,8 @@ export function ContractsView() {
     }
     if (clRes.ok && clRes.data) setClients(clRes.data);
     if (curRes.ok && curRes.data) setDefaultCurrency(curRes.data);
+    // Without a lookup the VAT field just starts empty, and the form asks for it.
+    setDefaultVatRate(vatRes.ok ? vatRes.data ?? null : null);
     if (supRes.ok && supRes.data?.supported?.length) setCurrencies(supRes.data.supported);
     const profile = accRes.ok && accRes.data ? (accRes.data.profile as Entity | undefined) : undefined;
     setBankAccounts(profile ? entityList(profile, "bank_accounts") : []);
@@ -105,7 +112,7 @@ export function ContractsView() {
       signature_date: data.signatureDate,
       start_date: data.startDate,
       end_date: data.endDate || null,
-      term_of_payment: data.termOfPayment || null,
+      term_of_payment: data.termOfPayment ?? null,
       units_per_workday: data.unitsPerWorkday,
       bank_account_id: data.bankAccountId || null,
       // Always sent, so clearing the last charge clears it server-side too.
@@ -229,7 +236,11 @@ export function ContractsView() {
     return title.includes(q) || clientName.includes(q);
   });
 
-  useAutoSelect(contracts, filtered, selected, setSelected, { enabled: mode === "view" });
+  useAutoSelect(contracts, filtered, selected, setSelected, {
+    enabled: mode === "view",
+    preferred: navFilter.contractId != null ? (c) => c.id === navFilter.contractId : undefined,
+  });
+  useEditFromNavigation(navFilter, navFilter.contractId, selected?.id, () => setMode("edit"));
 
   return (
     <div className="flex flex-col h-full">
@@ -272,9 +283,9 @@ export function ContractsView() {
               ))}
             </DocumentImportPanel>
           ) : mode === "create" ? (
-            <ContractForm key={duplicateSource?.id ?? "new"} contract={duplicateSource} isDuplicate={duplicateSource != null} clients={clients} defaultCurrency={defaultCurrency} currencies={currencies} bankAccounts={bankAccounts} onSave={handleSave} onCancel={() => setMode("view")} error={saveError} />
+            <ContractForm key={duplicateSource?.id ?? "new"} contract={duplicateSource} isDuplicate={duplicateSource != null} clients={clients} defaultCurrency={defaultCurrency} defaultVatRate={defaultVatRate} currencies={currencies} bankAccounts={bankAccounts} onSave={handleSave} onCancel={() => setMode("view")} error={saveError} />
           ) : mode === "edit" && selected ? (
-            <ContractForm contract={selected} clients={clients} defaultCurrency={defaultCurrency} currencies={currencies} bankAccounts={bankAccounts} onSave={handleSave} onCancel={() => setMode("view")} error={saveError} />
+            <ContractForm contract={selected} clients={clients} defaultCurrency={defaultCurrency} defaultVatRate={defaultVatRate} currencies={currencies} bankAccounts={bankAccounts} onSave={handleSave} onCancel={() => setMode("view")} error={saveError} />
           ) : selected ? (
             <ContractDetail contract={selected}
               onEdit={() => setMode("edit")}
@@ -512,7 +523,7 @@ interface ContractFormData {
   billingCycle: string;
   volume: number | null;
   expectedPerWeek: number | null;
-  vatRate: number;
+  vatRate: number | null;
   vatCategory: TaxCategory;
   signatureDate: string;
   startDate: string;
@@ -558,11 +569,13 @@ function isBlankMilestone(row: MilestoneRow): boolean {
   return !row.title.trim() && !row.percentage.trim();
 }
 
-function ContractForm({ contract, isDuplicate = false, clients, defaultCurrency, currencies, bankAccounts, onSave, onCancel, error }: {
+function ContractForm({ contract, isDuplicate = false, clients, defaultCurrency, defaultVatRate, currencies, bankAccounts, onSave, onCancel, error }: {
   contract: Entity | null;
   isDuplicate?: boolean;
   clients: Record<string, Entity>;
   defaultCurrency: string;
+  /** Standard VAT rate of the operating country, or null when Tuttle does not know it. */
+  defaultVatRate: number | null;
   currencies: string[];
   bankAccounts: Entity[];
   onSave: (data: ContractFormData, milestones?: MilestoneSavePayload) => Promise<boolean>;
@@ -588,24 +601,20 @@ function ContractForm({ contract, isDuplicate = false, clients, defaultCurrency,
       billingCycle: str(contract, "billing_cycle") || "monthly",
       volume: num(contract, "volume") || null,
       expectedPerWeek: contract.expected_units_per_week == null ? null : num(contract, "expected_units_per_week"),
-      vatRate: (() => {
-        const v = num(contract, "VAT_rate");
-        if (!v) return 0;
-        return v > 1 ? v / 100 : v;
-      })(),
+      vatRate: num(contract, "VAT_rate"),
       vatCategory: taxCategory(str(contract, "VAT_category")),
       // A copy is a new agreement: it gets its own dates and signature.
       signatureDate: isDuplicate ? "" : str(contract, "signature_date"),
       startDate: isDuplicate ? "" : str(contract, "start_date"),
       endDate: isDuplicate ? "" : str(contract, "end_date"),
-      termOfPayment: num(contract, "term_of_payment") || null,
+      termOfPayment: contract.term_of_payment == null ? null : num(contract, "term_of_payment"),
       unitsPerWorkday: num(contract, "units_per_workday") || 8,
       bankAccountId: contractBankId,
       charges: chargeRowsFrom(contract).map((c) => (isDuplicate ? { ...c, id: null } : c)),
     };
     return {
       title: "", clientId: null, type: "time_based", fixedPrice: null, rate: null, currency: defaultCurrency,
-      unit: "hour", billingCycle: "monthly", volume: null, expectedPerWeek: null, vatRate: 0.19, vatCategory: "S",
+      unit: "hour", billingCycle: "monthly", volume: null, expectedPerWeek: null, vatRate: defaultVatRate, vatCategory: "S",
       signatureDate: "", startDate: "", endDate: "", termOfPayment: 31, unitsPerWorkday: 8,
       bankAccountId: "",
       charges: [],
@@ -647,9 +656,14 @@ function ContractForm({ contract, isDuplicate = false, clients, defaultCurrency,
   }
 
   // Only standard-rated supplies carry a VAT rate; the backend rejects any
-  // other category with a non-zero rate.
+  // other category with a non-zero rate. Switching back to standard starts
+  // from the operating country's rate, not the 0 the other category needed.
   function setVatCategory(category: TaxCategory) {
-    setForm((prev) => ({ ...prev, vatCategory: category, vatRate: category === "S" ? prev.vatRate : 0 }));
+    setForm((prev) => ({
+      ...prev,
+      vatCategory: category,
+      vatRate: category !== "S" ? 0 : prev.vatCategory === "S" ? prev.vatRate : defaultVatRate,
+    }));
     setValidationError(null);
   }
 
@@ -703,6 +717,7 @@ function ContractForm({ contract, isDuplicate = false, clients, defaultCurrency,
         return;
       }
     }
+    if (form.vatCategory === "S" && form.vatRate == null) { setValidationError("Enter the VAT rate"); return; }
     if (!form.startDate) { setValidationError("Start date is required"); return; }
     if (form.endDate && form.startDate && form.endDate < form.startDate) {
       setValidationError("End date must be on or after start date"); return;
@@ -799,11 +814,11 @@ function ContractForm({ contract, isDuplicate = false, clients, defaultCurrency,
               </select>
             </div>
             <div>
-              <label className="block text-xs text-tertiary mb-1">VAT Rate (%)</label>
+              <label className="block text-xs text-tertiary mb-1">VAT Rate (%){form.vatCategory === "S" && <span className="text-accent ml-0.5">*</span>}</label>
               <input type="number" step="0.1" min="0" max="100"
                 disabled={form.vatCategory !== "S"}
-                value={Math.round(form.vatRate * 10000) / 100}
-                onChange={(e) => { const pct = parseFloat(e.target.value); update("vatRate", Number.isFinite(pct) ? pct / 100 : 0); }}
+                value={form.vatRate == null ? "" : Math.round(form.vatRate * 10000) / 100}
+                onChange={(e) => { const pct = parseFloat(e.target.value); update("vatRate", Number.isFinite(pct) ? pct / 100 : null); }}
                 className={`${inputCls} disabled:opacity-50 disabled:cursor-not-allowed`} />
             </div>
           </div>
@@ -835,11 +850,11 @@ function ContractForm({ contract, isDuplicate = false, clients, defaultCurrency,
               </select>
             </div>
             <div>
-              <label className="block text-xs text-tertiary mb-1">VAT Rate (%)</label>
+              <label className="block text-xs text-tertiary mb-1">VAT Rate (%){form.vatCategory === "S" && <span className="text-accent ml-0.5">*</span>}</label>
               <input type="number" step="0.1" min="0" max="100"
                 disabled={form.vatCategory !== "S"}
-                value={Math.round(form.vatRate * 10000) / 100}
-                onChange={(e) => { const pct = parseFloat(e.target.value); update("vatRate", Number.isFinite(pct) ? pct / 100 : 0); }}
+                value={form.vatRate == null ? "" : Math.round(form.vatRate * 10000) / 100}
+                onChange={(e) => { const pct = parseFloat(e.target.value); update("vatRate", Number.isFinite(pct) ? pct / 100 : null); }}
                 className={`${inputCls} disabled:opacity-50 disabled:cursor-not-allowed`} />
             </div>
             <div>
@@ -1118,24 +1133,7 @@ function ParsedContractCard({ contract, clients, onAccept, onDiscard, onUpdate }
   onAccept: () => void; onDiscard: () => void; onUpdate: (c: ParsedContract) => void;
 }) {
   return (
-    <div className="rounded-xl border-2 border-status-purple/40 bg-status-purple/5 p-4 space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Sparkles size={14} className="text-status-purple" />
-          <span className="text-sm font-semibold">{contract.title || "Untitled"}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <button onClick={onDiscard}
-            className="flex items-center gap-1 px-2 py-1 rounded text-xs text-secondary hover:text-status-danger hover:bg-status-danger/10 transition-colors">
-            <Trash2 size={12} /> Discard
-          </button>
-          <button onClick={onAccept}
-            className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium text-status-purple hover:bg-status-purple/10 border border-status-purple/30 transition-colors">
-            <Check size={12} /> Accept
-          </button>
-        </div>
-      </div>
-
+    <ParsedCard title={contract.title || "Untitled"} onAccept={onAccept} onDiscard={onDiscard}>
       <div className="grid grid-cols-3 gap-2">
         <AiField label="Title" value={contract.title} onChange={(v) => onUpdate({ ...contract, title: v })} />
         <AiField label="Rate" value={String(contract.rate ?? "")} onChange={(v) => onUpdate({ ...contract, rate: parseFloat(v) || null })} />
@@ -1143,6 +1141,9 @@ function ParsedContractCard({ contract, clients, onAccept, onDiscard, onUpdate }
         <AiField label="Unit" value={contract.unit} onChange={(v) => onUpdate({ ...contract, unit: v })} />
         <AiField label="Start Date" value={contract.start_date} onChange={(v) => onUpdate({ ...contract, start_date: v })} />
         <AiField label="End Date" value={contract.end_date} onChange={(v) => onUpdate({ ...contract, end_date: v })} />
+        <AiField label="VAT Rate (%)"
+          value={contract.VAT_rate == null ? "" : String(Math.round(contract.VAT_rate * 10000) / 100)}
+          onChange={(v) => { const pct = parseFloat(v); onUpdate({ ...contract, VAT_rate: Number.isFinite(pct) ? pct / 100 : null }); }} />
         {!contract.fixed_price && (
           <>
             <AiField label="Volume" value={String(contract.volume ?? "")} onChange={(v) => onUpdate({ ...contract, volume: parseInt(v) || null })} />
@@ -1164,16 +1165,6 @@ function ParsedContractCard({ contract, clients, onAccept, onDiscard, onUpdate }
           {clients.map((c) => <option key={c.id} value={c.id}>{str(c, "name")}</option>)}
         </select>
       </div>
-    </div>
-  );
-}
-
-function AiField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
-  return (
-    <div>
-      <label className="block text-xs text-status-purple/70 mb-0.5">{label}</label>
-      <input type="text" value={value} onChange={(e) => onChange(e.target.value)}
-        className="w-full px-2.5 py-1.5 rounded-md text-sm bg-bg-card text-primary border border-status-purple/30 outline-none focus:border-status-purple transition-colors" />
-    </div>
+    </ParsedCard>
   );
 }

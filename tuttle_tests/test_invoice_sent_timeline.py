@@ -36,6 +36,7 @@ def _invoice() -> Invoice:
         start_date=datetime.date(2026, 5, 1),
         rate=Decimal("100"),
         currency="EUR",
+        VAT_rate=Decimal("0.19"),
         unit=TimeUnit.hour,
         units_per_workday=8,
         term_of_payment=14,

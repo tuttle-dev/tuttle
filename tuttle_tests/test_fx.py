@@ -142,7 +142,7 @@ def test_foreign_currency_expense_is_converted():
     spending = compute_spendable_income(invoices, "Germany", expenses=[expense], currency="EUR")
 
     assert salary.monthly_expenses == Decimal("90.00")
-    assert spending.business_expenses == Decimal("90.00") * datetime.date.today().month
+    assert spending.business_expenses == Decimal("90.00") * 12
 
 
 class TestCurrencyValidation:
@@ -215,9 +215,9 @@ class TestMonthStart:
             return Decimal("0.9")
 
         monkeypatch.setattr(fx, "_fetch_monthly_average", fetch)
-        fx._rate.cache_clear()
+        fx._session_rates.clear()
         yield
-        fx._rate.cache_clear()
+        fx._session_rates.clear()
 
     def test_the_open_month_uses_last_months_rate(self):
         today = datetime.date.today()

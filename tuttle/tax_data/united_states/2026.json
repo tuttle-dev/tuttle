@@ -3,40 +3,40 @@
     "country_aliases": ["US", "USA", "United States of America"],
     "year": 2026,
     "formula_type": "marginal_brackets",
-    "source": "IRS — 2026 federal income tax brackets (single filer, projected)",
+    "source": "IRS Rev. Proc. 2025-32 (federal brackets and standard deduction, single filer). Federal income tax only: no self-employment or state tax",
     "currency": "USD",
 
     "income_tax": {
-        "basic_allowance": 15000,
+        "basic_allowance": 16100,
         "zones": [
             {
                 "label": "10%",
-                "up_to": 11925,
+                "up_to": 12400,
                 "rate": 0.10
             },
             {
                 "label": "12%",
-                "up_to": 48475,
+                "up_to": 50400,
                 "rate": 0.12
             },
             {
                 "label": "22%",
-                "up_to": 103350,
+                "up_to": 105700,
                 "rate": 0.22
             },
             {
                 "label": "24%",
-                "up_to": 197300,
+                "up_to": 201775,
                 "rate": 0.24
             },
             {
                 "label": "32%",
-                "up_to": 250525,
+                "up_to": 256225,
                 "rate": 0.32
             },
             {
                 "label": "35%",
-                "up_to": 626350,
+                "up_to": 640600,
                 "rate": 0.35
             },
             {
@@ -48,8 +48,7 @@
     },
 
     "solidarity_surcharge": {
-        "rate": 0.0,
-        "comment": "No federal solidarity surcharge; state taxes vary"
+        "rate": 0.0
     },
 
     "vat": {

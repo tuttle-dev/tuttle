@@ -71,7 +71,7 @@ export function Toolbar({ title, actions, center, right, search }: {
   search?: { value: string; onChange: (v: string) => void; placeholder?: string };
 }) {
   return (
-    <div className="drag-region flex items-center gap-2 px-4 h-13 shrink-0 border-b border-border-subtle">
+    <div className="view-toolbar drag-region flex items-center gap-2 px-4 h-13 shrink-0 border-b border-border-subtle">
       <h2 className="text-sm font-semibold mr-1">{title}</h2>
       {actions}
       {center ? <ToolbarCenter>{center}</ToolbarCenter> : <div className="flex-1" />}
@@ -92,7 +92,7 @@ export function ToolbarButtonPrimary({ icon, label, onClick }: {
   icon: ReactNode; label: string; onClick: () => void;
 }) {
   return (
-    <button onClick={onClick}
+    <button onClick={onClick} data-tour="toolbar-primary"
       className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium whitespace-nowrap bg-accent text-on-fill hover:bg-accent/80 hover:shadow-sm active:scale-[0.97] transition-all">
       {icon}
       <span>{label}</span>

@@ -1,0 +1,44 @@
+{
+    "country": "Italy",
+    "country_aliases": ["Italia"],
+    "year": 2027,
+    "formula_type": "marginal_brackets",
+    "source": "IRPEF 2027: DDL di bilancio 2027, art. 9 (33% band extended to €55,000 for 2027 only; 23% / 33% / 43%); average addizionali regionale 1.7% + comunale 0.7% folded in (MEF, returns for 2024); self-employed detrazione (TUIR art. 13 c.5) as a fixed €341 credit, its value at the average wage of €35,000 (budget bill, not yet passed)",
+    "currency": "EUR",
+
+    "income_tax": {
+        "basic_allowance": 0,
+        "zones": [
+            {
+                "label": "2.4%",
+                "up_to": 1483,
+                "rate": 0.024
+            },
+            {
+                "label": "25.4%",
+                "up_to": 28000,
+                "rate": 0.254
+            },
+            {
+                "label": "35.4%",
+                "up_to": 55000,
+                "rate": 0.354
+            },
+            {
+                "label": "45.4%",
+                "up_to": null,
+                "rate": 0.454
+            }
+        ]
+    },
+
+    "solidarity_surcharge": {
+        "rate": 0.0,
+        "comment": "No solidarity surcharge. Average addizionale regionale (1.7%) and comunale (0.7%) are folded into the zones"
+    },
+
+    "vat": {
+        "standard_rate": 0.22,
+        "reduced_rate": 0.10
+    }
+}
