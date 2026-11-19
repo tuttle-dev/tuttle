@@ -341,7 +341,7 @@ def project_budget_status(
         hours_remaining = 0.0 if open_ended else float(hours_budget - total_used)
 
         unit_hours = contract.units_per_workday if contract.unit == TimeUnit.day else 1
-        planned_revenue = float(Decimal(str(float(hours_planned) / unit_hours)) * contract.rate) if contract.rate else 0.0
+        planned_revenue = float(Decimal(str(float(hours_planned) / unit_hours)) * project.effective_rate) if project.effective_rate else 0.0
 
         budget_exceeded = not open_ended and total_used > hours_budget
 

@@ -356,7 +356,7 @@ def get_planning_summary(
             currency = contract.currency or "EUR"
             unit_hours = contract.units_per_workday if contract.unit == TimeUnit.day else 1
             billable_units = hours / unit_hours
-            planned_revenue = float(billable_units * float(contract.rate))
+            planned_revenue = float(billable_units * float(project.effective_rate or 0))
             if contract.volume:
                 hours_budget = float(contract.volume) * unit_hours
 
