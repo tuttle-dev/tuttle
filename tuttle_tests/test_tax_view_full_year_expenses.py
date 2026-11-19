@@ -98,3 +98,16 @@ def test_a_past_year_counts_its_twelve_months(project):
     spending = compute_spendable_income([invoice], "Germany", expenses=[_rent()], currency="EUR", year=year)
     assert spending.business_expenses == 12000
     assert spending.taxable_profit == 24000 - 12000
+
+
+def test_each_fixed_expense_is_listed_with_its_amount_for_the_year(project):
+    pension = RecurringExpense(title="Pension", amount=Decimal("400"), period=Cycle.monthly, tax_deductible=False)
+    insurance = RecurringExpense(title="Insurance", amount=Decimal("480"), period=Cycle.yearly, tax_deductible=True)
+    spending = compute_spendable_income([], "Germany", expenses=[_rent(), pension, insurance], currency="EUR")
+    assert [(line.title, line.amount, line.tax_deductible) for line in spending.fixed_expenses] == [
+        ("Rent", 12000, True),
+        ("Pension", 4800, False),
+        ("Insurance", 480, True),
+    ]
+    assert spending.business_expenses == 12000 + 480
+    assert spending.fixed_expenses_post_tax == 4800

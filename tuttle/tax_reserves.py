@@ -48,6 +48,14 @@ class DynamicExpenseLine(NamedTuple):
     tax_deductible: bool
 
 
+class FixedExpenseLine(NamedTuple):
+    """One fixed recurring expense, as its amount for the year."""
+
+    title: str
+    amount: Decimal
+    tax_deductible: bool
+
+
 class SpendableIncome(NamedTuple):
     """What the freelancer can actually spend."""
 
@@ -72,6 +80,7 @@ class SpendableIncome(NamedTuple):
     tax_base: Decimal = Decimal(0)  # taxable_profit - dynamic_expenses_deductible
     dynamic_expenses: list = []  # per-expense DynamicExpenseLine, never mutated
     fixed_expenses_post_tax: Decimal = Decimal(0)  # non-deductible fixed expenses for the year
+    fixed_expenses: list = []  # per-expense FixedExpenseLine for the year, never mutated
     tax_unavailable_reason: Optional[str] = None  # why there is no tax estimate, e.g. "No tax model for Norway."
     unconverted: list = []  # amounts left out for lack of an exchange rate, one line each; never mutated
 
@@ -400,8 +409,10 @@ def compute_spendable_income(
     # each recurring one, whichever month this is.
     fixed_expenses = [e for e in (expenses or []) if e.rate is None]
     dynamic_expenses = [e for e in (expenses or []) if e.rate is not None]
-    deductible_monthly = _monthly_expenses_total([e for e in fixed_expenses if e.tax_deductible], currency, left_out)
-    post_tax_monthly = _monthly_expenses_total([e for e in fixed_expenses if not e.tax_deductible], currency, left_out)
+    fixed_monthly = [(e, _normalize_to_monthly(e, currency, left_out)) for e in fixed_expenses]
+    fixed_monthly = [(e, m) for e, m in fixed_monthly if m is not None]
+    deductible_monthly = sum((m for e, m in fixed_monthly if e.tax_deductible), Decimal(0))
+    post_tax_monthly = sum((m for e, m in fixed_monthly if not e.tax_deductible), Decimal(0))
     biz_expenses = (deductible_monthly * 12).quantize(cent)
     fixed_post_tax = (post_tax_monthly * 12).quantize(cent)
 
@@ -472,6 +483,7 @@ def compute_spendable_income(
         tax_base=tax_base,
         dynamic_expenses=dynamic_lines,
         fixed_expenses_post_tax=fixed_post_tax,
+        fixed_expenses=[FixedExpenseLine(e.title, (m * 12).quantize(cent), e.tax_deductible) for e, m in fixed_monthly],
         tax_unavailable_reason=no_tax,
         unconverted=distinct(left_out),
     )

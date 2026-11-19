@@ -146,3 +146,8 @@ html, body {
 .title-bar-banners:empty + * .view-toolbar {
   padding-right: calc(1rem + var(--title-bar-inset-end));
 }
+
+/* A card the user was sent to: the tour's ring, pulsing once. */
+.flash-ring {
+  animation: tour-pulse 1.2s ease-out 1;
+}
