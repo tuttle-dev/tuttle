@@ -74,6 +74,7 @@ class SpendableIncome(NamedTuple):
     fixed_expenses_post_tax: Decimal = Decimal(0)  # non-deductible fixed expenses for the year
     tax_unavailable_reason: Optional[str] = None  # why there is no tax estimate, e.g. "No tax model for Norway."
     unconverted: list = []  # amounts left out for lack of an exchange rate, one line each; never mutated
+    income_tax_estimate: Optional[IncomeTaxReserve] = None  # the estimate behind income_tax_reserve; None without tax rules
 
 
 def distinct(items: List[str]) -> List[str]:
@@ -244,7 +245,6 @@ def compute_vat_reserves(
 def compute_income_tax_reserve(
     income: Decimal,
     country: str,
-    deductions: Decimal = Decimal(0),
     year: Optional[int] = None,
     currency: Optional[str] = None,
 ) -> IncomeTaxReserve:
@@ -275,8 +275,7 @@ def compute_income_tax_reserve(
 
     tax_system = get_tax_system(country, date=ref_date)
 
-    taxable_income = income - deductions
-    if taxable_income <= 0:
+    if income <= 0:
         return _zero
 
     to_tax_currency = Decimal(1)
@@ -285,12 +284,12 @@ def compute_income_tax_reserve(
         if to_tax_currency is None:
             raise TaxUnavailable(f"No {currency}/{tax_system.currency} exchange rate for {ref_date:%b %Y}.")
 
-    annual_tax = tax_system.income_tax(taxable_income * to_tax_currency) / to_tax_currency
+    annual_tax = tax_system.income_tax(income * to_tax_currency) / to_tax_currency
     annual_soli = tax_system.solidarity_surcharge(annual_tax * to_tax_currency) / to_tax_currency
     total_annual = annual_tax + annual_soli
     reserve = total_annual.quantize(Decimal("0.01"))
 
-    effective_rate = (total_annual / taxable_income) if taxable_income > 0 else Decimal(0)
+    effective_rate = total_annual / income
 
     return IncomeTaxReserve(
         estimated_annual_tax=annual_tax,
@@ -305,7 +304,6 @@ def compute_spendable_income(
     invoices: List[Invoice],
     country: str,
     expenses: Optional[List[RecurringExpense]] = None,
-    deductions: Decimal = Decimal(0),
     currency: Optional[str] = None,
     year: Optional[int] = None,
     projects: Optional[List[Project]] = None,
@@ -425,12 +423,12 @@ def compute_spendable_income(
     conversion_fee = (foreign_net * fx_haircut() / 100).quantize(cent)
 
     try:
-        tax_reserve = compute_income_tax_reserve(tax_base, country, deductions, year=year, currency=currency)
+        tax_reserve = compute_income_tax_reserve(tax_base, country, year=year, currency=currency)
     except TaxUnavailable as e:
         # Without tax rules nothing after the tax is known: no tax, no Safe to
         # Spend, and no expense charged on taxed income.
         no_tax = str(e)
-        income_tax = dyn_post_tax = spendable = None
+        tax_reserve = income_tax = dyn_post_tax = spendable = None
         post_tax_lines = _dynamic_lines(dynamic_expenses, None, deductible=False)
     else:
         no_tax = None
@@ -474,6 +472,7 @@ def compute_spendable_income(
         fixed_expenses_post_tax=fixed_post_tax,
         tax_unavailable_reason=no_tax,
         unconverted=distinct(left_out),
+        income_tax_estimate=tax_reserve,
     )
 
 
