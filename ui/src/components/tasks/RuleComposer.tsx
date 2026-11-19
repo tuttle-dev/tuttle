@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { CalendarDays, Trash2, Zap } from "lucide-react";
 import { rpc } from "../../api/rpc";
-import { useDismiss } from "../../hooks/useDismiss";
+import { Dialog, DialogHeader, DialogBody, DialogFooter } from "../shared/Dialog";
 import {
   REPEATS, findEvent, fmtDay, newRule, repeatOf, suggestedTitle, unitLabel,
   type RuleKind, type RuleOptions, type RulePreview, type TaskRule,
@@ -44,7 +44,6 @@ export function RuleComposer({ rule, options, onClose, onSaved, onDeleted }: {
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
-  const backdrop = useDismiss(onClose);
 
   const found = findEvent(options, draft.event);
   const record = found?.record ?? options.records[0];
@@ -152,154 +151,151 @@ export function RuleComposer({ rule, options, onClose, onSaved, onDeleted }: {
   const stateEvents = record.events.filter((e) => e.state);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" {...backdrop}>
-      <div role="dialog" aria-modal="true" aria-labelledby="rule-composer-title"
-        className="bg-bg-content rounded-xl border border-border-subtle shadow-2xl w-[700px] max-w-full max-h-[85vh] flex flex-col overflow-hidden">
-        <div className="px-5 py-4 border-b border-border-subtle shrink-0">
-          <h2 id="rule-composer-title" className="text-base font-semibold">{editing ? "Edit rule" : "New rule"}</h2>
+    <Dialog onClose={onClose} width="w-[700px] max-w-full" backdropClassName="p-4" labelledBy="rule-composer-title">
+      <DialogHeader>
+        <h2 id="rule-composer-title" className="text-base font-semibold">{editing ? "Edit rule" : "New rule"}</h2>
+      </DialogHeader>
+
+      <DialogBody className="px-5 py-4 space-y-5">
+        <div className="grid grid-cols-2 gap-2">
+          {KINDS.map(({ kind, icon: Icon, label, hint }) => (
+            <button key={kind} type="button" onClick={() => changeKind(kind)} aria-pressed={draft.kind === kind}
+              className={`flex flex-col items-start gap-1 rounded-lg border px-3 py-2.5 text-left transition-colors
+                ${draft.kind === kind ? "border-accent bg-accent/12 text-accent" : "border-border-subtle text-tertiary hover:border-border"}`}>
+              <Icon size={15} />
+              <span className={`text-sm font-semibold ${draft.kind === kind ? "text-primary" : "text-secondary"}`}>{label}</span>
+              <span className="text-[11px] leading-snug">{hint}</span>
+            </button>
+          ))}
         </div>
 
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
-          <div className="grid grid-cols-2 gap-2">
-            {KINDS.map(({ kind, icon: Icon, label, hint }) => (
-              <button key={kind} type="button" onClick={() => changeKind(kind)} aria-pressed={draft.kind === kind}
-                className={`flex flex-col items-start gap-1 rounded-lg border px-3 py-2.5 text-left transition-colors
-                  ${draft.kind === kind ? "border-accent bg-accent/12 text-accent" : "border-border-subtle text-tertiary hover:border-border"}`}>
-                <Icon size={15} />
-                <span className={`text-sm font-semibold ${draft.kind === kind ? "text-primary" : "text-secondary"}`}>{label}</span>
-                <span className="text-[11px] leading-snug">{hint}</span>
+        <div className="rounded-lg bg-bg-card px-3.5 py-2.5 text-[15px] leading-[2.2] text-secondary">
+          {draft.kind === "date" ? (
+            <>
+              <select aria-label="Repeat" className={SELECT} value={repeat?.key ?? "custom"}
+                onChange={(e) => {
+                  const r = REPEATS.find((x) => x.key === e.target.value);
+                  if (r) update({ unit: r.unit, every: r.every });
+                }}>
+                {!repeat && <option value="custom">Every {draft.every} {unitLabel(draft.unit ?? "month", draft.every)}</option>}
+                {REPEATS.map((r) => <option key={r.key} value={r.key}>{r.label}</option>)}
+              </select>{" "}
+              {draft.unit ? "starting" : "on"}{" "}
+              <input type="date" aria-label="Date" className={`${WORD} w-[9.5em]`} value={draft.start_date ?? ""}
+                onChange={(e) => update({ start_date: e.target.value || null })} />
+            </>
+          ) : (
+            <>
+              {timing !== "on" && (
+                <>
+                  <input type="number" min={1} aria-label="How many" value={offsetText}
+                    onChange={(e) => setOffsetText(e.target.value)} onBlur={() => setOffsetText(String(offset))}
+                    className={`${WORD} min-w-[2.2em] text-center tabular-nums cursor-text [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`} />{" "}
+                  <select aria-label="Unit" className={SELECT} value={draft.offset_unit}
+                    onChange={(e) => update({ offset_unit: e.target.value as TaskRule["offset_unit"] })}>
+                    {(["day", "week", "month"] as const).map((u) => <option key={u} value={u}>{unitLabel(u, offset)}</option>)}
+                  </select>{" "}
+                </>
+              )}
+              <select aria-label="When" className={SELECT} value={timing} onChange={(e) => changeTiming(e.target.value as Timing)}>
+                {timings.map((t) => <option key={t.value} value={t.value}>{timing === "on" ? capitalize(t.label) : t.label}</option>)}
+              </select>{" "}
+              <select aria-label="What" className={SELECT} value={record.key} onChange={(e) => changeRecord(e.target.value)}>
+                {options.records.map((r) => <option key={r.key} value={r.key}>{r.label}</option>)}
+              </select>{" "}
+              <select aria-label="Happens" className={SELECT} value={event.key} onChange={(e) => changeEvent(e.target.value)}>
+                {dateEvents.length > 0 && (
+                  <optgroup label="Dates">
+                    {dateEvents.map((ev) => <option key={ev.key} value={ev.key}>{ev.label}</option>)}
+                  </optgroup>
+                )}
+                {stateEvents.length > 0 && (
+                  <optgroup label="Status changes">
+                    {stateEvents.map((ev) => <option key={ev.key} value={ev.key}>{ev.label}</option>)}
+                  </optgroup>
+                )}
+              </select>
+              {record.key !== "goal" && options.clients.length > 0 && (
+                <>
+                  {" "}
+                  {/* A long client name wraps as a whole, after the event. */}
+                  <span className="whitespace-nowrap">
+                    for{" "}
+                    <select aria-label="Client" className={SELECT} value={draft.client_id ?? ""}
+                      onChange={(e) => update({ client_id: e.target.value ? Number(e.target.value) : null })}>
+                      <option value="">any client</option>
+                      {options.clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  </span>
+                </>
+              )}
+            </>
+          )}
+        </div>
+
+        <div className="space-y-1.5">
+          <label htmlFor="rule-title" className="text-xs font-semibold text-secondary uppercase tracking-wider">Task</label>
+          <input id="rule-title" ref={titleRef} value={draft.title} autoComplete="off" placeholder="What should you do?"
+            onChange={(e) => { setTitleTouched(true); setDraft((d) => ({ ...d, title: e.target.value })); }}
+            className="w-full px-3 py-1.5 rounded-md bg-bg-card border border-border-subtle text-sm text-primary outline-none focus:border-accent" />
+          <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted">
+            <span>Insert</span>
+            {placeholders.map((p) => (
+              <button key={p} type="button" onClick={() => insertPlaceholder(p)}
+                className="px-1.5 rounded border border-accent/35 bg-accent/12 text-accent hover:bg-accent hover:text-on-fill transition-colors">
+                {p}
               </button>
             ))}
           </div>
-
-          <div className="rounded-lg bg-bg-card px-3.5 py-2.5 text-[15px] leading-[2.2] text-secondary">
-            {draft.kind === "date" ? (
-              <>
-                <select aria-label="Repeat" className={SELECT} value={repeat?.key ?? "custom"}
-                  onChange={(e) => {
-                    const r = REPEATS.find((x) => x.key === e.target.value);
-                    if (r) update({ unit: r.unit, every: r.every });
-                  }}>
-                  {!repeat && <option value="custom">Every {draft.every} {unitLabel(draft.unit ?? "month", draft.every)}</option>}
-                  {REPEATS.map((r) => <option key={r.key} value={r.key}>{r.label}</option>)}
-                </select>{" "}
-                {draft.unit ? "starting" : "on"}{" "}
-                <input type="date" aria-label="Date" className={`${WORD} w-[9.5em]`} value={draft.start_date ?? ""}
-                  onChange={(e) => update({ start_date: e.target.value || null })} />
-              </>
-            ) : (
-              <>
-                {timing !== "on" && (
-                  <>
-                    <input type="number" min={1} aria-label="How many" value={offsetText}
-                      onChange={(e) => setOffsetText(e.target.value)} onBlur={() => setOffsetText(String(offset))}
-                      className={`${WORD} min-w-[2.2em] text-center tabular-nums cursor-text [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`} />{" "}
-                    <select aria-label="Unit" className={SELECT} value={draft.offset_unit}
-                      onChange={(e) => update({ offset_unit: e.target.value as TaskRule["offset_unit"] })}>
-                      {(["day", "week", "month"] as const).map((u) => <option key={u} value={u}>{unitLabel(u, offset)}</option>)}
-                    </select>{" "}
-                  </>
-                )}
-                <select aria-label="When" className={SELECT} value={timing} onChange={(e) => changeTiming(e.target.value as Timing)}>
-                  {timings.map((t) => <option key={t.value} value={t.value}>{timing === "on" ? capitalize(t.label) : t.label}</option>)}
-                </select>{" "}
-                <select aria-label="What" className={SELECT} value={record.key} onChange={(e) => changeRecord(e.target.value)}>
-                  {options.records.map((r) => <option key={r.key} value={r.key}>{r.label}</option>)}
-                </select>{" "}
-                <select aria-label="Happens" className={SELECT} value={event.key} onChange={(e) => changeEvent(e.target.value)}>
-                  {dateEvents.length > 0 && (
-                    <optgroup label="Dates">
-                      {dateEvents.map((ev) => <option key={ev.key} value={ev.key}>{ev.label}</option>)}
-                    </optgroup>
-                  )}
-                  {stateEvents.length > 0 && (
-                    <optgroup label="Status changes">
-                      {stateEvents.map((ev) => <option key={ev.key} value={ev.key}>{ev.label}</option>)}
-                    </optgroup>
-                  )}
-                </select>
-                {record.key !== "goal" && options.clients.length > 0 && (
-                  <>
-                    {" "}
-                    {/* A long client name wraps as a whole, after the event. */}
-                    <span className="whitespace-nowrap">
-                      for{" "}
-                      <select aria-label="Client" className={SELECT} value={draft.client_id ?? ""}
-                        onChange={(e) => update({ client_id: e.target.value ? Number(e.target.value) : null })}>
-                        <option value="">any client</option>
-                        {options.clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                      </select>
-                    </span>
-                  </>
-                )}
-              </>
-            )}
-          </div>
-
-          <div className="space-y-1.5">
-            <label htmlFor="rule-title" className="text-xs font-semibold text-secondary uppercase tracking-wider">Task</label>
-            <input id="rule-title" ref={titleRef} value={draft.title} autoComplete="off" placeholder="What should you do?"
-              onChange={(e) => { setTitleTouched(true); setDraft((d) => ({ ...d, title: e.target.value })); }}
-              className="w-full px-3 py-1.5 rounded-md bg-bg-card border border-border-subtle text-sm text-primary outline-none focus:border-accent" />
-            <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted">
-              <span>Insert</span>
-              {placeholders.map((p) => (
-                <button key={p} type="button" onClick={() => insertPlaceholder(p)}
-                  className="px-1.5 rounded border border-accent/35 bg-accent/12 text-accent hover:bg-accent hover:text-on-fill transition-colors">
-                  {p}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <label htmlFor="rule-note" className="text-xs font-semibold text-secondary uppercase tracking-wider">
-              Note <span className="normal-case tracking-normal font-normal text-muted">optional</span>
-            </label>
-            <input id="rule-note" value={draft.note ?? ""} autoComplete="off" placeholder="Shown under the task"
-              onChange={(e) => setDraft((d) => ({ ...d, note: e.target.value }))}
-              className="w-full px-3 py-1.5 rounded-md bg-bg-card border border-border-subtle text-sm text-primary outline-none focus:border-accent" />
-          </div>
-
-          <RulePreviewBox
-            preview={preview && preview.trigger === triggerOf(payload()) ? preview.data : null}
-            kind={draft.kind}
-            watch={{
-              noun: record.label.replace(/^(a|an) /, ""),
-              event: event.label,
-              later: timing === "on" ? "" : ` ${offset} ${unitLabel(draft.offset_unit, offset)} later`,
-            }} />
         </div>
 
-        <div className="px-5 py-3 border-t border-border-subtle flex items-center gap-2 shrink-0">
-          {editing && !confirmDelete && (
-            <button type="button" onClick={() => setConfirmDelete(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm text-status-danger hover:bg-bg-hover transition-colors">
-              <Trash2 size={14} /> Delete rule
-            </button>
-          )}
-          {editing && confirmDelete && (
-            <div className="flex items-center gap-1.5 text-sm">
-              <span className="text-secondary">Delete it and its tasks?</span>
-              <button type="button" onClick={remove}
-                className="px-2 py-1 rounded bg-status-danger/10 text-status-danger hover:bg-status-danger/20 transition-colors">Delete</button>
-              <button type="button" onClick={() => setConfirmDelete(false)}
-                className="px-2 py-1 rounded text-muted hover:text-secondary transition-colors">Keep</button>
-            </div>
-          )}
-          {error && <p className="text-xs text-status-danger flex-1 text-right">{error}</p>}
-          <button type="button" onClick={onClose}
-            className={`${error ? "" : "ml-auto"} px-4 py-1.5 rounded-md text-sm text-secondary hover:text-primary hover:bg-bg-hover transition-colors`}>
-            Cancel
-          </button>
-          {/* The preview says what's missing; the rule can be saved once it doesn't. */}
-          <button type="button" onClick={save} disabled={saving || !draft.title.trim() || !!preview?.data.error}
-            className="px-4 py-1.5 rounded-md text-sm font-medium bg-accent text-on-fill hover:bg-accent/90 transition-colors disabled:opacity-50">
-            {saving ? "Saving…" : editing ? "Save rule" : "Create rule"}
-          </button>
+        <div className="space-y-1.5">
+          <label htmlFor="rule-note" className="text-xs font-semibold text-secondary uppercase tracking-wider">
+            Note <span className="normal-case tracking-normal font-normal text-muted">optional</span>
+          </label>
+          <input id="rule-note" value={draft.note ?? ""} autoComplete="off" placeholder="Shown under the task"
+            onChange={(e) => setDraft((d) => ({ ...d, note: e.target.value }))}
+            className="w-full px-3 py-1.5 rounded-md bg-bg-card border border-border-subtle text-sm text-primary outline-none focus:border-accent" />
         </div>
-      </div>
-    </div>
+
+        <RulePreviewBox
+          preview={preview && preview.trigger === triggerOf(payload()) ? preview.data : null}
+          kind={draft.kind}
+          watch={{
+            noun: record.label.replace(/^(a|an) /, ""),
+            event: event.label,
+            later: timing === "on" ? "" : ` ${offset} ${unitLabel(draft.offset_unit, offset)} later`,
+          }} />
+      </DialogBody>
+
+      <DialogFooter className="flex items-center gap-2">
+        {editing && !confirmDelete && (
+          <button type="button" onClick={() => setConfirmDelete(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm text-status-danger hover:bg-bg-hover transition-colors">
+            <Trash2 size={14} /> Delete rule
+          </button>
+        )}
+        {editing && confirmDelete && (
+          <div className="flex items-center gap-1.5 text-sm">
+            <span className="text-secondary">Delete it and its tasks?</span>
+            <button type="button" onClick={remove}
+              className="px-2 py-1 rounded bg-status-danger/10 text-status-danger hover:bg-status-danger/20 transition-colors">Delete</button>
+            <button type="button" onClick={() => setConfirmDelete(false)}
+              className="px-2 py-1 rounded text-muted hover:text-secondary transition-colors">Keep</button>
+          </div>
+        )}
+        {error && <p className="text-xs text-status-danger flex-1 text-right">{error}</p>}
+        <button type="button" onClick={onClose}
+          className={`${error ? "" : "ml-auto"} px-4 py-1.5 rounded-md text-sm text-secondary hover:text-primary hover:bg-bg-hover transition-colors`}>
+          Cancel
+        </button>
+        {/* The preview says what's missing; the rule can be saved once it doesn't. */}
+        <button type="button" onClick={save} disabled={saving || !draft.title.trim() || !!preview?.data.error}
+          className="px-4 py-1.5 rounded-md text-sm font-medium bg-accent text-on-fill hover:bg-accent/90 transition-colors disabled:opacity-50">
+          {saving ? "Saving…" : editing ? "Save rule" : "Create rule"}
+        </button>
+      </DialogFooter>
+    </Dialog>
   );
 }
 

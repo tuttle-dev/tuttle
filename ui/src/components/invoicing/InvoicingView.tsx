@@ -13,7 +13,7 @@ import { Toolbar, ToolbarButtonPrimary, ToolbarFilterGroup, ListDetailLayout, LI
 import { useNavigation } from "../shared/NavigationContext";
 import { EmptyStateIntro } from "../shared/EmptyStateIntro";
 import { StepDots } from "../shared/StepDots";
-import { useDismiss } from "../../hooks/useDismiss";
+import { Dialog, DialogHeader, DialogBody, DialogFooter } from "../shared/Dialog";
 import { useAutoSelect } from "../../hooks/useAutoSelect";
 import { LoadError, LoadingState } from "../shared/LoadStates";
 import { Section } from "../shared/Section";
@@ -421,7 +421,6 @@ function CreateInvoiceDialog({ projectId: initialProjectId, onClose, onCreated }
   const [docType, setDocType] = useState<DocumentType>("invoice");
   const [selectedMilestoneId, setSelectedMilestoneId] = useState<number | null>(null);
   const [step, setStep] = useState(0);
-  const backdrop = useDismiss(onClose);
 
   const selectedProject = projects.find((p) => p.id === projectId) ?? null;
   const isFixedPrice = selectedProject ? bool(selectedProject, "is_fixed_price") : false;
@@ -589,294 +588,292 @@ function CreateInvoiceDialog({ projectId: initialProjectId, onClose, onCreated }
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" {...backdrop}>
-      <div className="bg-bg-content rounded-xl border border-border-subtle shadow-2xl w-[560px] max-h-[85vh] flex flex-col overflow-hidden">
-        <div className="px-5 py-4 border-b border-border-subtle shrink-0 flex items-center justify-between">
-          <h2 className="text-base font-semibold">Create Invoice</h2>
-          <StepDots steps={CREATE_INVOICE_STEPS} current={step} />
-        </div>
-        {/* min-h: same size on both steps, and room for the contract tooltip */}
-        <div className="flex-1 min-h-84 overflow-y-auto px-5 py-4 space-y-4">
-          <p className="text-xs text-muted"><span className="text-accent">*</span> Required</p>
-          {/* Step 1: project, document type and source */}
-          {step === 0 && (
-            <div data-tour="invoice-project">
-              <label className="block">
-                <span className="text-xs font-semibold text-secondary uppercase tracking-wider">Project<span className="text-accent ml-0.5">*</span></span>
-                <select value={projectId ?? ""} onChange={(e) => handleProjectChange(Number(e.target.value))}
-                  className="mt-1 w-full px-3 py-1.5 rounded-md bg-bg-card border border-border-subtle text-sm text-primary">
-                  {projects.map((p) => (
-                    <option key={p.id} value={p.id}>{str(p, "title")}</option>
-                  ))}
-                </select>
-              </label>
-              {selectedContract && <ContractPreview contract={selectedContract} />}
-            </div>
-          )}
+    <Dialog onClose={onClose} width="w-[560px]">
+      <DialogHeader className="flex items-center justify-between">
+        <h2 className="text-base font-semibold">Create Invoice</h2>
+        <StepDots steps={CREATE_INVOICE_STEPS} current={step} />
+      </DialogHeader>
+      {/* min-h: same size on both steps, and room for the contract tooltip */}
+      <DialogBody className="min-h-84 px-5 py-4 space-y-4">
+        <p className="text-xs text-muted"><span className="text-accent">*</span> Required</p>
+        {/* Step 1: project, document type and source */}
+        {step === 0 && (
+          <div data-tour="invoice-project">
+            <label className="block">
+              <span className="text-xs font-semibold text-secondary uppercase tracking-wider">Project<span className="text-accent ml-0.5">*</span></span>
+              <select value={projectId ?? ""} onChange={(e) => handleProjectChange(Number(e.target.value))}
+                className="mt-1 w-full px-3 py-1.5 rounded-md bg-bg-card border border-border-subtle text-sm text-primary">
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>{str(p, "title")}</option>
+                ))}
+              </select>
+            </label>
+            {selectedContract && <ContractPreview contract={selectedContract} />}
+          </div>
+        )}
 
-          {/* Document type (only when contract has milestones) */}
-          {step === 0 && hasMilestones && isFixedPrice && (
-            <div>
-              <span className="text-xs font-semibold text-secondary uppercase tracking-wider">Document Type</span>
-              <div className="flex gap-2 mt-1">
-                {DOCUMENT_TYPE_OPTIONS.map(({ value, label, icon: Icon }) => {
-                  // Settling early is only meaningful once a deposit exists to deduct.
-                  const disabled = value === "final" && !canSettle;
-                  const disabledReason = isSettled
-                    ? "A final invoice already settles this project"
-                    : "Invoice at least one milestone first";
+        {/* Document type (only when contract has milestones) */}
+        {step === 0 && hasMilestones && isFixedPrice && (
+          <div>
+            <span className="text-xs font-semibold text-secondary uppercase tracking-wider">Document Type</span>
+            <div className="flex gap-2 mt-1">
+              {DOCUMENT_TYPE_OPTIONS.map(({ value, label, icon: Icon }) => {
+                // Settling early is only meaningful once a deposit exists to deduct.
+                const disabled = value === "final" && !canSettle;
+                const disabledReason = isSettled
+                  ? "A final invoice already settles this project"
+                  : "Invoice at least one milestone first";
+                return (
+                  <button key={value} type="button" disabled={disabled}
+                    onClick={() => { setDocType(value); setSelectedMilestoneId(null); }}
+                    title={disabled ? disabledReason : undefined}
+                    className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-colors border
+                      ${docType === value ? "border-accent bg-accent/15 text-primary" : "border-border-subtle text-tertiary"}
+                      ${disabled ? "opacity-40 cursor-not-allowed" : ""}`}>
+                    <Icon size={14} /> {label}
+                  </button>
+                );
+              })}
+            </div>
+            {docType === "final" && (
+              <p className="text-[10px] text-status-info mt-1">
+                States the full contract amount and deducts every deposit already issued.
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Milestone picker (deposit only) */}
+        {step === 0 && docType === "deposit" && hasMilestones && (
+          <label className="block">
+            <span className="text-xs font-semibold text-secondary uppercase tracking-wider">Milestone</span>
+            <select value={selectedMilestoneId ?? ""} onChange={(e) => setSelectedMilestoneId(e.target.value ? Number(e.target.value) : null)}
+              className="mt-1 w-full px-3 py-1.5 rounded-md bg-bg-card border border-border-subtle text-sm text-primary">
+              <option value="">— Select milestone —</option>
+              {openMilestones.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {str(m, "title")} ({num(m, "percentage")}%)
+                  {openMilestones.length === 1 ? " — final settlement" : ""}
+                </option>
+              ))}
+            </select>
+            {isLastOpenMilestone && (
+              <p className="text-[10px] text-status-info mt-1">
+                Last milestone — creates the final settlement invoice with prior deposits deducted.
+              </p>
+            )}
+            {openMilestones.length === 0 && (
+              <p className="text-[10px] text-muted mt-1">All milestones have been invoiced.</p>
+            )}
+          </label>
+        )}
+
+        {/* Additional charges the contract will add on top — only when it has any */}
+        {step === 0 && mode !== "manual" && charges.length > 0 && (
+          <div className="px-3 py-2.5 rounded-lg bg-bg-card border border-border-subtle">
+            <div className="text-[10px] font-semibold text-muted uppercase tracking-wider">Additional charges</div>
+            <div className="mt-1.5 space-y-1">
+              {charges.map((charge) => (
+                <div key={charge.id} className="flex items-center justify-between gap-2 text-xs">
+                  <span className="text-secondary truncate">
+                    {str(charge, "description")}
+                    <span className="text-muted ml-1.5">
+                      {CHARGE_BASIS_LABELS[str(charge, "basis")] || str(charge, "basis")}
+                    </span>
+                  </span>
+                  <span className="text-primary tabular-nums shrink-0">
+                    {num(charge, "amount")} {chargeCurrency}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <p className="text-[10px] text-muted mt-1.5">Added to this invoice as separate lines.</p>
+          </div>
+        )}
+
+        {/* Mode toggle (time-based only, not for deposit/final) */}
+        {step === 0 && !isFixedPrice && docType === "invoice" && (
+          <div data-tour="invoice-source">
+            <span className="text-xs font-semibold text-secondary uppercase tracking-wider">Source</span>
+            <div className="flex gap-2 mt-1">
+              <button onClick={() => setMode("timetracking")} disabled={!hasTimeData}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-colors border
+                  ${mode === "timetracking" ? "border-accent bg-accent/15 text-primary" : "border-border-subtle text-tertiary"}
+                  ${!hasTimeData ? "opacity-40 cursor-not-allowed" : ""}`}>
+                <Clock size={14} /> Time Tracking
+              </button>
+              <button onClick={() => setMode("manual")}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-colors border
+                  ${mode === "manual" ? "border-accent bg-accent/15 text-primary" : "border-border-subtle text-tertiary"}`}>
+                <FileText size={14} /> Manual
+              </button>
+            </div>
+            {!hasTimeData && (
+              <p className="text-[10px] text-muted mt-1">No tracked time yet.</p>
+            )}
+          </div>
+        )}
+
+        {/* Timesheet opt-out (time-tracking mode only, not for deposit/final) */}
+        {step === 0 && !isFixedPrice && mode === "timetracking" && docType === "invoice" && (
+          <div>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={withTimesheet}
+                onChange={(e) => setWithTimesheet(e.target.checked)}
+                className="accent-accent" />
+              <span className="text-sm text-primary">Generate timesheet PDF</span>
+            </label>
+          </div>
+        )}
+
+        {/* Step 2: dates, line items and notes */}
+        {step === 1 && (
+          <div className="space-y-2">
+            <label className="block">
+              <span className="text-[10px] font-semibold text-muted uppercase">Invoice Date<span className="text-accent ml-0.5">*</span></span>
+              <input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)}
+                className="mt-1 w-full px-2 py-1.5 rounded-md bg-bg-card border border-border-subtle text-xs text-primary" />
+            </label>
+            {!isFixedPrice && docType === "invoice" && (
+              <div>
+                <span className="text-[10px] font-semibold text-muted uppercase">Billing Period<span className="text-accent ml-0.5">*</span></span>
+                <div className="mt-1 flex items-center gap-2">
+                  <button type="button" onClick={() => shiftMonth(-1)}
+                    className="p-1 rounded hover:bg-bg-hover text-secondary transition-colors" title="Previous month">
+                    <ChevronLeft size={14} />
+                  </button>
+                  <label className="block flex-1">
+                    <span className="text-[10px] font-semibold text-muted uppercase">From</span>
+                    <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)}
+                      className="mt-0.5 w-full px-2 py-1.5 rounded-md bg-bg-card border border-border-subtle text-xs text-primary" />
+                  </label>
+                  <span className="text-muted text-xs pt-3">–</span>
+                  <label className="block flex-1">
+                    <span className="text-[10px] font-semibold text-muted uppercase">To</span>
+                    <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)}
+                      className="mt-0.5 w-full px-2 py-1.5 rounded-md bg-bg-card border border-border-subtle text-xs text-primary" />
+                  </label>
+                  <button type="button" onClick={() => shiftMonth(1)}
+                    className="p-1 rounded hover:bg-bg-hover text-secondary transition-colors" title="Next month">
+                    <ChevronRight size={14} />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Line items editor (time-based manual only, not for deposit/final) */}
+        {step === 1 && !isFixedPrice && mode === "manual" && docType === "invoice" && (
+          <div>
+            <span className="text-xs font-semibold text-secondary uppercase tracking-wider">Line Items</span>
+            <div className="mt-1 space-y-2">
+              {lineItems.map((item, idx) => (
+                <div key={idx} className="flex gap-1.5 items-start p-2 rounded-lg bg-bg-card border border-border-subtle">
+                  <div className="flex-1 min-w-0 space-y-1.5">
+                    <input type="text" placeholder="Description" value={item.description}
+                      onChange={(e) => updateItem(idx, { description: e.target.value })}
+                      className="w-full px-2 py-1 rounded bg-bg-content border border-border-subtle text-xs text-primary placeholder:text-muted" />
+                    <div className="flex gap-1.5">
+                      <input type="number" min="0" step="0.5" placeholder="Qty" value={item.quantity}
+                        onChange={(e) => updateItem(idx, { quantity: e.target.value })}
+                        className="w-20 px-2 py-1 rounded bg-bg-content border border-border-subtle text-xs text-primary placeholder:text-muted tabular-nums" />
+                      <select value={item.unit} onChange={(e) => updateItem(idx, { unit: e.target.value })}
+                        className="w-20 px-1.5 py-1 rounded bg-bg-content border border-border-subtle text-xs text-primary">
+                        {UNIT_OPTIONS.map((u) => <option key={u} value={u}>{u}</option>)}
+                      </select>
+                      <div className="flex items-center gap-0.5 flex-1 min-w-0">
+                        <span className="text-xs text-muted">@</span>
+                        <input type="number" min="0" step="0.01" placeholder="Unit price" value={item.unitPrice}
+                          onChange={(e) => updateItem(idx, { unitPrice: e.target.value })}
+                          className="flex-1 min-w-0 px-2 py-1 rounded bg-bg-content border border-border-subtle text-xs text-primary placeholder:text-muted tabular-nums" />
+                      </div>
+                    </div>
+                  </div>
+                  {lineItems.length > 1 && (
+                    <button onClick={() => removeItem(idx)} className="mt-1 p-1 rounded text-muted hover:text-status-danger hover:bg-status-danger/10 transition-colors"
+                      title="Remove item">
+                      <XCircle size={14} />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+            <button onClick={addItem}
+              className="mt-2 flex items-center gap-1 text-xs text-accent hover:text-accent/80 transition-colors">
+              <Plus size={12} /> Add item
+            </button>
+          </div>
+        )}
+
+        {/* Notes */}
+        {step === 1 && (
+          <div>
+            <span className="text-xs font-semibold text-secondary uppercase tracking-wider">Closing Notes</span>
+            <p className="text-[10px] text-muted mt-0.5 mb-1.5">Optional text printed at the bottom of the invoice (e.g. VAT exemption, reverse charge).</p>
+            {savedNotes.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {savedNotes.map((n) => {
+                  const active = selectedNoteIds.has(n.id);
                   return (
-                    <button key={value} type="button" disabled={disabled}
-                      onClick={() => { setDocType(value); setSelectedMilestoneId(null); }}
-                      title={disabled ? disabledReason : undefined}
-                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-colors border
-                        ${docType === value ? "border-accent bg-accent/15 text-primary" : "border-border-subtle text-tertiary"}
-                        ${disabled ? "opacity-40 cursor-not-allowed" : ""}`}>
-                      <Icon size={14} /> {label}
+                    <button key={n.id} type="button"
+                      onClick={() => setSelectedNoteIds((prev) => {
+                        const next = new Set(prev);
+                        if (active) next.delete(n.id); else next.add(n.id);
+                        return next;
+                      })}
+                      className={`px-2.5 py-1 rounded-full text-[11px] leading-tight border transition-colors truncate max-w-[280px]
+                        ${active
+                          ? "border-accent bg-accent/15 text-primary"
+                          : "border-border-subtle text-secondary hover:border-accent/50 hover:text-primary"}`}
+                      title={str(n, "text")}
+                    >
+                      {str(n, "text")}
                     </button>
                   );
                 })}
               </div>
-              {docType === "final" && (
-                <p className="text-[10px] text-status-info mt-1">
-                  States the full contract amount and deducts every deposit already issued.
-                </p>
-              )}
-            </div>
-          )}
+            )}
+            <textarea
+              value={customNoteText}
+              onChange={(e) => setCustomNoteText(e.target.value)}
+              placeholder="Type additional notes…"
+              rows={2}
+              className="w-full px-2.5 py-1.5 rounded-md bg-bg-card border border-border-subtle text-xs text-primary placeholder:text-muted resize-y"
+            />
+          </div>
+        )}
 
-          {/* Milestone picker (deposit only) */}
-          {step === 0 && docType === "deposit" && hasMilestones && (
-            <label className="block">
-              <span className="text-xs font-semibold text-secondary uppercase tracking-wider">Milestone</span>
-              <select value={selectedMilestoneId ?? ""} onChange={(e) => setSelectedMilestoneId(e.target.value ? Number(e.target.value) : null)}
-                className="mt-1 w-full px-3 py-1.5 rounded-md bg-bg-card border border-border-subtle text-sm text-primary">
-                <option value="">— Select milestone —</option>
-                {openMilestones.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {str(m, "title")} ({num(m, "percentage")}%)
-                    {openMilestones.length === 1 ? " — final settlement" : ""}
-                  </option>
-                ))}
-              </select>
-              {isLastOpenMilestone && (
-                <p className="text-[10px] text-status-info mt-1">
-                  Last milestone — creates the final settlement invoice with prior deposits deducted.
-                </p>
-              )}
-              {openMilestones.length === 0 && (
-                <p className="text-[10px] text-muted mt-1">All milestones have been invoiced.</p>
-              )}
-            </label>
-          )}
+        {error && <p className="text-xs text-status-danger">{error}</p>}
+      </DialogBody>
 
-          {/* Additional charges the contract will add on top — only when it has any */}
-          {step === 0 && mode !== "manual" && charges.length > 0 && (
-            <div className="px-3 py-2.5 rounded-lg bg-bg-card border border-border-subtle">
-              <div className="text-[10px] font-semibold text-muted uppercase tracking-wider">Additional charges</div>
-              <div className="mt-1.5 space-y-1">
-                {charges.map((charge) => (
-                  <div key={charge.id} className="flex items-center justify-between gap-2 text-xs">
-                    <span className="text-secondary truncate">
-                      {str(charge, "description")}
-                      <span className="text-muted ml-1.5">
-                        {CHARGE_BASIS_LABELS[str(charge, "basis")] || str(charge, "basis")}
-                      </span>
-                    </span>
-                    <span className="text-primary tabular-nums shrink-0">
-                      {num(charge, "amount")} {chargeCurrency}
-                    </span>
-                  </div>
-                ))}
-              </div>
-              <p className="text-[10px] text-muted mt-1.5">Added to this invoice as separate lines.</p>
-            </div>
-          )}
-
-          {/* Mode toggle (time-based only, not for deposit/final) */}
-          {step === 0 && !isFixedPrice && docType === "invoice" && (
-            <div data-tour="invoice-source">
-              <span className="text-xs font-semibold text-secondary uppercase tracking-wider">Source</span>
-              <div className="flex gap-2 mt-1">
-                <button onClick={() => setMode("timetracking")} disabled={!hasTimeData}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-colors border
-                    ${mode === "timetracking" ? "border-accent bg-accent/15 text-primary" : "border-border-subtle text-tertiary"}
-                    ${!hasTimeData ? "opacity-40 cursor-not-allowed" : ""}`}>
-                  <Clock size={14} /> Time Tracking
-                </button>
-                <button onClick={() => setMode("manual")}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-colors border
-                    ${mode === "manual" ? "border-accent bg-accent/15 text-primary" : "border-border-subtle text-tertiary"}`}>
-                  <FileText size={14} /> Manual
-                </button>
-              </div>
-              {!hasTimeData && (
-                <p className="text-[10px] text-muted mt-1">No tracked time yet.</p>
-              )}
-            </div>
-          )}
-
-          {/* Timesheet opt-out (time-tracking mode only, not for deposit/final) */}
-          {step === 0 && !isFixedPrice && mode === "timetracking" && docType === "invoice" && (
-            <div>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={withTimesheet}
-                  onChange={(e) => setWithTimesheet(e.target.checked)}
-                  className="accent-accent" />
-                <span className="text-sm text-primary">Generate timesheet PDF</span>
-              </label>
-            </div>
-          )}
-
-          {/* Step 2: dates, line items and notes */}
-          {step === 1 && (
-            <div className="space-y-2">
-              <label className="block">
-                <span className="text-[10px] font-semibold text-muted uppercase">Invoice Date<span className="text-accent ml-0.5">*</span></span>
-                <input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)}
-                  className="mt-1 w-full px-2 py-1.5 rounded-md bg-bg-card border border-border-subtle text-xs text-primary" />
-              </label>
-              {!isFixedPrice && docType === "invoice" && (
-                <div>
-                  <span className="text-[10px] font-semibold text-muted uppercase">Billing Period<span className="text-accent ml-0.5">*</span></span>
-                  <div className="mt-1 flex items-center gap-2">
-                    <button type="button" onClick={() => shiftMonth(-1)}
-                      className="p-1 rounded hover:bg-bg-hover text-secondary transition-colors" title="Previous month">
-                      <ChevronLeft size={14} />
-                    </button>
-                    <label className="block flex-1">
-                      <span className="text-[10px] font-semibold text-muted uppercase">From</span>
-                      <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)}
-                        className="mt-0.5 w-full px-2 py-1.5 rounded-md bg-bg-card border border-border-subtle text-xs text-primary" />
-                    </label>
-                    <span className="text-muted text-xs pt-3">–</span>
-                    <label className="block flex-1">
-                      <span className="text-[10px] font-semibold text-muted uppercase">To</span>
-                      <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)}
-                        className="mt-0.5 w-full px-2 py-1.5 rounded-md bg-bg-card border border-border-subtle text-xs text-primary" />
-                    </label>
-                    <button type="button" onClick={() => shiftMonth(1)}
-                      className="p-1 rounded hover:bg-bg-hover text-secondary transition-colors" title="Next month">
-                      <ChevronRight size={14} />
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Line items editor (time-based manual only, not for deposit/final) */}
-          {step === 1 && !isFixedPrice && mode === "manual" && docType === "invoice" && (
-            <div>
-              <span className="text-xs font-semibold text-secondary uppercase tracking-wider">Line Items</span>
-              <div className="mt-1 space-y-2">
-                {lineItems.map((item, idx) => (
-                  <div key={idx} className="flex gap-1.5 items-start p-2 rounded-lg bg-bg-card border border-border-subtle">
-                    <div className="flex-1 min-w-0 space-y-1.5">
-                      <input type="text" placeholder="Description" value={item.description}
-                        onChange={(e) => updateItem(idx, { description: e.target.value })}
-                        className="w-full px-2 py-1 rounded bg-bg-content border border-border-subtle text-xs text-primary placeholder:text-muted" />
-                      <div className="flex gap-1.5">
-                        <input type="number" min="0" step="0.5" placeholder="Qty" value={item.quantity}
-                          onChange={(e) => updateItem(idx, { quantity: e.target.value })}
-                          className="w-20 px-2 py-1 rounded bg-bg-content border border-border-subtle text-xs text-primary placeholder:text-muted tabular-nums" />
-                        <select value={item.unit} onChange={(e) => updateItem(idx, { unit: e.target.value })}
-                          className="w-20 px-1.5 py-1 rounded bg-bg-content border border-border-subtle text-xs text-primary">
-                          {UNIT_OPTIONS.map((u) => <option key={u} value={u}>{u}</option>)}
-                        </select>
-                        <div className="flex items-center gap-0.5 flex-1 min-w-0">
-                          <span className="text-xs text-muted">@</span>
-                          <input type="number" min="0" step="0.01" placeholder="Unit price" value={item.unitPrice}
-                            onChange={(e) => updateItem(idx, { unitPrice: e.target.value })}
-                            className="flex-1 min-w-0 px-2 py-1 rounded bg-bg-content border border-border-subtle text-xs text-primary placeholder:text-muted tabular-nums" />
-                        </div>
-                      </div>
-                    </div>
-                    {lineItems.length > 1 && (
-                      <button onClick={() => removeItem(idx)} className="mt-1 p-1 rounded text-muted hover:text-status-danger hover:bg-status-danger/10 transition-colors"
-                        title="Remove item">
-                        <XCircle size={14} />
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-              <button onClick={addItem}
-                className="mt-2 flex items-center gap-1 text-xs text-accent hover:text-accent/80 transition-colors">
-                <Plus size={12} /> Add item
-              </button>
-            </div>
-          )}
-
-          {/* Notes */}
-          {step === 1 && (
-            <div>
-              <span className="text-xs font-semibold text-secondary uppercase tracking-wider">Closing Notes</span>
-              <p className="text-[10px] text-muted mt-0.5 mb-1.5">Optional text printed at the bottom of the invoice (e.g. VAT exemption, reverse charge).</p>
-              {savedNotes.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 mb-2">
-                  {savedNotes.map((n) => {
-                    const active = selectedNoteIds.has(n.id);
-                    return (
-                      <button key={n.id} type="button"
-                        onClick={() => setSelectedNoteIds((prev) => {
-                          const next = new Set(prev);
-                          if (active) next.delete(n.id); else next.add(n.id);
-                          return next;
-                        })}
-                        className={`px-2.5 py-1 rounded-full text-[11px] leading-tight border transition-colors truncate max-w-[280px]
-                          ${active
-                            ? "border-accent bg-accent/15 text-primary"
-                            : "border-border-subtle text-secondary hover:border-accent/50 hover:text-primary"}`}
-                        title={str(n, "text")}
-                      >
-                        {str(n, "text")}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-              <textarea
-                value={customNoteText}
-                onChange={(e) => setCustomNoteText(e.target.value)}
-                placeholder="Type additional notes…"
-                rows={2}
-                className="w-full px-2.5 py-1.5 rounded-md bg-bg-card border border-border-subtle text-xs text-primary placeholder:text-muted resize-y"
-              />
-            </div>
-          )}
-
-          {error && <p className="text-xs text-status-danger">{error}</p>}
-        </div>
-
-        <div className="px-5 py-3 border-t border-border-subtle flex items-center gap-2 shrink-0">
-          {step === 1 && (
-            <button onClick={() => setStep(0)}
-              className="flex items-center gap-1.5 px-4 py-1.5 rounded-md text-sm text-secondary hover:text-primary hover:bg-bg-hover transition-colors">
-              <ChevronLeft size={14} /> Back
-            </button>
-          )}
-          <button onClick={onClose}
-            className="ml-auto px-4 py-1.5 rounded-md text-sm text-secondary hover:text-primary hover:bg-bg-hover transition-colors">
-            Cancel
+      <DialogFooter className="flex items-center gap-2">
+        {step === 1 && (
+          <button onClick={() => setStep(0)}
+            className="flex items-center gap-1.5 px-4 py-1.5 rounded-md text-sm text-secondary hover:text-primary hover:bg-bg-hover transition-colors">
+            <ChevronLeft size={14} /> Back
           </button>
-          {step === 0 ? (
-            <button onClick={() => setStep(1)} disabled={!canAdvance}
-              className="flex items-center gap-1.5 px-4 py-1.5 rounded-md text-sm font-medium bg-accent text-on-fill hover:bg-accent/90 transition-colors disabled:opacity-50">
-              Next <ChevronRight size={14} />
-            </button>
-          ) : (
-            <button onClick={submit} disabled={submitting}
-              className="px-4 py-1.5 rounded-md text-sm font-medium bg-accent text-on-fill hover:bg-accent/90 transition-colors disabled:opacity-50">
-              {submitting ? "Creating…"
-                : docType === "final" ? "Create Final Invoice"
-                : docType === "deposit" ? (isLastOpenMilestone ? "Create Final Invoice" : "Create Deposit Invoice")
-                : "Create Invoice"}
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
+        )}
+        <button onClick={onClose}
+          className="ml-auto px-4 py-1.5 rounded-md text-sm text-secondary hover:text-primary hover:bg-bg-hover transition-colors">
+          Cancel
+        </button>
+        {step === 0 ? (
+          <button onClick={() => setStep(1)} disabled={!canAdvance}
+            className="flex items-center gap-1.5 px-4 py-1.5 rounded-md text-sm font-medium bg-accent text-on-fill hover:bg-accent/90 transition-colors disabled:opacity-50">
+            Next <ChevronRight size={14} />
+          </button>
+        ) : (
+          <button onClick={submit} disabled={submitting}
+            className="px-4 py-1.5 rounded-md text-sm font-medium bg-accent text-on-fill hover:bg-accent/90 transition-colors disabled:opacity-50">
+            {submitting ? "Creating…"
+              : docType === "final" ? "Create Final Invoice"
+              : docType === "deposit" ? (isLastOpenMilestone ? "Create Final Invoice" : "Create Deposit Invoice")
+              : "Create Invoice"}
+          </button>
+        )}
+      </DialogFooter>
+    </Dialog>
   );
 }
 
@@ -1700,7 +1697,6 @@ function CreateReminderDialog({ invoiceId, invoiceNumber, onClose, onCreated }: 
   const [fee, setFee] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const backdrop = useDismiss(onClose);
 
   async function submit() {
     if (!newDueDate) { setError("New due date is required"); return; }
@@ -1723,44 +1719,42 @@ function CreateReminderDialog({ invoiceId, invoiceNumber, onClose, onCreated }: 
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" {...backdrop}>
-      <div className="bg-bg-content rounded-xl border border-border-subtle shadow-2xl w-[420px] max-h-[85vh] flex flex-col overflow-hidden">
-        <div className="px-5 py-4 border-b border-border-subtle shrink-0">
-          <h2 className="text-base font-semibold">Create Reminder</h2>
-          <p className="text-xs text-tertiary mt-0.5">for invoice {invoiceNumber}</p>
-        </div>
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-          <p className="text-xs text-muted"><span className="text-accent">*</span> Required</p>
-          <label className="block">
-            <span className="text-[10px] font-semibold text-muted uppercase">Reminder Date<span className="text-accent ml-0.5">*</span></span>
-            <input type="date" value={reminderDate} onChange={(e) => setReminderDate(e.target.value)}
-              className="mt-1 w-full px-3 py-1.5 rounded-md bg-bg-card border border-border-subtle text-sm text-primary" />
-          </label>
-          <label className="block">
-            <span className="text-[10px] font-semibold text-muted uppercase">New Due Date<span className="text-accent ml-0.5">*</span></span>
-            <input type="date" value={newDueDate} onChange={(e) => setNewDueDate(e.target.value)}
-              className="mt-1 w-full px-3 py-1.5 rounded-md bg-bg-card border border-border-subtle text-sm text-primary" />
-          </label>
-          <label className="block">
-            <span className="text-[10px] font-semibold text-muted uppercase">Reminder Fee (optional)</span>
-            <input type="number" min="0" step="0.01" placeholder="0.00" value={fee}
-              onChange={(e) => setFee(e.target.value)}
-              className="mt-1 w-full px-3 py-1.5 rounded-md bg-bg-card border border-border-subtle text-sm text-primary tabular-nums" />
-          </label>
-          {error && <p className="text-xs text-status-danger">{error}</p>}
-        </div>
-        <div className="px-5 py-3 border-t border-border-subtle flex justify-end gap-2 shrink-0">
-          <button onClick={onClose}
-            className="px-4 py-1.5 rounded-md text-sm text-secondary hover:text-primary hover:bg-bg-hover transition-colors">
-            Cancel
-          </button>
-          <button onClick={submit} disabled={submitting}
-            className="px-4 py-1.5 rounded-md text-sm font-medium bg-status-warning text-on-fill hover:bg-status-warning/90 transition-colors disabled:opacity-50">
-            {submitting ? "Creating…" : "Create Reminder"}
-          </button>
-        </div>
-      </div>
-    </div>
+    <Dialog onClose={onClose} width="w-[420px]">
+      <DialogHeader>
+        <h2 className="text-base font-semibold">Create Reminder</h2>
+        <p className="text-xs text-tertiary mt-0.5">for invoice {invoiceNumber}</p>
+      </DialogHeader>
+      <DialogBody className="px-5 py-4 space-y-4">
+        <p className="text-xs text-muted"><span className="text-accent">*</span> Required</p>
+        <label className="block">
+          <span className="text-[10px] font-semibold text-muted uppercase">Reminder Date<span className="text-accent ml-0.5">*</span></span>
+          <input type="date" value={reminderDate} onChange={(e) => setReminderDate(e.target.value)}
+            className="mt-1 w-full px-3 py-1.5 rounded-md bg-bg-card border border-border-subtle text-sm text-primary" />
+        </label>
+        <label className="block">
+          <span className="text-[10px] font-semibold text-muted uppercase">New Due Date<span className="text-accent ml-0.5">*</span></span>
+          <input type="date" value={newDueDate} onChange={(e) => setNewDueDate(e.target.value)}
+            className="mt-1 w-full px-3 py-1.5 rounded-md bg-bg-card border border-border-subtle text-sm text-primary" />
+        </label>
+        <label className="block">
+          <span className="text-[10px] font-semibold text-muted uppercase">Reminder Fee (optional)</span>
+          <input type="number" min="0" step="0.01" placeholder="0.00" value={fee}
+            onChange={(e) => setFee(e.target.value)}
+            className="mt-1 w-full px-3 py-1.5 rounded-md bg-bg-card border border-border-subtle text-sm text-primary tabular-nums" />
+        </label>
+        {error && <p className="text-xs text-status-danger">{error}</p>}
+      </DialogBody>
+      <DialogFooter className="flex justify-end gap-2">
+        <button onClick={onClose}
+          className="px-4 py-1.5 rounded-md text-sm text-secondary hover:text-primary hover:bg-bg-hover transition-colors">
+          Cancel
+        </button>
+        <button onClick={submit} disabled={submitting}
+          className="px-4 py-1.5 rounded-md text-sm font-medium bg-status-warning text-on-fill hover:bg-status-warning/90 transition-colors disabled:opacity-50">
+          {submitting ? "Creating…" : "Create Reminder"}
+        </button>
+      </DialogFooter>
+    </Dialog>
   );
 }
 
