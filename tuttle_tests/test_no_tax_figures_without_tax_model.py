@@ -11,7 +11,7 @@ from tuttle.app.core.abstractions import SQLModelDataSourceMixin
 from tuttle.app.tax.intent import TaxIntent
 from tuttle.app_db import AppDatabase
 from tuttle.forecasting import cash_flow_series
-from tuttle.kpi import compute_kpis, monthly_spendable_breakdown
+from tuttle.kpi import compute_kpis
 from tuttle.model import Address, Client, Contract, Invoice, InvoiceItem, Project, RecurringExpense
 from tuttle.tax import NoTaxRules
 from tuttle.tax_reserves import compute_effective_salary, compute_income_tax_reserve, compute_spendable_income
@@ -138,14 +138,6 @@ def test_cash_flow_with_a_tax_model_includes_tax():
     assert cash["tax_included"] is True
     assert cash["tax_unavailable_reason"] is None
     assert cash["left_out_with_tax"] == []
-
-
-def test_monthly_breakdown_shows_no_spendable_figure_this_year():
-    months = monthly_spendable_breakdown([_invoice(TODAY.replace(day=1), "5000")], country="Norway", n_months=3)
-    this_month = next(m for m in months if m["month"] == f"{TODAY:%Y-%m}")
-    assert this_month["net_revenue"] == 5000
-    assert this_month["income_tax_true_up"] is None
-    assert this_month["spendable"] is None
 
 
 def test_tax_view_estimate_has_no_tax_reserve(monkeypatch):

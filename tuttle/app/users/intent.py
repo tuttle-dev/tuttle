@@ -5,8 +5,6 @@ from pathlib import Path
 from typing import Any, Dict
 
 from loguru import logger
-from sqlmodel import Session as SqlSession
-from sqlmodel import create_engine as sql_create_engine
 from sqlmodel import select
 
 from ...app_db import AppDatabase
@@ -19,6 +17,7 @@ from ..auth.data_source import UserDataSource
 from ..core.abstractions import get_active_db, set_active_db
 from ..core.intent_result import IntentResult
 from ..core.rpc_utils import reset_all
+from ..core.user_db import user_db_session
 from ..timetracking.data_source import (
     TimeTrackingSettingsSource,
     calendar_cache_path,
@@ -173,10 +172,8 @@ class UsersIntent:
         if calendar_cache_path(db_path).exists():
             return
         try:
-            engine = sql_create_engine(f"sqlite:///{db_path}")
-            with SqlSession(engine) as session:
+            with user_db_session(db_path) as session:
                 projects = session.exec(select(Project)).all()
-            engine.dispose()
             if not projects:
                 return
             cal = ICSCalendar(name="Demo calendar", ics_calendar=create_fake_calendar(list(projects)))
@@ -216,8 +213,7 @@ class UsersIntent:
         invoices_dir = tuttle_dir / "Invoices"
         timesheets_dir = tuttle_dir / "Timesheets"
         try:
-            engine = sql_create_engine(f"sqlite:///{db_path}")
-            with SqlSession(engine) as s:
+            with user_db_session(db_path) as s:
                 invoices = s.exec(select(Invoice)).all()
                 for inv in invoices:
                     if not inv.rendered:
@@ -244,7 +240,6 @@ class UsersIntent:
                     if prefix_dir.is_dir():
                         shutil.rmtree(prefix_dir)
                         logger.info(f"Deleted timesheet directory: {prefix_dir}")
-            engine.dispose()
         except Exception as ex:
             logger.warning(f"Could not clean up rendered files for {db_path}: {ex}")
 
@@ -282,8 +277,7 @@ class UsersIntent:
         db_path = self._app_db.get_user_db_path(reg.db_file)
         ensure_schema(f"sqlite:///{db_path}")
 
-        engine = sql_create_engine(f"sqlite:///{db_path}")
-        with SqlSession(engine) as s:
+        with user_db_session(db_path) as s:
             address = Address(
                 street=params.get("street", ""),
                 number=params.get("street_num", ""),
@@ -314,7 +308,6 @@ class UsersIntent:
                 ]
             s.add(user)
             s.commit()
-        engine.dispose()
 
         self._switch_to_user_db(reg.db_file)
         return IntentResult(was_intent_successful=True, data=reg)
@@ -354,12 +347,8 @@ class UsersIntent:
         if removed_ids:
             from ...model import Contract
 
-            engine = sql_create_engine(f"sqlite:///{get_active_db()}")
-            try:
-                with SqlSession(engine) as s:
-                    referenced = s.exec(select(Contract).where(Contract.bank_account_id.in_(removed_ids))).all()
-            finally:
-                engine.dispose()
+            with user_db_session(get_active_db()) as s:
+                referenced = s.exec(select(Contract).where(Contract.bank_account_id.in_(removed_ids))).all()
             if referenced:
                 titles = ", ".join(c.title for c in referenced)
                 return (
@@ -518,10 +507,8 @@ class UsersIntent:
         if not db_path.exists():
             return False
         try:
-            engine = sql_create_engine(f"sqlite:///{db_path}")
-            with SqlSession(engine) as s:
+            with user_db_session(db_path) as s:
                 user = s.exec(select(User)).first()
-            engine.dispose()
             return user is not None
         except Exception:
             return False

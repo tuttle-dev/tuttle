@@ -1,8 +1,0 @@
-[flake8]
-# Frozen historical migration snapshots must not be edited (see AGENTS.md).
-# Bundled third-party assets and build artefacts are not ours to fix.
-extend-exclude =
-    tuttle/migrations/versions/,
-    dist/,
-    ui/node_modules/,
-    ui/release/,

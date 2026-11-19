@@ -8,7 +8,6 @@ import pytest
 
 from tuttle import tax
 from tuttle.app.tax.intent import TaxIntent
-from tuttle.kpi import monthly_spendable_breakdown
 from tuttle.model import (
     Address,
     Client,
@@ -532,19 +531,6 @@ class TestSpendableIncome:
         ]
         result = compute_spendable_income(invoices, country)
         assert result.gross_revenue_ytd == invoices[1].total
-
-    def test_monthly_spendable_breakdown_includes_vat_subtraction(self):
-        country = _sample_country()
-        today = datetime.date.today()
-        invoices = [
-            _make_invoice(today.replace(day=1), [(20, 100, 0)]),
-        ]
-        monthly = monthly_spendable_breakdown(invoices, country=country, n_months=2)
-        this_month = [m for m in monthly if m["month"] == today.strftime("%Y-%m")][0]
-        assert this_month["gross_revenue"] > 0
-        assert this_month["vat_due"] > 0
-        assert this_month["net_revenue"] == this_month["gross_revenue"] - this_month["vat_due"]
-        assert this_month["spendable"] == this_month["net_revenue"] - this_month["income_tax_true_up"]
 
     def test_spendable_with_expenses(self):
         """Business expenses reduce taxable profit and therefore tax."""

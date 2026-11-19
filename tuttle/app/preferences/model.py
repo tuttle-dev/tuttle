@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from enum import Enum
 
 INVOICE_TEMPLATES = {
@@ -43,19 +42,6 @@ DEFAULT_INCLUDE_SIGNATURE = True
 DEFAULT_INCLUDE_QR_CODE = False
 
 DEFAULT_THEME_MODE = "system"
-
-
-@dataclass
-class Preferences:
-    theme_mode: str = ""
-    language: str = ""
-    invoice_template: str = DEFAULT_INVOICE_TEMPLATE
-    invoice_number_scheme: str = DEFAULT_INVOICE_NUMBER_SCHEME
-    e_invoice_profile: str = DEFAULT_E_INVOICE_PROFILE
-    include_logo: bool = DEFAULT_INCLUDE_LOGO
-    include_due_date: bool = DEFAULT_INCLUDE_DUE_DATE
-    include_signature: bool = DEFAULT_INCLUDE_SIGNATURE
-    include_qr_code: bool = DEFAULT_INCLUDE_QR_CODE
 
 
 class PreferencesStorageKeys(Enum):

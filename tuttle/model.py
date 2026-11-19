@@ -23,7 +23,6 @@ for the full rationale.
 import datetime
 import enum
 import re
-import textwrap
 from decimal import ROUND_HALF_UP, Decimal
 from typing import List, Literal, NamedTuple, Optional, Type
 
@@ -35,7 +34,6 @@ from sqlmodel import Field, Relationship, SQLModel
 
 from .app.core.formatting import fmt_currency, fmt_quantity
 from .data_dir import get_data_dir
-from .dev import deprecated
 from .fx import convert, primary_currency, rate
 from .i18n import SUPPORTED
 from .time import ChargeBasis, ContractType, Cycle, TimeUnit
@@ -85,13 +83,6 @@ def _project(obj, projection, depth: int):
     return obj
 
 
-def help(model_class: Type[BaseModel]):
-    return pandas.DataFrame(
-        ((field_name, field.field_info.description) for field_name, field in Contract.__fields__.items()),
-        columns=["field name", "field description"],
-    )
-
-
 def to_dataframe(items: List[Type[BaseModel]]) -> pandas.DataFrame:
     """Convert list of pydantic model items to DataFrame.
 
@@ -102,14 +93,6 @@ def to_dataframe(items: List[Type[BaseModel]]) -> pandas.DataFrame:
         pandas.DataFrame: [description]
     """
     return pandas.DataFrame.from_records([item.dict() for item in items])
-
-
-def OneToOneRelationship(back_populates):
-    """Define a relationship as one-to-one."""
-    return Relationship(
-        back_populates=back_populates,
-        sa_relationship_kwargs={"uselist": False, "lazy": "subquery"},
-    )
 
 
 class Address(RpcMixin, SQLModel, table=True):
@@ -217,11 +200,6 @@ class User(RpcMixin, SQLModel, table=True):
         """
         return next((a for a in self.bank_accounts if a.is_default), None) or next(iter(self.bank_accounts), None)
 
-    @property
-    def bank_account_not_set(self) -> bool:
-        """True if no bank account is fully filled in."""
-        return not any(a.BIC and a.IBAN and a.name for a in self.bank_accounts)
-
 
 class Bank(SQLModel, table=True):
     """A bank."""
@@ -299,29 +277,6 @@ class Contact(RpcMixin, SQLModel, table=True):
             return self.company
         else:
             return None
-
-    def print_address(self, address_only: bool = False):
-        """Print address in common format."""
-        if self.address is None:
-            return ""
-
-        if address_only:
-            return textwrap.dedent(
-                f"""
-                {self.address.street} {self.address.number}
-                {self.address.postal_code} {self.address.city}
-                {self.address.country}"""
-            )
-
-        return textwrap.dedent(
-            f"""
-        {self.name}
-        {self.company}
-        {self.address.street} {self.address.number}
-        {self.address.postal_code} {self.address.city}
-        {self.address.country}
-        """
-        )
 
 
 class ClientContact(SQLModel, table=True):
@@ -680,12 +635,6 @@ class Contract(RpcMixin, VatCategoryMixin, SQLModel, table=True):
         return self.unit.abbrev
 
     @property
-    def volume_as_time(self):
-        if self.volume is None:
-            return None
-        return self.volume * self.unit.to_timedelta()
-
-    @property
     def agreed_value(self) -> Optional[Decimal]:
         """Net amount the client has agreed to pay in full: the fixed price, or volume × rate.
 
@@ -746,21 +695,6 @@ class Contract(RpcMixin, VatCategoryMixin, SQLModel, table=True):
     def is_active(self) -> bool:
         """Whether the contract is agreed and running."""
         return self.status == "Active"
-
-    def is_upcoming(self) -> bool:
-        """Whether the contract is agreed and starts later."""
-        return self.status == "Upcoming"
-
-    def get_status(self, default: str = "All") -> str:
-        if self.is_active():
-            return "Active"
-        elif self.is_upcoming():
-            return "Upcoming"
-        elif self.is_completed:
-            return "Completed"
-        else:
-            # default
-            return default
 
     def billable_vat_rate(self) -> Decimal:
         """The VAT rate to invoice, as a fraction (0.19 is 19%).
@@ -1002,32 +936,9 @@ class Project(RpcMixin, SQLModel, table=True):
             raise ValueError("Tag must start with a # symbol and not contain any punctuation or whitespace.")
         return v
 
-    @deprecated
-    def get_brief_description(self):
-        if len(self.description) <= 108:
-            return self.description
-        else:
-            return f"{self.description[0:108]}..."
-
     def is_active(self) -> bool:
         """Whether the project is in the Active column of the project board."""
         return self.board_stage() == "Active"
-
-    def is_upcoming(self) -> bool:
-        """Whether the project is in the Upcoming column of the project board."""
-        return self.board_stage() == "Upcoming"
-
-    # FIXME: replace string literals with enum
-    def get_status(self, default: str = "") -> str:
-        if self.is_active():
-            return "Active"
-        elif self.is_upcoming():
-            return "Upcoming"
-        elif self.is_completed:
-            return "Completed"
-        else:
-            # default
-            return default
 
     def board_stage(self, today: Optional[datetime.date] = None) -> str:
         """The project's column on the project board: the stage set by hand, else one read off its dates.
@@ -1482,6 +1393,15 @@ class Invoice(RpcMixin, SQLModel, table=True):
         and the tracked time in its timesheet stays planned.
         """
         return bool(self.sent or self.paid)
+
+    @property
+    def is_counted(self) -> bool:
+        """Whether revenue, tax and cash figures count the invoice.
+
+        They count an issued invoice that is not cancelled. A reminder is
+        left out: it repeats the invoice it chases, which is counted already.
+        """
+        return self.is_issued and not self.cancelled and not self.is_reminder
 
     @property
     def reminder_chain_head_id(self) -> Optional[int]:

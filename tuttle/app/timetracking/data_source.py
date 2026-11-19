@@ -8,12 +8,11 @@ import sqlmodel
 from loguru import logger
 from pandas import DataFrame
 
-from ... import timetracking
-from ...calendar import ICSCalendar
 from ...dev import singleton
 from ...model import TimeTrackingItem, TimeTrackingSettings
 from ..core.abstractions import SQLModelDataSourceMixin, get_active_db
 from ..core.rpc_utils import register_reset
+from ..core.user_db import user_db_session
 from .aggregation import merge_dataframes
 
 TZ = "CET"
@@ -65,15 +64,11 @@ class TimeTrackingSettingsSource:
     """
 
     def __init__(self, db_path: Optional[Path] = None):
-        self._db_url = f"sqlite:///{db_path or get_active_db()}"
+        self._db_path = db_path or get_active_db()
 
     def _run(self, fn):
-        engine = sqlmodel.create_engine(self._db_url)
-        try:
-            with sqlmodel.Session(engine, expire_on_commit=False) as session:
-                return fn(session)
-        finally:
-            engine.dispose()
+        with user_db_session(self._db_path) as session:
+            return fn(session)
 
     def get(self) -> TimeTrackingSettings:
         row = self._run(lambda session: session.exec(sqlmodel.select(TimeTrackingSettings)).first())
@@ -302,59 +297,3 @@ class ManualEntriesDataSource(SQLModelDataSourceMixin):
             session.delete(item)
             session.commit()
         return True
-
-
-class TimeTrackingSpreadsheetSource:
-    """Processes spreadsheets"""
-
-    def __init__(self):
-        super().__init__()
-
-    def load_data(
-        self,
-        file_path: str,
-    ) -> DataFrame:
-        """loads time tracking data from a spreadsheet file
-
-        Arguments:
-            file_path : path to an uploaded spreadsheet file
-
-        Returns:
-            DataFrame: time tracking data
-        """
-        logger.info(f"Loading time tracking data from {file_path}...")
-        timetracking_data: DataFrame = timetracking.import_from_spreadsheet(
-            path=file_path,
-            preset=timetracking.TogglPreset,
-        )
-        return timetracking_data
-
-
-class TimeTrackingFileCalendarSource:
-    """Processes calendars from a file"""
-
-    def __init__(self) -> None:
-        super().__init__()
-
-    def load_data(
-        self,
-        ics_file_path,
-    ) -> DataFrame:
-        """loads time tracking data from a .ics file
-
-        Args:
-            ics_file_path : path to an uploaded ics or spreadsheet file
-
-        Returns:
-            IntentResult:
-                was_intent_successful : bool
-                data : Calendar if was_intent_successful else None
-                log_message  : str  if an error or exception occurs
-                exception : Exception if an exception occurs
-        """
-        file_calendar: ICSCalendar = ICSCalendar(
-            name=ics_file_path.name,
-            path=ics_file_path,
-        )
-        calendar_data: DataFrame = file_calendar.to_data()
-        return calendar_data

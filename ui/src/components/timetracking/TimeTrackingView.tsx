@@ -10,7 +10,7 @@ import { Toolbar, ToolbarButtonSecondary } from "../shared/ToolbarButtons";
 import { LoadError, LoadingState } from "../shared/LoadStates";
 import { useStatusBar } from "../shared/status-bar-context";
 import { useNavigation } from "../shared/NavigationContext";
-import { useDismiss } from "../../hooks/useDismiss";
+import { Dialog, DialogHeader, DialogBody } from "../shared/Dialog";
 import { useTimer } from "./timer-context";
 import { formatElapsed, formatHours, parseDuration } from "./format";
 
@@ -133,7 +133,6 @@ export function TimeTrackingView() {
   const { showMessage } = useStatusBar();
   const isMac = typeof window !== "undefined" && window.tuttle?.platform === "darwin";
   const closeSourceDialog = () => { setShowSourceDialog(false); setImportError(null); };
-  const sourceBackdrop = useDismiss(closeSourceDialog, showSourceDialog);
 
   const loadData = useCallback(async () => {
     // While filtered, the projects panel still lists every project of the month.
@@ -479,34 +478,32 @@ export function TimeTrackingView() {
       </>)}
 
       {showSourceDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" {...sourceBackdrop}>
-          <div className="bg-bg-content rounded-xl border border-border-subtle shadow-2xl w-[680px] max-h-[85vh] flex flex-col overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-border-subtle shrink-0">
-              <h2 className="text-base font-semibold text-primary">Import from calendar</h2>
-              <button onClick={closeSourceDialog} className="p-1 rounded text-muted hover:text-primary hover:bg-bg-hover transition-colors">
-                <X size={16} />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto px-5 py-5">
-              <SourceChooser
-                dragOver={dragOver}
-                importing={importing}
-                isMac={isMac}
-                systemCals={systemCals}
-                sysCalAuthStatus={sysCalAuthStatus}
-                sysCalLoading={sysCalLoading}
-                connectionLost={connectionLost}
-                importError={importError}
-                onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-                onDragLeave={() => setDragOver(false)}
-                onDrop={handleDrop}
-                onLoadSystemCals={loadSystemCalendars}
-                onImportSystemCal={importSystemCalendar}
-                onOpenSettings={openCalendarSettings}
-              />
-            </div>
-          </div>
-        </div>
+        <Dialog onClose={closeSourceDialog} width="w-[680px]">
+          <DialogHeader className="flex items-center justify-between">
+            <h2 className="text-base font-semibold text-primary">Import from calendar</h2>
+            <button onClick={closeSourceDialog} className="p-1 rounded text-muted hover:text-primary hover:bg-bg-hover transition-colors">
+              <X size={16} />
+            </button>
+          </DialogHeader>
+          <DialogBody className="px-5 py-5">
+            <SourceChooser
+              dragOver={dragOver}
+              importing={importing}
+              isMac={isMac}
+              systemCals={systemCals}
+              sysCalAuthStatus={sysCalAuthStatus}
+              sysCalLoading={sysCalLoading}
+              connectionLost={connectionLost}
+              importError={importError}
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={handleDrop}
+              onLoadSystemCals={loadSystemCalendars}
+              onImportSystemCal={importSystemCalendar}
+              onOpenSettings={openCalendarSettings}
+            />
+          </DialogBody>
+        </Dialog>
       )}
     </div>
   );
