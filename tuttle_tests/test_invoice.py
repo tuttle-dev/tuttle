@@ -862,3 +862,96 @@ class TestGeneratePaymentQR:
 
         assert result is not None
         assert result.startswith("data:image/svg+xml")
+
+
+class TestMultiProjectInvoice:
+    """One invoice billing several projects of one contract (#666)."""
+
+    def _two_projects(self, rate_b=Decimal("650")):
+        a = _build_project(TimeUnit.day, Decimal("500"), tag="#a")
+        b = Project(
+            title="Test Project #b",
+            description="",
+            tag="#b",
+            contract=a.contract,
+            start_date=datetime.date(2022, 1, 1),
+            rate=rate_b,
+        )
+        return a, b
+
+    def _timesheet(self, project, hours):
+        return timetracking.generate_timesheet(
+            timetracking_data=_tracked_hours(project.tag, hours),
+            project=project,
+            period_start=datetime.date(2022, 1, 1),
+            period_end=datetime.date(2022, 1, 31),
+        )
+
+    def _invoice(self, *project_hours, charges=None):
+        timesheets = [self._timesheet(p, h) for p, h in project_hours]
+        return invoicing.generate_invoice(
+            timesheets=timesheets,
+            contract=project_hours[0][0].contract,
+            project=None,
+            number="MP-001",
+            date=datetime.date(2022, 2, 1),
+            charges=charges,
+        )
+
+    def test_two_projects_two_rates(self):
+        a, b = self._two_projects()
+        invoice = self._invoice((a, 8), (b, 8))
+        assert [(i.unit_price, i.project) for i in invoice.items] == [(Decimal("500"), a), (Decimal("650"), b)]
+        assert invoice.project is None
+        assert invoice.project_id is None
+        assert invoice.items[0].description.startswith(a.title)
+        assert invoice.items[1].description.startswith(b.title)
+
+    def test_single_project_unchanged(self):
+        a, _ = self._two_projects()
+        invoice = self._invoice((a, 8))
+        assert invoice.project is a
+        assert invoice.items[0].project is a
+        assert invoice.items[0].description == self._timesheet(a, 8).title
+
+    def test_per_unit_charge_split_per_project(self):
+        a, b = self._two_projects()
+        allowance = ContractCharge(description="Daily allowance", amount=Decimal("30"), basis=ChargeBasis.per_unit)
+        invoice = self._invoice((a, 8), (b, 16), charges=[allowance])
+        charge_lines = [i for i in invoice.items if i.contract_charge is allowance]
+        assert [(i.quantity, i.project) for i in charge_lines] == [(1.0, a), (2.0, b)]
+        assert charge_lines[0].description == f"{a.title}: Daily allowance"
+        per_project = {}
+        for i in invoice.items:
+            per_project[i.project.tag] = per_project.get(i.project.tag, 0) + i.subtotal
+        assert per_project == {"#a": Decimal("530"), "#b": Decimal("1360")}
+        assert sum(per_project.values()) == invoice.sum
+
+    def test_flat_charge_goes_to_first_project(self):
+        a, b = self._two_projects()
+        fee = ContractCharge(description="Handling fee", amount=Decimal("40"), basis=ChargeBasis.per_invoice)
+        invoice = self._invoice((a, 8), (b, 8), charges=[fee])
+        [line] = [i for i in invoice.items if i.contract_charge is fee]
+        assert line.project is a
+        assert line.description == "Handling fee"
+
+    def test_assign_invoice_project_rules(self):
+        a, b = self._two_projects()
+        invoice = Invoice(date=datetime.date(2022, 2, 1), number="X", contract=a.contract, project=a)
+        invoice.items = [InvoiceItem(quantity=1, unit="day", unit_price=Decimal("1"), description="", VAT_rate=Decimal("0.19"))]
+        invoicing.assign_invoice_project(invoice)
+        assert invoice.project is a  # no line has a project: unchanged
+        invoice.items[0].project = b
+        invoicing.assign_invoice_project(invoice)
+        assert invoice.project is b
+        invoice.items.append(
+            InvoiceItem(quantity=1, unit="day", unit_price=Decimal("1"), description="", VAT_rate=Decimal("0.19"), project=a)
+        )
+        invoicing.assign_invoice_project(invoice)
+        assert invoice.project is None and invoice.project_id is None
+
+
+def test_fixed_price_lines_carry_the_project():
+    project = _build_fixed_price_project(Decimal("1000"), tag="#fp")
+    invoice = invoicing.generate_fixed_price_invoice(contract=project.contract, project=project, number="FP-1")
+    assert all(i.project is project for i in invoice.items)

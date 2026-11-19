@@ -58,6 +58,7 @@ def build_charge_items(
     billable_quantity: Optional[Decimal] = None,
     start_date: Optional[datetime.date] = None,
     end_date: Optional[datetime.date] = None,
+    project: Optional[Project] = None,
 ) -> List[InvoiceItem]:
     """Turn contract charges into invoice lines.
 
@@ -86,39 +87,70 @@ def build_charge_items(
                 description=charge.description,
                 contract_charge=charge,
                 contract_charge_id=charge.id,
+                project=project,
+                project_id=project.id if project else None,
             )
         )
     return items
 
 
+def _distinct_projects(projects) -> List[Project]:
+    """Projects in first-seen order, without duplicates and without None."""
+    seen: List[Project] = []
+    for p in projects:
+        if p is not None and not any(p is q or (p.id is not None and p.id == q.id) for q in seen):
+            seen.append(p)
+    return seen
+
+
+def assign_invoice_project(invoice: Invoice) -> None:
+    """Derive the invoice's project from its lines.
+
+    All lines on one project: the invoice belongs to it. Lines on several
+    projects: the invoice has no single project. No line with a project
+    (lines older than #666): leave the invoice as it is.
+    """
+    projects = _distinct_projects(item.project for item in invoice.items)
+    if len(projects) == 1:
+        invoice.project = projects[0]
+        invoice.project_id = projects[0].id
+    elif len(projects) > 1:
+        invoice.project = None
+        invoice.project_id = None
+
+
 def generate_invoice(
     timesheets: List[Timesheet],
     contract: Contract,
-    project: Project,
+    project: Optional[Project],
     number: str,
     date: datetime.date = datetime.date.today(),
     charges: Optional[Sequence[ContractCharge]] = None,
 ) -> Invoice:
+    """Bill timesheets of one contract; each may belong to a different project.
+
+    Each timesheet becomes one line at its project's rate. With several
+    projects, per-unit charges are split per project so each project's
+    revenue adds up, and the invoice itself has no single project.
+    """
     invoice = Invoice(
         date=date,
         contract=contract,
         contract_id=contract.id,
         project=project,
-        project_id=project.id,
+        project_id=project.id if project else None,
         number=number,
     )
     unit_td = contract.unit_duration
-    # ``Contract.rate`` may be stored as float at runtime even though it is
-    # declared ``condecimal`` — coerce here so ``InvoiceItem.subtotal`` always
-    # multiplies two Decimals and the invoice totals are exact.
-    unit_price = Decimal(str(contract.rate))
     vat_rate = _contract_vat_rate(contract)
-    total_quantity = Decimal("0")
-    period_start: Optional[datetime.date] = None
-    period_end: Optional[datetime.date] = None
+    # per project: [billable quantity, first start, last end]
+    totals: dict = {}
     for timesheet in timesheets:
+        ts_project = timesheet.project or project
+        # ``rate`` may be stored as float at runtime even though it is declared
+        # ``condecimal``; effective_rate returns a Decimal so subtotals are exact.
+        unit_price = ts_project.effective_rate if ts_project else Decimal(str(contract.rate))
         quantity = timesheet.total / unit_td
-        total_quantity += Decimal(str(quantity))
         item = InvoiceItem(
             start_date=timesheet.table["begin"].min().date(),
             end_date=timesheet.table["end"].max().date(),
@@ -128,23 +160,42 @@ def generate_invoice(
             VAT_rate=vat_rate,
             VAT_category=contract.VAT_category,
             description=timesheet.title,
+            project=ts_project,
+            project_id=ts_project.id if ts_project else None,
         )
-        period_start = item.start_date if period_start is None else min(period_start, item.start_date)
-        period_end = item.end_date if period_end is None else max(period_end, item.end_date)
+        key = id(ts_project)
+        total = totals.setdefault(key, [ts_project, Decimal("0"), item.start_date, item.end_date])
+        total[1] += Decimal(str(quantity))
+        total[2] = min(total[2], item.start_date)
+        total[3] = max(total[3], item.end_date)
         invoice.items.append(item)
 
     # Charges follow the time lines, so an invoice reads "3 days worked,
     # 3 daily allowances" rather than interleaving the two.
-    invoice.items.extend(
-        build_charge_items(
-            _applicable_charges(contract, charges),
-            contract=contract,
-            billable_quantity=total_quantity,
-            start_date=period_start,
-            end_date=period_end,
+    applicable = _applicable_charges(contract, charges)
+    per_project = list(totals.values())
+    if len(per_project) <= 1:
+        p, quantity, start, end = per_project[0] if per_project else (project, None, None, None)
+        invoice.items.extend(
+            build_charge_items(
+                applicable, contract=contract, billable_quantity=quantity, start_date=start, end_date=end, project=p
+            )
         )
-    )
+    else:
+        period_start = min(t[2] for t in per_project)
+        period_end = max(t[3] for t in per_project)
+        for charge in applicable:
+            if charge.basis == ChargeBasis.per_unit:
+                for p, quantity, start, end in per_project:
+                    for item in build_charge_items([charge], contract, quantity, start, end, project=p):
+                        item.description = f"{p.title}: {item.description}"
+                        invoice.items.append(item)
+            else:
+                # A flat fee is billed once; it is booked to the first project.
+                first = per_project[0][0]
+                invoice.items.extend(build_charge_items([charge], contract, None, period_start, period_end, project=first))
 
+    assign_invoice_project(invoice)
     return invoice
 
 
@@ -171,6 +222,8 @@ def generate_fixed_price_invoice(
         VAT_rate=_contract_vat_rate(contract),
         VAT_category=contract.VAT_category,
         description=contract.title,
+        project=project,
+        project_id=project.id,
     )
     invoice.items.append(item)
     # A fixed-price contract has no billable units, so per-unit charges are
@@ -179,6 +232,7 @@ def generate_fixed_price_invoice(
         build_charge_items(
             _applicable_charges(contract, charges),
             contract=contract,
+            project=project,
         )
     )
     return invoice
@@ -236,6 +290,8 @@ def generate_deposit_invoice(
         VAT_rate=_contract_vat_rate(contract),
         VAT_category=contract.VAT_category,
         description=milestone.title,
+        project=project,
+        project_id=project.id,
     )
     invoice.items.append(item)
     return invoice
@@ -277,6 +333,8 @@ def generate_final_invoice(
         VAT_rate=_contract_vat_rate(contract),
         VAT_category=contract.VAT_category,
         description=contract.title,
+        project=project,
+        project_id=project.id,
     )
     invoice.items.append(item)
     # Charges land on the settlement only — a per-invoice fee must not be
@@ -285,6 +343,7 @@ def generate_final_invoice(
         build_charge_items(
             _applicable_charges(contract, charges),
             contract=contract,
+            project=project,
         )
     )
 
