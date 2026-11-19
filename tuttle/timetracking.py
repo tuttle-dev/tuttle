@@ -37,7 +37,7 @@ def total_event_hours(df: DataFrame, tag_to_workday: dict | None = None) -> floa
     return round(sum(sum_hours_by_tag(df, tag_to_workday).values()), 2)
 
 
-def manual_billing_period(invoice: Invoice) -> Optional[tuple]:
+def manual_billing_period(invoice: Invoice) -> tuple | None:
     """First and last day billed by an invoice typed in by hand on a time-based contract.
 
     Such an invoice has no timesheet, only the billing period on its items.
