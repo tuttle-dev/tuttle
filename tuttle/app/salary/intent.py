@@ -4,7 +4,7 @@ from ...fx import primary_currency, validate_currency_code
 from ...model import Invoice, RecurringExpense, User
 from ...tax_reserves import compute_effective_salary
 from ..core.abstractions import Intent, SQLModelDataSourceMixin
-from ..core.intent_result import IntentResult
+from ..core.intent_result import IntentResult, fails_with
 from .data_source import SalaryDataSource
 
 
@@ -28,38 +28,31 @@ class SalaryIntent(SQLModelDataSourceMixin, Intent):
         """The currency aggregates are shown in (settings, default: tax system)."""
         return primary_currency(country)
 
+    @fails_with("Failed to compute effective salary", append_exception=True)
     def get_effective_salary(self) -> IntentResult:
         """Compute the effective salary range."""
-        try:
-            invoices = self.query(Invoice)
-            expenses_result = self._data_source.get_all_expenses()
-            expenses = expenses_result.data if expenses_result.was_intent_successful else []
+        invoices = self.query(Invoice)
+        expenses_result = self._data_source.get_all_expenses()
+        expenses = expenses_result.data if expenses_result.was_intent_successful else []
 
-            country = self._get_country()
-            currency = self._get_tax_currency(country)
+        country = self._get_country()
+        currency = self._get_tax_currency(country)
 
-            salary = compute_effective_salary(
-                invoices=invoices,
-                expenses=expenses,
-                country=country,
-                currency=currency,
-            )
-            return IntentResult(
-                was_intent_successful=True,
-                data={
-                    "salary": salary,
-                    "currency": currency,
-                    "country": country,
-                    "country_supported": salary.tax_unavailable_reason is None,
-                },
-            )
-        except Exception as e:
-            return IntentResult(
-                was_intent_successful=False,
-                error_msg=f"Failed to compute effective salary: {e}",
-                log_message=f"SalaryIntent.get_effective_salary: {e}",
-                exception=e,
-            )
+        salary = compute_effective_salary(
+            invoices=invoices,
+            expenses=expenses,
+            country=country,
+            currency=currency,
+        )
+        return IntentResult(
+            was_intent_successful=True,
+            data={
+                "salary": salary,
+                "currency": currency,
+                "country": country,
+                "country_supported": salary.tax_unavailable_reason is None,
+            },
+        )
 
     def get_expenses(self) -> IntentResult:
         """Return all recurring expenses."""

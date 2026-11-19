@@ -24,7 +24,7 @@ from ...model import (
 )
 from ...time import ContractType
 from ..core.abstractions import SQLModelDataSourceMixin
-from ..core.intent_result import IntentResult
+from ..core.intent_result import IntentResult, fails_with
 
 # Fields that are internal to the import workflow, not part of the model
 _IMPORT_META = {
@@ -78,25 +78,18 @@ class ImportsIntent(SQLModelDataSourceMixin):
     def __init__(self):
         super().__init__()
 
+    @fails_with("Failed to load existing entities for matching", append_exception=True)
     def get_existing_entities(self) -> IntentResult:
         """Return all contacts, clients, contracts, projects for smart-matching."""
-        try:
-            return IntentResult(
-                was_intent_successful=True,
-                data={
-                    "contacts": [c.to_rpc_dict() for c in self.query(Contact)],
-                    "clients": [c.to_rpc_dict() for c in self.query(Client)],
-                    "contracts": [c.to_rpc_dict() for c in self.query(Contract)],
-                    "projects": [p.to_rpc_dict() for p in self.query(Project)],
-                },
-            )
-        except Exception as ex:
-            return IntentResult(
-                was_intent_successful=False,
-                error_msg=f"Failed to load existing entities for matching: {ex}",
-                log_message=f"ImportsIntent.get_existing_entities: {ex}",
-                exception=ex,
-            )
+        return IntentResult(
+            was_intent_successful=True,
+            data={
+                "contacts": [c.to_rpc_dict() for c in self.query(Contact)],
+                "clients": [c.to_rpc_dict() for c in self.query(Client)],
+                "contracts": [c.to_rpc_dict() for c in self.query(Contract)],
+                "projects": [p.to_rpc_dict() for p in self.query(Project)],
+            },
+        )
 
     def get_field_metadata(self) -> IntentResult:
         """Return field metadata per entity type, derived from model schemas.

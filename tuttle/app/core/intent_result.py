@@ -1,4 +1,7 @@
-from typing import Generic, Optional, TypeVar
+import annotationlib
+import functools
+import inspect
+from typing import Callable, Generic, Optional, TypeVar
 
 from loguru import logger
 
@@ -45,3 +48,42 @@ class IntentResult(Generic[T]):
             logger.error(self.log_message)
         if self.exception:
             logger.exception(self.exception)
+
+
+def fails_with(message: str, *, append_exception: bool = False) -> Callable[[Callable], Callable]:
+    """Decorate a handler so that an exception it lets escape becomes a failed ``IntentResult``.
+
+    ``message`` is what the user is shown (``error_msg``). With
+    ``append_exception`` the text of the exception follows it:
+    ``"<message>: <exception>"``. The exception is attached to the result,
+    and ``log_message`` names the handler.
+
+    Whatever the handler returns is passed through, so it can still return a
+    failed result of its own for a case it recognises.
+
+    The handler keeps its signature, which the dispatcher reads to bind the
+    RPC params. A call whose arguments don't fit it raises ``TypeError`` as
+    it would undecorated: that is a mistake of the caller, not a failure of
+    the handler.
+    """
+
+    def decorate(handler: Callable) -> Callable:
+        # As strings: the annotations may name a class the module defines further down.
+        signature = inspect.signature(handler, annotation_format=annotationlib.Format.STRING)
+
+        @functools.wraps(handler)
+        def wrapper(*args, **kwargs):
+            signature.bind(*args, **kwargs)
+            try:
+                return handler(*args, **kwargs)
+            except Exception as e:
+                return IntentResult(
+                    was_intent_successful=False,
+                    error_msg=f"{message}: {e}" if append_exception else message,
+                    log_message=f"{handler.__qualname__}: {e}",
+                    exception=e,
+                )
+
+        return wrapper
+
+    return decorate
