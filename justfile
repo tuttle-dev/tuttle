@@ -187,14 +187,86 @@ deps-all: deps deps-node
 
 # Nothing else moves the lockfiles: `uv sync`, `uv lock` and `npm ci` all keep
 # the locked versions. This rewrites uv.lock and ui/package-lock.json and
-# installs the result; run `just test` before committing. The "Upgrade
-# Dependencies" workflow does the same once a week and opens a pull request.
+# installs the result, to try an upgrade locally; run `just test` afterwards.
+# `just upgrade-pr` opens the pull request instead, without installing anything.
 #
 # Upgrade every dependency to the newest version its declared range allows
 upgrade:
     uv lock --upgrade
     uv sync
     cd "{{electron}}" && npm update
+
+# `just release` runs this after every release, so each upgrade is tested by
+# the usual checks and used in development for a whole cycle before it ships.
+# Upgrading inside the release itself would tag versions no test has seen. Run
+# it by hand to get a fix out before the next release.
+#
+# Works in a temporary worktree of origin/main: this checkout, its branch and
+# the installed packages stay as they are. The branch `upgrade-dependencies` is
+# rebuilt on every run, so a pull request still open is refreshed instead of a
+# second one appearing.
+#
+# Open a pull request that upgrades uv.lock and ui/package-lock.json
+upgrade-pr:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    branch="upgrade-dependencies"
+    git fetch --quiet origin main
+    work=$(mktemp -d)
+    trap 'git worktree remove --force "$work/tree" 2>/dev/null || true; rm -rf "$work"' EXIT
+    git worktree add --quiet --detach "$work/tree" origin/main
+    cd "$work/tree"
+
+    uv lock --upgrade 2>&1 | tee "$work/uv.log"
+    cp ui/package-lock.json "$work/package-lock.before.json"
+    # Lockfile only: nothing is installed, so no package script runs.
+    (cd ui && npm update --package-lock-only --ignore-scripts)
+
+    if git diff --quiet -- uv.lock ui/package-lock.json; then
+        echo "✓ Both lockfiles are up to date. No pull request needed."
+        exit 0
+    fi
+
+    python_changes=$(grep -E '^(Updated|Added|Removed) ' "$work/uv.log" | sed 's/^/- /' || true)
+    ui_changes=$(node -e '
+        const fs = require("fs");
+        const [before, after, manifest] = process.argv.slice(1).map((f) => JSON.parse(fs.readFileSync(f, "utf8")));
+        const names = Object.keys(Object.assign({}, manifest.dependencies, manifest.devDependencies)).sort();
+        for (const name of names) {
+            const key = "node_modules/" + name;
+            const was = (before.packages[key] || {}).version;
+            const now = (after.packages[key] || {}).version;
+            if (was !== now) console.log("- " + name + " " + was + " → " + now);
+        }
+    ' "$work/package-lock.before.json" ui/package-lock.json ui/package.json)
+    if git diff --quiet -- ui/package-lock.json; then
+        ui_changes="No changes."
+    elif [[ -z "$ui_changes" ]]; then
+        ui_changes="Only transitive dependencies changed."
+    fi
+    {
+        echo "Upgrade of both lockfiles to the newest versions the declared ranges allow, opened by \`just upgrade-pr\`. \`just release\` runs it after every release, so the upgrade is tested and used for a whole cycle before it ships."
+        echo
+        echo "The checks on this pull request test the result. Packaging is not built here: the core smoke test runs in the merge queue, and Pack Electron App runs on \`main\`."
+        echo
+        echo "**Python** (\`uv.lock\`)"
+        echo
+        echo "${python_changes:-No changes.}"
+        echo
+        echo "**UI** (\`ui/package-lock.json\`), direct dependencies"
+        echo
+        echo "$ui_changes"
+    } > "$work/body.md"
+
+    git commit --quiet -m "Upgrade dependencies" -- uv.lock ui/package-lock.json
+    git push --quiet --force origin "HEAD:refs/heads/$branch"
+    open=$(gh pr list --head "$branch" --state open --json number --jq '.[0].number // empty')
+    if [[ -n "$open" ]]; then
+        gh pr edit "$open" --body-file "$work/body.md"
+        echo "✓ Refreshed the open dependency upgrade pull request."
+    else
+        gh pr create --base main --head "$branch" --title "Upgrade dependencies" --body-file "$work/body.md"
+    fi
 
 # Install the pre-commit hooks (run once after cloning)
 precommit:
@@ -243,6 +315,9 @@ sync-data:
 #   just release patch --pre rc         3.1.0 → 3.1.1rc1  (release candidate)
 #
 # Add --dry-run to preview without changing anything.
+#
+# Afterwards opens the dependency upgrade pull request for the next release
+# (`just upgrade-pr`).
 #
 # Runs only on main, and only when main has everything origin/main has: the
 # version bump is committed and tagged locally before the push, so a release
@@ -298,3 +373,10 @@ release part *flags="":
         gh_flags+=(--prerelease)
     fi
     gh release create "$tag" "${gh_flags[@]}"
+
+    # Start the dependency upgrade for the next release (see `upgrade-pr`). The
+    # release is out by now, so a failure here must not look like a failed release.
+    if ! "{{just_executable()}}" --justfile "{{justfile()}}" upgrade-pr; then
+        echo "The release is published, but the dependency upgrade pull request could not be opened." >&2
+        echo "Run: just upgrade-pr" >&2
+    fi

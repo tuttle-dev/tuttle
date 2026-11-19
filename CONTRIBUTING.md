@@ -168,7 +168,8 @@ Run `just --list` to see all available tasks. Here are the most important ones:
 | `just dev` | Start the Electron app in dev mode (hot reload) |
 | `just test` | Run the full test suite (Python + TypeScript type-check) |
 | `just deps-all` | Install/sync all dependencies (Python + Node) |
-| `just upgrade` | Upgrade both lockfiles to the newest allowed versions |
+| `just upgrade` | Upgrade both lockfiles locally and install the result |
+| `just upgrade-pr` | Open a pull request that upgrades both lockfiles (`just release` does this after each release) |
 | `just precommit` | Install the pre-commit hooks |
 | `just build` | Full production build (PyInstaller + Electron) |
 | `just migrate "<msg>"` | Generate an Alembic migration from model changes |
