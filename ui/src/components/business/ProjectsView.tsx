@@ -122,6 +122,8 @@ export function ProjectsView() {
       start_date: data.startDate,
       end_date: data.endDate || null,
       contract_id: data.contractId,
+      // The field is hidden on fixed-price contracts; never send a leftover rate.
+      rate: data.rate.trim() && !bool(contractsMap[String(data.contractId)] ?? {}, "is_fixed_price") ? Number(data.rate) : null,
     };
     if (mode === "edit" && selected) project.id = selected.id;
     const res = await rpc<Entity>("projects.save", { project });
@@ -405,6 +407,8 @@ interface ProjectFormData {
   startDate: string;
   endDate: string;
   contractId: number | null;
+  /** Own rate; empty uses the contract's. */
+  rate: string;
 }
 
 function ProjectForm({ project, isDuplicate = false, contracts, onSave, onCancel, error }: {
@@ -426,13 +430,15 @@ function ProjectForm({ project, isDuplicate = false, contracts, onSave, onCancel
       startDate: isDuplicate ? "" : str(project, "start_date"),
       endDate: isDuplicate ? "" : str(project, "end_date"),
       contractId: existingContract?.id ?? null,
+      rate: project.rate == null ? "" : String(project.rate),
     };
-    return { title: "", tag: "#", description: "", startDate: "", endDate: "", contractId: null };
+    return { title: "", tag: "#", description: "", startDate: "", endDate: "", contractId: null, rate: "" };
   });
   const [saving, setSaving] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const isNew = !project || isDuplicate;
   const contractList = Object.values(contracts);
+  const selectedContract = form.contractId != null ? contracts[String(form.contractId)] ?? contractList.find((c) => c.id === form.contractId) : undefined;
 
   function update<K extends keyof ProjectFormData>(field: K, value: ProjectFormData[K]) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -497,6 +503,14 @@ function ProjectForm({ project, isDuplicate = false, contracts, onSave, onCancel
           <option value="">— Select a contract —</option>
           {contractList.map((c) => <option key={c.id} value={c.id}>{str(c, "title")}</option>)}
         </select>
+        {selectedContract && !bool(selectedContract, "is_fixed_price") && (
+          <div className="mt-3">
+            <label className="block text-xs text-tertiary mb-1">Rate <span className="text-muted">(optional, per {str(selectedContract, "unit") || "unit"})</span></label>
+            <input type="number" min="0" step="0.01" value={form.rate} onChange={(e) => update("rate", e.target.value)}
+              placeholder={selectedContract.rate != null ? `${num(selectedContract, "rate")} from the contract` : ""}
+              className="w-full px-3 py-2 rounded-md text-sm bg-bg-card text-primary border border-border-subtle outline-none focus:border-accent transition-colors tabular-nums" />
+          </div>
+        )}
       </Section>
     </form>
   );

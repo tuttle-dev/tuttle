@@ -75,10 +75,10 @@ function InvoiceCard({ invoice, reminderCount, depositCount, schedule }: { invoi
           <span className="text-xs truncate">{deepStr(invoice, "contract.client.name")}</span>
         </div>
       )}
-      {deepStr(invoice, "project.title") && (
+      {str(invoice, "project_titles") && (
         <div className="flex items-center gap-1 text-secondary">
           <FolderKanban size={12} className="text-tertiary shrink-0" />
-          <span className="text-xs truncate">{deepStr(invoice, "project.title")}</span>
+          <span className="text-xs truncate">{str(invoice, "project_titles")}</span>
         </div>
       )}
       <div className="flex items-center gap-1 text-tertiary">

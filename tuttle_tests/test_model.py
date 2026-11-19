@@ -705,3 +705,41 @@ class TestTaxCategory:
         with Session(engine) as session:
             restored = session.exec(select(Contract)).one()
             assert restored.VAT_category is TaxCategory.outside_scope
+
+
+class TestProjectRate:
+    """A project may override its contract's rate (#666)."""
+
+    def _project(self, rate=None) -> Project:
+        contract = Contract(
+            title="Retainer",
+            start_date=datetime.date(2026, 1, 1),
+            rate=Decimal("500"),
+            currency="EUR",
+            VAT_rate=Decimal("0.19"),
+            unit=TimeUnit.day,
+            units_per_workday=8,
+            billing_cycle=Cycle.monthly,
+        )
+        return Project(
+            title="Ducts",
+            description="",
+            tag="#ducts",
+            start_date=datetime.date(2026, 1, 1),
+            contract=contract,
+            rate=rate,
+        )
+
+    def test_effective_rate_falls_back_to_contract(self):
+        assert self._project().effective_rate == Decimal("500")
+
+    def test_effective_rate_uses_project_rate(self):
+        assert self._project(Decimal("650")).effective_rate == Decimal("650")
+
+
+def test_invoice_item_carries_a_project():
+    project = Project(title="Ducts", description="", tag="#ducts", start_date=datetime.date(2026, 1, 1))
+    item = InvoiceItem(
+        quantity=1, unit="day", unit_price=Decimal("500"), description="x", VAT_rate=Decimal("0.19"), project=project
+    )
+    assert item.project is project

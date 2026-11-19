@@ -88,9 +88,9 @@ export function InvoiceRow({ invoice, isSelected, isHighlighted, reminderCount, 
       </div>
       <div className="flex items-center gap-1.5 mt-1 flex-wrap text-secondary">
         <span className="text-xs truncate">{deepStr(invoice, "contract.client.name") || "No client"}</span>
-        {deepStr(invoice, "project.title") && (
+        {str(invoice, "project_titles") && (
           <><span className="text-tertiary">·</span>
-          <span className="text-xs text-tertiary truncate">{deepStr(invoice, "project.title")}</span></>
+          <span className="text-xs text-tertiary truncate">{str(invoice, "project_titles")}</span></>
         )}
         {schedule && <MilestoneScheduleBadge schedule={schedule} />}
       </div>

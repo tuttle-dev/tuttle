@@ -94,11 +94,12 @@ def revenue_from_calendar(
         if not project:
             continue
         contract = project.contract
-        if not contract.rate:
+        rate = project.effective_rate
+        if not rate:
             continue
         unit_hours = contract.units_per_workday if contract.unit == TimeUnit.day else 1
         billable_units = row["hours"] / unit_hours
-        revenue = Decimal(str(billable_units)) * contract.rate
+        revenue = Decimal(str(billable_units)) * rate
         if currency and contract.currency not in (currency, None):
             revenue = convert(revenue, contract.currency, currency, datetime.date.today())
             if revenue is None:

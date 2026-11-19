@@ -300,3 +300,53 @@ def test_build_calendar_data_with_tz_aware_data():
     assert result["summary"]["total_events"] == 2
     assert result["summary"]["total_hours"] > 0
     assert len(result["events"]) == 2
+
+
+class TestInvoicedFromLines:
+    """A line with a project and dates marks those calendar hours as billed (#638)."""
+
+    def _calendar(self):
+        index = pandas.to_datetime(["2022-01-10 09:00", "2022-01-10 09:00", "2022-02-10 09:00"])
+        df = pandas.DataFrame(
+            {"tag": ["#a", "#b", "#a"], "duration": [pandas.Timedelta(hours=8)] * 3, "title": ["x"] * 3},
+            index=index,
+        )
+        return df
+
+    def _project(self, tag):
+        return Project(title=tag, description="", tag=tag, start_date=datetime.date(2022, 1, 1))
+
+    def _manual_invoice(self, invoice_project, line_project, cancelled=False):
+        from tuttle.model import Invoice, InvoiceItem
+
+        invoice = Invoice(
+            date=datetime.date(2022, 2, 1), number="M-1", project=invoice_project, cancelled=cancelled, sent=True
+        )
+        invoice.items = [
+            InvoiceItem(
+                start_date=datetime.date(2022, 1, 1),
+                end_date=datetime.date(2022, 1, 31),
+                quantity=1,
+                unit="day",
+                unit_price=Decimal("500"),
+                description="Consulting",
+                VAT_rate=Decimal("0.19"),
+                project=line_project,
+            )
+        ]
+        return invoice
+
+    def test_manual_item_marks_hours_invoiced(self):
+        a = self._project("#a")
+        left = timetracking.drop_invoiced(self._calendar(), [self._manual_invoice(None, a)])
+        assert list(zip(left.index.strftime("%Y-%m-%d"), left["tag"])) == [("2022-01-10", "#b"), ("2022-02-10", "#a")]
+
+    def test_item_without_project_falls_back_to_invoice_project(self):
+        b = self._project("#b")
+        left = timetracking.drop_invoiced(self._calendar(), [self._manual_invoice(b, None)])
+        assert list(left["tag"]) == ["#a", "#a"]
+
+    def test_cancelled_invoice_items_do_not_count(self):
+        a = self._project("#a")
+        left = timetracking.drop_invoiced(self._calendar(), [self._manual_invoice(None, a, cancelled=True)])
+        assert len(left) == 3

@@ -24,7 +24,11 @@ export function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid
   const isSent = bool(invoice, "sent");
   const isPaid = bool(invoice, "paid");
   const pdfPath = str(invoice, "pdf_path");
-  const tsPath = str(invoice, "timesheet_pdf_path");
+  // One timesheet per billed project (#666); a picker switches between them.
+  const tsPaths = (invoice.timesheet_pdf_paths as { project: string; path: string }[] | undefined) ?? [];
+  const [tsIndex, setTsIndex] = useState(0);
+  useEffect(() => { setTsIndex(0); }, [invoice.id]);
+  const tsPath = tsPaths[tsIndex]?.path ?? str(invoice, "timesheet_pdf_path");
   const hasTimesheet = bool(invoice, "has_timesheet");
   const isRem = isReminder(invoice);
   const depositLabel = depositMilestoneLabel(invoice);
@@ -59,6 +63,27 @@ export function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid
   const [tsRendering, setTsRendering] = useState(false);
   const [tsError, setTsError] = useState("");
   const [reminderDialogOpen, setReminderDialogOpen] = useState(false);
+  const [contractProjects, setContractProjects] = useState<Entity[]>([]);
+  const [itemProjectError, setItemProjectError] = useState("");
+  const contractId = num(invoice, "contract_id");
+
+  useEffect(() => {
+    let cancelled = false;
+    setItemProjectError("");
+    (async () => {
+      const res = await rpc<Entity[]>("projects.get_all");
+      if (!cancelled && res.ok && res.data) setContractProjects(res.data.filter((p) => num(p, "contract_id") === contractId));
+    })();
+    return () => { cancelled = true; };
+  }, [invoice.id, contractId]);
+
+  /** Book a line to a project. Bookkeeping only: the issued PDF stays as it is. */
+  async function setItemProject(itemId: number, projectId: number | null) {
+    setItemProjectError("");
+    const res = await rpc("invoicing.set_item_projects", { invoice_id: invoice.id, item_projects: { [String(itemId)]: projectId } });
+    if (res.ok) onRefresh();
+    else setItemProjectError(res.error || "Could not change the project");
+  }
   const [deleteConfirm, setDeleteConfirm] = useState(false);
 
   useEffect(() => { setDeleteConfirm(false); }, [invoice.id]);
@@ -239,7 +264,13 @@ export function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid
           )}
         </div>
       ) : detailTab === "timesheet" ? (
-        <div className="flex-1 min-h-0 px-5 pb-5">
+        <div className="flex-1 min-h-0 px-5 pb-5 flex flex-col gap-2">
+          {tsPaths.length > 1 && (
+            <select value={tsIndex} onChange={(e) => setTsIndex(Number(e.target.value))} aria-label="Timesheet"
+              className="self-start px-2 py-1 rounded-md bg-bg-card border border-border-subtle text-xs text-primary">
+              {tsPaths.map((t, i) => <option key={t.path} value={i}>{t.project}</option>)}
+            </select>
+          )}
           {tsRendering ? (
             <div className="flex flex-col items-center justify-center h-full gap-2 text-secondary">
               <Clock size={24} className="animate-pulse" />
@@ -265,6 +296,7 @@ export function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid
         <div className="flex-1 overflow-y-auto px-5 pb-5 space-y-5">
           {items.length > 0 && (
             <Section title="Line Items">
+              {itemProjectError && <p className="text-xs text-status-danger mb-2">{itemProjectError}</p>}
               <div className="space-y-2">
                 {items.map((item, i) => (
                   <div key={i} className="rounded-md p-3 bg-bg-card border border-border-subtle">
@@ -277,6 +309,15 @@ export function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid
                       <span>{str(item, "unit_price_formatted")}/{str(item, "unit") || "hour"}</span>
                       <span>{taxTreatment(taxCategory(str(item, "VAT_category")), num(item, "VAT_rate"))}</span>
                     </div>
+                    {contractProjects.length > 0 && !isRem && !isDeposit(invoice) && !isFinalInvoice(invoice) && (
+                      // A line without its own project counts for the invoice's.
+                      <select value={String(item.project_id ?? invoice.project_id ?? "")} aria-label="Project"
+                        onChange={(e) => setItemProject(item.id, e.target.value ? Number(e.target.value) : null)}
+                        className="mt-1.5 px-1.5 py-0.5 rounded bg-bg-content border border-border-subtle text-xs text-secondary">
+                        <option value="">No project</option>
+                        {contractProjects.map((p) => <option key={p.id} value={p.id}>{str(p, "title")}</option>)}
+                      </select>
+                    )}
                   </div>
                 ))}
               </div>
@@ -290,7 +331,7 @@ export function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid
               {str(invoice, "sent_date") && (
                 <DRow icon={<Send size={14} />} label="Sent" value={formatDate(str(invoice, "sent_date"))} />
               )}
-              <DRow icon={<FolderKanban size={14} />} label="Project" value={deepStr(invoice, "project.title") || "—"} />
+              <DRow icon={<FolderKanban size={14} />} label="Project" value={str(invoice, "project_titles") || "—"} />
               <DRow icon={<FileText size={14} />} label="Contract" value={deepStr(invoice, "contract.title") || "—"} />
               <DRow icon={<Banknote size={14} />} label="Currency" value={str(invoice, "currency") || "EUR"} />
               <DRow icon={<Receipt size={14} />} label="Tax" value={taxTreatment(invoiceTaxCategory, invoiceVatRate)} />

@@ -1,15 +1,16 @@
 import datetime as _dt
 from datetime import date
 from decimal import Decimal
-from typing import Optional
+from typing import Mapping, Optional
 
 from loguru import logger
+from sqlmodel import select
 
 from ... import einvoice, invoicing, mail, rendering, timetracking
 from ...app_db import AppDatabase
 from ...data_dir import get_data_dir
 from ...i18n import SUPPORTED, use_language
-from ...model import Client, Invoice, InvoiceItem, Project, Timesheet, User, round_quantity
+from ...model import Client, Invoice, InvoiceItem, Project, User, round_quantity
 from ...time import ChargeBasis
 from ..auth.data_source import UserDataSource
 from ..core.abstractions import Intent
@@ -102,8 +103,13 @@ class InvoicingIntent(Intent):
         manual_items=None,
         with_timesheet=True,
         notes=None,
+        project_ids=None,
     ) -> IntentResult:
-        """Orchestrates invoice creation: resolve project, read prefs, delegate."""
+        """Orchestrates invoice creation: resolve project, read prefs, delegate.
+
+        *project_ids* adds further projects of the same time-based contract,
+        billed on the same invoice (#666).
+        """
         try:
             invoice_date = _as_date(invoice_date, "invoice date")
             from_date = _as_date(from_date, "billing period start")
@@ -112,9 +118,15 @@ class InvoicingIntent(Intent):
             return IntentResult(was_intent_successful=False, error_msg=str(ex))
         if to_date < from_date:
             return IntentResult(was_intent_successful=False, error_msg="The billing period ends before it starts.")
-        proj_result = self._projects_intent.get_by_id(project_id)
-        if not proj_result.was_intent_successful:
-            return proj_result
+        line_ids = [it["project_id"] for it in manual_items or [] if it.get("project_id") not in (None, "")]
+        projects_by_id = self._load_projects([project_id, *(project_ids or []), *line_ids])
+        if int(project_id) not in projects_by_id:
+            return IntentResult(was_intent_successful=False, error_msg="Failed to load project.")
+        extra_projects = [
+            projects_by_id[pid]
+            for pid in dict.fromkeys(int(p) for p in project_ids or [])
+            if pid != int(project_id) and pid in projects_by_id
+        ]
         app_db = AppDatabase()
         template_name = invoice_template_or_default(app_db.get_setting(PreferencesStorageKeys.invoice_template_key.value))
         number_scheme = (
@@ -124,7 +136,7 @@ class InvoicingIntent(Intent):
 
         return self.create_invoice(
             invoice_date=invoice_date,
-            project=proj_result.data,
+            project=projects_by_id[int(project_id)],
             from_date=from_date,
             to_date=to_date,
             render=render,
@@ -135,7 +147,23 @@ class InvoicingIntent(Intent):
             with_timesheet=with_timesheet,
             e_invoice_profile=e_invoice_profile or None,
             notes=notes,
+            extra_projects=extra_projects,
+            projects_by_id=projects_by_id,
         )
+
+    def _load_projects(self, ids) -> dict:
+        """Load projects in one session, by id.
+
+        Saving an invoice merges its whole object graph. Projects loaded in
+        separate sessions each bring their own copies of shared objects (the
+        contract, earlier invoices, sibling projects), and a stale copy can win
+        the merge and unlink rows. One session gives one copy of each.
+        """
+        ids = list(dict.fromkeys(int(i) for i in ids))
+        with self._invoicing_data_source.create_session() as session:
+            projects = session.exec(select(Project).where(Project.id.in_(ids))).all()
+            self._invoicing_data_source._hydrate(list(projects))
+        return {p.id: p for p in projects}
 
     # -- Status toggles (accept id, fetch internally) --------------------------
 
@@ -476,6 +504,40 @@ class InvoicingIntent(Intent):
         billed = self._invoicing_data_source.get_billed_charge_ids(contract.id)
         return [c for c in active if c.basis != ChargeBasis.once or c.id not in billed]
 
+    def set_item_projects(self, invoice_id, item_projects: Mapping[str, Optional[int]]) -> IntentResult[Invoice]:
+        """Book invoice lines to projects. Bookkeeping only: the issued document is unchanged."""
+        with self._invoicing_data_source.create_session() as session:
+            invoice = session.get(Invoice, int(invoice_id))
+            if invoice is None:
+                return IntentResult(was_intent_successful=False, error_msg="Invoice not found")
+            # Deposits and final invoices are matched to each other by project;
+            # moving one would let a deposit go undeducted.
+            if invoice.document_type in ("deposit", "final"):
+                return IntentResult(
+                    was_intent_successful=False, error_msg="Deposit and final invoices stay with their project."
+                )
+            # Lines from before #666 have no project and count for the invoice's.
+            # Pin that before any line moves, or the rest would follow it.
+            if invoice.project is not None:
+                for item in invoice.items:
+                    if item.project_id is None:
+                        item.project, item.project_id = invoice.project, invoice.project_id
+            for item in invoice.items:
+                if str(item.id) not in item_projects:
+                    continue
+                pid = item_projects[str(item.id)]
+                project = session.get(Project, int(pid)) if pid is not None else None
+                if pid is not None and (project is None or project.contract_id != invoice.contract_id):
+                    session.rollback()
+                    return IntentResult(
+                        was_intent_successful=False, error_msg="Project does not belong to this invoice's contract."
+                    )
+                item.project = project
+                item.project_id = project.id if project else None
+            invoicing.assign_invoice_project(invoice)
+            session.commit()
+        return self._invoicing_data_source.get_invoice_by_id(int(invoice_id))
+
     def create_invoice(
         self,
         invoice_date: date,
@@ -491,6 +553,8 @@ class InvoicingIntent(Intent):
         with_timesheet: bool = True,
         e_invoice_profile: Optional[str] = None,
         notes: Optional[str] = None,
+        extra_projects: Optional[list] = None,
+        projects_by_id: Optional[dict] = None,
     ) -> IntentResult[Invoice]:
         """Create a new invoice.
 
@@ -512,6 +576,24 @@ class InvoicingIntent(Intent):
                 was_intent_successful=False,
                 error_msg=f"Project “{project.title}” has no contract. Create a contract and assign it to the project before invoicing.",
             )
+        extra_projects = extra_projects or []
+        if extra_projects and (contract.is_fixed_price or any(p.contract_id != project.contract_id for p in extra_projects)):
+            return IntentResult(
+                was_intent_successful=False,
+                error_msg="All projects on one invoice must belong to the same time-based contract.",
+            )
+        # Projects a manual line may name: loaded with the invoice's project
+        # (see ``_load_projects``), and on its contract.
+        line_projects = projects_by_id or {project.id: project}
+        for it in manual_items or []:
+            pid = it.get("project_id")
+            if pid in (None, ""):
+                continue
+            named = line_projects.get(int(pid))
+            if named is None or named.contract_id != project.contract_id:
+                return IntentResult(
+                    was_intent_successful=False, error_msg="Project does not belong to this invoice's contract."
+                )
         refusal = _vat_rate_refusal(contract)
         if refusal is not None:
             return refusal
@@ -519,6 +601,7 @@ class InvoicingIntent(Intent):
         user = self._user_data_source.get_user()
         try:
             invoice_number = self._invoicing_data_source.generate_invoice_number(invoice_date, scheme=number_scheme)
+            timesheets: list = []
 
             # A typed quantity is billed to two decimals, as the documents show it,
             # so each line multiplies out to the cent it charges.
@@ -534,9 +617,12 @@ class InvoicingIntent(Intent):
                         description=it.get("description", project.title),
                         VAT_rate=contract.VAT_rate,
                         VAT_category=contract.VAT_category,
+                        project=line_projects[int(it["project_id"])] if it.get("project_id") else project,
                     )
                     for it in manual_items
                 ]
+                for item in items:
+                    item.project_id = item.project.id
                 invoice = Invoice(
                     date=invoice_date,
                     number=invoice_number,
@@ -546,16 +632,19 @@ class InvoicingIntent(Intent):
                     project_id=project.id,
                     items=items,
                 )
+                invoicing.assign_invoice_project(invoice)
             elif manual_quantity is not None:
                 item = InvoiceItem(
                     start_date=from_date,
                     end_date=to_date,
                     quantity=float(round_quantity(manual_quantity)),
                     unit=contract.unit.value if contract.unit else "hour",
-                    unit_price=contract.rate,
+                    unit_price=project.effective_rate,
                     description=project.title,
                     VAT_rate=contract.VAT_rate,
                     VAT_category=contract.VAT_category,
+                    project=project,
+                    project_id=project.id,
                 )
                 invoice = Invoice(
                     date=invoice_date,
@@ -576,32 +665,32 @@ class InvoicingIntent(Intent):
                     charges=self._eligible_charges(project.contract),
                 )
             else:
-                # ── Time-tracking path (existing) ─────────────────
+                # ── Time-tracking path: one timesheet per project with hours ──
                 timetracking_data = self._timetracking_data_source.get_data_frame()
-                try:
-                    timesheet: Timesheet = timetracking.generate_timesheet(
-                        timetracking_data,
-                        project,
-                        from_date,
-                        to_date,
-                    )
-                except ValueError:
+                for billed in [project, *extra_projects]:
+                    try:
+                        timesheets.append(timetracking.generate_timesheet(timetracking_data, billed, from_date, to_date))
+                    except ValueError:
+                        continue  # no hours for this project in the period
+                if not timesheets:
+                    titles = ", ".join(p.title for p in [project, *extra_projects])
                     return IntentResult(
                         was_intent_successful=False,
                         error_msg=(
-                            f"No time tracking data found for project '{project.title}' between {from_date} and {to_date}. "
+                            f"No time tracking data found for project '{titles}' between {from_date} and {to_date}. "
                             "Track or import time for this period, or create a manual invoice instead."
                         ),
                     )
                 invoice: Invoice = invoicing.generate_invoice(
                     date=invoice_date,
                     number=invoice_number,
-                    timesheets=[timesheet],
+                    timesheets=timesheets,
                     contract=project.contract,
                     project=project,
                     charges=self._eligible_charges(project.contract),
                 )
-                timesheet.invoice = invoice
+                for timesheet in timesheets:
+                    timesheet.invoice = invoice
 
             try:
                 for item in invoice.items:
@@ -628,7 +717,7 @@ class InvoicingIntent(Intent):
 
             render_warnings: list[str] = []
             if render:
-                if manual_quantity is None and manual_items is None and with_timesheet and "timesheet" in locals():
+                for timesheet in timesheets if with_timesheet else []:
                     try:
                         rendering.render_timesheet(
                             user=user,
@@ -638,7 +727,7 @@ class InvoicingIntent(Intent):
                             language=language,
                         )
                     except Exception as ex:
-                        logger.error(f"Error rendering timesheet for {project.title}: {ex}")
+                        logger.error(f"Error rendering timesheet for {timesheet.project.title}: {ex}")
                         logger.exception(ex)
                         render_warnings.append(_pdf_failure("Timesheet", ex))
 
@@ -768,6 +857,7 @@ class InvoicingIntent(Intent):
                     description=item.description,
                     VAT_rate=item.VAT_rate,
                     VAT_category=item.VAT_category,
+                    project_id=item.project_id,
                 )
                 for item in root.items
             ]
@@ -1101,15 +1191,15 @@ class InvoicingIntent(Intent):
             )
         try:
             user = self._user_data_source.get_user()
-            timesheet = invoice.timesheets[0]
-            rendering.render_timesheet(
-                user=user,
-                timesheet=timesheet,
-                out_dir=get_data_dir() / "Timesheets",
-                only_final=True,
-                language=_document_language(invoice.client),
-            )
-            self._invoicing_data_source.save_timesheet(timesheet)
+            for timesheet in invoice.timesheets:
+                rendering.render_timesheet(
+                    user=user,
+                    timesheet=timesheet,
+                    out_dir=get_data_dir() / "Timesheets",
+                    only_final=True,
+                    language=_document_language(invoice.client),
+                )
+                self._invoicing_data_source.save_timesheet(timesheet)
             reload = self._invoicing_data_source.get_invoice_by_id(invoice.id)
             return IntentResult(
                 was_intent_successful=True,

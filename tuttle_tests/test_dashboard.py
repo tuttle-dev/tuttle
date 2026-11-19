@@ -930,3 +930,19 @@ class TestProjectBudgetStatus:
     def test_empty_projects(self):
         result = project_budget_status([])
         assert result == []
+
+
+def test_calendar_revenue_uses_project_rate(project):
+    """A project's own rate prices its calendar hours (#666)."""
+    project.rate = Decimal("130")
+    time_data = TestMonthlyRevenueFromCalendar._time_data(project.tag, datetime.date(2026, 7, 15))
+    result = monthly_revenue_from_calendar(time_data, [project], datetime.date(2026, 7, 1), datetime.date(2026, 7, 31))
+    assert result["revenue"].sum() == 8 * 130
+
+
+def test_planned_revenue_uses_project_rate(project):
+    project.rate = Decimal("130")
+    future = datetime.date.today() + datetime.timedelta(days=7)
+    time_data = TestMonthlyRevenueFromCalendar._time_data(project.tag, future).tz_localize("UTC")
+    [status] = project_budget_status([project], time_data)
+    assert status["planned_revenue"] == 8 * 130

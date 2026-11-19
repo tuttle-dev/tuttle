@@ -862,7 +862,7 @@ class Project(RpcMixin, SQLModel, table=True):
     """A project is a group of contract work for a client."""
 
     __rpc_relationships__ = ("contract",)
-    __rpc_computed__ = ("is_fixed_price", "is_settled")
+    __rpc_computed__ = ("is_fixed_price", "is_settled", "effective_rate")
 
     id: Optional[int] = Field(default=None, primary_key=True)
     title: str = Field(
@@ -883,6 +883,10 @@ class Project(RpcMixin, SQLModel, table=True):
         default=None,
         description="Explicit pipeline stage override: Lead, Offer, Upcoming, Active, or Completed. "
         "When set, takes precedence over the date-derived status.",
+    )
+    rate: Optional[condecimal(decimal_places=2)] = Field(
+        default=None,
+        description="Rate for this project, in the contract's unit and currency. Empty uses the contract rate.",
     )
     # Project n:1 Contract
     contract_id: int = Field(foreign_key="contract.id", ondelete="RESTRICT")
@@ -908,6 +912,17 @@ class Project(RpcMixin, SQLModel, table=True):
     @property
     def is_fixed_price(self) -> bool:
         return self.contract is not None and self.contract.is_fixed_price
+
+    @property
+    def effective_rate(self) -> Optional[Decimal]:
+        """The project's own rate, else its contract's. None on a fixed-price contract."""
+        if self.contract is not None and self.contract.is_fixed_price:
+            return None  # a rate left over from a time-based contract must not price hours
+        if self.rate is not None:
+            return Decimal(str(self.rate))
+        if self.contract is not None and self.contract.rate is not None:
+            return Decimal(str(self.contract.rate))
+        return None
 
     @property
     def final_invoice(self) -> Optional["Invoice"]:
@@ -1142,6 +1157,8 @@ class Invoice(RpcMixin, SQLModel, table=True):
         "deposit_chain_head_id",
         "has_timesheet",
         "timesheet_pdf_path",
+        "timesheet_pdf_paths",
+        "project_titles",
         "remaining_balance",
         "remaining_balance_formatted",
         "deposits_deducted_formatted",
@@ -1581,15 +1598,30 @@ class Invoice(RpcMixin, SQLModel, table=True):
         return bool(self.timesheets)
 
     @property
+    def timesheet_pdf_paths(self) -> List[dict]:
+        """Rendered timesheet PDFs, one per billed project: ``{"project", "path"}``."""
+        paths = []
+        for ts in self.timesheets:
+            if not ts.rendered or ts.project is None:
+                continue
+            p = get_data_dir() / "Timesheets" / f"{ts.prefix}.pdf"
+            if p.exists():
+                paths.append({"project": ts.project.title, "path": str(p)})
+        return paths
+
+    @property
     def timesheet_pdf_path(self) -> Optional[str]:
-        """Filesystem path of the timesheet PDF, if it has been rendered."""
-        if not self.timesheets:
-            return None
-        ts = self.timesheets[0]
-        if not ts.rendered:
-            return None
-        p = get_data_dir() / "Timesheets" / f"{ts.prefix}.pdf"
-        return str(p) if p.exists() else None
+        """Filesystem path of the first timesheet PDF, if it has been rendered."""
+        paths = self.timesheet_pdf_paths
+        return paths[0]["path"] if paths else None
+
+    @property
+    def project_titles(self) -> str:
+        """The invoice's project, or the projects its lines bill, comma-separated."""
+        if self.project is not None:
+            return self.project.title
+        titles = dict.fromkeys(item.project.title for item in self.items if item.project is not None)
+        return ", ".join(titles)
 
 
 class InvoiceItem(RpcMixin, VatCategoryMixin, SQLModel, table=True):
@@ -1637,6 +1669,17 @@ class InvoiceItem(RpcMixin, VatCategoryMixin, SQLModel, table=True):
     # Assigning the object rather than the raw id lets the FK resolve on flush,
     # which matters when the charge itself is not yet persisted.
     contract_charge: Optional[ContractCharge] = Relationship(
+        sa_relationship_kwargs={"lazy": "subquery"},
+    )
+    # The project this line bills. Null on lines older than #666; readers fall
+    # back to the invoice's project.
+    project_id: Optional[int] = Field(
+        default=None,
+        foreign_key="project.id",
+        ondelete="SET NULL",
+        description="The project this line bills, if any.",
+    )
+    project: Optional[Project] = Relationship(
         sa_relationship_kwargs={"lazy": "subquery"},
     )
     # invoice

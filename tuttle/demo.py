@@ -759,6 +759,19 @@ def create_demo_business(user: User, today: date) -> tuple[Dict[str, Project], L
             ),
         )
     )
+    # A second project on the retrofit contract at its own day rate, never
+    # invoiced, so it can go on one invoice together with the retrofit (#666).
+    projects.append(
+        Project(
+            title="Boiler Commissioning",
+            tag="#commissioning",
+            description="Commissioning and handover of the retrofitted boilers, at a higher day rate",
+            start_date=retrofit_start,
+            end_date=today + timedelta(days=180),
+            contract=projects[-1].contract,
+            rate=Decimal("720"),
+        )
+    )
 
     # -- Ductwork Security -----------------------------------------------------------
 
@@ -889,6 +902,7 @@ _DEMO_ROUTINES = {
         planned_ahead=False,
     ),
     "#boilerretrofit": _Routine((0, 2), 8, (), 0.95, ("On site",)),
+    "#commissioning": _Routine((1,), 16, (1,), 0.9, ("Commissioning check",)),
     "#ductcontrol": _Routine((3,), 13, (4,), 0.8, ("Control valve testing", "Pneumatic line survey", "Review report")),
 }
 _DEFAULT_ROUTINE = _Routine((0, 1, 2, 3, 4), 9, (1, 2, 3), 0.3, tuple(_HEATING_TASKS))

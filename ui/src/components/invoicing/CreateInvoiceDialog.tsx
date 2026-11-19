@@ -23,6 +23,8 @@ interface LineItem {
   quantity: string;
   unit: string;
   unitPrice: string;
+  /** Project the line bills; unset means the invoice's project. */
+  projectId?: number | null;
 }
 
 const UNIT_OPTIONS = ["hour", "day", "piece", "flat"] as const;
@@ -92,7 +94,7 @@ function ContractPreview({ contract }: { contract: Entity }) {
 function makeDefaultItem(project?: Entity | null): LineItem {
   const contract = contractOf(project);
   const unit = contract ? str(contract, "unit") : "";
-  const rate = contract ? num(contract, "rate") : 0;
+  const rate = project && project.effective_rate != null ? num(project, "effective_rate") : contract ? num(contract, "rate") : 0;
   return {
     description: project ? str(project, "title") : "",
     quantity: "",
@@ -160,6 +162,7 @@ export function CreateInvoiceDialog({ projectId: initialProjectId, onClose, onCr
   const [selectedNoteIds, setSelectedNoteIds] = useState<Set<number>>(new Set());
   const [customNoteText, setCustomNoteText] = useState("");
 
+  const [alsoBill, setAlsoBill] = useState<Set<number>>(new Set());
   const [docType, setDocType] = useState<DocumentType>("invoice");
   const [selectedMilestoneId, setSelectedMilestoneId] = useState<number | null>(null);
   const [step, setStep] = useState(0);
@@ -169,6 +172,10 @@ export function CreateInvoiceDialog({ projectId: initialProjectId, onClose, onCr
   const [eligibleCharges, setEligibleCharges] = useState<Entity[] | null>(null);
   const charges = eligibleCharges ?? contractCharges(selectedProject);
   const selectedContract = contractOf(selectedProject);
+  // Other projects of the same contract can go on the same invoice (#666).
+  const siblingProjects = selectedProject
+    ? projects.filter((p) => p.id !== projectId && num(p, "contract_id") === num(selectedProject, "contract_id"))
+    : [];
   const chargeCurrency = (selectedContract ? str(selectedContract, "currency") : "") || "EUR";
 
   const milestones = selectedContract ? entityList(selectedContract, "payment_milestones") : [];
@@ -232,6 +239,21 @@ export function CreateInvoiceDialog({ projectId: initialProjectId, onClose, onCr
     setLineItems(makeDefaultItems(proj));
     setDocType("invoice");
     setSelectedMilestoneId(null);
+    setAlsoBill(new Set());
+  }
+
+  function toggleAlsoBill(id: number) {
+    setAlsoBill((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function setItemProject(idx: number, id: number) {
+    const proj = projects.find((p) => p.id === id) ?? selectedProject;
+    const rate = proj ? num(proj, "effective_rate") : 0;
+    updateItem(idx, { projectId: id, unitPrice: rate ? String(rate) : lineItems[idx].unitPrice });
   }
 
   function updateItem(idx: number, patch: Partial<LineItem>) {
@@ -308,9 +330,11 @@ export function CreateInvoiceDialog({ projectId: initialProjectId, onClose, onCr
         quantity: parseFloat(it.quantity),
         unit: it.unit,
         unit_price: parseFloat(it.unitPrice),
+        project_id: it.projectId ?? undefined,
       }));
     } else {
       params.with_timesheet = withTimesheet;
+      if (alsoBill.size > 0) params.project_ids = [...alsoBill];
     }
     const custom = customNoteText.trim();
     if (custom) await rpc("invoice_notes.create", { text: custom });
@@ -351,6 +375,22 @@ export function CreateInvoiceDialog({ projectId: initialProjectId, onClose, onCr
               </select>
             </label>
             {selectedContract && <ContractPreview contract={selectedContract} />}
+          </div>
+        )}
+
+        {/* Further projects of the same contract on one invoice (time tracking only) */}
+        {step === 0 && !isFixedPrice && docType === "invoice" && mode === "timetracking" && siblingProjects.length > 0 && (
+          <div>
+            <span className="text-xs font-semibold text-secondary uppercase tracking-wider">Also bill</span>
+            <div className="mt-1 space-y-1">
+              {siblingProjects.map((p) => (
+                <label key={p.id} className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={alsoBill.has(p.id)} onChange={() => toggleAlsoBill(p.id)} className="accent-accent" />
+                  <span className="text-sm text-primary">{str(p, "title")}</span>
+                </label>
+              ))}
+            </div>
+            <p className="text-[10px] text-muted mt-1">Projects of the same contract, each billed at its own rate.</p>
           </div>
         )}
 
@@ -516,6 +556,15 @@ export function CreateInvoiceDialog({ projectId: initialProjectId, onClose, onCr
                     <input type="text" placeholder="Description" value={item.description}
                       onChange={(e) => updateItem(idx, { description: e.target.value })}
                       className="w-full px-2 py-1 rounded bg-bg-content border border-border-subtle text-xs text-primary placeholder:text-muted" />
+                    {siblingProjects.length > 0 && (
+                      <select value={item.projectId ?? projectId ?? ""} onChange={(e) => setItemProject(idx, Number(e.target.value))}
+                        aria-label="Project"
+                        className="w-full px-1.5 py-1 rounded bg-bg-content border border-border-subtle text-xs text-primary">
+                        {[selectedProject, ...siblingProjects].filter(Boolean).map((p) => (
+                          <option key={p!.id} value={p!.id}>{str(p!, "title")}</option>
+                        ))}
+                      </select>
+                    )}
                     <div className="flex gap-1.5">
                       <input type="number" min="0" step="0.5" placeholder="Qty" value={item.quantity}
                         onChange={(e) => updateItem(idx, { quantity: e.target.value })}

@@ -190,11 +190,11 @@ def compute_planned_revenue(
         if not project:
             continue
         contract = project.contract
-        if not contract.rate:
+        if not project.effective_rate:
             continue
         unit_hours = contract.units_per_workday if contract.unit == TimeUnit.day else 1
         billable_units = Decimal(str(hours)) / Decimal(str(unit_hours))
-        revenue = billable_units * contract.rate
+        revenue = billable_units * project.effective_rate
         if currency and contract.currency not in (currency, None):
             converted = convert(revenue, contract.currency, currency, today)
             if converted is None:

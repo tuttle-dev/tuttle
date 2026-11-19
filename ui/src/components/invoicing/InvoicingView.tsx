@@ -85,7 +85,7 @@ export function InvoicingView() {
     const q = search.toLowerCase();
     return str(inv, "number").toLowerCase().includes(q)
       || deepStr(inv, "contract.client.name").toLowerCase().includes(q)
-      || deepStr(inv, "project.title").toLowerCase().includes(q);
+      || str(inv, "project_titles").toLowerCase().includes(q);
   }
 
   const filtered = invoices.filter((inv) =>
