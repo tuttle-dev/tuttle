@@ -377,7 +377,7 @@ def _data_extent(
     time_data: Optional[DataFrame],
 ) -> tuple:
     """Earliest and latest date covered by invoices or calendar events."""
-    dates = [inv.date for inv in invoices if inv.is_counted and inv.date]
+    dates = [inv.revenue_date for inv in invoices if inv.is_counted and inv.revenue_date]
     if time_data is not None and not time_data.empty:
         dates.append(time_data.index.min().date())
         dates.append(time_data.index.max().date())
@@ -417,8 +417,8 @@ def revenue_series(
 
     Reconciles the revenue sources the dashboard chart needs into a single
     series so the frontend does not have to join them: invoices give
-    ``received`` (paid) and ``invoiced`` (sent but unpaid) keyed by invoice
-    date, the calendar gives ``planned`` — tracked or scheduled work that no
+    ``received`` (paid, keyed by payment date) and ``invoiced`` (sent but
+    unpaid, keyed by invoice date), the calendar gives ``planned`` — tracked or scheduled work that no
     timesheet has billed yet, in the past as well as the future — and
     committed contracts give ``contracted``, the agreed work not yet in the
     calendar (see :func:`contracted_revenue`). All four are net of VAT, so
@@ -470,7 +470,7 @@ def revenue_series(
     for inv in invoices:
         if not inv.is_counted or not inv.date:
             continue
-        period = pandas.Period(inv.date, freq=freq)
+        period = pandas.Period(inv.revenue_date, freq=freq)
         bucket = buckets.get(period)
         if bucket is None:
             continue

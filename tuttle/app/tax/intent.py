@@ -156,7 +156,7 @@ class TaxIntent(OperatingCountryMixin, SQLModelDataSourceMixin, Intent):
         """Return the current year and every year with issued invoices, descending."""
         invoices = self.query(Invoice)
         years = sorted(
-            {inv.date.year for inv in invoices if inv.is_counted} | {datetime.date.today().year},
+            {inv.revenue_date.year for inv in invoices if inv.is_counted} | {datetime.date.today().year},
             reverse=True,
         )
         return IntentResult(was_intent_successful=True, data=years)

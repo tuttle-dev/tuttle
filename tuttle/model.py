@@ -1119,6 +1119,7 @@ class Invoice(RpcMixin, SQLModel, table=True):
         "total",
         "due_date",
         "effective_due_date",
+        "revenue_date",
         "status",
         "file_name",
         "sum_formatted",
@@ -1258,6 +1259,10 @@ class Invoice(RpcMixin, SQLModel, table=True):
         description="The date the invoice was sent to the client.",
     )
     paid: Optional[bool] = Field(default=False)
+    paid_date: Optional[datetime.date] = Field(
+        default=None,
+        description="The date the payment was received. Revenue counts on this date (cash basis).",
+    )
     cancelled: Optional[bool] = Field(
         default=False,
         description="If the invoice has been cancelled, e.g. because it was incorrect.",
@@ -1395,6 +1400,19 @@ class Invoice(RpcMixin, SQLModel, table=True):
         left out: it repeats the invoice it chases, which is counted already.
         """
         return self.is_issued and not self.cancelled and not self.is_reminder
+
+    @property
+    def revenue_date(self) -> Optional[datetime.date]:
+        """The date revenue, tax and cash figures place the invoice on.
+
+        Tuttle uses cash-basis accounting (Zuflussprinzip, Ist-Versteuerung):
+        a paid invoice counts when the money came in, an unpaid one on its
+        invoice date. An invoice marked paid before payment dates were
+        recorded falls back to its invoice date.
+        """
+        if self.paid and self.paid_date:
+            return self.paid_date
+        return self.date
 
     @property
     def reminder_chain_head_id(self) -> Optional[int]:

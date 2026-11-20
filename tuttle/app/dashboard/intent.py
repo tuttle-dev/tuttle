@@ -91,9 +91,9 @@ class DashboardIntent(OperatingCountryMixin, SQLModelDataSourceMixin, Intent):
         totals: dict = {}
         left_out: dict = {}
         for inv in invoices:
-            if not inv.is_counted or not inv.paid or inv.date > today:
+            if not inv.is_counted or not inv.paid or inv.revenue_date > today:
                 continue
-            year = inv.date.year
+            year = inv.revenue_date.year
             converted = convert_invoice(inv, currency, left_out.setdefault(year, []))
             if converted is None:
                 # No resolvable FX rate — leave it out rather than count it as zero.
