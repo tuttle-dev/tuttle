@@ -586,6 +586,21 @@ class TestSerialization:
                 pytest.fail(f"{method} response not JSON-serializable: {exc}")
 
 
+class TestOneTaxEstimate:
+    """The tax view's Income Tax Estimate card and its Safe to Spend share one estimate."""
+
+    def test_card_shows_the_estimate_safe_to_spend_is_computed_with(self, rpc_env):
+        assert_ok(dispatch("users.switch", {"db_file": "harry-tuttle.db"}))
+        year = datetime.date.today().year  # the demo's income is all this year
+
+        spending = assert_ok(dispatch("tax.get_spendable_income", {"year": year}))["data"]["spending"]
+        card = assert_ok(dispatch("tax.get_income_tax_estimate", {"year": year}))["data"]
+
+        assert card["tax_reserve"] is not None
+        assert card["tax_reserve"] == spending["income_tax_estimate"]
+        assert card["tax_reserve"]["ytd_reserve"] == spending["income_tax_reserve"]
+
+
 # ---------------------------------------------------------------------------
 # 4. Field requirements — model schema exposed to the UI
 # ---------------------------------------------------------------------------
