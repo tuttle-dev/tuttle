@@ -1045,11 +1045,33 @@ def _copy_items(invoice: Invoice, extra: float = 0) -> List[InvoiceItem]:
     ]
 
 
+# How many days after the invoice date each client pays, at the earliest and
+# latest: always within the 14-day term, so only the demo's deliberate
+# examples are overdue.
+_PAYMENT_DAYS = {
+    "Central Services": (9, 14),
+    "Sam Lowry": (3, 6),
+    "Shangri-La Towers": (10, 14),
+    "Ductwork Security Inc.": (6, 12),
+}
+
+
+def _payment_date(invoice: Invoice) -> date:
+    """The weekday the client pays *invoice*, at their usual pace."""
+    earliest, latest = _PAYMENT_DAYS[invoice.contract.client.name]
+    day = invoice.date + timedelta(days=random.Random(f"{_DEMO_SEED}:{invoice.number}").randint(earliest, latest))
+    while day.weekday() >= 5:
+        day -= timedelta(days=1)
+    return day
+
+
 def _send(invoice: Invoice, today: date, paid: Optional[bool] = None) -> Invoice:
-    """Mark *invoice* sent on its date, and paid once it is due unless *paid* says otherwise."""
+    """Mark *invoice* sent on its date, and paid once the client's payment comes in unless *paid* says otherwise."""
     invoice.sent = True
     invoice.sent_date = invoice.date
-    invoice.paid = invoice.due_date < today if paid is None else paid
+    paid_date = _payment_date(invoice)
+    invoice.paid = paid_date <= today if paid is None else paid
+    invoice.paid_date = min(paid_date, today) if invoice.paid else None
     return invoice
 
 
@@ -1074,8 +1096,9 @@ def _remind(invoice: Invoice, on: date, fee: Decimal) -> Invoice:
 def create_demo_invoices(projects: Dict[str, Project], time_data: DataFrame, today: date) -> List[Invoice]:
     """Harry's invoices, built from his calendar the way the app builds them.
 
-    Invoices are paid once they are due, except those that show the rest of
-    the workflow: an overdue invoice with a payment reminder, an overdue one
+    Each client pays a few days after the invoice, within the term, so the
+    latest invoices may still be open. The exceptions show the rest of the
+    workflow: an overdue invoice with a payment reminder, an overdue one
     still waiting for its reminder, a cancelled invoice and its correction, a
     draft, an invoice typed in by hand, deposits and a final invoice.
     """

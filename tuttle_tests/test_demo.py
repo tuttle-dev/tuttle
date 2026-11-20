@@ -107,6 +107,14 @@ class TestHarryTuttle:
         assert any(i.currency == "USD" for i in invoices)
         assert all(i.date <= today for i in invoices)
 
+    def test_clients_pay_some_days_after_the_invoice_is_sent(self, demo_data, today):
+        _, invoices = demo_data
+        paid = [i for i in invoices if i.paid]
+        assert paid
+        for invoice in paid:
+            assert invoice.sent_date < invoice.paid_date <= min(invoice.due_date, today)
+            assert invoice.paid_date.weekday() < 5
+
     def test_tracked_time_is_billed_once(self, demo_data):
         _, invoices = demo_data
         billed = set()
