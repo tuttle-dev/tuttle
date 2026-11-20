@@ -119,6 +119,17 @@ html, body {
   animation: tour-pulse 1.6s infinite;
 }
 
+/* A part of a menu that unfolds under its item: the payment date under "Mark as paid". */
+@keyframes unfold {
+  from { opacity: 0; transform: translateY(-4px); }
+}
+.unfold {
+  animation: unfold 140ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .unfold { animation: none; }
+}
+
 /* A select that reads as a word in a sentence (the task rule composer): a small caret, no native chrome. */
 .word-select {
   background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
