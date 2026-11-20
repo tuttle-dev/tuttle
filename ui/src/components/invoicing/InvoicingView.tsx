@@ -118,14 +118,14 @@ export function InvoicingView() {
   });
 
   // A status change can be refused, e.g. cancelling a deposit that a final invoice settles.
-  async function toggleStatus(method: "toggle_sent" | "toggle_paid" | "toggle_cancelled", id: number) {
+  async function toggleStatus(method: "toggle_sent" | "toggle_paid" | "toggle_cancelled", id: number, params: Record<string, unknown> = {}) {
     setStatusError(null);
-    const res = await rpc(`invoicing.${method}`, { id });
+    const res = await rpc(`invoicing.${method}`, { id, ...params });
     if (!res.ok) setStatusError(res.error || "The invoice status could not be changed.");
     load();
   }
   async function toggleSent(id: number) { await toggleStatus("toggle_sent", id); }
-  async function togglePaid(id: number) { await toggleStatus("toggle_paid", id); }
+  async function togglePaid(id: number, paidDate?: string) { await toggleStatus("toggle_paid", id, paidDate ? { paid_date: paidDate } : {}); }
   async function toggleCancelled(id: number) { await toggleStatus("toggle_cancelled", id); }
   async function sendMail(id: number) {
     setMailError(null);
@@ -219,7 +219,7 @@ export function InvoicingView() {
           detail={selected ? (
               <InvoiceDetail invoice={selected} allInvoices={invoices}
                 onToggleSent={() => toggleSent(selected.id)}
-                onTogglePaid={() => togglePaid(selected.id)} onToggleCancelled={() => toggleCancelled(selected.id)}
+                onTogglePaid={(paidDate) => togglePaid(selected.id, paidDate)} onToggleCancelled={() => toggleCancelled(selected.id)}
                 onSendMail={() => sendMail(selected.id)}
                 onDelete={() => handleDelete(selected.id)} deleteError={deleteError}
                 mailError={mailError} onClearMailError={() => setMailError(null)}

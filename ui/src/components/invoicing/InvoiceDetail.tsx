@@ -9,10 +9,11 @@ import { StatusBadge } from "../shared/StatusBadge";
 import { Section } from "../shared/Section";
 import type { Entity } from "../../api/types";
 import { CreateReminderDialog } from "./CreateReminderDialog";
+import { MarkPaidDialog } from "./MarkPaidDialog";
 
 export function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid, onToggleCancelled, onSendMail, onDelete, deleteError, mailError, onClearMailError, onReminderCreated, onRefresh }: {
   invoice: Entity; allInvoices: Entity[];
-  onToggleSent: () => void; onTogglePaid: () => void; onToggleCancelled: () => void; onSendMail: () => void;
+  onToggleSent: () => void; onTogglePaid: (paidDate?: string) => void; onToggleCancelled: () => void; onSendMail: () => void;
   onDelete: () => void; deleteError: string | null;
   mailError: string | null; onClearMailError: () => void;
   onReminderCreated: (newId?: number, warning?: string | null) => void;
@@ -59,6 +60,16 @@ export function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid
   const [tsRendering, setTsRendering] = useState(false);
   const [tsError, setTsError] = useState("");
   const [reminderDialogOpen, setReminderDialogOpen] = useState(false);
+  const [markPaidOpen, setMarkPaidOpen] = useState(false);
+  const [paidDateError, setPaidDateError] = useState("");
+
+  async function changePaidDate(paidDate: string) {
+    if (!paidDate) return;
+    setPaidDateError("");
+    const res = await rpc("invoicing.set_paid_date", { id: invoice.id, paid_date: paidDate });
+    if (!res.ok) setPaidDateError(res.error || "The payment date could not be changed.");
+    onRefresh();
+  }
   const [deleteConfirm, setDeleteConfirm] = useState(false);
 
   useEffect(() => { setDeleteConfirm(false); }, [invoice.id]);
@@ -134,7 +145,7 @@ export function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid
               )}
               <span className="text-sm text-secondary">{deepStr(invoice, "contract.client.name") || "No client"}</span>
               <StatusMenu key={invoice.id} status={status} isSent={isSent} isPaid={isPaid} isCancelled={isCancelled}
-                onToggleSent={onToggleSent} onTogglePaid={onTogglePaid} onToggleCancelled={onToggleCancelled} />
+                onToggleSent={onToggleSent} onTogglePaid={() => (isPaid ? onTogglePaid() : setMarkPaidOpen(true))} onToggleCancelled={onToggleCancelled} />
             </div>
           </div>
         </div>
@@ -289,6 +300,18 @@ export function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid
               <DRow icon={<Calendar size={14} />} label="Due" value={formatDate(str(invoice, "effective_due_date"))} />
               {str(invoice, "sent_date") && (
                 <DRow icon={<Send size={14} />} label="Sent" value={formatDate(str(invoice, "sent_date"))} />
+              )}
+              {isPaid && (
+                <div className="flex items-center gap-2">
+                  <span className="text-tertiary"><CheckCircle size={14} /></span>
+                  <label>
+                    <div className="text-xs font-semibold uppercase tracking-wider text-tertiary">Paid</div>
+                    <input type="date" key={str(invoice, "revenue_date")} defaultValue={str(invoice, "revenue_date")}
+                      onChange={(e) => changePaidDate(e.target.value)} title="Revenue counts on the payment date"
+                      className="text-sm bg-transparent text-primary rounded hover:bg-bg-hover" />
+                    {paidDateError && <div className="text-xs text-status-danger">{paidDateError}</div>}
+                  </label>
+                </div>
               )}
               <DRow icon={<FolderKanban size={14} />} label="Project" value={deepStr(invoice, "project.title") || "—"} />
               <DRow icon={<FileText size={14} />} label="Contract" value={deepStr(invoice, "contract.title") || "—"} />
@@ -463,6 +486,14 @@ export function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid
           })()}
 
         </div>
+      )}
+
+      {markPaidOpen && (
+        <MarkPaidDialog
+          invoiceNumber={str(invoice, "number")}
+          onClose={() => setMarkPaidOpen(false)}
+          onConfirm={(paidDate) => { setMarkPaidOpen(false); onTogglePaid(paidDate); }}
+        />
       )}
 
       {reminderDialogOpen && (
