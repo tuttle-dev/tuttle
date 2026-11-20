@@ -1,15 +1,15 @@
 import { useEffect, useRef, useState, useMemo } from "react";
 import {
-  FileText, Send, CheckCircle, XCircle, Mail, Trash2, FolderKanban, Calendar, Banknote, Eye, Clock, AlertTriangle, ChevronDown, Share, Receipt, Milestone, RotateCcw,
+  FileText, Send, CheckCircle, XCircle, Mail, Trash2, FolderKanban, Calendar, Banknote, Eye, Clock, AlertTriangle, ChevronDown, ChevronRight, Share, Receipt, Milestone, RotateCcw,
 } from "lucide-react";
 import { rpc, readFileAsDataURL } from "../../api/rpc";
-import { str, num, bool, entity as subEntity, list as entityList, formatDate, formatMoney, invoiceStatus, deepStr, isReminder, isDeposit, isFinalInvoice, reminderLevel, depositChainHeadId, depositMilestoneLabel } from "../../api/entity";
+import { str, num, bool, entity as subEntity, list as entityList, formatDate, formatMoney, localDateIso, invoiceStatus, deepStr, isReminder, isDeposit, isFinalInvoice, reminderLevel, depositChainHeadId, depositMilestoneLabel } from "../../api/entity";
 import { taxCategory, taxTreatment } from "../../api/tax";
 import { StatusBadge } from "../shared/StatusBadge";
 import { Section } from "../shared/Section";
 import type { Entity } from "../../api/types";
 import { CreateReminderDialog } from "./CreateReminderDialog";
-import { MarkPaidDialog } from "./MarkPaidDialog";
+import { MiniCalendar } from "../shared/MiniCalendar";
 
 export function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid, onToggleCancelled, onSendMail, onDelete, deleteError, mailError, onClearMailError, onReminderCreated, onRefresh }: {
   invoice: Entity; allInvoices: Entity[];
@@ -60,7 +60,6 @@ export function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid
   const [tsRendering, setTsRendering] = useState(false);
   const [tsError, setTsError] = useState("");
   const [reminderDialogOpen, setReminderDialogOpen] = useState(false);
-  const [markPaidOpen, setMarkPaidOpen] = useState(false);
   const [paidDateError, setPaidDateError] = useState("");
 
   async function changePaidDate(paidDate: string) {
@@ -145,7 +144,7 @@ export function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid
               )}
               <span className="text-sm text-secondary">{deepStr(invoice, "contract.client.name") || "No client"}</span>
               <StatusMenu key={invoice.id} status={status} isSent={isSent} isPaid={isPaid} isCancelled={isCancelled}
-                onToggleSent={onToggleSent} onTogglePaid={() => (isPaid ? onTogglePaid() : setMarkPaidOpen(true))} onToggleCancelled={onToggleCancelled} />
+                onToggleSent={onToggleSent} onTogglePaid={onTogglePaid} onToggleCancelled={onToggleCancelled} />
             </div>
           </div>
         </div>
@@ -488,14 +487,6 @@ export function InvoiceDetail({ invoice, allInvoices, onToggleSent, onTogglePaid
         </div>
       )}
 
-      {markPaidOpen && (
-        <MarkPaidDialog
-          invoiceNumber={str(invoice, "number")}
-          onClose={() => setMarkPaidOpen(false)}
-          onConfirm={(paidDate) => { setMarkPaidOpen(false); onTogglePaid(paidDate); }}
-        />
-      )}
-
       {reminderDialogOpen && (
         <CreateReminderDialog
           invoiceId={invoice.id}
@@ -564,14 +555,16 @@ function ExportLink({ href, path, fallbackName, label }: { href: string; path: s
   );
 }
 
-type StatusTransition = { label: string; icon: React.ReactNode; onClick: () => void };
+type StatusTransition = { label: string; icon: React.ReactNode; onClick: () => void; picksDate?: boolean };
 
-/** The invoice status as a badge that opens the transitions valid from it. */
+/** The invoice status as a badge that opens the transitions valid from it.
+ *  "Mark as paid" unfolds a calendar: revenue counts on the day the payment came in. */
 function StatusMenu({ status, isSent, isPaid, isCancelled, onToggleSent, onTogglePaid, onToggleCancelled }: {
   status: string; isSent: boolean; isPaid: boolean; isCancelled: boolean;
-  onToggleSent: () => void; onTogglePaid: () => void; onToggleCancelled: () => void;
+  onToggleSent: () => void; onTogglePaid: (paidDate?: string) => void; onToggleCancelled: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [pickingDate, setPickingDate] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -594,25 +587,39 @@ function StatusMenu({ status, isSent, isPaid, isCancelled, onToggleSent, onToggl
   } else {
     if (!isSent && !isPaid) transitions.push({ label: "Mark as sent", icon: <Send size={14} className="text-status-info" />, onClick: onToggleSent });
     if (isSent && !isPaid) {
-      transitions.push({ label: "Mark as paid", icon: <CheckCircle size={14} className="text-status-success" />, onClick: onTogglePaid });
+      transitions.push({ label: "Mark as paid", icon: <CheckCircle size={14} className="text-status-success" />, onClick: () => setPickingDate((p) => !p), picksDate: true });
       transitions.push({ label: "Back to draft", icon: <RotateCcw size={14} className="text-tertiary" />, onClick: onToggleSent });
     }
-    if (isPaid) transitions.push({ label: "Mark as unpaid", icon: <RotateCcw size={14} className="text-tertiary" />, onClick: onTogglePaid });
+    if (isPaid) transitions.push({ label: "Mark as unpaid", icon: <RotateCcw size={14} className="text-tertiary" />, onClick: () => onTogglePaid() });
     transitions.push({ label: "Cancel invoice", icon: <XCircle size={14} className="text-status-warning" />, onClick: onToggleCancelled });
   }
+  const item = "flex items-center gap-2 w-full px-3 py-1.5 text-sm text-left text-secondary hover:bg-bg-hover hover:text-primary transition-colors";
 
   return (
     <div ref={ref} className="relative" data-status-menu>
-      <button onClick={() => setOpen((o) => !o)} title="Change status" aria-haspopup="menu" aria-expanded={open}
+      <button onClick={() => { setOpen((o) => !o); setPickingDate(false); }} title="Change status" aria-haspopup="menu" aria-expanded={open}
         className={`flex items-center gap-0.5 rounded-full pr-1 transition-colors ${open ? "bg-bg-hover" : "hover:bg-bg-hover"}`}>
         <StatusBadge status={status} />
         <ChevronDown size={12} className="text-tertiary" />
       </button>
       {open && (
         <div role="menu" className="absolute top-full left-0 mt-1 z-50 min-w-[160px] py-1 rounded-lg bg-bg-sidebar border border-border-subtle shadow-lg">
-          {transitions.map((t) => (
-            <button key={t.label} role="menuitem" onClick={() => { setOpen(false); t.onClick(); }}
-              className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-left text-secondary hover:bg-bg-hover hover:text-primary transition-colors">
+          {transitions.map((t) => t.picksDate ? (
+            <div key={t.label} className={pickingDate ? "bg-surface-overlay" : ""}>
+              <button role="menuitem" aria-expanded={pickingDate} onClick={t.onClick}
+                className={`${item} ${pickingDate ? "text-primary" : ""}`}>
+                {t.icon}<span className="flex-1">{t.label}</span>
+                <ChevronRight size={12} className={`text-tertiary transition-transform ${pickingDate ? "rotate-90" : ""}`} />
+              </button>
+              {pickingDate && (
+                <div className="unfold px-2 pb-2">
+                  <MiniCalendar max={localDateIso()} dayLabel={(iso) => `Paid on ${formatDate(iso)}`}
+                    onPick={(iso) => { setOpen(false); onTogglePaid(iso); }} />
+                </div>
+              )}
+            </div>
+          ) : (
+            <button key={t.label} role="menuitem" onClick={() => { setOpen(false); t.onClick(); }} className={item}>
               {t.icon}{t.label}
             </button>
           ))}
