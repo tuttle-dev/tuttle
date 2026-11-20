@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { BarChart3, ReceiptText, Calculator, ChevronDown } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Split, ReceiptText, Calculator, ChevronDown } from "lucide-react";
 import { rpc } from "../../api/rpc";
 import { EmptyStateIntro } from "../shared/EmptyStateIntro";
 import { InfoHint } from "../shared/InfoHint";
@@ -7,22 +7,38 @@ import { LoadError, LoadingState } from "../shared/LoadStates";
 import { PageLayout } from "../shared/ToolbarButtons";
 import { UnconvertedNote } from "../shared/UnconvertedNote";
 import type { Entity } from "../../api/types";
-import { str, num, maybeNum, bool, formatAmount, type DynamicLine } from "../../api/entity";
+import { str, num, maybeNum, bool, formatAmount } from "../../api/entity";
+import { useNavigation } from "../shared/NavigationContext";
+import { INCOME, incomeFill, type IncomeSeries } from "../shared/income";
+import { RevenueSankey } from "./RevenueSankey";
+import type { NodeTarget } from "./sankey";
 
 function fmtPct(value: number): string {
   return `${(value * 100).toFixed(1)}%`;
 }
 
+type Forecast = "planned" | "contracted";
+type SectionId = "vat" | "tax";
+
 export function TaxReservesView() {
+  const { navigate } = useNavigation();
   const [spending, setSpending] = useState<Entity | null>(null);
   const [taxEstimate, setTaxEstimate] = useState<Entity | null>(null);
   const [months, setMonths] = useState<Entity[]>([]);
   const [vatUnconverted, setVatUnconverted] = useState<string[]>([]);
   const [currency, setCurrency] = useState("EUR");
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
   const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  // Planned and Contracted are forecasts: switched off, the view shows the year from invoices alone.
+  const [included, setIncluded] = useState<Record<Forecast, boolean>>({ planned: true, contracted: true });
+  // Their amounts as last counted, for the chips while they are switched off.
+  const [forecastAmounts, setForecastAmounts] = useState<Record<Forecast, number>>({ planned: 0, contracted: 0 });
+  const [flash, setFlash] = useState<SectionId | null>(null);
+  const sections = { vat: useRef<HTMLDivElement>(null), tax: useRef<HTMLDivElement>(null) };
+  const request = useRef(0);
 
   useEffect(() => {
     rpc<number[]>("tax.get_available_years").then((res) => {
@@ -37,43 +53,81 @@ export function TaxReservesView() {
     });
   }, []);
 
-  useEffect(() => { load(selectedYear); }, [selectedYear]);
+  useEffect(() => {
+    const all = { planned: true, contracted: true };
+    setIncluded(all);
+    setForecastAmounts({ planned: 0, contracted: 0 });
+    load(selectedYear, all);
+  }, [selectedYear]);
 
-  async function load(year: number) {
-    setLoading(true);
+  /** Load the year. A refresh, after a forecast is switched, keeps the page as it is until the figures arrive. */
+  async function load(year: number, include: Record<Forecast, boolean>, refresh = false) {
+    const id = ++request.current;
+    if (refresh) setRefreshing(true);
+    else setLoading(true);
     setLoadFailed(false);
-    const params = { year };
+    const params = { year, include_planned: include.planned, include_contracted: include.contracted };
     const [spRes, taxRes, vatRes] = await Promise.all([
       rpc<Entity>("tax.get_spendable_income", params),
       rpc<Entity>("tax.get_income_tax_estimate", params),
-      rpc<Entity>("tax.get_monthly_vat", params),
+      refresh ? Promise.resolve(null) : rpc<Entity>("tax.get_monthly_vat", { year }),
     ]);
-    setLoadFailed(!spRes.ok || !taxRes.ok || !vatRes.ok);
+    if (id !== request.current) return;  // a later request has taken over
+    setLoadFailed(!spRes.ok || !taxRes.ok || (vatRes !== null && !vatRes.ok));
     if (spRes.ok && spRes.data) {
-      setSpending(spRes.data as Entity);
-      setCurrency(str(spRes.data as Entity, "currency") || "EUR");
+      const data = spRes.data as Entity;
+      setSpending(data);
+      setCurrency(str(data, "currency") || "EUR");
+      const sp = data.spending as Entity;
+      setForecastAmounts((prev) => ({
+        planned: include.planned ? num(sp, "planned_revenue") : prev.planned,
+        contracted: include.contracted ? num(sp, "contracted_revenue") : prev.contracted,
+      }));
     }
     if (taxRes.ok && taxRes.data) setTaxEstimate(taxRes.data as Entity);
-    if (vatRes.ok && vatRes.data) {
+    if (vatRes?.ok && vatRes.data) {
       const d = vatRes.data as Entity;
       setMonths((d.months as Entity[]) || []);
       setVatUnconverted((d.unconverted as string[]) || []);
       if (str(d, "currency")) setCurrency(str(d, "currency"));
     }
     setLoading(false);
+    setRefreshing(false);
   }
+
+  function toggle(forecast: Forecast) {
+    const next = { ...included, [forecast]: !included[forecast] };
+    setIncluded(next);
+    load(selectedYear, next, true);
+  }
+
+  function open(target: NodeTarget) {
+    if ("view" in target) {
+      navigate(target.view, target.invoiceStatus ? { invoiceStatus: target.invoiceStatus } : undefined);
+      return;
+    }
+    sections[target.section].current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    setFlash(null);
+    requestAnimationFrame(() => setFlash(target.section));
+  }
+
+  useEffect(() => {
+    if (!flash) return;
+    const timer = setTimeout(() => setFlash(null), 1300);
+    return () => clearTimeout(timer);
+  }, [flash]);
 
   const yearSelector = availableYears.length > 1 && (
     <YearSelector years={availableYears} selected={selectedYear} onChange={setSelectedYear} />
   );
   if (loadFailed) {
     return <PageLayout title="Tax & Reserves" right={yearSelector}
-      fallback={<LoadError what="tax data" onRetry={() => load(selectedYear)} />} />;
+      fallback={<LoadError what="tax data" onRetry={() => load(selectedYear, included)} />} />;
   }
   if (loading) return <PageLayout title="Tax & Reserves" right={yearSelector} fallback={<LoadingState />} />;
 
   const sp = spending?.spending as Entity | undefined;
-  const hasAnyIncome = sp && (num(sp, "gross_revenue_ytd") > 0 || num(sp, "planned_revenue") > 0 || num(sp, "contracted_revenue") > 0);
+  const hasAnyIncome = sp && (num(sp, "gross_revenue_ytd") > 0 || forecastAmounts.planned > 0 || forecastAmounts.contracted > 0);
   // The breakdown and the monthly VAT leave out the same invoices: name each once.
   const unconverted = [...new Set([...((sp?.unconverted as string[]) || []), ...vatUnconverted])];
 
@@ -82,86 +136,47 @@ export function TaxReservesView() {
       fallback={<EmptyStateIntro icon={Calculator} description="Tax reserves help you set aside money for income tax and VAT throughout the year, so nothing comes as a surprise." />} />;
   }
 
+  const totalBase = sp ? num(sp, "received_gross") + num(sp, "outstanding_gross") + num(sp, "planned_revenue") + num(sp, "contracted_revenue") : 0;
+  // Without tax rules the core leaves out the tax and everything after it.
+  const tax = sp ? maybeNum(sp, "income_tax_reserve") : null;
+  const noTax = sp ? str(sp, "tax_unavailable_reason") : "";
+
   return (
-    <PageLayout title="Tax & Reserves" className="grid gap-6 items-start @4xl:grid-cols-2 @4xl:grid-rows-[auto_1fr]"
+    <PageLayout title="Tax & Reserves" className="grid gap-6 items-start @4xl:grid-cols-2"
       right={yearSelector}>
-      {/* Revenue Waterfall */}
-      <Section title={`Revenue Breakdown (${selectedYear})`} icon={<BarChart3 size={16} />}>
-        {!hasAnyIncome ? (
+      <Section title={`Revenue Breakdown (${selectedYear})`} icon={<Split size={16} />} className="min-w-0 @4xl:col-span-2">
+        {!hasAnyIncome || !sp ? (
           <p className="text-sm text-muted">No revenue data yet.</p>
-        ) : (() => {
-          const received = num(sp!, "received_gross");
-          const outstanding = num(sp!, "outstanding_gross");
-          const planned = num(sp!, "planned_revenue");
-          const contracted = num(sp!, "contracted_revenue");
-          const totalBase = received + outstanding + planned + contracted;
-          const vat = num(sp!, "vat_reserve");
-          const bizExpenses = num(sp!, "business_expenses");
-          const fixedPostTax = num(sp!, "fixed_expenses_post_tax");
-          const conversionFee = num(sp!, "conversion_fee");
-          const taxableProfit = num(sp!, "taxable_profit");
-          const taxBase = num(sp!, "tax_base");
-          const dynLines = (sp!.dynamic_expenses as DynamicLine[]) || [];
-          const deductibleLines = dynLines.filter((l) => l.tax_deductible);
-          // Without tax rules the core leaves out the tax and everything after it.
-          const tax = maybeNum(sp!, "income_tax_reserve");
-          const spendable = maybeNum(sp!, "spendable");
-          const noTax = str(sp!, "tax_unavailable_reason");
-          return (
-            <div className="space-y-1">
-              <WaterfallBar label="Received (incl. VAT)" amount={received} total={totalBase} color="var(--color-status-info)" currency={currency} />
-              {outstanding > 0 && (
-                <WaterfallBar label="Invoiced (incl. VAT)" amount={outstanding} total={totalBase} color="var(--color-status-info-muted, var(--color-status-info))" currency={currency} />
-              )}
-              {planned > 0 && (
-                <WaterfallBar label="Planned" amount={planned} total={totalBase} color="var(--color-accent, #6366f1)" currency={currency} />
-              )}
-              {contracted > 0 && (
-                <WaterfallBar label="Contracted" amount={contracted} total={totalBase} color="var(--color-accent, #6366f1)" currency={currency} />
-              )}
-              <WaterfallBar label="VAT (to remit)" amount={vat} total={totalBase} color="var(--color-status-warning)" currency={currency} />
-              {bizExpenses > 0 && (
-                <WaterfallBar label="Fixed Recurring Expenses" amount={bizExpenses} total={totalBase} color="var(--color-status-warning)" currency={currency} />
-              )}
-              <WaterfallBar label="= Taxable Profit" amount={taxableProfit} total={totalBase} color="var(--color-status-info)" currency={currency} />
-              {deductibleLines.length > 0 && (
-                <>
-                  {deductibleLines.map((line) => (
-                    <WaterfallBar key={line.title} label={`${line.title} (${line.rate}%, deductible)`} amount={line.amount} total={totalBase} color="var(--color-status-warning)" currency={currency} />
-                  ))}
-                  <WaterfallBar label="= Tax Base" amount={taxBase} total={totalBase} color="var(--color-status-info)" currency={currency} />
-                </>
-              )}
-              <WaterfallBar label="Est. Income Tax" amount={tax} total={totalBase} color="var(--color-status-warning)" currency={currency} />
-              {fixedPostTax > 0 && (
-                <WaterfallBar label="Fixed Recurring Expenses (from taxed income)" amount={fixedPostTax} total={totalBase} color="var(--color-status-warning)" currency={currency} />
-              )}
-              {dynLines.filter((l) => !l.tax_deductible).map((line) => (
-                <WaterfallBar key={line.title} label={`${line.title} (${line.rate}%, from taxed income)`} amount={line.amount} total={totalBase} color="var(--color-status-warning)" currency={currency} />
+        ) : (
+          <>
+            <div className={`transition-opacity ${refreshing ? "opacity-60" : ""}`}>
+              <RevenueSankey spending={sp} currency={currency} onOpen={open} />
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5 mt-2">
+              {(["planned", "contracted"] as const).filter((f) => forecastAmounts[f] > 0).map((f) => (
+                <ForecastChip key={f} series={INCOME[f]} amount={forecastAmounts[f]} currency={currency}
+                  on={included[f]} onToggle={() => toggle(f)} />
               ))}
-              {conversionFee > 0 && (
-                <WaterfallBar label="Currency Conversion" amount={conversionFee} total={totalBase} color="var(--color-status-warning)" currency={currency} />
-              )}
-              {noTax && (
-                <p className="text-xs text-muted italic">{noTax}</p>
-              )}
-              <WaterfallBar label="= Safe to Spend" amount={spendable} total={totalBase} color={spendable === null ? "var(--color-muted)" : spendable >= 0 ? "var(--color-status-success)" : "var(--color-status-danger)"} currency={currency} bold />
               {totalBase > 0 && (
-                <div className="border-t border-border-subtle mt-3 pt-3 flex justify-between text-xs text-muted">
-                  <span>Effective reserve rate</span>
+                <span className="ml-auto text-xs text-muted">
+                  Effective reserve rate{" "}
                   <span className="text-secondary">
-                    {tax === null ? "—" : `${fmtPct((vat + tax) / totalBase)} of gross revenue`}
+                    {tax === null ? "—" : `${fmtPct((num(sp, "vat_reserve") + tax) / totalBase)} of gross revenue`}
                   </span>
-                </div>
+                </span>
               )}
             </div>
-          );
-        })()}
+            {noTax && <p className="text-xs text-muted italic mt-2">{noTax}</p>}
+          </>
+        )}
         <UnconvertedNote items={unconverted} className="mt-3" />
       </Section>
 
+      {/* Income Tax Estimate */}
+      {taxEstimate && <IncomeTaxSection data={taxEstimate} currency={currency} sectionRef={sections.tax} flash={flash === "tax"} />}
+
       {/* Monthly VAT */}
-      <Section title="Monthly VAT" icon={<ReceiptText size={16} />} className="@4xl:col-start-2 @4xl:row-span-2">
+      <Section title="Monthly VAT" icon={<ReceiptText size={16} />} sectionRef={sections.vat} flash={flash === "vat"}>
         {months.length === 0 ? (
           <p className="text-sm text-muted">No VAT data available.</p>
         ) : (
@@ -188,10 +203,23 @@ export function TaxReservesView() {
           </div>
         )}
       </Section>
-
-      {/* Income Tax Estimate */}
-      {taxEstimate && <IncomeTaxSection data={taxEstimate} currency={currency} />}
     </PageLayout>
+  );
+}
+
+/** A forecast the breakdown counts, switched on and off like the dashboard chart's series. */
+function ForecastChip({ series, amount, currency, on, onToggle }: {
+  series: IncomeSeries; amount: number; currency: string; on: boolean; onToggle: () => void;
+}) {
+  return (
+    <button onClick={onToggle} title={series.hint} aria-pressed={on}
+      className={`flex items-center gap-1.5 px-2 h-6 rounded-md border text-[11px] transition-colors ${
+        on ? "border-border bg-bg-hover text-secondary" : "border-transparent text-muted hover:text-tertiary"
+      }`}>
+      <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={on ? incomeFill(series) : { ...incomeFill(series), opacity: 0.25 }} />
+      {series.name}
+      <span className="tabular-nums text-tertiary">{formatAmount(amount, currency)}</span>
+    </button>
   );
 }
 
@@ -214,7 +242,9 @@ function YearSelector({ years, selected, onChange }: {
   );
 }
 
-function IncomeTaxSection({ data, currency }: { data: Entity; currency: string }) {
+function IncomeTaxSection({ data, currency, sectionRef, flash }: {
+  data: Entity; currency: string; sectionRef?: React.Ref<HTMLDivElement>; flash?: boolean;
+}) {
   const tr = data.tax_reserve as Entity | null;
   const brackets = (data.brackets as Entity[]) || [];
   const country = str(data, "country");
@@ -236,6 +266,7 @@ function IncomeTaxSection({ data, currency }: { data: Entity; currency: string }
 
   return (
     <Section title={country ? `Income Tax Estimate (${country})` : "Income Tax Estimate"} icon={<Calculator size={16} />}
+      sectionRef={sectionRef} flash={flash}
       hint="A best-guess estimate from simplified tax rules. Tuttle is not a tax advisor.">
       <div className="space-y-2">
         <SummaryRow label="Income Basis" value={formatAmount(incomeBasis, currency)} />
@@ -276,35 +307,20 @@ function IncomeTaxSection({ data, currency }: { data: Entity; currency: string }
   );
 }
 
-function Section({ title, icon, hint, className, children }: { title: string; icon?: React.ReactNode; hint?: string; className?: string; children: React.ReactNode }) {
+function Section({ title, icon, hint, className, sectionRef, flash, children }: {
+  title: string; icon?: React.ReactNode; hint?: string; className?: string;
+  /** For scrolling to the section; *flash* then rings its card once. */
+  sectionRef?: React.Ref<HTMLDivElement>; flash?: boolean;
+  children: React.ReactNode;
+}) {
   return (
-    <div className={className}>
+    <div className={className} ref={sectionRef}>
       <div className="flex items-center gap-2 mb-2">
         {icon && <span className="text-secondary">{icon}</span>}
         <h2 className="text-sm font-semibold">{title}</h2>
         {hint && <InfoHint label={title} text={hint} />}
       </div>
-      <div className="bg-surface-overlay rounded-lg p-4">{children}</div>
-    </div>
-  );
-}
-
-/** One row of the waterfall. A null amount is a figure the core could not estimate: "—", no bar. */
-function WaterfallBar({ label, amount, total, color, currency, bold }: {
-  label: string; amount: number | null; total: number; color: string; currency: string; bold?: boolean;
-}) {
-  const pct = amount === null ? 0 : total > 0 ? Math.max(Math.abs(amount) / total, 0.02) : 0;
-  const shown = amount === null ? "—" : `${amount < 0 ? "−" : ""}${formatAmount(Math.abs(amount), currency)}`;
-
-  return (
-    <div className="py-1">
-      <div className="flex justify-between mb-0.5">
-        <span className={`text-sm ${bold ? "font-semibold" : ""}`}>{label}</span>
-        <span className={`text-sm ${bold ? "font-semibold" : ""}`} style={{ color }}>{shown}</span>
-      </div>
-      <div className={`w-full rounded-sm bg-border-subtle overflow-hidden ${bold ? "h-2" : "h-1.5"}`}>
-        <div className="h-full rounded-sm" style={{ width: `${pct * 100}%`, backgroundColor: color }} />
-      </div>
+      <div className={`bg-surface-overlay rounded-lg p-4 ${flash ? "flash-ring" : ""}`}>{children}</div>
     </div>
   );
 }

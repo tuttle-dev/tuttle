@@ -40,55 +40,58 @@ class TaxIntent(OperatingCountryMixin, SQLModelDataSourceMixin, Intent):
             return Decimal(0)
         return contracted_this_year(projects, invoices, time_data, currency=currency, left_out=left_out)
 
-    @fails_with("Failed to compute spendable income", append_exception=True)
-    def get_spendable_income(self, year: int | None = None) -> IntentResult:
-        """Compute spendable income breakdown."""
+    def _spending(self, year, include_planned: bool, include_contracted: bool, left_out=None):
+        """The year's spendable income breakdown, with its country and currency.
+
+        Planned and contracted revenue are forecasts: without *include_planned*
+        or *include_contracted* the breakdown leaves them out, and the tax is
+        estimated on the rest.
+        """
         invoices = self.query(Invoice)
         expenses = self.query(RecurringExpense)
         projects = self.query(Project)
         country = self._get_country()
         currency = self._get_tax_currency(country)
         time_data = self._time_data_source.get_data_frame()
-        left_out: list = []
+        contracted = (
+            self._contracted_this_year(year, invoices, projects, time_data, currency, left_out)
+            if include_contracted
+            else Decimal(0)
+        )
         spending = compute_spendable_income(
             invoices,
             country,
             expenses=expenses,
             currency=currency,
             year=year,
-            projects=projects,
-            time_data=time_data,
-            contracted=self._contracted_this_year(year, invoices, projects, time_data, currency, left_out),
+            # Planned revenue comes from the projects' tracked and scheduled time.
+            projects=projects if include_planned else None,
+            time_data=time_data if include_planned else None,
+            contracted=contracted,
             left_out=left_out,
         )
+        return spending, country, currency
+
+    @fails_with("Failed to compute spendable income", append_exception=True)
+    def get_spendable_income(
+        self, year: int | None = None, include_planned: bool = True, include_contracted: bool = True
+    ) -> IntentResult:
+        """Compute spendable income breakdown."""
+        spending, _, currency = self._spending(year, include_planned, include_contracted, left_out=[])
         data = {"spending": spending, "currency": currency}
         return IntentResult(was_intent_successful=True, data=data)
 
     @fails_with("Failed to compute income tax estimate", append_exception=True)
-    def get_income_tax_estimate(self, year: int | None = None) -> IntentResult:
+    def get_income_tax_estimate(
+        self, year: int | None = None, include_planned: bool = True, include_contracted: bool = True
+    ) -> IntentResult:
         """Get detailed income tax estimate with bracket info.
 
         Without tax rules for the country and year there is no estimate:
         ``tax_reserve`` is None and ``tax_unavailable_reason`` says why.
         """
         today = datetime.date.today()
-
-        invoices = self.query(Invoice)
-        expenses = self.query(RecurringExpense)
-        projects = self.query(Project)
-        country = self._get_country()
-        currency = self._get_tax_currency(country)
-        time_data = self._time_data_source.get_data_frame()
-        spending = compute_spendable_income(
-            invoices,
-            country,
-            expenses=expenses,
-            currency=currency,
-            year=year,
-            projects=projects,
-            time_data=time_data,
-            contracted=self._contracted_this_year(year, invoices, projects, time_data, currency),
-        )
+        spending, country, currency = self._spending(year, include_planned, include_contracted)
 
         # tax_base, not taxable_profit: deductible dynamic expenses have already
         # been taken off, and charging them again here would double-count.
