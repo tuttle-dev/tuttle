@@ -411,8 +411,22 @@ class InvoicingIntent(Intent):
     def toggle_sent(self, id) -> IntentResult:
         return self._toggle("sent", id)
 
-    def toggle_paid(self, id) -> IntentResult:
-        return self._toggle("paid", id)
+    def toggle_paid(self, id, paid_date=None) -> IntentResult:
+        """Mark paid on *paid_date* (ISO string, default today), or unpaid."""
+        result = self._invoicing_data_source.get_invoice_by_id(id)
+        if not result.was_intent_successful or not result.data:
+            return IntentResult(was_intent_successful=False, error_msg="Invoice not found")
+        on = _dt.date.fromisoformat(paid_date) if paid_date else None
+        return self.toggle_invoice_paid_status(result.data, paid_date=on)
+
+    def set_paid_date(self, id, paid_date) -> IntentResult:
+        """Correct the payment date of a paid invoice."""
+        result = self._invoicing_data_source.get_invoice_by_id(id)
+        if not result.was_intent_successful or not result.data:
+            return IntentResult(was_intent_successful=False, error_msg="Invoice not found")
+        if not result.data.paid:
+            return IntentResult(was_intent_successful=False, error_msg="Only a paid invoice has a payment date.")
+        return self._set_paid(result.data, True, _dt.date.fromisoformat(paid_date))
 
     def toggle_cancelled(self, id) -> IntentResult:
         return self._toggle("cancelled", id)
@@ -976,20 +990,24 @@ class InvoicingIntent(Intent):
                 ),
             )
 
-    def toggle_invoice_paid_status(self, invoice: Invoice) -> IntentResult[Invoice]:
-        """Toggle paid status. Propagates across reminder and deposit chains."""
+    def toggle_invoice_paid_status(self, invoice: Invoice, paid_date: Optional[date] = None) -> IntentResult[Invoice]:
+        """Toggle paid status; a newly paid invoice is paid on *paid_date*, default today."""
+        return self._set_paid(invoice, not invoice.paid, paid_date or date.today())
+
+    def _set_paid(self, invoice: Invoice, new_paid: bool, paid_date: date) -> IntentResult[Invoice]:
+        """Set paid status and payment date. Propagates across reminder and deposit chains."""
         try:
-            new_paid = not invoice.paid
+            on = paid_date if new_paid else None
             chain_result = self._invoicing_data_source.get_reminder_chain(invoice.id)
             chain = chain_result.data if chain_result.was_intent_successful and chain_result.data else []
             if chain:
                 for inv in chain:
                     fresh = self._invoicing_data_source.get_invoice_by_id(inv.id)
                     if fresh.was_intent_successful and fresh.data:
-                        fresh.data.paid = new_paid
+                        fresh.data.paid, fresh.data.paid_date = new_paid, on
                         self._invoicing_data_source.save_invoice(fresh.data)
             else:
-                invoice.paid = new_paid
+                invoice.paid, invoice.paid_date = new_paid, on
                 self._invoicing_data_source.save_invoice(invoice)
 
             # Settling the Schlussrechnung settles the whole contract: its
@@ -1005,8 +1023,8 @@ class InvoicingIntent(Intent):
                     if dep.cancelled:
                         continue
                     dep_fresh = self._invoicing_data_source.get_invoice_by_id(dep.id)
-                    if dep_fresh.was_intent_successful and dep_fresh.data:
-                        dep_fresh.data.paid = True
+                    if dep_fresh.was_intent_successful and dep_fresh.data and not dep_fresh.data.paid:
+                        dep_fresh.data.paid, dep_fresh.data.paid_date = True, paid_date
                         self._invoicing_data_source.save_invoice(dep_fresh.data)
 
             result = self._invoicing_data_source.get_invoice_by_id(invoice.id)

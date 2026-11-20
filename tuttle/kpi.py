@@ -93,7 +93,7 @@ def compute_kpis(
         if inv.paid:
             revenue = inv_total - inv_vat
             total_revenue += revenue
-            if inv.date >= year_start:
+            if inv.revenue_date >= year_start:
                 total_revenue_ytd += revenue
             paid_revenue += revenue
         else:

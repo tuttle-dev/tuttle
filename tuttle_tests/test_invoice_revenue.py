@@ -87,3 +87,19 @@ def test_a_reminder_is_not_another_unpaid_invoice():
     assert (kpis.unpaid_invoices, kpis.outstanding_amount) == (1, Decimal("1190"))
     series = revenue_series(chain, [], None, country="Germany", today=today)
     assert sum(bucket["invoice_count"] for bucket in series["buckets"]) == 1
+
+
+def test_paid_revenue_counts_when_the_money_came_in():
+    """Cash basis: a December invoice paid in January is January revenue."""
+    invoice = _make_invoice(datetime.date(2025, 12, 15), [(10, 100, 0.19)], vat_rate=0.19)
+    invoice.paid_date = datetime.date(2026, 1, 10)
+
+    assert compute_vat_reserves([invoice], datetime.date(2025, 12, 1), datetime.date(2025, 12, 31)).invoice_count == 0
+    assert compute_vat_reserves([invoice], datetime.date(2026, 1, 1), datetime.date(2026, 1, 31)).invoice_count == 1
+    series = revenue_series([invoice], [], None, granularity="year", country="Germany", today=datetime.date(2026, 2, 1))
+    received = {b["label"]: b["received"] for b in series["buckets"] if b["received"]}
+    assert list(received) == ["2026"]
+
+    # Paid before payment dates were recorded: falls back to the invoice date.
+    invoice.paid_date = None
+    assert invoice.revenue_date == datetime.date(2025, 12, 15)

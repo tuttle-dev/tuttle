@@ -237,7 +237,7 @@ def compute_vat_reserves(
     for inv in invoices:
         if not inv.is_counted:
             continue
-        if period_start <= inv.date <= period_end:
+        if period_start <= inv.revenue_date <= period_end:
             converted = convert_invoice(inv, currency, left_out)
             if converted is None:
                 continue
@@ -376,7 +376,7 @@ def compute_spendable_income(
     for inv in invoices:
         if not inv.is_counted:
             continue
-        if year_start <= inv.date <= year_end:
+        if year_start <= inv.revenue_date <= year_end:
             converted = convert_invoice(inv, currency, left_out)
             if converted is None:
                 continue
@@ -664,7 +664,7 @@ def compute_effective_salary(
 
     # An invoice that does not count is neither revenue nor where the history starts.
     invoices = [inv for inv in invoices if inv.is_counted]
-    first = min((inv.date for inv in invoices if inv.date <= today), default=None)
+    first = min((inv.revenue_date for inv in invoices if inv.revenue_date <= today), default=None)
     if first is None or first >= this_month:
         # Nothing invoiced before this month: the month so far is all there is.
         period_start, period_end, months = this_month, today, 1
@@ -677,7 +677,7 @@ def compute_effective_salary(
     paid = _Revenue()
     outstanding = _Revenue()
     for inv in invoices:
-        if not period_start <= inv.date <= period_end:
+        if not period_start <= inv.revenue_date <= period_end:
             continue
         converted = convert_invoice(inv, currency, left_out)
         if converted is None:

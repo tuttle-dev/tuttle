@@ -171,7 +171,7 @@ class TimelineIntent(SQLModelDataSourceMixin, Intent):
             if inv.paid:
                 events.append(
                     TimelineEvent(
-                        date=inv.date,
+                        date=inv.revenue_date,
                         title=f"{label} paid",
                         description=desc,
                         category=cat,

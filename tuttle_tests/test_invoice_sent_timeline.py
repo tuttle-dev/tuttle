@@ -5,6 +5,7 @@ from decimal import Decimal
 
 import sqlmodel
 
+from tuttle.app.core.intent_result import IntentResult
 from tuttle.app.invoicing.intent import InvoicingIntent
 from tuttle.app.timeline.intent import TimelineIntent
 from tuttle.model import Address, Client, Contract, Invoice, InvoiceItem, Project
@@ -106,3 +107,23 @@ def test_timeline_includes_regular_invoice_sent_event():
     sent_events = [e for e in result.data if e.title == "Invoice 2026-05-13-2 sent"]
     assert len(sent_events) == 1
     assert sent_events[0].date == datetime.date(2026, 5, 14)
+
+
+class _NoChainDataSource(_SavingDataSource):
+    def get_reminder_chain(self, invoice_id):
+        return IntentResult(was_intent_successful=True, data=[])
+
+    def get_invoice_by_id(self, invoice_id):
+        return IntentResult(was_intent_successful=True, data=self.saved[-1])
+
+
+def test_toggle_paid_sets_and_clears_paid_date():
+    intent = InvoicingIntent.__new__(InvoicingIntent)
+    intent._invoicing_data_source = _NoChainDataSource()
+    invoice = Invoice(number="1", date=datetime.date(2026, 5, 13), sent=True)
+
+    assert intent.toggle_invoice_paid_status(invoice, paid_date=datetime.date(2026, 6, 2)).was_intent_successful
+    assert (invoice.paid, invoice.paid_date) == (True, datetime.date(2026, 6, 2))
+
+    assert intent.toggle_invoice_paid_status(invoice).was_intent_successful
+    assert (invoice.paid, invoice.paid_date) == (False, None)
